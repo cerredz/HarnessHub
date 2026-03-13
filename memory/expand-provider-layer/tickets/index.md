@@ -19,6 +19,8 @@
 3. Ticket 3: Expand the Anthropic provider with Messages, server tools, MCP, and token counting helpers
    Issue: #11
    URL: https://github.com/cerredz/HarnessHub/issues/11
+   PR: https://github.com/cerredz/HarnessHub/pull/17
+   Status: implemented on branch `issue-11`
    Description: Add an Anthropic-native client/helper surface for messages, token counting, server tools, and MCP configuration.
    Dependency: Ticket 1
 
