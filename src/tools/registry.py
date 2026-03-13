@@ -16,6 +16,10 @@ class UnknownToolError(KeyError):
     """Raised when a caller requests a tool key that is not registered."""
 
 
+class ToolValidationError(ValueError):
+    """Raised when runtime arguments violate the canonical tool schema."""
+
+
 class ToolRegistry:
     """A deterministic in-memory registry for executable tools."""
 
@@ -60,7 +64,28 @@ class ToolRegistry:
 
     def execute(self, tool_key: str, arguments: ToolArguments) -> ToolResult:
         """Execute a tool by public key."""
-        return self.require(tool_key).execute(arguments)
+        tool = self.require(tool_key)
+        _validate_arguments(tool.definition, arguments)
+        return tool.execute(arguments)
+
+
+def _validate_arguments(definition: ToolDefinition, arguments: ToolArguments) -> None:
+    """Apply a small deterministic validation pass for the canonical schema."""
+    required_keys = tuple(definition.input_schema.get("required", ()))
+    missing_keys = [key for key in required_keys if key not in arguments]
+    if missing_keys:
+        missing = ", ".join(sorted(missing_keys))
+        message = f"Tool '{definition.key}' is missing required arguments: {missing}."
+        raise ToolValidationError(message)
+
+    allows_additional = definition.input_schema.get("additionalProperties", True)
+    if not allows_additional:
+        allowed_keys = set(definition.input_schema.get("properties", {}))
+        unexpected_keys = sorted(set(arguments) - allowed_keys)
+        if unexpected_keys:
+            unexpected = ", ".join(unexpected_keys)
+            message = f"Tool '{definition.key}' received unexpected arguments: {unexpected}."
+            raise ToolValidationError(message)
 
 
 def create_builtin_registry() -> ToolRegistry:

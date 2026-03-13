@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 import unittest
+from copy import deepcopy
 
 from src.tools.base import RegisteredTool
 from src.tools.constants import ADD_NUMBERS, ECHO_TEXT
-from src.tools.registry import DuplicateToolError, ToolRegistry, UnknownToolError, create_builtin_registry
+from src.tools.registry import (
+    DuplicateToolError,
+    ToolRegistry,
+    ToolValidationError,
+    UnknownToolError,
+    create_builtin_registry,
+)
 from src.tools.schemas import ToolDefinition
 
 
@@ -39,6 +46,18 @@ class ToolRegistryTests(unittest.TestCase):
         self.assertEqual(echo_result.output, {"text": "hello"})
         self.assertEqual(add_result.output, {"sum": 3.5})
 
+    def test_execute_rejects_missing_required_arguments(self) -> None:
+        registry = create_builtin_registry()
+
+        with self.assertRaises(ToolValidationError):
+            registry.execute(ADD_NUMBERS, {"left": 1})
+
+    def test_execute_rejects_unexpected_arguments(self) -> None:
+        registry = create_builtin_registry()
+
+        with self.assertRaises(ToolValidationError):
+            registry.execute(ECHO_TEXT, {"text": "hello", "extra": True})
+
     def test_duplicate_tool_keys_raise_clear_error(self) -> None:
         definition = ToolDefinition(
             key=ECHO_TEXT,
@@ -56,6 +75,17 @@ class ToolRegistryTests(unittest.TestCase):
 
         with self.assertRaises(UnknownToolError):
             registry.execute("missing.tool", {})
+
+    def test_as_dict_returns_copy_of_input_schema(self) -> None:
+        registry = create_builtin_registry()
+
+        payload = registry.definitions([ECHO_TEXT])[0].as_dict()
+        copied_schema = deepcopy(payload["input_schema"])
+        copied_schema["properties"]["text"]["description"] = "changed"
+
+        original_payload = registry.definitions([ECHO_TEXT])[0].as_dict()
+
+        self.assertNotEqual(copied_schema, original_payload["input_schema"])
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from copy import deepcopy
 from typing import Any
 
 JsonObject = dict[str, Any]
@@ -24,7 +25,7 @@ class ToolDefinition:
             "key": self.key,
             "name": self.name,
             "description": self.description,
-            "input_schema": self.input_schema,
+            "input_schema": deepcopy(self.input_schema),
         }
 
 
