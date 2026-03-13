@@ -318,11 +318,6 @@ class BaseAgent(ABC):
         parts: list[str] = []
         if response.assistant_message.strip():
             parts.append(response.assistant_message.strip())
-        if response.tool_calls:
-            parts.append("Requested tools:")
-            for tool_call in response.tool_calls:
-                arguments = json.dumps(tool_call.arguments, sort_keys=True)
-                parts.append(f"- {tool_call.tool_key}({arguments})")
         if response.pause_reason:
             parts.append(f"Pause requested: {response.pause_reason}")
         self._transcript.append(
@@ -331,6 +326,14 @@ class BaseAgent(ABC):
                 content="\n".join(parts) if parts else "(no assistant content)",
             )
         )
+        for tool_call in response.tool_calls:
+            arguments = json.dumps(tool_call.arguments, sort_keys=True)
+            self._transcript.append(
+                AgentTranscriptEntry(
+                    entry_type="tool_call",
+                    content=f"{tool_call.tool_key}\n{arguments}",
+                )
+            )
 
     def _record_tool_result(self, result: ToolResult) -> None:
         rendered_output = json.dumps(result.output, indent=2, sort_keys=True, default=str)
@@ -353,6 +356,56 @@ class BaseAgent(ABC):
             tools=request.tools,
         )
         return reset_request.estimated_tokens() < self._runtime_config.reset_token_limit
+
+    def _apply_compaction_result(self, result: ToolResult) -> bool:
+        if result.tool_key not in self._COMPACTION_TOOL_KEYS:
+            return False
+        if not isinstance(result.output, dict):
+            return False
+        context_window = result.output.get("context_window")
+        if not isinstance(context_window, list):
+            return False
+        self._apply_context_window(context_window)
+        return True
+
+    def _apply_context_window(self, context_window: list[dict[str, Any]]) -> None:
+        parameter_sections: list[AgentParameterSection] = []
+        transcript: list[AgentTranscriptEntry] = []
+        for entry in context_window:
+            kind = entry.get("kind")
+            if kind == "parameter":
+                parameter_sections.append(
+                    AgentParameterSection(
+                        title=str(entry.get("label", "Parameters")),
+                        content=str(entry.get("content", "")),
+                    )
+                )
+                continue
+            transcript.append(self._context_entry_to_transcript_entry(entry))
+        self._parameter_sections = tuple(parameter_sections)
+        self._transcript = transcript
+
+    def _context_entry_to_transcript_entry(self, entry: dict[str, Any]) -> AgentTranscriptEntry:
+        kind = entry.get("kind")
+        content = str(entry.get("content", ""))
+        if kind == "message":
+            return AgentTranscriptEntry(entry_type="assistant", content=content)
+        if kind == "tool_call":
+            return AgentTranscriptEntry(entry_type="tool_call", content=content)
+        if kind == "tool_result":
+            return AgentTranscriptEntry(entry_type="tool_result", content=content)
+        if kind == "summary":
+            return AgentTranscriptEntry(entry_type="summary", content=content)
+        raise ValueError(f"Unsupported context entry kind '{kind}'.")
+
+    def _transcript_entry_to_context_entry(self, entry: AgentTranscriptEntry) -> AgentContextEntry:
+        if entry.entry_type == "assistant":
+            return {"kind": "message", "role": "assistant", "content": entry.content}
+        if entry.entry_type == "tool_call":
+            return {"kind": "tool_call", "content": entry.content}
+        if entry.entry_type == "summary":
+            return {"kind": "summary", "content": entry.content}
+        return {"kind": "tool_result", "content": entry.content}
 
 
 __all__ = [

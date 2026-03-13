@@ -5,7 +5,16 @@ from __future__ import annotations
 import unittest
 from copy import deepcopy
 
-from src.shared.tools import ADD_NUMBERS, ECHO_TEXT, RegisteredTool, ToolDefinition
+from src.shared.tools import (
+    ADD_NUMBERS,
+    ECHO_TEXT,
+    HEAVY_COMPACTION,
+    LOG_COMPACTION,
+    REMOVE_TOOL_RESULTS,
+    REMOVE_TOOLS,
+    RegisteredTool,
+    ToolDefinition,
+)
 from src.tools.registry import (
     DuplicateToolError,
     ToolRegistry,
@@ -23,7 +32,17 @@ class ToolRegistryTests(unittest.TestCase):
     def test_builtin_registry_keeps_stable_key_order(self) -> None:
         registry = create_builtin_registry()
 
-        self.assertEqual(registry.keys(), (ECHO_TEXT, ADD_NUMBERS))
+        self.assertEqual(
+            registry.keys(),
+            (
+                ECHO_TEXT,
+                ADD_NUMBERS,
+                REMOVE_TOOL_RESULTS,
+                REMOVE_TOOLS,
+                HEAVY_COMPACTION,
+                LOG_COMPACTION,
+            ),
+        )
 
     def test_definitions_expose_metadata_without_handlers(self) -> None:
         registry = create_builtin_registry()

@@ -12,7 +12,8 @@ from src.agents import (
     AgentRuntimeConfig,
     BaseAgent,
 )
-from src.shared.tools import RegisteredTool, ToolCall, ToolDefinition
+from src.shared.tools import HEAVY_COMPACTION, RegisteredTool, ToolCall, ToolDefinition
+from src.tools import create_context_compaction_tools
 from src.tools.registry import ToolRegistry
 
 
@@ -98,9 +99,12 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(result.cycles_completed, 2)
         self.assertEqual(len(model.requests), 2)
         self.assertEqual(model.requests[0].transcript, ())
-        self.assertEqual(len(model.requests[1].transcript), 2)
-        self.assertIn("session.echo", model.requests[1].transcript[0].content)
-        self.assertIn("hello", model.requests[1].transcript[1].content)
+        self.assertEqual(len(model.requests[1].transcript), 3)
+        self.assertEqual(model.requests[1].transcript[0].entry_type, "assistant")
+        self.assertEqual(model.requests[1].transcript[1].entry_type, "tool_call")
+        self.assertEqual(model.requests[1].transcript[2].entry_type, "tool_result")
+        self.assertIn("session.echo", model.requests[1].transcript[1].content)
+        self.assertIn("hello", model.requests[1].transcript[2].content)
 
     def test_run_pauses_when_a_tool_returns_pause_signal(self) -> None:
         registry = ToolRegistry(
@@ -158,6 +162,35 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(len(model.requests), 2)
         self.assertEqual(model.requests[1].transcript, ())
         self.assertEqual(model.requests[1].parameter_sections[0].content, "refreshed")
+
+    def test_compaction_tool_result_rewrites_agent_context_window(self) -> None:
+        registry = ToolRegistry(create_context_compaction_tools())
+        compactable_window = [
+            {"kind": "parameter", "label": "State", "content": "initial"},
+            {"kind": "message", "role": "assistant", "content": "Earlier turn"},
+            {"kind": "tool_result", "content": "session.echo\n{\"echoed\": \"hello\"}"},
+        ]
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Use heavy compaction.",
+                    tool_calls=(ToolCall(tool_key=HEAVY_COMPACTION, arguments={"context_window": compactable_window}),),
+                    should_continue=True,
+                ),
+                AgentModelResponse(
+                    assistant_message="Finished.",
+                    should_continue=False,
+                ),
+            ]
+        )
+        agent = _InspectableAgent(model=model, tool_executor=registry)
+
+        result = agent.run(max_cycles=3)
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(len(model.requests), 2)
+        self.assertEqual(model.requests[1].transcript, ())
+        self.assertEqual(model.requests[1].parameter_sections[0].content, "initial")
 
 
 if __name__ == "__main__":
