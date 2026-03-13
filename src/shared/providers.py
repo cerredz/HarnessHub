@@ -18,3 +18,18 @@ class ProviderMessage(TypedDict):
 
 SUPPORTED_PROVIDERS: tuple[ProviderName, ...] = ("anthropic", "openai", "grok", "gemini")
 ALLOWED_MESSAGE_ROLES: frozenset[ProviderMessageRole] = frozenset({"system", "user", "assistant"})
+GEMINI_ROLE_MAP: dict[ProviderMessageRole, str] = {
+    "user": "user",
+    "assistant": "model",
+    "system": "user",
+}
+
+__all__ = [
+    "ALLOWED_MESSAGE_ROLES",
+    "GEMINI_ROLE_MAP",
+    "ProviderMessage",
+    "ProviderMessageRole",
+    "ProviderName",
+    "RequestPayload",
+    "SUPPORTED_PROVIDERS",
+]

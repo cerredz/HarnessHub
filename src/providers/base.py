@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from src.shared.providers import ALLOWED_MESSAGE_ROLES, ProviderMessage, RequestPayload
+from src.shared.providers import ALLOWED_MESSAGE_ROLES, GEMINI_ROLE_MAP, ProviderMessage, RequestPayload
 from src.shared.tools import ToolDefinition
 
 
@@ -75,12 +75,11 @@ def build_openai_style_messages(system_prompt: str, messages: list[ProviderMessa
 
 def build_gemini_contents(messages: list[ProviderMessage]) -> list[RequestPayload]:
     """Translate canonical messages into Gemini content parts."""
-    role_map = {"user": "user", "assistant": "model", "system": "user"}
     contents: list[RequestPayload] = []
     for message in normalize_messages(messages, allow_system=False):
         contents.append(
             {
-                "role": role_map[message["role"]],
+                "role": GEMINI_ROLE_MAP[message["role"]],
                 "parts": [{"text": message["content"]}],
             }
         )
