@@ -1,15 +1,16 @@
-"""Thin Grok payload builders."""
+"""Compatibility wrappers for the Grok provider package."""
 
 from __future__ import annotations
 
-from src.providers.base import build_openai_style_messages, build_openai_style_tool
+from src.providers.grok.requests import build_request as build_chat_request
+from src.providers.grok.tools import format_tool_definition as format_grok_tool_definition
 from src.shared.providers import ProviderMessage
 from src.shared.tools import ToolDefinition
 
 
 def format_tool_definition(definition: ToolDefinition) -> dict[str, object]:
     """Translate a canonical tool definition into a Grok function tool payload."""
-    return build_openai_style_tool(definition)
+    return format_grok_tool_definition(definition)
 
 
 def build_request(
@@ -19,8 +20,9 @@ def build_request(
     tools: list[ToolDefinition],
 ) -> dict[str, object]:
     """Build a Grok-style request body from canonical primitives."""
-    return {
-        "model": model_name,
-        "messages": build_openai_style_messages(system_prompt, messages),
-        "tools": [format_tool_definition(tool) for tool in tools],
-    }
+    return build_chat_request(
+        model_name=model_name,
+        system_prompt=system_prompt,
+        messages=messages,
+        tools=tools,
+    )
