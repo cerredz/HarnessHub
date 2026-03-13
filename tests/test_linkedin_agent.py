@@ -12,6 +12,7 @@ from src.agents import (
     LinkedInJobApplierAgent,
     build_linkedin_browser_tool_definitions,
 )
+from src.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW, LinkedInAgentConfig
 from src.shared.tools import ToolCall
 
 
@@ -26,6 +27,13 @@ class _FakeModel:
 
 
 class LinkedInJobApplierAgentTests(unittest.TestCase):
+    def test_shared_linkedin_config_normalizes_paths_and_validates_window(self) -> None:
+        config = LinkedInAgentConfig(memory_path="memory")
+
+        self.assertEqual(config.memory_path, Path("memory"))
+        with self.assertRaises(ValueError):
+            LinkedInAgentConfig(memory_path="memory", action_log_window=0)
+
     def test_public_browser_tool_definitions_cover_the_linkedin_browser_surface(self) -> None:
         definitions = build_linkedin_browser_tool_definitions()
 
@@ -51,6 +59,7 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
             self.assertIn("[GOAL]", model.requests[0].system_prompt)
             self.assertIn("navigate", model.requests[0].system_prompt)
             self.assertIn("pause_and_notify", model.requests[0].system_prompt)
+            self.assertEqual(agent.config.action_log_window, DEFAULT_LINKEDIN_ACTION_LOG_WINDOW)
             self.assertEqual(
                 [section.title for section in model.requests[0].parameter_sections],
                 [
