@@ -5,7 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any, Literal, Sequence
 
-from src.providers.base import normalize_messages, omit_none_values
+from src.providers.base import ProviderFormatError, normalize_messages, omit_none_values
 from src.providers.anthropic.tools import format_tool_definition
 from src.shared.providers import ProviderMessage
 from src.shared.tools import ToolDefinition
@@ -206,11 +206,13 @@ def _normalize_message_items(
         role = message.get("role")
         content = message.get("content")
         if role not in {"user", "assistant"}:
-            raise ValueError(f"Unsupported Anthropic message role '{role}'.")
+            raise ProviderFormatError(f"Unsupported Anthropic message role '{role}'.")
         if isinstance(content, str):
             normalized.append({"role": role, "content": content})
             continue
         if not isinstance(content, list):
-            raise ValueError(f"Anthropic message content for role '{role}' must be a string or block list.")
+            raise ProviderFormatError(
+                f"Anthropic message content for role '{role}' must be a string or block list."
+            )
         normalized.append({"role": role, "content": [deepcopy(part) for part in content]})
     return normalized

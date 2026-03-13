@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import unittest
 
+from src.providers import ProviderFormatError
 from src.providers.anthropic import (
     AnthropicClient,
     build_bash_tool,
@@ -100,6 +101,14 @@ class AnthropicProviderTests(unittest.TestCase):
         self.assertEqual(request["model"], "claude-3-7-sonnet")
         self.assertEqual(request["system"], "Be precise.")
         self.assertEqual(request["tools"][0]["name"], "echo_text")
+
+    def test_build_message_request_rejects_unsupported_roles(self) -> None:
+        with self.assertRaises(ProviderFormatError):
+            build_message_request(
+                model_name="claude-3-7-sonnet",
+                messages=[{"role": "system", "content": "invalid"}],
+                max_tokens=256,
+            )
 
     def test_anthropic_client_executes_message_and_count_token_requests(self) -> None:
         calls: list[tuple[str, str, dict[str, object]]] = []
