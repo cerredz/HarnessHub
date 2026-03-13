@@ -13,13 +13,15 @@
 ## Stage 3 - Unit Tests
 
 - Ran `python -m unittest tests.test_anthropic_provider`.
-- Result: `Ran 5 tests` and `OK`.
+- Re-ran the same command after the critique-driven validation fix.
+- Result: `Ran 6 tests` and `OK`.
 
 ## Stage 4 - Integration and Contract Tests
 
 - The repository does not contain a separate integration or contract test harness.
 - Ran the full suite with `python -m unittest`.
-- Result: `Ran 45 tests` and `OK`.
+- Re-ran the full suite after the critique-driven validation fix.
+- Result: `Ran 46 tests` and `OK`.
 
 ## Stage 5 - Smoke and Manual Verification
 
