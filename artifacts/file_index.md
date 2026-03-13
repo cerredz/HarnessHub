@@ -19,16 +19,24 @@ Source layout:
 - `src/providers/gemini/`: Gemini request and tool-translation helpers
 
 Tests:
-
 - `tests/test_agents_base.py`: coverage for the generic agent loop, transcript handling, context resets, and structured pause behavior
 - `tests/test_linkedin_agent.py`: coverage for the LinkedIn-specific harness, memory files, and durable state tools
-- `tests/test_tools.py`: coverage for tool definitions, registry behavior, validation, and built-in key ordering
+- `tests/test_tools.py`: coverage for tool definitions, registry behavior, validation, execution, and built-in key ordering
+- `tests/test_context_compaction_tools.py`: coverage for the context-window compaction tool family
 - `tests/test_general_tools.py`: coverage for the reusable text, record, and control-flow tool family
 - `tests/test_prompt_filesystem_tools.py`: coverage for system-prompt generation and non-destructive filesystem tools
+- `tests/test_provider_base.py`: coverage for shared provider helpers and HTTP transport
 - `tests/test_providers.py`: coverage for provider message normalization and request translation across all supported providers
+- `tests/test_anthropic_provider.py`: coverage for Anthropic request, tool, and client helpers
+- `tests/test_grok_provider.py`: coverage for Grok request, tool, and client helpers
+- `tests/test_openai_provider.py`: coverage for OpenAI request, tool, and client helpers
+- `tests/test_gemini_provider.py`: coverage for Gemini content, tool, and client helpers
 
 Current memory artifacts:
 
 - `memory/refactor-types-constants/`: planning, ticket, quality, critique, and PR-body artifacts for the shared definitions refactor
+- `memory/linkedin-agent-harness/`: internalization, tickets, and verification artifacts for the LinkedIn harness work
+- `memory/add-context-compaction-tools/`: internalization, tickets, and verification artifacts for the context-window compaction work
 - `memory/add-generalizable-tools/`: internalization, brainstorming, ticket, and verification artifacts for the general-purpose tool expansion
 - `memory/add-system-prompt-terminal-tools/`: internalization, clarification, ticket, and verification artifacts for prompt and filesystem tool expansion
+- `memory/shared-definition-consolidation/`: internalization and ticket plan artifacts for the shared-definition cleanup

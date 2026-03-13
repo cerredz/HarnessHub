@@ -3,8 +3,7 @@
 ### Stage 1 - Static Analysis
 
 - No repository linter or static analysis command is configured at the repository root.
-- Applied manual review for naming, interface consistency, and import hygiene in `src/agents/base.py` and `tests/test_agents_base.py`.
-- Ran `python -m compileall src tests` to confirm the new modules compile cleanly.
+- Applied manual review for naming, interface consistency, import hygiene, and branch isolation in `src/agents/base.py` and `tests/test_agents_base.py`.
 
 ### Stage 2 - Type Checking
 

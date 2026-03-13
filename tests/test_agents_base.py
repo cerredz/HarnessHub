@@ -157,7 +157,6 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(result.status, "paused")
         self.assertEqual(result.pause_reason, "approval required")
         self.assertEqual(len(model.requests), 1)
-
     def test_run_resets_context_and_refreshes_parameters_when_budget_is_exceeded(self) -> None:
         registry = ToolRegistry([])
         model = _FakeModel(
