@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from src.providers.base import ProviderMessage, build_openai_style_messages, build_openai_style_tool
-from src.tools.schemas import ToolDefinition
+from src.providers.base import build_openai_style_messages, build_openai_style_tool
+from src.shared.providers import ProviderMessage
+from src.shared.tools import ToolDefinition
 
 
 def format_tool_definition(definition: ToolDefinition) -> dict[str, object]:
