@@ -25,6 +25,15 @@ RECORDS_LIMIT_RECORDS = "records.limit_records"
 RECORDS_UNIQUE_RECORDS = "records.unique_records"
 RECORDS_COUNT_BY_FIELD = "records.count_by_field"
 CONTROL_PAUSE_FOR_HUMAN = "control.pause_for_human"
+PROMPT_CREATE_SYSTEM_PROMPT = "prompt.create_system_prompt"
+FILESYSTEM_GET_CURRENT_DIRECTORY = "filesystem.get_current_directory"
+FILESYSTEM_PATH_EXISTS = "filesystem.path_exists"
+FILESYSTEM_LIST_DIRECTORY = "filesystem.list_directory"
+FILESYSTEM_READ_TEXT_FILE = "filesystem.read_text_file"
+FILESYSTEM_WRITE_TEXT_FILE = "filesystem.write_text_file"
+FILESYSTEM_APPEND_TEXT_FILE = "filesystem.append_text_file"
+FILESYSTEM_MAKE_DIRECTORY = "filesystem.make_directory"
+FILESYSTEM_COPY_PATH = "filesystem.copy_path"
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,9 +98,18 @@ __all__ = [
     "ADD_NUMBERS",
     "CONTROL_PAUSE_FOR_HUMAN",
     "ECHO_TEXT",
+    "FILESYSTEM_APPEND_TEXT_FILE",
+    "FILESYSTEM_COPY_PATH",
+    "FILESYSTEM_GET_CURRENT_DIRECTORY",
+    "FILESYSTEM_LIST_DIRECTORY",
+    "FILESYSTEM_MAKE_DIRECTORY",
+    "FILESYSTEM_PATH_EXISTS",
+    "FILESYSTEM_READ_TEXT_FILE",
+    "FILESYSTEM_WRITE_TEXT_FILE",
     "HEAVY_COMPACTION",
     "JsonObject",
     "LOG_COMPACTION",
+    "PROMPT_CREATE_SYSTEM_PROMPT",
     "RECORDS_COUNT_BY_FIELD",
     "RECORDS_FILTER_RECORDS",
     "RECORDS_LIMIT_RECORDS",

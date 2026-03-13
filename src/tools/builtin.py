@@ -5,7 +5,9 @@ from __future__ import annotations
 from src.shared.tools import ADD_NUMBERS, ECHO_TEXT, RegisteredTool, ToolArguments, ToolDefinition
 
 from .context_compaction import create_context_compaction_tools
+from .filesystem import create_filesystem_tools
 from .general_purpose import create_general_purpose_tools
+from .prompting import create_prompt_tools
 
 
 def _echo_text(arguments: ToolArguments) -> dict[str, str]:
@@ -64,4 +66,6 @@ BUILTIN_TOOLS = (
     ),
     *create_context_compaction_tools(),
     *create_general_purpose_tools(),
+    *create_prompt_tools(),
+    *create_filesystem_tools(),
 )
