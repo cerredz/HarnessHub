@@ -1,15 +1,16 @@
-"""Thin Gemini payload builders."""
+"""Compatibility wrappers for the Gemini provider package."""
 
 from __future__ import annotations
 
-from src.providers.base import build_gemini_contents, build_gemini_tool_declaration
+from src.providers.gemini.content import build_request as build_compatibility_request
+from src.providers.gemini.tools import format_tool_definition as format_gemini_tool_definition
 from src.shared.providers import ProviderMessage
 from src.shared.tools import ToolDefinition
 
 
 def format_tool_definition(definition: ToolDefinition) -> dict[str, object]:
     """Translate a canonical tool definition into a Gemini function declaration."""
-    return build_gemini_tool_declaration(definition)
+    return format_gemini_tool_definition(definition)
 
 
 def build_request(
@@ -19,12 +20,9 @@ def build_request(
     tools: list[ToolDefinition],
 ) -> dict[str, object]:
     """Build a Gemini-style request body from canonical primitives."""
-    request: dict[str, object] = {
-        "model": model_name,
-        "contents": build_gemini_contents(messages),
-    }
-    if system_prompt:
-        request["system_instruction"] = {"parts": [{"text": system_prompt}]}
-    if tools:
-        request["tools"] = [{"functionDeclarations": [format_tool_definition(tool) for tool in tools]}]
-    return request
+    return build_compatibility_request(
+        model_name=model_name,
+        system_prompt=system_prompt,
+        messages=messages,
+        tools=tools,
+    )
