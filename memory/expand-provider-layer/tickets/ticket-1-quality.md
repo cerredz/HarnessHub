@@ -13,13 +13,15 @@
 ## Stage 3 - Unit Tests
 
 - Ran `python -m unittest tests.test_provider_base tests.test_openai_provider`.
-- Result: `Ran 13 tests` and `OK`.
+- Re-ran the same command after the critique-driven test additions.
+- Result: `Ran 16 tests` and `OK`.
 
 ## Stage 4 - Integration and Contract Tests
 
 - The repository does not contain a separate integration or contract test harness.
 - Ran the full suite with `python -m unittest` after splitting provider coverage into provider-specific test modules.
-- Result: `Ran 24 tests` and `OK`.
+- Re-ran the full suite after the critique-driven test additions.
+- Result: `Ran 27 tests` and `OK`.
 
 ## Stage 5 - Smoke and Manual Verification
 
