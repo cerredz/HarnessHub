@@ -1,15 +1,16 @@
-"""Thin Anthropic payload builders."""
+"""Compatibility wrappers for the Anthropic provider package."""
 
 from __future__ import annotations
 
-from src.providers.base import build_anthropic_tool, normalize_messages
+from src.providers.anthropic.messages import build_request as build_message_request
+from src.providers.anthropic.tools import format_tool_definition as format_anthropic_tool_definition
 from src.shared.providers import ProviderMessage
 from src.shared.tools import ToolDefinition
 
 
 def format_tool_definition(definition: ToolDefinition) -> dict[str, object]:
     """Translate a canonical tool definition into Anthropic's tool payload."""
-    return build_anthropic_tool(definition)
+    return format_anthropic_tool_definition(definition)
 
 
 def build_request(
@@ -19,9 +20,9 @@ def build_request(
     tools: list[ToolDefinition],
 ) -> dict[str, object]:
     """Build an Anthropic-style request body from canonical primitives."""
-    return {
-        "model": model_name,
-        "system": system_prompt,
-        "messages": normalize_messages(messages, allow_system=False),
-        "tools": [format_tool_definition(tool) for tool in tools],
-    }
+    return build_message_request(
+        model_name=model_name,
+        system_prompt=system_prompt,
+        messages=messages,
+        tools=tools,
+    )
