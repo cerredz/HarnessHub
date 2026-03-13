@@ -72,6 +72,19 @@ from .general_purpose import (
     unique_records,
 )
 from .prompting import create_prompt_tools, create_system_prompt
+from .resend import (
+    DEFAULT_RESEND_BASE_URL,
+    DEFAULT_RESEND_USER_AGENT,
+    RESEND_REQUEST,
+    ResendClient,
+    ResendCredentials,
+    ResendOperation,
+    ResendPreparedRequest,
+    build_resend_operation_catalog,
+    build_resend_request_tool_definition,
+    create_resend_tools,
+    get_resend_operation,
+)
 from .registry import ToolRegistry, create_builtin_registry
 
 __all__ = [
@@ -99,9 +112,14 @@ __all__ = [
     "RECORDS_SELECT_FIELDS",
     "RECORDS_SORT_RECORDS",
     "RECORDS_UNIQUE_RECORDS",
+    "RESEND_REQUEST",
     "REMOVE_TOOL_RESULTS",
     "REMOVE_TOOLS",
     "RegisteredTool",
+    "ResendClient",
+    "ResendCredentials",
+    "ResendOperation",
+    "ResendPreparedRequest",
     "TEXT_NORMALIZE_WHITESPACE",
     "TEXT_REGEX_EXTRACT",
     "TEXT_TRUNCATE_TEXT",
@@ -121,8 +139,12 @@ __all__ = [
     "create_filesystem_tools",
     "create_general_purpose_tools",
     "create_prompt_tools",
+    "create_resend_tools",
     "create_system_prompt",
+    "DEFAULT_RESEND_BASE_URL",
+    "DEFAULT_RESEND_USER_AGENT",
     "filter_records",
+    "get_resend_operation",
     "get_current_directory",
     "heavy_compact_context",
     "limit_records",
@@ -138,6 +160,8 @@ __all__ = [
     "select_fields",
     "sort_records",
     "summarize_and_log_compact",
+    "build_resend_operation_catalog",
+    "build_resend_request_tool_definition",
     "truncate_text",
     "unique_records",
     "write_text_file",

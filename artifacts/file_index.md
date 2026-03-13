@@ -11,7 +11,7 @@ Source layout:
 
 - `src/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
 - `src/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
-- `src/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, and registry/execution behavior
+- `src/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior
 - `src/providers/`: provider translation helpers and provider-specific request builders
 - `src/providers/anthropic/`: Anthropic request and tool-translation helpers
 - `src/providers/openai/`: OpenAI request and tool-translation helpers
@@ -20,11 +20,13 @@ Source layout:
 
 Tests:
 - `tests/test_agents_base.py`: coverage for the generic agent loop, transcript handling, context resets, and structured pause behavior
+- `tests/test_email_agent.py`: coverage for the abstract email-capable harness, masked Resend credentials, and Resend tool integration through the agent loop
 - `tests/test_linkedin_agent.py`: coverage for the LinkedIn-specific harness, memory files, and durable state tools
 - `tests/test_tools.py`: coverage for tool definitions, registry behavior, validation, execution, and built-in key ordering
 - `tests/test_context_compaction_tools.py`: coverage for the context-window compaction tool family
 - `tests/test_general_tools.py`: coverage for the reusable text, record, and control-flow tool family
 - `tests/test_prompt_filesystem_tools.py`: coverage for system-prompt generation and non-destructive filesystem tools
+- `tests/test_resend_tools.py`: coverage for the Resend operation catalog, MCP-style request tool, and Resend-specific transport/header behavior
 - `tests/test_provider_base.py`: coverage for shared provider helpers and HTTP transport
 - `tests/test_providers.py`: coverage for provider message normalization and request translation across all supported providers
 - `tests/test_anthropic_provider.py`: coverage for Anthropic request, tool, and client helpers
@@ -39,4 +41,5 @@ Current memory artifacts:
 - `memory/add-context-compaction-tools/`: internalization, tickets, and verification artifacts for the context-window compaction work
 - `memory/add-generalizable-tools/`: internalization, brainstorming, ticket, and verification artifacts for the general-purpose tool expansion
 - `memory/add-system-prompt-terminal-tools/`: internalization, clarification, ticket, and verification artifacts for prompt and filesystem tool expansion
+- `memory/email-agent-resend-mcp/`: internalization, ticket, quality, and critique artifacts for the Resend-backed email agent base work
 - `memory/shared-definition-consolidation/`: internalization and ticket plan artifacts for the shared-definition cleanup

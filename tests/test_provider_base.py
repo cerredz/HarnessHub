@@ -122,6 +122,26 @@ class ProviderBaseTests(unittest.TestCase):
         self.assertIsNone(raised.exception.status_code)
         self.assertIn("network down", str(raised.exception))
 
+    def test_request_json_labels_resend_failures_with_resend_provider_name(self) -> None:
+        def fake_urlopen(http_request: request.Request, timeout: float) -> _FakeResponse:
+            raise error.URLError("resend down")
+
+        original_urlopen = request.urlopen
+        request.urlopen = fake_urlopen
+        try:
+            with self.assertRaises(ProviderHTTPError) as raised:
+                request_json(
+                    "POST",
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": "Bearer test"},
+                    json_body={"subject": "hello"},
+                )
+        finally:
+            request.urlopen = original_urlopen
+
+        self.assertEqual(raised.exception.provider, "resend")
+        self.assertIn("resend down", str(raised.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

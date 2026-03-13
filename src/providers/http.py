@@ -135,4 +135,6 @@ def _infer_provider_name(url: str) -> str:
         return "grok"
     if "googleapis" in host or "generativelanguage" in host:
         return "gemini"
+    if "resend" in host:
+        return "resend"
     return "provider"

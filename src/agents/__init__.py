@@ -1,6 +1,6 @@
 """Agent runtime primitives and concrete agent implementations."""
 
-from .base import (
+from src.shared.agents import (
     AgentModel,
     AgentModelRequest,
     AgentModelResponse,
@@ -11,16 +11,20 @@ from .base import (
     AgentRuntimeConfig,
     AgentToolExecutor,
     AgentTranscriptEntry,
-    BaseAgent,
     estimate_text_tokens,
 )
-from .linkedin import (
+from src.shared.linkedin import (
     ActionLogEntry,
     JobApplicationRecord,
     LinkedInAgentConfig,
+    ScreenshotPersistor,
+)
+
+from .base import BaseAgent
+from .email import BaseEmailAgent, DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
+from .linkedin import (
     LinkedInJobApplierAgent,
     LinkedInMemoryStore,
-    ScreenshotPersistor,
     build_linkedin_browser_tool_definitions,
     create_linkedin_browser_stub_tools,
 )
@@ -38,6 +42,9 @@ __all__ = [
     "AgentToolExecutor",
     "AgentTranscriptEntry",
     "BaseAgent",
+    "BaseEmailAgent",
+    "DEFAULT_EMAIL_AGENT_IDENTITY",
+    "EmailAgentConfig",
     "JobApplicationRecord",
     "LinkedInAgentConfig",
     "LinkedInJobApplierAgent",
