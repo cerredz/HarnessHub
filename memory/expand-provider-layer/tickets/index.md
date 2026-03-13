@@ -27,6 +27,8 @@
 4. Ticket 4: Expand the Gemini provider with content, tool, grounding, caching, and file-search helpers
    Issue: #12
    URL: https://github.com/cerredz/HarnessHub/issues/12
+   PR: https://github.com/cerredz/HarnessHub/pull/18
+   Status: implemented on branch `issue-12`
    Description: Add a Gemini-native client/helper surface for generate-content, count-tokens, grounding tools, file search, and caching.
    Dependency: Ticket 1
 
