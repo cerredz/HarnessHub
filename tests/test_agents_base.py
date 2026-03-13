@@ -98,9 +98,11 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(result.cycles_completed, 2)
         self.assertEqual(len(model.requests), 2)
         self.assertEqual(model.requests[0].transcript, ())
-        self.assertEqual(len(model.requests[1].transcript), 2)
-        self.assertIn("session.echo", model.requests[1].transcript[0].content)
-        self.assertIn("hello", model.requests[1].transcript[1].content)
+        self.assertEqual(len(model.requests[1].transcript), 3)
+        self.assertEqual(model.requests[1].transcript[1].entry_type, "tool_call")
+        self.assertEqual(model.requests[1].transcript[2].entry_type, "tool_result")
+        self.assertIn("session.echo", model.requests[1].transcript[1].content)
+        self.assertIn("hello", model.requests[1].transcript[2].content)
 
     def test_run_pauses_when_a_tool_returns_pause_signal(self) -> None:
         registry = ToolRegistry(

@@ -4,7 +4,6 @@
 
 - No repository linter or formatter command is configured at the repository root.
 - Applied manual review to `src/agents/linkedin.py`, `src/agents/__init__.py`, `tests/test_linkedin_agent.py`, and `artifacts/file_index.md`.
-- Confirmed syntax with `python -m compileall src tests`.
 
 ### Stage 2 - Type Checking
 

@@ -7,8 +7,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, Sequence
 
-from src.shared.agents import AgentContextEntry, AgentContextWindow
-from src.shared.tools import HEAVY_COMPACTION, LOG_COMPACTION, REMOVE_TOOL_RESULTS, REMOVE_TOOLS
 from src.shared.tools import ToolCall, ToolDefinition, ToolResult
 
 
@@ -51,7 +49,7 @@ class AgentParameterSection:
         return f"## {self.title}\n{self.content}".rstrip()
 
 
-TranscriptEntryType = Literal["assistant", "tool_call", "tool_result", "summary"]
+TranscriptEntryType = Literal["assistant", "tool_call", "tool_result"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,8 +64,6 @@ class AgentTranscriptEntry:
             label = "[ASSISTANT TURN]"
         elif self.entry_type == "tool_call":
             label = "[TOOL CALL]"
-        elif self.entry_type == "summary":
-            label = "[SUMMARY]"
         else:
             label = "[TOOL RESULT]"
         return f"{label}\n{self.content}".rstrip()
@@ -153,15 +149,6 @@ class AgentToolExecutor(Protocol):
 class BaseAgent(ABC):
     """Shared harness for long-running tool-using agents."""
 
-    _COMPACTION_TOOL_KEYS = frozenset(
-        {
-            REMOVE_TOOL_RESULTS,
-            REMOVE_TOOLS,
-            HEAVY_COMPACTION,
-            LOG_COMPACTION,
-        }
-    )
-
     def __init__(
         self,
         *,
@@ -201,18 +188,6 @@ class BaseAgent(ABC):
     @property
     def reset_count(self) -> int:
         return self._reset_count
-
-    def build_context_window(self) -> AgentContextWindow:
-        """Return the current context window including parameters and transcript entries."""
-        if not self._parameter_sections:
-            self.refresh_parameters()
-        context_window: AgentContextWindow = [
-            {"kind": "parameter", "label": section.title, "content": section.content}
-            for section in self._parameter_sections
-        ]
-        for entry in self._transcript:
-            context_window.append(self._transcript_entry_to_context_entry(entry))
-        return context_window
 
     @abstractmethod
     def build_system_prompt(self) -> str:
@@ -274,8 +249,6 @@ class BaseAgent(ABC):
             pause_signal: AgentPauseSignal | None = None
             for tool_call in response.tool_calls:
                 result = self._execute_tool(tool_call)
-                if self._apply_compaction_result(result):
-                    continue
                 self._record_tool_result(result)
                 if isinstance(result.output, AgentPauseSignal):
                     pause_signal = result.output
@@ -318,11 +291,6 @@ class BaseAgent(ABC):
         parts: list[str] = []
         if response.assistant_message.strip():
             parts.append(response.assistant_message.strip())
-        if response.tool_calls:
-            parts.append("Requested tools:")
-            for tool_call in response.tool_calls:
-                arguments = json.dumps(tool_call.arguments, sort_keys=True)
-                parts.append(f"- {tool_call.tool_key}({arguments})")
         if response.pause_reason:
             parts.append(f"Pause requested: {response.pause_reason}")
         self._transcript.append(
@@ -331,6 +299,14 @@ class BaseAgent(ABC):
                 content="\n".join(parts) if parts else "(no assistant content)",
             )
         )
+        for tool_call in response.tool_calls:
+            arguments = json.dumps(tool_call.arguments, sort_keys=True)
+            self._transcript.append(
+                AgentTranscriptEntry(
+                    entry_type="tool_call",
+                    content=f"{tool_call.tool_key}\n{arguments}",
+                )
+            )
 
     def _record_tool_result(self, result: ToolResult) -> None:
         rendered_output = json.dumps(result.output, indent=2, sort_keys=True, default=str)
