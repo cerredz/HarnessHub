@@ -3,6 +3,8 @@
 1. Ticket 1: Add shared HTTP transport and expand the OpenAI provider client surface
    Issue: #9
    URL: https://github.com/cerredz/HarnessHub/issues/9
+   PR: https://github.com/cerredz/HarnessHub/pull/15
+   Status: implemented on branch `issue-9`
    Description: Introduce shared request execution primitives and reorganize OpenAI into a real client/helper package with broad tool support.
    Dependency: none
 
