@@ -15,6 +15,16 @@ REMOVE_TOOL_RESULTS = "context.remove_tool_results"
 REMOVE_TOOLS = "context.remove_tools"
 HEAVY_COMPACTION = "context.heavy_compaction"
 LOG_COMPACTION = "context.log_compaction"
+TEXT_NORMALIZE_WHITESPACE = "text.normalize_whitespace"
+TEXT_REGEX_EXTRACT = "text.regex_extract"
+TEXT_TRUNCATE_TEXT = "text.truncate_text"
+RECORDS_SELECT_FIELDS = "records.select_fields"
+RECORDS_FILTER_RECORDS = "records.filter_records"
+RECORDS_SORT_RECORDS = "records.sort_records"
+RECORDS_LIMIT_RECORDS = "records.limit_records"
+RECORDS_UNIQUE_RECORDS = "records.unique_records"
+RECORDS_COUNT_BY_FIELD = "records.count_by_field"
+CONTROL_PAUSE_FOR_HUMAN = "control.pause_for_human"
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,13 +87,23 @@ class RegisteredTool:
 
 __all__ = [
     "ADD_NUMBERS",
+    "CONTROL_PAUSE_FOR_HUMAN",
     "ECHO_TEXT",
     "HEAVY_COMPACTION",
     "JsonObject",
     "LOG_COMPACTION",
+    "RECORDS_COUNT_BY_FIELD",
+    "RECORDS_FILTER_RECORDS",
+    "RECORDS_LIMIT_RECORDS",
+    "RECORDS_SELECT_FIELDS",
+    "RECORDS_SORT_RECORDS",
+    "RECORDS_UNIQUE_RECORDS",
     "REMOVE_TOOL_RESULTS",
     "REMOVE_TOOLS",
     "RegisteredTool",
+    "TEXT_NORMALIZE_WHITESPACE",
+    "TEXT_REGEX_EXTRACT",
+    "TEXT_TRUNCATE_TEXT",
     "ToolArguments",
     "ToolCall",
     "ToolDefinition",

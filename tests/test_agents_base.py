@@ -12,8 +12,8 @@ from src.agents import (
     AgentRuntimeConfig,
     BaseAgent,
 )
-from src.shared.tools import HEAVY_COMPACTION, RegisteredTool, ToolCall, ToolDefinition
-from src.tools import create_context_compaction_tools
+from src.shared.tools import CONTROL_PAUSE_FOR_HUMAN, HEAVY_COMPACTION, RegisteredTool, ToolCall, ToolDefinition
+from src.tools import create_context_compaction_tools, create_general_purpose_tools
 from src.tools.registry import ToolRegistry
 
 
@@ -132,6 +132,30 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(result.status, "paused")
         self.assertEqual(result.pause_reason, "captcha required")
         self.assertEqual(result.cycles_completed, 1)
+        self.assertEqual(len(model.requests), 1)
+
+    def test_run_pauses_when_builtin_pause_tool_is_invoked(self) -> None:
+        registry = ToolRegistry(create_general_purpose_tools())
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Request approval before continuing.",
+                    tool_calls=(
+                        ToolCall(
+                            tool_key=CONTROL_PAUSE_FOR_HUMAN,
+                            arguments={"reason": "approval required", "details": {"step": "send outreach"}},
+                        ),
+                    ),
+                    should_continue=True,
+                ),
+            ]
+        )
+        agent = _InspectableAgent(model=model, tool_executor=registry)
+
+        result = agent.run(max_cycles=3)
+
+        self.assertEqual(result.status, "paused")
+        self.assertEqual(result.pause_reason, "approval required")
         self.assertEqual(len(model.requests), 1)
 
     def test_run_resets_context_and_refreshes_parameters_when_budget_is_exceeded(self) -> None:

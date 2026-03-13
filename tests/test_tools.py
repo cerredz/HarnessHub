@@ -7,12 +7,22 @@ from copy import deepcopy
 
 from src.shared.tools import (
     ADD_NUMBERS,
+    CONTROL_PAUSE_FOR_HUMAN,
     ECHO_TEXT,
     HEAVY_COMPACTION,
     LOG_COMPACTION,
+    RECORDS_COUNT_BY_FIELD,
+    RECORDS_FILTER_RECORDS,
+    RECORDS_LIMIT_RECORDS,
+    RECORDS_SELECT_FIELDS,
+    RECORDS_SORT_RECORDS,
+    RECORDS_UNIQUE_RECORDS,
     REMOVE_TOOL_RESULTS,
     REMOVE_TOOLS,
     RegisteredTool,
+    TEXT_NORMALIZE_WHITESPACE,
+    TEXT_REGEX_EXTRACT,
+    TEXT_TRUNCATE_TEXT,
     ToolDefinition,
 )
 from src.tools.registry import (
@@ -41,6 +51,16 @@ class ToolRegistryTests(unittest.TestCase):
                 REMOVE_TOOLS,
                 HEAVY_COMPACTION,
                 LOG_COMPACTION,
+                TEXT_NORMALIZE_WHITESPACE,
+                TEXT_REGEX_EXTRACT,
+                TEXT_TRUNCATE_TEXT,
+                RECORDS_SELECT_FIELDS,
+                RECORDS_FILTER_RECORDS,
+                RECORDS_SORT_RECORDS,
+                RECORDS_LIMIT_RECORDS,
+                RECORDS_UNIQUE_RECORDS,
+                RECORDS_COUNT_BY_FIELD,
+                CONTROL_PAUSE_FOR_HUMAN,
             ),
         )
 
@@ -59,9 +79,16 @@ class ToolRegistryTests(unittest.TestCase):
 
         echo_result = registry.execute(ECHO_TEXT, {"text": "hello"})
         add_result = registry.execute(ADD_NUMBERS, {"left": 1, "right": 2.5})
+        normalize_result = registry.execute(TEXT_NORMALIZE_WHITESPACE, {"text": "hello   world"})
+        limit_result = registry.execute(
+            RECORDS_LIMIT_RECORDS,
+            {"records": [{"id": 1}, {"id": 2}, {"id": 3}], "limit": 2},
+        )
 
         self.assertEqual(echo_result.output, {"text": "hello"})
         self.assertEqual(add_result.output, {"sum": 3.5})
+        self.assertEqual(normalize_result.output, {"text": "hello world"})
+        self.assertEqual(limit_result.output["records"], [{"id": 1}, {"id": 2}])
 
     def test_execute_rejects_missing_required_arguments(self) -> None:
         registry = create_builtin_registry()
