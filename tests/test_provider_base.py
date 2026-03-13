@@ -102,6 +102,26 @@ class ProviderBaseTests(unittest.TestCase):
         self.assertEqual(raised.exception.body, {"error": {"message": "bad request"}})
         self.assertIn("bad request", str(raised.exception))
 
+    def test_request_json_raises_provider_http_error_for_url_failure(self) -> None:
+        def fake_urlopen(http_request: request.Request, timeout: float) -> _FakeResponse:
+            raise error.URLError("network down")
+
+        original_urlopen = request.urlopen
+        request.urlopen = fake_urlopen
+        try:
+            with self.assertRaises(ProviderHTTPError) as raised:
+                request_json(
+                    "GET",
+                    "https://api.openai.com/v1/models",
+                    headers={"Authorization": "Bearer test"},
+                )
+        finally:
+            request.urlopen = original_urlopen
+
+        self.assertEqual(raised.exception.provider, "openai")
+        self.assertIsNone(raised.exception.status_code)
+        self.assertIn("network down", str(raised.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -16,6 +16,7 @@ from src.providers.openai import (
     build_json_schema_output,
     build_mcp_tool,
     build_request,
+    build_response_input_file,
     build_response_input_image,
     build_response_input_message,
     build_response_input_text,
@@ -129,6 +130,16 @@ class OpenAIProviderTests(unittest.TestCase):
         self.assertEqual(request["tools"][5]["type"], "mcp")
         self.assertEqual(request["text"]["format"]["name"], "answer")
 
+    def test_build_response_input_file_supports_file_id_and_inline_data(self) -> None:
+        file_by_id = build_response_input_file(file_id="file_123")
+        file_inline = build_response_input_file(filename="notes.txt", file_data="SGVsbG8=")
+
+        self.assertEqual(file_by_id, {"type": "input_file", "file_id": "file_123"})
+        self.assertEqual(
+            file_inline,
+            {"type": "input_file", "filename": "notes.txt", "file_data": "SGVsbG8="},
+        )
+
     def test_build_chat_response_format_json_object(self) -> None:
         self.assertEqual(build_chat_response_format_json_object(), {"type": "json_object"})
 
@@ -187,6 +198,31 @@ class OpenAIProviderTests(unittest.TestCase):
         self.assertIsNone(calls[0][2]["json_body"])
         self.assertEqual(calls[1][1], "https://api.openai.com/v1/embeddings")
         self.assertEqual(calls[1][2]["json_body"]["dimensions"], 256)
+
+    def test_openai_client_supports_chat_completions(self) -> None:
+        captured: dict[str, object] = {}
+
+        def fake_request_executor(method: str, url: str, **kwargs: object) -> dict[str, object]:
+            captured["method"] = method
+            captured["url"] = url
+            captured["kwargs"] = kwargs
+            return {"id": "chatcmpl_123"}
+
+        client = OpenAIClient(api_key="test-key", request_executor=fake_request_executor)
+
+        response = client.create_chat_completion(
+            model_name="gpt-4.1",
+            system_prompt="Be precise.",
+            messages=self.messages,
+            tools=self.tools,
+            tool_choice=build_tool_choice(tool_name="echo_text"),
+        )
+
+        self.assertEqual(response, {"id": "chatcmpl_123"})
+        self.assertEqual(captured["method"], "POST")
+        self.assertEqual(captured["url"], "https://api.openai.com/v1/chat/completions")
+        self.assertEqual(captured["kwargs"]["json_body"]["tool_choice"]["function"]["name"], "echo_text")
+        self.assertEqual(captured["kwargs"]["json_body"]["messages"][0]["role"], "system")
 
 
 if __name__ == "__main__":
