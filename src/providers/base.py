@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from typing import Any, Mapping
 
 from src.shared.providers import ALLOWED_MESSAGE_ROLES, GEMINI_ROLE_MAP, ProviderMessage, RequestPayload
 from src.shared.tools import ToolDefinition
@@ -84,3 +85,8 @@ def build_gemini_contents(messages: list[ProviderMessage]) -> list[RequestPayloa
             }
         )
     return contents
+
+
+def omit_none_values(payload: Mapping[str, Any]) -> RequestPayload:
+    """Return a copy of a mapping without keys whose value is ``None``."""
+    return {key: deepcopy(value) for key, value in payload.items() if value is not None}
