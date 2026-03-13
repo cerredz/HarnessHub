@@ -9,6 +9,7 @@ Top-level directories:
 
 Source layout:
 
+- `src/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
 - `src/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
 - `src/tools/`: the tool runtime layer, including built-in tool handlers and registry/execution behavior
 - `src/providers/`: provider translation helpers and provider-specific request builders
@@ -19,6 +20,8 @@ Source layout:
 
 Tests:
 
+- `tests/test_agents_base.py`: coverage for the generic agent loop, transcript handling, and context resets
+- `tests/test_linkedin_agent.py`: coverage for the LinkedIn-specific harness, memory files, and durable state tools
 - `tests/test_tools.py`: coverage for tool definitions, registry behavior, validation, and execution
 - `tests/test_providers.py`: coverage for provider message normalization and request translation across all supported providers
 
