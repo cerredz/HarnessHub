@@ -6,8 +6,9 @@ from collections.abc import Awaitable, Callable, Mapping, Sequence
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar, overload
 
-from src.providers.base import ProviderMessage, ProviderName, RequestPayload, normalize_messages
-from src.tools.schemas import ToolArguments, ToolDefinition
+from src.providers.base import normalize_messages
+from src.shared.providers import ProviderMessage, ProviderName, RequestPayload
+from src.shared.tools import ToolArguments, ToolDefinition
 
 P = ParamSpec("P")
 R = TypeVar("R")

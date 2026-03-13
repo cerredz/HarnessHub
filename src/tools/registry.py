@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 
-from .base import RegisteredTool
-from .schemas import ToolArguments, ToolDefinition, ToolResult
+from src.shared.tools import RegisteredTool, ToolArguments, ToolDefinition, ToolResult
 
 
 class DuplicateToolError(ValueError):

@@ -5,8 +5,7 @@ from __future__ import annotations
 import unittest
 from copy import deepcopy
 
-from src.tools.base import RegisteredTool
-from src.tools.constants import ADD_NUMBERS, ECHO_TEXT
+from src.shared.tools import ADD_NUMBERS, ECHO_TEXT, RegisteredTool, ToolDefinition
 from src.tools.registry import (
     DuplicateToolError,
     ToolRegistry,
@@ -14,7 +13,6 @@ from src.tools.registry import (
     UnknownToolError,
     create_builtin_registry,
 )
-from src.tools.schemas import ToolDefinition
 
 
 def _constant_handler(arguments: dict[str, object]) -> dict[str, object]:

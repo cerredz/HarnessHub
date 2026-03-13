@@ -1,6 +1,8 @@
 """Provider-specific request translation helpers."""
 
-from .base import ProviderFormatError, SUPPORTED_PROVIDERS, normalize_messages
+from src.shared.providers import ProviderMessage, ProviderName, RequestPayload, SUPPORTED_PROVIDERS
+
+from .base import ProviderFormatError, normalize_messages
 from .langsmith import (
     trace_agent_run,
     trace_async_agent_run,
@@ -12,6 +14,9 @@ from .langsmith import (
 
 __all__ = [
     "ProviderFormatError",
+    "ProviderMessage",
+    "ProviderName",
+    "RequestPayload",
     "SUPPORTED_PROVIDERS",
     "normalize_messages",
     "trace_agent_run",

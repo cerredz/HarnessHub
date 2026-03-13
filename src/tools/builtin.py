@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from .base import RegisteredTool
-from .constants import ADD_NUMBERS, ECHO_TEXT
-from .schemas import ToolArguments, ToolDefinition
+from src.shared.tools import ADD_NUMBERS, ECHO_TEXT, RegisteredTool, ToolArguments, ToolDefinition
 
 
 def _echo_text(arguments: ToolArguments) -> dict[str, str]:
