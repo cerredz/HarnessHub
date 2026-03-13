@@ -117,7 +117,9 @@ class GrokProviderTests(unittest.TestCase):
             system_prompt="Be precise.",
             messages=self.messages,
             tools=self.tools,
+            tool_choice=build_tool_choice(tool_name="echo_text"),
             search_parameters=build_search_parameters(mode="on", return_citations=True),
+            reasoning_effort="medium",
         )
 
         self.assertEqual(response, {"id": "chatcmpl_123"})
@@ -126,6 +128,8 @@ class GrokProviderTests(unittest.TestCase):
         self.assertEqual(captured["kwargs"]["headers"]["Authorization"], "Bearer test-key")
         self.assertEqual(captured["kwargs"]["timeout_seconds"], 8.0)
         self.assertTrue(captured["kwargs"]["json_body"]["search_parameters"]["return_citations"])
+        self.assertEqual(captured["kwargs"]["json_body"]["tool_choice"]["function"]["name"], "echo_text")
+        self.assertEqual(captured["kwargs"]["json_body"]["reasoning_effort"], "medium")
 
     def test_grok_client_lists_models(self) -> None:
         calls: list[tuple[str, str, dict[str, object]]] = []

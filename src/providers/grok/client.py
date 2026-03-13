@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any, Literal, Mapping, Sequence
 
 from src.providers.grok.api import DEFAULT_BASE_URL, build_headers, chat_completions_url, models_url
 from src.providers.grok.requests import build_chat_completion_request
@@ -32,7 +32,7 @@ class GrokClient:
         search_parameters: dict[str, Any] | None = None,
         max_tokens: int | None = None,
         temperature: float | None = None,
-        reasoning_effort: str | None = None,
+        reasoning_effort: Literal["low", "medium", "high"] | None = None,
     ) -> Any:
         """Create an xAI chat completions request."""
         payload = build_chat_completion_request(
