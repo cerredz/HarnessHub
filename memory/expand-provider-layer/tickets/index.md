@@ -11,6 +11,8 @@
 2. Ticket 2: Expand the Grok provider with xAI chat, search, collections, and MCP helpers
    Issue: #10
    URL: https://github.com/cerredz/HarnessHub/issues/10
+   PR: https://github.com/cerredz/HarnessHub/pull/16
+   Status: implemented on branch `issue-10`
    Description: Build the xAI/Grok client and tool builders on top of the shared transport and OpenAI-compatible patterns.
    Dependency: Ticket 1
 
