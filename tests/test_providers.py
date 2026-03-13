@@ -227,6 +227,20 @@ class LangSmithTracingTests(unittest.TestCase):
         self.assertEqual(captured_inputs["request_payload"]["messages"][0]["content"], "Where is the harness?")
         self.assertEqual(fake_langsmith.run_trees[0].end_calls[-1]["outputs"], {"response": {"id": "resp_123"}})
 
+    def test_trace_agent_run_supports_decorator_configuration(self) -> None:
+        fake_langsmith = _FakeLangSmith()
+
+        @trace_agent_run(name="decorated_agent.run", project_name="Decorated Agents")
+        def run_agent(user_input: str) -> dict[str, str]:
+            return {"reply": user_input}
+
+        with mock.patch("src.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
+            result = run_agent("hello")
+
+        self.assertEqual(result, {"reply": "hello"})
+        self.assertEqual(fake_langsmith.trace_calls[0]["name"], "decorated_agent.run")
+        self.assertEqual(fake_langsmith.tracing_context_calls[0]["project_name"], "Decorated Agents")
+
     def test_trace_tool_call_records_tool_identity_and_result(self) -> None:
         fake_langsmith = _FakeLangSmith()
 
@@ -326,6 +340,20 @@ class AsyncLangSmithTracingTests(unittest.TestCase):
         self.assertEqual(fake_langsmith.run_trees[0].end_calls[-1]["outputs"], {"response": {"id": "async_response"}})
         self.assertEqual(fake_langsmith.trace_calls[1]["run_type"], "tool")
         self.assertEqual(fake_langsmith.run_trees[1].end_calls[-1]["outputs"], {"result": {"status": "ok"}})
+
+    def test_trace_async_agent_run_supports_decorator_configuration(self) -> None:
+        fake_langsmith = _FakeLangSmith()
+
+        @trace_async_agent_run(name="decorated_async.run", project_name="Decorated Async Agents")
+        async def run_agent(value: str) -> dict[str, str]:
+            return {"reply": value}
+
+        with mock.patch("src.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
+            result = asyncio.run(run_agent("hello"))
+
+        self.assertEqual(result, {"reply": "hello"})
+        self.assertEqual(fake_langsmith.trace_calls[0]["name"], "decorated_async.run")
+        self.assertEqual(fake_langsmith.tracing_context_calls[0]["project_name"], "Decorated Async Agents")
 
 
 if __name__ == "__main__":

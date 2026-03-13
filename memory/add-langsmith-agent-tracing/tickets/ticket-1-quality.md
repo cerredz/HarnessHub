@@ -19,6 +19,7 @@
 - Covered behaviors:
   - sync agent tracing wrapper configuration propagation
   - async agent tracing wrapper behavior
+  - decorator-style agent tracing configuration for both sync and async functions
   - model-call trace input capture for provider, prompt, messages, tools, and request payload
   - tool-call trace input capture for identifiers, arguments, and outputs
   - trace error recording before exceptions are re-raised

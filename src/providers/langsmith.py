@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from functools import wraps
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar, overload
 
 from src.providers.base import ProviderMessage, ProviderName, RequestPayload, normalize_messages
 from src.tools.schemas import ToolArguments, ToolDefinition
@@ -184,6 +184,7 @@ async def _trace_async_operation(
             return result
 
 
+@overload
 def trace_agent_run(
     run_function: Callable[P, R],
     *,
@@ -194,27 +195,61 @@ def trace_agent_run(
     client: Any | None = None,
     enabled: bool | None = None,
 ) -> Callable[P, R]:
+    ...
+
+
+@overload
+def trace_agent_run(
+    run_function: None = None,
+    *,
+    name: str | None = None,
+    project_name: str | None = None,
+    tags: Sequence[str] | None = None,
+    metadata: Mapping[str, Any] | None = None,
+    client: Any | None = None,
+    enabled: bool | None = None,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    ...
+
+
+def trace_agent_run(
+    run_function: Callable[P, R] | None = None,
+    *,
+    name: str | None = None,
+    project_name: str | None = None,
+    tags: Sequence[str] | None = None,
+    metadata: Mapping[str, Any] | None = None,
+    client: Any | None = None,
+    enabled: bool | None = None,
+) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
     """Wrap a synchronous custom agent run function in a LangSmith root trace."""
-    trace_name = name or run_function.__name__
 
-    @wraps(run_function)
-    def wrapped(*args: P.args, **kwargs: P.kwargs) -> R:
-        return _trace_sync_operation(
-            lambda: run_function(*args, **kwargs),
-            name=trace_name,
-            run_type="chain",
-            inputs=_serialize_call_arguments(args, kwargs),
-            output_key="output",
-            project_name=project_name,
-            tags=tags,
-            metadata=metadata,
-            client=client,
-            enabled=enabled,
-        )
+    def decorator(target: Callable[P, R]) -> Callable[P, R]:
+        trace_name = name or target.__name__
 
-    return wrapped
+        @wraps(target)
+        def wrapped(*args: P.args, **kwargs: P.kwargs) -> R:
+            return _trace_sync_operation(
+                lambda: target(*args, **kwargs),
+                name=trace_name,
+                run_type="chain",
+                inputs=_serialize_call_arguments(args, kwargs),
+                output_key="output",
+                project_name=project_name,
+                tags=tags,
+                metadata=metadata,
+                client=client,
+                enabled=enabled,
+            )
+
+        return wrapped
+
+    if run_function is None:
+        return decorator
+    return decorator(run_function)
 
 
+@overload
 def trace_async_agent_run(
     run_function: Callable[P, Awaitable[R]],
     *,
@@ -225,25 +260,58 @@ def trace_async_agent_run(
     client: Any | None = None,
     enabled: bool | None = None,
 ) -> Callable[P, Awaitable[R]]:
+    ...
+
+
+@overload
+def trace_async_agent_run(
+    run_function: None = None,
+    *,
+    name: str | None = None,
+    project_name: str | None = None,
+    tags: Sequence[str] | None = None,
+    metadata: Mapping[str, Any] | None = None,
+    client: Any | None = None,
+    enabled: bool | None = None,
+) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
+    ...
+
+
+def trace_async_agent_run(
+    run_function: Callable[P, Awaitable[R]] | None = None,
+    *,
+    name: str | None = None,
+    project_name: str | None = None,
+    tags: Sequence[str] | None = None,
+    metadata: Mapping[str, Any] | None = None,
+    client: Any | None = None,
+    enabled: bool | None = None,
+) -> Callable[P, Awaitable[R]] | Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
     """Wrap an asynchronous custom agent run function in a LangSmith root trace."""
-    trace_name = name or run_function.__name__
 
-    @wraps(run_function)
-    async def wrapped(*args: P.args, **kwargs: P.kwargs) -> R:
-        return await _trace_async_operation(
-            lambda: run_function(*args, **kwargs),
-            name=trace_name,
-            run_type="chain",
-            inputs=_serialize_call_arguments(args, kwargs),
-            output_key="output",
-            project_name=project_name,
-            tags=tags,
-            metadata=metadata,
-            client=client,
-            enabled=enabled,
-        )
+    def decorator(target: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
+        trace_name = name or target.__name__
 
-    return wrapped
+        @wraps(target)
+        async def wrapped(*args: P.args, **kwargs: P.kwargs) -> R:
+            return await _trace_async_operation(
+                lambda: target(*args, **kwargs),
+                name=trace_name,
+                run_type="chain",
+                inputs=_serialize_call_arguments(args, kwargs),
+                output_key="output",
+                project_name=project_name,
+                tags=tags,
+                metadata=metadata,
+                client=client,
+                enabled=enabled,
+            )
+
+        return wrapped
+
+    if run_function is None:
+        return decorator
+    return decorator(run_function)
 
 
 def trace_model_call(
