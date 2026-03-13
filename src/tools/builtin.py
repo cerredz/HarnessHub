@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from src.shared.tools import ADD_NUMBERS, ECHO_TEXT, RegisteredTool, ToolArguments, ToolDefinition
 
+from .context_compaction import create_context_compaction_tools
+
 
 def _echo_text(arguments: ToolArguments) -> dict[str, str]:
     text = str(arguments["text"])
@@ -59,4 +61,5 @@ BUILTIN_TOOLS = (
         ),
         handler=_add_numbers,
     ),
+    *create_context_compaction_tools(),
 )
