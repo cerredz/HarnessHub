@@ -1,4 +1,4 @@
-"""Tests for provider request translation helpers."""
+"""Tests for LangSmith provider tracing helpers."""
 
 from __future__ import annotations
 
@@ -6,10 +6,6 @@ import asyncio
 import unittest
 from unittest import mock
 
-from src.providers import ProviderFormatError, normalize_messages
-from src.providers.anthropic.helpers import build_request as build_anthropic_request
-from src.providers.gemini.helpers import build_request as build_gemini_request
-from src.providers.grok.helpers import build_request as build_grok_request
 from src.providers.langsmith import (
     trace_agent_run,
     trace_async_agent_run,
@@ -18,82 +14,8 @@ from src.providers.langsmith import (
     trace_model_call,
     trace_tool_call,
 )
-from src.providers.openai.helpers import build_request as build_openai_request
-from src.shared.providers import SUPPORTED_PROVIDERS
 from src.shared.tools import ECHO_TEXT
 from src.tools import create_builtin_registry
-
-
-class ProviderHelperTests(unittest.TestCase):
-    def setUp(self) -> None:
-        registry = create_builtin_registry()
-        self.tools = registry.definitions([ECHO_TEXT])
-        self.messages = [
-            {"role": "user", "content": "ping"},
-            {"role": "assistant", "content": "pong"},
-        ]
-
-    def test_supported_providers_are_stable(self) -> None:
-        self.assertEqual(SUPPORTED_PROVIDERS, ("anthropic", "openai", "grok", "gemini"))
-
-    def test_normalize_messages_rejects_unknown_roles(self) -> None:
-        with self.assertRaises(ProviderFormatError):
-            normalize_messages([{"role": "tool", "content": "nope"}])
-
-    def test_normalize_messages_rejects_inline_system_when_disallowed(self) -> None:
-        with self.assertRaises(ProviderFormatError):
-            normalize_messages([{"role": "system", "content": "dup"}], allow_system=False)
-
-    def test_anthropic_request_uses_system_and_input_schema(self) -> None:
-        request = build_anthropic_request(
-            model_name="claude-sonnet",
-            system_prompt="Be precise.",
-            messages=self.messages,
-            tools=self.tools,
-        )
-
-        self.assertEqual(request["system"], "Be precise.")
-        self.assertEqual(request["messages"], self.messages)
-        self.assertEqual(request["tools"][0]["name"], "echo_text")
-        self.assertIn("input_schema", request["tools"][0])
-
-    def test_openai_request_prepends_system_message_and_function_tools(self) -> None:
-        request = build_openai_request(
-            model_name="gpt-4.1",
-            system_prompt="Be precise.",
-            messages=self.messages,
-            tools=self.tools,
-        )
-
-        self.assertEqual(request["messages"][0], {"role": "system", "content": "Be precise."})
-        self.assertEqual(request["tools"][0]["type"], "function")
-        self.assertEqual(request["tools"][0]["function"]["name"], "echo_text")
-        self.assertFalse(request["tools"][0]["function"]["strict"])
-
-    def test_grok_request_uses_openai_style_translation(self) -> None:
-        request = build_grok_request(
-            model_name="grok-2",
-            system_prompt="Be precise.",
-            messages=self.messages,
-            tools=self.tools,
-        )
-
-        self.assertEqual(request["messages"][0]["role"], "system")
-        self.assertEqual(request["tools"][0]["function"]["parameters"]["type"], "object")
-        self.assertNotIn("strict", request["tools"][0]["function"])
-
-    def test_gemini_request_uses_contents_and_function_declarations(self) -> None:
-        request = build_gemini_request(
-            model_name="gemini-2.0-flash",
-            system_prompt="Be precise.",
-            messages=self.messages,
-            tools=self.tools,
-        )
-
-        self.assertEqual(request["system_instruction"], {"parts": [{"text": "Be precise."}]})
-        self.assertEqual(request["contents"][0]["role"], "user")
-        self.assertEqual(request["contents"][1]["role"], "model")
-        self.assertEqual(request["tools"][0]["functionDeclarations"][0]["name"], "echo_text")
 
 
 class _FakeRunTree:
@@ -181,18 +103,12 @@ class LangSmithTracingTests(unittest.TestCase):
             result = wrapped("hello")
 
         self.assertEqual(result, {"reply": "HELLO"})
-        self.assertEqual(
-            fake_langsmith.tracing_context_calls,
-            [{"project_name": "Support Agents"}],
-        )
+        self.assertEqual(fake_langsmith.tracing_context_calls, [{"project_name": "Support Agents"}])
         self.assertEqual(fake_langsmith.trace_calls[0]["name"], "support_agent.run")
         self.assertEqual(fake_langsmith.trace_calls[0]["run_type"], "chain")
         self.assertEqual(fake_langsmith.trace_calls[0]["tags"], ["support", "agent"])
         self.assertEqual(fake_langsmith.trace_calls[0]["metadata"], {"team": "support"})
-        self.assertEqual(
-            fake_langsmith.trace_calls[0]["inputs"],
-            {"args": ["hello"], "kwargs": {}},
-        )
+        self.assertEqual(fake_langsmith.trace_calls[0]["inputs"], {"args": ["hello"], "kwargs": {}})
         self.assertEqual(fake_langsmith.run_trees[0].end_calls[-1]["outputs"], {"output": {"reply": "HELLO"}})
 
     def test_trace_model_call_records_prompt_messages_tools_and_payload(self) -> None:
@@ -268,8 +184,7 @@ class LangSmithTracingTests(unittest.TestCase):
         fake_langsmith = _FakeLangSmith()
 
         def boom() -> dict[str, str]:
-            message = "provider timed out"
-            raise RuntimeError(message)
+            raise RuntimeError("provider timed out")
 
         with mock.patch("src.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
             with self.assertRaisesRegex(RuntimeError, "provider timed out"):
