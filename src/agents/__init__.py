@@ -21,6 +21,7 @@ from src.shared.linkedin import (
 )
 
 from .base import BaseAgent
+from .email import BaseEmailAgent, DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
 from .linkedin import (
     LinkedInJobApplierAgent,
     LinkedInMemoryStore,
@@ -41,6 +42,9 @@ __all__ = [
     "AgentToolExecutor",
     "AgentTranscriptEntry",
     "BaseAgent",
+    "BaseEmailAgent",
+    "DEFAULT_EMAIL_AGENT_IDENTITY",
+    "EmailAgentConfig",
     "JobApplicationRecord",
     "LinkedInAgentConfig",
     "LinkedInJobApplierAgent",
