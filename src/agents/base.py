@@ -33,6 +33,10 @@ class AgentToolAccessError(PermissionError):
     """Raised when an agent attempts to use a tool outside its configured set."""
 
 
+class AgentConfigurationError(ValueError):
+    """Raised when an agent is initialized with invalid runtime configuration."""
+
+
 @dataclass(slots=True)
 class BaseAgent(ABC):
     """Shared runtime behavior for future concrete harness agents."""
@@ -45,6 +49,10 @@ class BaseAgent(ABC):
     registry: ToolRegistry = field(default_factory=create_builtin_registry, repr=False)
 
     def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise AgentConfigurationError("Agent name must not be blank.")
+        if not self.model_name.strip():
+            raise AgentConfigurationError("Agent model_name must not be blank.")
         if self.provider not in SUPPORTED_PROVIDERS:
             message = f"Unsupported provider '{self.provider}'."
             raise UnsupportedProviderError(message)
