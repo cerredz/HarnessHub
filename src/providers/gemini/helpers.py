@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from src.providers.base import ProviderMessage, build_gemini_contents, build_gemini_tool_declaration
-from src.tools.schemas import ToolDefinition
+from src.providers.base import build_gemini_contents, build_gemini_tool_declaration
+from src.shared.providers import ProviderMessage
+from src.shared.tools import ToolDefinition
 
 
 def format_tool_definition(definition: ToolDefinition) -> dict[str, object]:

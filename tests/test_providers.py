@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import unittest
 
-from src.providers import ProviderFormatError, SUPPORTED_PROVIDERS, normalize_messages
+from src.providers import ProviderFormatError, normalize_messages
 from src.providers.anthropic.helpers import build_request as build_anthropic_request
 from src.providers.gemini.helpers import build_request as build_gemini_request
 from src.providers.grok.helpers import build_request as build_grok_request
 from src.providers.openai.helpers import build_request as build_openai_request
-from src.tools import ECHO_TEXT, create_builtin_registry
+from src.shared.providers import SUPPORTED_PROVIDERS
+from src.shared.tools import ECHO_TEXT
+from src.tools import create_builtin_registry
 
 
 class ProviderHelperTests(unittest.TestCase):

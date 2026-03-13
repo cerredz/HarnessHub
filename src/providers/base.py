@@ -3,15 +3,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any, Literal
 
-from src.tools.schemas import ToolDefinition
-
-ProviderName = Literal["anthropic", "openai", "grok", "gemini"]
-ProviderMessage = dict[str, str]
-RequestPayload = dict[str, Any]
-SUPPORTED_PROVIDERS: tuple[ProviderName, ...] = ("anthropic", "openai", "grok", "gemini")
-_ALLOWED_MESSAGE_ROLES = frozenset({"system", "user", "assistant"})
+from src.shared.providers import ALLOWED_MESSAGE_ROLES, GEMINI_ROLE_MAP, ProviderMessage, RequestPayload
+from src.shared.tools import ToolDefinition
 
 
 class ProviderFormatError(ValueError):
@@ -28,7 +22,7 @@ def normalize_messages(
     for message in messages:
         role = message.get("role")
         content = message.get("content")
-        if role not in _ALLOWED_MESSAGE_ROLES:
+        if role not in ALLOWED_MESSAGE_ROLES:
             message_text = f"Unsupported message role '{role}'."
             raise ProviderFormatError(message_text)
         if role == "system" and not allow_system:
@@ -81,12 +75,11 @@ def build_openai_style_messages(system_prompt: str, messages: list[ProviderMessa
 
 def build_gemini_contents(messages: list[ProviderMessage]) -> list[RequestPayload]:
     """Translate canonical messages into Gemini content parts."""
-    role_map = {"user": "user", "assistant": "model", "system": "user"}
     contents: list[RequestPayload] = []
     for message in normalize_messages(messages, allow_system=False):
         contents.append(
             {
-                "role": role_map[message["role"]],
+                "role": GEMINI_ROLE_MAP[message["role"]],
                 "parts": [{"text": message["content"]}],
             }
         )

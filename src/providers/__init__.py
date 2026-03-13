@@ -1,5 +1,14 @@
 """Provider-specific request translation helpers."""
 
-from .base import ProviderFormatError, SUPPORTED_PROVIDERS, normalize_messages
+from src.shared.providers import ProviderMessage, ProviderName, RequestPayload, SUPPORTED_PROVIDERS
 
-__all__ = ["ProviderFormatError", "SUPPORTED_PROVIDERS", "normalize_messages"]
+from .base import ProviderFormatError, normalize_messages
+
+__all__ = [
+    "ProviderFormatError",
+    "ProviderMessage",
+    "ProviderName",
+    "RequestPayload",
+    "SUPPORTED_PROVIDERS",
+    "normalize_messages",
+]
