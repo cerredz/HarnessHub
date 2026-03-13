@@ -11,6 +11,10 @@ ToolArguments = dict[str, Any]
 
 ECHO_TEXT = "core.echo_text"
 ADD_NUMBERS = "core.add_numbers"
+REMOVE_TOOL_RESULTS = "context.remove_tool_results"
+REMOVE_TOOLS = "context.remove_tools"
+HEAVY_COMPACTION = "context.heavy_compaction"
+LOG_COMPACTION = "context.log_compaction"
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,7 +78,11 @@ class RegisteredTool:
 __all__ = [
     "ADD_NUMBERS",
     "ECHO_TEXT",
+    "HEAVY_COMPACTION",
     "JsonObject",
+    "LOG_COMPACTION",
+    "REMOVE_TOOL_RESULTS",
+    "REMOVE_TOOLS",
     "RegisteredTool",
     "ToolArguments",
     "ToolCall",
