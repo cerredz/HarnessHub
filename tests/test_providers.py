@@ -28,6 +28,10 @@ class ProviderHelperTests(unittest.TestCase):
         with self.assertRaises(ProviderFormatError):
             normalize_messages([{"role": "tool", "content": "nope"}])
 
+    def test_normalize_messages_rejects_inline_system_when_disallowed(self) -> None:
+        with self.assertRaises(ProviderFormatError):
+            normalize_messages([{"role": "system", "content": "dup"}], allow_system=False)
+
     def test_anthropic_request_uses_system_and_input_schema(self) -> None:
         request = build_anthropic_request(
             model_name="claude-sonnet",

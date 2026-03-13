@@ -18,7 +18,11 @@ class ProviderFormatError(ValueError):
     """Raised when a request cannot be translated into provider format."""
 
 
-def normalize_messages(messages: list[ProviderMessage]) -> list[ProviderMessage]:
+def normalize_messages(
+    messages: list[ProviderMessage],
+    *,
+    allow_system: bool = True,
+) -> list[ProviderMessage]:
     """Validate and copy provider-agnostic chat messages."""
     normalized: list[ProviderMessage] = []
     for message in messages:
@@ -26,6 +30,9 @@ def normalize_messages(messages: list[ProviderMessage]) -> list[ProviderMessage]
         content = message.get("content")
         if role not in _ALLOWED_MESSAGE_ROLES:
             message_text = f"Unsupported message role '{role}'."
+            raise ProviderFormatError(message_text)
+        if role == "system" and not allow_system:
+            message_text = "Inline system messages are not allowed when a top-level system prompt is used."
             raise ProviderFormatError(message_text)
         if not isinstance(content, str):
             message_text = f"Message content for role '{role}' must be a string."
@@ -66,7 +73,7 @@ def build_gemini_tool_declaration(definition: ToolDefinition) -> RequestPayload:
 
 def build_openai_style_messages(system_prompt: str, messages: list[ProviderMessage]) -> list[ProviderMessage]:
     """Represent the system prompt as a leading chat message."""
-    normalized = normalize_messages(messages)
+    normalized = normalize_messages(messages, allow_system=False)
     if not system_prompt:
         return normalized
     return [{"role": "system", "content": system_prompt}, *normalized]
@@ -76,7 +83,7 @@ def build_gemini_contents(messages: list[ProviderMessage]) -> list[RequestPayloa
     """Translate canonical messages into Gemini content parts."""
     role_map = {"user": "user", "assistant": "model", "system": "user"}
     contents: list[RequestPayload] = []
-    for message in normalize_messages(messages):
+    for message in normalize_messages(messages, allow_system=False):
         contents.append(
             {
                 "role": role_map[message["role"]],

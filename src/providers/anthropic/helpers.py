@@ -21,6 +21,6 @@ def build_request(
     return {
         "model": model_name,
         "system": system_prompt,
-        "messages": normalize_messages(messages),
+        "messages": normalize_messages(messages, allow_system=False),
         "tools": [format_tool_definition(tool) for tool in tools],
     }
