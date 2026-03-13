@@ -12,6 +12,7 @@ from src.agents import (
     LinkedInJobApplierAgent,
     build_linkedin_browser_tool_definitions,
 )
+from src.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW
 from src.shared.tools import ToolCall
 
 
@@ -51,6 +52,7 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
             self.assertIn("[GOAL]", model.requests[0].system_prompt)
             self.assertIn("navigate", model.requests[0].system_prompt)
             self.assertIn("pause_and_notify", model.requests[0].system_prompt)
+            self.assertEqual(agent.config.action_log_window, DEFAULT_LINKEDIN_ACTION_LOG_WINDOW)
             self.assertEqual(
                 [section.title for section in model.requests[0].parameter_sections],
                 [

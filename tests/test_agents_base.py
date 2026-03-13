@@ -12,6 +12,7 @@ from src.agents import (
     AgentRuntimeConfig,
     BaseAgent,
 )
+from src.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from src.shared.tools import CONTROL_PAUSE_FOR_HUMAN, HEAVY_COMPACTION, RegisteredTool, ToolCall, ToolDefinition
 from src.tools import create_context_compaction_tools, create_general_purpose_tools
 from src.tools.registry import ToolRegistry
@@ -72,6 +73,12 @@ def _constant_tool(tool_key: str, name: str, handler):
 
 
 class BaseAgentTests(unittest.TestCase):
+    def test_runtime_config_defaults_align_with_shared_constants(self) -> None:
+        runtime_config = AgentRuntimeConfig()
+
+        self.assertEqual(runtime_config.max_tokens, DEFAULT_AGENT_MAX_TOKENS)
+        self.assertEqual(runtime_config.reset_threshold, DEFAULT_AGENT_RESET_THRESHOLD)
+
     def test_run_records_tool_results_and_passes_transcript_to_next_turn(self) -> None:
         registry = ToolRegistry(
             [

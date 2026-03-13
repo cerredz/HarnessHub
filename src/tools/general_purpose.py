@@ -8,7 +8,7 @@ from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import Any, Literal
 
-from src.agents.base import AgentPauseSignal
+from src.shared.agents import AgentPauseSignal
 from src.shared.tools import (
     CONTROL_PAUSE_FOR_HUMAN,
     RECORDS_COUNT_BY_FIELD,
