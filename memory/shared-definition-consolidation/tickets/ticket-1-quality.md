@@ -13,7 +13,7 @@
 ## Unit Tests
 
 - Ran `python -m unittest tests.test_agents_base tests.test_linkedin_agent tests.test_general_tools` and it passed.
-- Ran `python -m unittest tests.test_agents_base tests.test_linkedin_agent tests.test_general_tools tests.test_context_compaction_tools` and all 35 tests passed.
+- Ran `python -m unittest tests.test_agents_base tests.test_linkedin_agent tests.test_general_tools tests.test_context_compaction_tools` and all 36 tests passed.
 
 ## Integration And Contract Tests
 

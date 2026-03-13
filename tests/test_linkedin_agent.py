@@ -12,7 +12,7 @@ from src.agents import (
     LinkedInJobApplierAgent,
     build_linkedin_browser_tool_definitions,
 )
-from src.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW
+from src.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW, LinkedInAgentConfig
 from src.shared.tools import ToolCall
 
 
@@ -27,6 +27,13 @@ class _FakeModel:
 
 
 class LinkedInJobApplierAgentTests(unittest.TestCase):
+    def test_shared_linkedin_config_normalizes_paths_and_validates_window(self) -> None:
+        config = LinkedInAgentConfig(memory_path="memory")
+
+        self.assertEqual(config.memory_path, Path("memory"))
+        with self.assertRaises(ValueError):
+            LinkedInAgentConfig(memory_path="memory", action_log_window=0)
+
     def test_public_browser_tool_definitions_cover_the_linkedin_browser_surface(self) -> None:
         definitions = build_linkedin_browser_tool_definitions()
 
