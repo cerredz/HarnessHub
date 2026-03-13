@@ -145,7 +145,7 @@ class GeminiProviderTests(unittest.TestCase):
         contents = [build_content("user", [build_text_part("hello")])]
 
         generate_response = client.generate_content(
-            model_name="gemini-2.5-flash",
+            model_name="models/gemini-2.5-flash",
             contents=contents,
             system_instruction=build_system_instruction("Be precise."),
             tools=self.tools,
@@ -166,6 +166,7 @@ class GeminiProviderTests(unittest.TestCase):
         self.assertEqual(cache_response, {"ok": True})
         self.assertEqual(models_response, {"ok": True})
         self.assertIn("/v1beta/models/gemini-2.5-flash:generateContent?key=test-key", calls[0][1])
+        self.assertNotIn("/models/models/", calls[0][1])
         self.assertEqual(calls[0][2]["headers"]["Content-Type"], "application/json")
         self.assertEqual(calls[0][2]["timeout_seconds"], 6.0)
         self.assertIn("/v1beta/models/gemini-2.5-flash:countTokens?key=test-key", calls[1][1])

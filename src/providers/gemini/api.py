@@ -31,7 +31,12 @@ def generate_content_url(
     api_version: str = DEFAULT_API_VERSION,
 ) -> str:
     """Return the Gemini generate-content URL."""
-    return join_url(base_url, f"/{api_version}/models/{model_name}:generateContent", query={"key": api_key})
+    normalized_model_name = _normalize_model_name(model_name)
+    return join_url(
+        base_url,
+        f"/{api_version}/models/{normalized_model_name}:generateContent",
+        query={"key": api_key},
+    )
 
 
 def count_tokens_url(
@@ -42,7 +47,12 @@ def count_tokens_url(
     api_version: str = DEFAULT_API_VERSION,
 ) -> str:
     """Return the Gemini count-tokens URL."""
-    return join_url(base_url, f"/{api_version}/models/{model_name}:countTokens", query={"key": api_key})
+    normalized_model_name = _normalize_model_name(model_name)
+    return join_url(
+        base_url,
+        f"/{api_version}/models/{normalized_model_name}:countTokens",
+        query={"key": api_key},
+    )
 
 
 def cached_contents_url(
@@ -53,3 +63,7 @@ def cached_contents_url(
 ) -> str:
     """Return the Gemini cached-contents URL."""
     return join_url(base_url, f"/{api_version}/cachedContents", query={"key": api_key})
+
+
+def _normalize_model_name(model_name: str) -> str:
+    return model_name.removeprefix("models/")
