@@ -27,11 +27,26 @@ print(result.output)
 
 First-class agent exports live under `harnessiq.agents`, including `LinkedInJobApplierAgent` and `BaseEmailAgent`.
 
+Repo-local credential bindings live under `harnessiq.config`.
+
 CLI entrypoint:
 
 ```bash
 harnessiq --help
+harnessiq config --help
 harnessiq linkedin --help
+```
+
+Credential config example:
+
+```bash
+harnessiq config set \
+  --agent email_agent \
+  --credential api_key=RESEND_API_KEY
+
+harnessiq config show \
+  --agent email_agent \
+  --resolve
 ```
 
 LinkedIn CLI example:

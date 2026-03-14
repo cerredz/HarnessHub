@@ -12,6 +12,7 @@ Source layout:
 
 - `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
 - `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch
+- `harnessiq/cli/config/`: SDK-wide credential binding commands backed by the config store
 - `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
 - `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
 - `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
@@ -38,6 +39,7 @@ Tests:
 - `tests/test_openai_provider.py`: coverage for OpenAI request, tool, and client helpers
 - `tests/test_gemini_provider.py`: coverage for Gemini content, tool, and client helpers
 - `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
+- `tests/test_config_cli.py`: coverage for CLI creation, rendering, and `.env` resolution of credential bindings
 
 Current memory artifacts:
 

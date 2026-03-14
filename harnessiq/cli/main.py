@@ -11,8 +11,10 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command")
     parser.set_defaults(command_handler=lambda args: _print_help(parser))
 
+    from harnessiq.cli.config import register_config_commands
     from harnessiq.cli.linkedin import register_linkedin_commands
 
+    register_config_commands(subparsers)
     register_linkedin_commands(subparsers)
     return parser
 
