@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from src.tools import RESEND_REQUEST, ResendClient, ResendCredentials, build_resend_operation_catalog, create_resend_tools
-from src.tools.registry import ToolRegistry
+from harnessiq.tools import RESEND_REQUEST, ResendClient, ResendCredentials, build_resend_operation_catalog, create_resend_tools
+from harnessiq.tools.registry import ToolRegistry
 
 
 class ResendToolsTests(unittest.TestCase):

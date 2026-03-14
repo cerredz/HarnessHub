@@ -6,14 +6,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.agents import (
+from harnessiq.agents import (
     AgentModelRequest,
     AgentModelResponse,
     LinkedInJobApplierAgent,
     build_linkedin_browser_tool_definitions,
 )
-from src.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW, LinkedInAgentConfig
-from src.shared.tools import ToolCall
+from harnessiq.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW, LinkedInAgentConfig
+from harnessiq.shared.tools import ToolCall
 
 
 class _FakeModel:

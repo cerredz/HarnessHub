@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from src.providers.grok import (
+from harnessiq.providers.grok import (
     GrokClient,
     build_chat_completion_request,
     build_code_execution_tool,
@@ -19,7 +19,7 @@ from src.providers.grok import (
     build_x_search_tool,
     format_tool_definition,
 )
-from src.tools import ECHO_TEXT, create_builtin_registry
+from harnessiq.tools import ECHO_TEXT, create_builtin_registry
 
 
 class GrokProviderTests(unittest.TestCase):

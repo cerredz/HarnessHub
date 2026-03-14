@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "harnessiq"
+version = "0.1.0"
+description = "Composable agent and tool SDK for building with Harnessiq."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Harnessiq" }]
+dependencies = [
+  "langsmith>=0.6.7,<1.0.0",
+]
+keywords = ["agents", "sdk", "tools", "llm", "automation"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage = "https://github.com/cerredz/HarnessHub"
+Repository = "https://github.com/cerredz/HarnessHub"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["harnessiq*"]

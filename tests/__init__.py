@@ -1,1 +1,1 @@
-"""Test package for HarnessHub."""
+"""Test package for Harnessiq."""

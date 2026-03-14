@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from src.providers import ProviderFormatError
-from src.providers.anthropic import (
+from harnessiq.providers import ProviderFormatError
+from harnessiq.providers.anthropic import (
     AnthropicClient,
     build_bash_tool,
     build_computer_tool,
@@ -25,7 +25,7 @@ from src.providers.anthropic import (
     build_web_search_tool,
     format_tool_definition,
 )
-from src.tools import ECHO_TEXT, create_builtin_registry
+from harnessiq.tools import ECHO_TEXT, create_builtin_registry
 
 
 class AnthropicProviderTests(unittest.TestCase):

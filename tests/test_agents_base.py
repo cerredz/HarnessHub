@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from src.agents import (
+from harnessiq.agents import (
     AgentModelRequest,
     AgentModelResponse,
     AgentParameterSection,
@@ -12,10 +12,10 @@ from src.agents import (
     AgentRuntimeConfig,
     BaseAgent,
 )
-from src.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
-from src.shared.tools import CONTROL_PAUSE_FOR_HUMAN, HEAVY_COMPACTION, RegisteredTool, ToolCall, ToolDefinition
-from src.tools import create_context_compaction_tools, create_general_purpose_tools
-from src.tools.registry import ToolRegistry
+from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
+from harnessiq.shared.tools import CONTROL_PAUSE_FOR_HUMAN, HEAVY_COMPACTION, RegisteredTool, ToolCall, ToolDefinition
+from harnessiq.tools import create_context_compaction_tools, create_general_purpose_tools
+from harnessiq.tools.registry import ToolRegistry
 
 
 class _FakeModel:

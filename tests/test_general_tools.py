@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import unittest
 
-from src.agents import AgentPauseSignal
-from src.shared.tools import CONTROL_PAUSE_FOR_HUMAN, RECORDS_FILTER_RECORDS, TEXT_NORMALIZE_WHITESPACE
-from src.tools import (
+from harnessiq.agents import AgentPauseSignal
+from harnessiq.shared.tools import CONTROL_PAUSE_FOR_HUMAN, RECORDS_FILTER_RECORDS, TEXT_NORMALIZE_WHITESPACE
+from harnessiq.tools import (
     count_by_field,
     create_builtin_registry,
     filter_records,

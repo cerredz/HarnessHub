@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import unittest
 
-from src.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection, BaseEmailAgent, EmailAgentConfig
-from src.shared.tools import ToolCall
-from src.tools import RESEND_REQUEST, ResendClient, ResendCredentials
+from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection, BaseEmailAgent, EmailAgentConfig
+from harnessiq.shared.tools import ToolCall
+from harnessiq.tools import RESEND_REQUEST, ResendClient, ResendCredentials
 
 
 class _FakeModel:

@@ -3,20 +3,21 @@ This artifact tracks the meaningful repository layout and the current architectu
 Top-level directories:
 
 - `artifacts/`: repository-level documentation artifacts such as this index
+- `docs/`: SDK usage examples and lightweight package documentation
+- `harnessiq/`: the production Python SDK package for Harnessiq
 - `memory/`: planning, verification, critique, and other workflow artifacts produced during repository work
-- `src/`: the production Python package for HarnessHub
 - `tests/`: unit tests for the currently merged source modules
 
 Source layout:
 
-- `src/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
-- `src/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
-- `src/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior
-- `src/providers/`: provider translation helpers and provider-specific request builders
-- `src/providers/anthropic/`: Anthropic request and tool-translation helpers
-- `src/providers/openai/`: OpenAI request and tool-translation helpers
-- `src/providers/grok/`: Grok request and tool-translation helpers
-- `src/providers/gemini/`: Gemini request and tool-translation helpers
+- `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
+- `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
+- `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior
+- `harnessiq/providers/`: provider translation helpers and provider-specific request builders
+- `harnessiq/providers/anthropic/`: Anthropic request and tool-translation helpers
+- `harnessiq/providers/openai/`: OpenAI request and tool-translation helpers
+- `harnessiq/providers/grok/`: Grok request and tool-translation helpers
+- `harnessiq/providers/gemini/`: Gemini request and tool-translation helpers
 
 Tests:
 - `tests/test_agents_base.py`: coverage for the generic agent loop, transcript handling, context resets, and structured pause behavior

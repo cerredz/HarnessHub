@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from src.providers.openai import (
+from harnessiq.providers.openai import (
     OpenAIClient,
     build_chat_completion_request,
     build_chat_response_format_json_object,
@@ -27,7 +27,7 @@ from src.providers.openai import (
     build_web_search_tool,
     format_tool_definition,
 )
-from src.tools import ECHO_TEXT, create_builtin_registry
+from harnessiq.tools import ECHO_TEXT, create_builtin_registry
 
 
 class OpenAIProviderTests(unittest.TestCase):
