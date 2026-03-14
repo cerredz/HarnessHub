@@ -174,6 +174,9 @@ class ResolvedAgentCredentials:
     def as_dict(self) -> dict[str, str]:
         return dict(self.values)
 
+    def as_redacted_dict(self) -> dict[str, str]:
+        return {field_name: mask_secret_value(value) for field_name, value in self.values.items()}
+
 
 @dataclass(slots=True)
 class CredentialsConfigStore:
@@ -262,6 +265,35 @@ def parse_dotenv_file(path: Path | str) -> dict[str, str]:
     return parsed
 
 
+def resolve_credentials_input(
+    credentials: AgentCredentialBinding | ResolvedAgentCredentials,
+    *,
+    repo_root: Path | str = ".",
+) -> ResolvedAgentCredentials:
+    """Resolve either a stored binding or an already-resolved credential payload."""
+
+    if isinstance(credentials, ResolvedAgentCredentials):
+        return credentials
+    if isinstance(credentials, AgentCredentialBinding):
+        return CredentialsConfigStore(repo_root=repo_root).resolve_binding(credentials)
+    raise TypeError("credentials must be an AgentCredentialBinding or ResolvedAgentCredentials instance.")
+
+
+def binding_field_map(binding: AgentCredentialBinding) -> dict[str, str]:
+    """Return the field-to-env-var mapping for one agent binding."""
+
+    return {reference.field_name: reference.env_var for reference in binding.references}
+
+
+def mask_secret_value(value: str) -> str:
+    """Return a short redacted form safe for prompts and logs."""
+
+    if len(value) <= 4:
+        return "*" * len(value)
+    suffix = value[-4:]
+    return f"{value[:3]}{'*' * max(1, len(value) - 7)}{suffix}"
+
+
 def _normalize_env_value(value: str) -> str:
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
         inner = value[1:-1]
@@ -288,6 +320,7 @@ __all__ = [
     "AgentCredentialBinding",
     "AgentCredentialsNotConfiguredError",
     "CredentialEnvReference",
+    "binding_field_map",
     "CredentialsConfig",
     "CredentialsConfigError",
     "CredentialsConfigStore",
@@ -296,6 +329,8 @@ __all__ = [
     "DEFAULT_ENV_FILENAME",
     "DotEnvFileNotFoundError",
     "MissingEnvironmentVariableError",
+    "mask_secret_value",
     "ResolvedAgentCredentials",
     "parse_dotenv_file",
+    "resolve_credentials_input",
 ]

@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable, Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig, BaseAgent
+from harnessiq.config import AgentCredentialBinding, ResolvedAgentCredentials, binding_field_map, resolve_credentials_input
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
 from harnessiq.tools.registry import ToolRegistry
 from harnessiq.tools.resend import ResendClient, ResendCredentials, build_resend_operation_catalog, create_resend_tools, get_resend_operation
@@ -22,20 +24,28 @@ DEFAULT_EMAIL_AGENT_IDENTITY = (
 class EmailAgentConfig:
     """Runtime configuration for reusable email-capable harnesses."""
 
-    resend_credentials: ResendCredentials
+    resend_credentials: ResendCredentials | None = None
+    credentials: AgentCredentialBinding | ResolvedAgentCredentials | None = None
+    credentials_repo_root: Path | str = "."
     allowed_resend_operations: tuple[str, ...] | None = None
     max_tokens: int = 80_000
     reset_threshold: float = 0.9
 
     def __post_init__(self) -> None:
+        has_direct_credentials = self.resend_credentials is not None
+        has_config_credentials = self.credentials is not None
+        if has_direct_credentials == has_config_credentials:
+            raise ValueError("Provide exactly one of resend_credentials or credentials.")
         if self.allowed_resend_operations is None:
-            return
-        normalized = tuple(self.allowed_resend_operations)
-        if not normalized:
-            raise ValueError("allowed_resend_operations must not be empty when provided.")
-        for operation_name in normalized:
-            get_resend_operation(operation_name)
+            normalized = None
+        else:
+            normalized = tuple(self.allowed_resend_operations)
+            if not normalized:
+                raise ValueError("allowed_resend_operations must not be empty when provided.")
+            for operation_name in normalized:
+                get_resend_operation(operation_name)
         object.__setattr__(self, "allowed_resend_operations", normalized)
+        object.__setattr__(self, "credentials_repo_root", Path(self.credentials_repo_root))
 
 
 class BaseEmailAgent(BaseAgent, ABC):
@@ -50,11 +60,18 @@ class BaseEmailAgent(BaseAgent, ABC):
         email_tools: Iterable[RegisteredTool] = (),
         resend_client: ResendClient | None = None,
     ) -> None:
-        if resend_client is not None and resend_client.credentials != config.resend_credentials:
+        resolved_resend_credentials = _resolve_resend_credentials(config)
+        if resend_client is not None and resend_client.credentials != resolved_resend_credentials:
             raise ValueError("resend_client credentials must match EmailAgentConfig.resend_credentials.")
 
         self._config = config
-        self._resend_client = resend_client or ResendClient(credentials=config.resend_credentials)
+        self._resolved_resend_credentials = resolved_resend_credentials
+        self._resolved_credentials_input = (
+            resolve_credentials_input(config.credentials, repo_root=config.credentials_repo_root)
+            if config.credentials is not None
+            else None
+        )
+        self._resend_client = resend_client or ResendClient(credentials=resolved_resend_credentials)
 
         tool_registry = ToolRegistry(
             _merge_tools(
@@ -115,7 +132,7 @@ class BaseEmailAgent(BaseAgent, ABC):
         return (
             AgentParameterSection(
                 title="Resend Credentials",
-                content=_render_resend_credentials(self._config),
+                content=_render_resend_credentials(self._config, self._resolved_resend_credentials, self._resolved_credentials_input),
             ),
             *self.load_email_parameter_sections(),
         )
@@ -141,13 +158,42 @@ class BaseEmailAgent(BaseAgent, ABC):
         return None
 
 
-def _render_resend_credentials(config: EmailAgentConfig) -> str:
+def _resolve_resend_credentials(config: EmailAgentConfig) -> ResendCredentials:
+    if config.resend_credentials is not None:
+        return config.resend_credentials
+
+    if config.credentials is None:
+        raise ValueError("EmailAgentConfig requires direct Resend credentials or a credential binding.")
+
+    resolved = resolve_credentials_input(config.credentials, repo_root=config.credentials_repo_root)
+    payload = resolved.as_dict()
+    api_key = payload["api_key"]
+    kwargs: dict[str, object] = {"api_key": api_key}
+    if "base_url" in payload:
+        kwargs["base_url"] = payload["base_url"]
+    if "user_agent" in payload:
+        kwargs["user_agent"] = payload["user_agent"]
+    if "timeout_seconds" in payload:
+        kwargs["timeout_seconds"] = float(payload["timeout_seconds"])
+    return ResendCredentials(**kwargs)
+
+
+def _render_resend_credentials(
+    config: EmailAgentConfig,
+    runtime_credentials: ResendCredentials,
+    resolved_credentials: ResolvedAgentCredentials | None,
+) -> str:
     allowed_operations = config.allowed_resend_operations
     if allowed_operations is None:
         allowed_operations = tuple(operation.name for operation in build_resend_operation_catalog())
-    payload = config.resend_credentials.as_redacted_dict()
+    payload = runtime_credentials.as_redacted_dict()
     payload["allowed_operation_count"] = len(allowed_operations)
     payload["allowed_operation_sample"] = list(allowed_operations[:8])
+    if isinstance(config.credentials, AgentCredentialBinding):
+        payload["binding"] = binding_field_map(config.credentials)
+        payload["env_path"] = str(config.credentials_repo_root / ".env")
+    if resolved_credentials is not None:
+        payload["resolved_fields"] = resolved_credentials.as_redacted_dict()
     return json.dumps(payload, indent=2, sort_keys=True)
 
 
