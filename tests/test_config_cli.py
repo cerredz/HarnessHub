@@ -125,6 +125,34 @@ class ConfigCLITests(unittest.TestCase):
                         ]
                     )
 
+    def test_show_with_resolve_requires_agent_selection(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with redirect_stdout(io.StringIO()):
+                main(
+                    [
+                        "config",
+                        "set",
+                        "--repo-root",
+                        temp_dir,
+                        "--agent",
+                        "email_agent",
+                        "--credential",
+                        "api_key=RESEND_API_KEY",
+                    ]
+                )
+
+            with self.assertRaises(ValueError):
+                with redirect_stdout(io.StringIO()):
+                    main(
+                        [
+                            "config",
+                            "show",
+                            "--repo-root",
+                            temp_dir,
+                            "--resolve",
+                        ]
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()

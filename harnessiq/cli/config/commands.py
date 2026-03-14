@@ -75,6 +75,8 @@ def _handle_set(args: argparse.Namespace) -> int:
 def _handle_show(args: argparse.Namespace) -> int:
     store = CredentialsConfigStore(repo_root=args.repo_root)
     config = store.load()
+    if args.resolve and not args.agent:
+        raise ValueError("--resolve requires --agent so the CLI knows which binding to resolve.")
     if args.agent:
         binding = config.binding_for(args.agent)
         payload: dict[str, Any] = {
