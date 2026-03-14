@@ -24,6 +24,7 @@ class HarnessiqPackageTests(unittest.TestCase):
         self.assertEqual(harnessiq.__version__, "0.1.0")
         self.assertTrue(hasattr(harnessiq, "agents"))
         self.assertTrue(hasattr(harnessiq, "cli"))
+        self.assertTrue(hasattr(harnessiq, "config"))
         self.assertTrue(hasattr(harnessiq, "tools"))
         self.assertTrue(hasattr(harnessiq, "providers"))
 
@@ -50,11 +51,12 @@ class HarnessiqPackageTests(unittest.TestCase):
                     "-c",
                     (
                         f"import sys; sys.path.insert(0, r'{wheel_path}'); "
-                        "import harnessiq, harnessiq.agents, harnessiq.tools; "
+                        "import harnessiq, harnessiq.agents, harnessiq.config, harnessiq.tools; "
                         "from harnessiq.cli.main import main as cli_main; "
                         "assert harnessiq.__version__ == '0.1.0'; "
                         "assert hasattr(harnessiq.agents, 'LinkedInJobApplierAgent'); "
                         "assert callable(cli_main); "
+                        "assert hasattr(harnessiq.config, 'CredentialsConfigStore'); "
                         "assert hasattr(harnessiq.tools, 'create_builtin_registry')"
                     ),
                 ],
