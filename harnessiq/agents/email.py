@@ -60,17 +60,14 @@ class BaseEmailAgent(BaseAgent, ABC):
         email_tools: Iterable[RegisteredTool] = (),
         resend_client: ResendClient | None = None,
     ) -> None:
-        resolved_resend_credentials = _resolve_resend_credentials(config)
+        resolved_credentials_input = _resolve_config_credentials(config)
+        resolved_resend_credentials = _resolve_resend_credentials(config, resolved_credentials_input)
         if resend_client is not None and resend_client.credentials != resolved_resend_credentials:
             raise ValueError("resend_client credentials must match EmailAgentConfig.resend_credentials.")
 
         self._config = config
         self._resolved_resend_credentials = resolved_resend_credentials
-        self._resolved_credentials_input = (
-            resolve_credentials_input(config.credentials, repo_root=config.credentials_repo_root)
-            if config.credentials is not None
-            else None
-        )
+        self._resolved_credentials_input = resolved_credentials_input
         self._resend_client = resend_client or ResendClient(credentials=resolved_resend_credentials)
 
         tool_registry = ToolRegistry(
@@ -158,15 +155,23 @@ class BaseEmailAgent(BaseAgent, ABC):
         return None
 
 
-def _resolve_resend_credentials(config: EmailAgentConfig) -> ResendCredentials:
+def _resolve_config_credentials(config: EmailAgentConfig) -> ResolvedAgentCredentials | None:
+    if config.credentials is None:
+        return None
+    return resolve_credentials_input(config.credentials, repo_root=config.credentials_repo_root)
+
+
+def _resolve_resend_credentials(
+    config: EmailAgentConfig,
+    resolved_credentials: ResolvedAgentCredentials | None,
+) -> ResendCredentials:
     if config.resend_credentials is not None:
         return config.resend_credentials
 
-    if config.credentials is None:
+    if resolved_credentials is None:
         raise ValueError("EmailAgentConfig requires direct Resend credentials or a credential binding.")
 
-    resolved = resolve_credentials_input(config.credentials, repo_root=config.credentials_repo_root)
-    payload = resolved.as_dict()
+    payload = resolved_credentials.as_dict()
     api_key = payload["api_key"]
     kwargs: dict[str, object] = {"api_key": api_key}
     if "base_url" in payload:
