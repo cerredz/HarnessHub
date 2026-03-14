@@ -41,7 +41,7 @@ class CredentialsConfigTests(unittest.TestCase):
             reloaded = store.load()
             resolved = store.resolve_agent("email_agent")
 
-            self.assertEqual(saved_path, repo_root / ".harnessiq" / "credentials.json")
+            self.assertEqual(saved_path, store.config_path)
             self.assertEqual(reloaded.binding_for("email_agent"), binding)
             self.assertEqual(resolved.require("resend_api_key"), "re_test_123")
             self.assertEqual(resolved.as_dict()["langsmith_api_key"], "ls_test_456")
@@ -97,6 +97,16 @@ class CredentialsConfigTests(unittest.TestCase):
 
             self.assertEqual(parsed["SINGLE"], "value one")
             self.assertEqual(parsed["DOUBLE"], "line\nvalue")
+
+    def test_config_models_accept_list_inputs_and_normalize_storage(self) -> None:
+        binding = AgentCredentialBinding(
+            agent_name="email_agent",
+            references=[CredentialEnvReference(field_name="resend_api_key", env_var="RESEND_API_KEY")],
+        )
+        config = CredentialsConfig(bindings=[binding])
+
+        self.assertIsInstance(binding.references, tuple)
+        self.assertIsInstance(config.bindings, tuple)
 
 
 if __name__ == "__main__":

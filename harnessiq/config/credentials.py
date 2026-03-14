@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
@@ -67,12 +68,15 @@ class AgentCredentialBinding:
         if not normalized_name:
             raise ValueError("agent_name must not be blank.")
         object.__setattr__(self, "agent_name", normalized_name)
-        if not self.references:
+        references = tuple(self.references)
+        if not references:
             raise ValueError("references must contain at least one credential binding.")
 
         unique_fields: set[str] = set()
         normalized_references: list[CredentialEnvReference] = []
-        for reference in self.references:
+        for reference in references:
+            if not isinstance(reference, CredentialEnvReference):
+                raise TypeError("references must contain CredentialEnvReference instances.")
             if reference.field_name in unique_fields:
                 raise ValueError(f"Duplicate credential field '{reference.field_name}' for agent '{self.agent_name}'.")
             unique_fields.add(reference.field_name)
@@ -114,9 +118,12 @@ class CredentialsConfig:
     bindings: tuple[AgentCredentialBinding, ...] = ()
 
     def __post_init__(self) -> None:
+        bindings = tuple(self.bindings)
         unique_agents: set[str] = set()
         normalized_bindings: list[AgentCredentialBinding] = []
-        for binding in self.bindings:
+        for binding in bindings:
+            if not isinstance(binding, AgentCredentialBinding):
+                raise TypeError("bindings must contain AgentCredentialBinding instances.")
             if binding.agent_name in unique_agents:
                 raise ValueError(f"Duplicate credential binding for agent '{binding.agent_name}'.")
             unique_agents.add(binding.agent_name)
@@ -175,7 +182,7 @@ class CredentialsConfigStore:
     repo_root: Path | str = "."
 
     def __post_init__(self) -> None:
-        self.repo_root = Path(self.repo_root)
+        self.repo_root = Path(self.repo_root).expanduser().resolve()
 
     @property
     def config_dir(self) -> Path:
@@ -195,7 +202,6 @@ class CredentialsConfigStore:
         raw = self.config_path.read_text(encoding="utf-8").strip()
         if not raw:
             return CredentialsConfig()
-        import json
 
         payload = json.loads(raw)
         if not isinstance(payload, dict):
@@ -203,8 +209,6 @@ class CredentialsConfigStore:
         return CredentialsConfig.from_dict(payload)
 
     def save(self, config: CredentialsConfig) -> Path:
-        import json
-
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.config_path.write_text(json.dumps(config.as_dict(), indent=2, sort_keys=True), encoding="utf-8")
         return self.config_path
@@ -238,8 +242,8 @@ def parse_dotenv_file(path: Path | str) -> dict[str, str]:
     """Parse a simple repo-local ``.env`` file into a string mapping."""
 
     env_path = Path(path)
-    if not env_path.exists():
-        raise DotEnvFileNotFoundError(f"Required env file '{env_path}' does not exist.")
+    if not env_path.exists() or not env_path.is_file():
+        raise DotEnvFileNotFoundError(f"Required env file '{env_path}' does not exist or is not a file.")
 
     parsed: dict[str, str] = {}
     for line_number, raw_line in enumerate(env_path.read_text(encoding="utf-8").splitlines(), start=1):
