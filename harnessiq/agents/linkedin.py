@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Callable, Iterable, Mapping, Sequence
 from urllib import request
 
 from harnessiq.agents.base import BaseAgent
@@ -23,18 +24,24 @@ from harnessiq.shared.linkedin import (
     ACTION_LOG_FILENAME,
     AGENT_IDENTITY_FILENAME,
     APPLIED_JOBS_FILENAME,
+    ADDITIONAL_PROMPT_FILENAME,
     DEFAULT_AGENT_IDENTITY,
     DEFAULT_JOB_PREFERENCES,
     DEFAULT_LINKEDIN_ACTION_LOG_WINDOW,
     DEFAULT_LINKEDIN_NOTIFY_ON_PAUSE,
     DEFAULT_LINKEDIN_START_URL,
     DEFAULT_USER_PROFILE,
+    CUSTOM_PARAMETERS_FILENAME,
     JOB_PREFERENCES_FILENAME,
+    MANAGED_FILES_DIRNAME,
+    MANAGED_FILES_INDEX_FILENAME,
     SCREENSHOT_DIRNAME,
     USER_PROFILE_FILENAME,
     ActionLogEntry,
     JobApplicationRecord,
     LinkedInAgentConfig,
+    LinkedInManagedFile,
+    RUNTIME_PARAMETERS_FILENAME,
     ScreenshotPersistor,
 )
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
@@ -64,6 +71,18 @@ class LinkedInMemoryStore:
         return self.memory_path / AGENT_IDENTITY_FILENAME
 
     @property
+    def runtime_parameters_path(self) -> Path:
+        return self.memory_path / RUNTIME_PARAMETERS_FILENAME
+
+    @property
+    def custom_parameters_path(self) -> Path:
+        return self.memory_path / CUSTOM_PARAMETERS_FILENAME
+
+    @property
+    def additional_prompt_path(self) -> Path:
+        return self.memory_path / ADDITIONAL_PROMPT_FILENAME
+
+    @property
     def applied_jobs_path(self) -> Path:
         return self.memory_path / APPLIED_JOBS_FILENAME
 
@@ -75,26 +94,110 @@ class LinkedInMemoryStore:
     def screenshot_dir(self) -> Path:
         return self.memory_path / SCREENSHOT_DIRNAME
 
+    @property
+    def managed_files_dir(self) -> Path:
+        return self.memory_path / MANAGED_FILES_DIRNAME
+
+    @property
+    def managed_files_index_path(self) -> Path:
+        return self.memory_path / MANAGED_FILES_INDEX_FILENAME
+
     def prepare(self) -> None:
         self.memory_path.mkdir(parents=True, exist_ok=True)
         self.screenshot_dir.mkdir(parents=True, exist_ok=True)
+        self.managed_files_dir.mkdir(parents=True, exist_ok=True)
         _ensure_text_file(self.job_preferences_path, DEFAULT_JOB_PREFERENCES)
         _ensure_text_file(self.user_profile_path, DEFAULT_USER_PROFILE)
         _ensure_text_file(self.agent_identity_path, DEFAULT_AGENT_IDENTITY)
+        _ensure_json_file(self.runtime_parameters_path, {})
+        _ensure_json_file(self.custom_parameters_path, {})
+        _ensure_text_file(self.additional_prompt_path, "")
+        _ensure_json_file(self.managed_files_index_path, [])
         _ensure_text_file(self.applied_jobs_path, "")
         _ensure_text_file(self.action_log_path, "")
 
     def read_job_preferences(self) -> str:
         return self.job_preferences_path.read_text(encoding="utf-8").strip()
 
+    def write_job_preferences(self, content: str) -> Path:
+        return self._write_text(self.job_preferences_path, content)
+
     def read_user_profile(self) -> str:
         return self.user_profile_path.read_text(encoding="utf-8").strip()
+
+    def write_user_profile(self, content: str) -> Path:
+        return self._write_text(self.user_profile_path, content)
 
     def read_agent_identity(self) -> str:
         return self.agent_identity_path.read_text(encoding="utf-8").strip()
 
+    def write_agent_identity(self, content: str) -> Path:
+        return self._write_text(self.agent_identity_path, content)
+
+    def read_runtime_parameters(self) -> dict[str, Any]:
+        return self._read_json_file(self.runtime_parameters_path, expected_type=dict)
+
+    def write_runtime_parameters(self, parameters: Mapping[str, Any]) -> Path:
+        return self._write_json_file(self.runtime_parameters_path, dict(parameters))
+
+    def read_custom_parameters(self) -> dict[str, Any]:
+        return self._read_json_file(self.custom_parameters_path, expected_type=dict)
+
+    def write_custom_parameters(self, parameters: Mapping[str, Any]) -> Path:
+        return self._write_json_file(self.custom_parameters_path, dict(parameters))
+
+    def read_additional_prompt(self) -> str:
+        return self.additional_prompt_path.read_text(encoding="utf-8").strip()
+
+    def write_additional_prompt(self, content: str) -> Path:
+        return self._write_text(self.additional_prompt_path, content)
+
     def read_applied_jobs_raw(self) -> str:
         return self.applied_jobs_path.read_text(encoding="utf-8").strip()
+
+    def read_managed_files(self) -> list[LinkedInManagedFile]:
+        payload = self._read_json_file(self.managed_files_index_path, expected_type=list)
+        return [LinkedInManagedFile.from_dict(entry) for entry in payload]
+
+    def ingest_managed_file(self, source_path: str | Path, *, target_name: str | None = None) -> LinkedInManagedFile:
+        self.prepare()
+        source = Path(source_path).expanduser().resolve()
+        if not source.exists() or not source.is_file():
+            message = f"Managed file source '{source}' does not exist or is not a file."
+            raise FileNotFoundError(message)
+        target_filename = _sanitize_filename(target_name or source.name)
+        target_path = self.managed_files_dir / target_filename
+        shutil.copy2(source, target_path)
+        record = LinkedInManagedFile(
+            name=target_filename,
+            relative_path=_relative_path_text(target_path, self.memory_path),
+            source_path=str(source),
+            created_at=_utcnow(),
+            kind="copied_file",
+        )
+        self._upsert_managed_file(record)
+        return record
+
+    def write_managed_text_file(
+        self,
+        *,
+        name: str,
+        content: str,
+        source_path: str | None = None,
+    ) -> LinkedInManagedFile:
+        self.prepare()
+        target_filename = _sanitize_filename(name)
+        target_path = self.managed_files_dir / target_filename
+        target_path.write_text(content, encoding="utf-8")
+        record = LinkedInManagedFile(
+            name=target_filename,
+            relative_path=_relative_path_text(target_path, self.memory_path),
+            source_path=source_path,
+            created_at=_utcnow(),
+            kind="inline_text",
+        )
+        self._upsert_managed_file(record)
+        return record
 
     def read_memory_file(self, filename: str) -> str:
         requested_path = (self.memory_path / filename).resolve()
@@ -169,6 +272,26 @@ class LinkedInMemoryStore:
             handle.write(json.dumps(payload, sort_keys=True))
             handle.write("\n")
 
+    def _write_text(self, path: Path, content: str) -> Path:
+        path.write_text(content.rstrip() + ("\n" if content and not content.endswith("\n") else ""), encoding="utf-8")
+        return path
+
+    def _write_json_file(self, path: Path, payload: Any) -> Path:
+        path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        return path
+
+    def _read_json_file(self, path: Path, *, expected_type: type[dict[str, Any]] | type[list[Any]]) -> Any:
+        if not path.exists():
+            return expected_type()
+        raw = path.read_text(encoding="utf-8").strip()
+        if not raw:
+            return expected_type()
+        payload = json.loads(raw)
+        if not isinstance(payload, expected_type):
+            message = f"Expected JSON {expected_type.__name__} in '{path.name}'."
+            raise ValueError(message)
+        return payload
+
     def _read_jsonl(self, path: Path) -> list[dict[str, Any]]:
         if not path.exists():
             return []
@@ -179,6 +302,13 @@ class LinkedInMemoryStore:
                 continue
             entries.append(json.loads(line))
         return entries
+
+    def _upsert_managed_file(self, record: LinkedInManagedFile) -> None:
+        managed_files = self.read_managed_files()
+        indexed = {item.relative_path: item for item in managed_files}
+        indexed[record.relative_path] = record
+        ordered = [indexed[key].as_dict() for key in sorted(indexed)]
+        self._write_json_file(self.managed_files_index_path, ordered)
 
 
 class LinkedInJobApplierAgent(BaseAgent):
@@ -239,6 +369,29 @@ class LinkedInJobApplierAgent(BaseAgent):
     def memory_store(self) -> LinkedInMemoryStore:
         return self._memory_store
 
+    @classmethod
+    def from_memory(
+        cls,
+        *,
+        model: AgentModel,
+        memory_path: str | Path,
+        browser_tools: Iterable[RegisteredTool] = (),
+        screenshot_persistor: ScreenshotPersistor | None = None,
+        runtime_overrides: Mapping[str, Any] | None = None,
+    ) -> "LinkedInJobApplierAgent":
+        memory_store = LinkedInMemoryStore(memory_path=memory_path)
+        memory_store.prepare()
+        runtime_parameters = memory_store.read_runtime_parameters()
+        if runtime_overrides:
+            runtime_parameters.update(runtime_overrides)
+        return cls(
+            model=model,
+            memory_path=memory_path,
+            browser_tools=browser_tools,
+            screenshot_persistor=screenshot_persistor,
+            **_coerce_runtime_parameters(runtime_parameters),
+        )
+
     def prepare(self) -> None:
         self._memory_store.prepare()
 
@@ -279,7 +432,7 @@ class LinkedInJobApplierAgent(BaseAgent):
     def load_parameter_sections(self) -> Sequence[AgentParameterSection]:
         recent_actions = self._memory_store.read_recent_actions()
         recent_actions_text = "\n".join(json.dumps(entry.as_dict(), sort_keys=True) for entry in recent_actions)
-        return (
+        sections: list[AgentParameterSection] = [
             AgentParameterSection(
                 title="Job Preferences",
                 content=_or_placeholder(self._memory_store.read_job_preferences(), "(job preferences not set)"),
@@ -296,7 +449,20 @@ class LinkedInJobApplierAgent(BaseAgent):
                 title=f"Recent Actions (last {self._config.action_log_window})",
                 content=_or_placeholder(recent_actions_text, "(no recent actions recorded yet)"),
             ),
-        )
+        ]
+        runtime_parameters = self._memory_store.read_runtime_parameters()
+        if runtime_parameters:
+            sections.append(AgentParameterSection(title="Runtime Parameters", content=_json_block(runtime_parameters)))
+        custom_parameters = self._memory_store.read_custom_parameters()
+        if custom_parameters:
+            sections.append(AgentParameterSection(title="Custom Parameters", content=_json_block(custom_parameters)))
+        additional_prompt = self._memory_store.read_additional_prompt()
+        if additional_prompt:
+            sections.append(AgentParameterSection(title="Additional Prompt Data", content=additional_prompt))
+        managed_files = [entry.as_dict() for entry in self._memory_store.read_managed_files()]
+        if managed_files:
+            sections.append(AgentParameterSection(title="Managed Files", content=_json_block(managed_files)))
+        return tuple(sections)
 
     def _build_internal_tools(self) -> tuple[RegisteredTool, ...]:
         return (
@@ -644,9 +810,95 @@ def _ensure_text_file(path: Path, default_content: str) -> None:
     path.write_text(default_content, encoding="utf-8")
 
 
+def _ensure_json_file(path: Path, default_payload: Any) -> None:
+    if path.exists():
+        return
+    path.write_text(json.dumps(default_payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
 def _sanitize_label(label: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", label).strip("-")
     return cleaned or "screenshot"
+
+
+def _sanitize_filename(filename: str) -> str:
+    candidate = Path(filename).name
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", candidate).strip("-")
+    if not cleaned:
+        raise ValueError("Managed filenames must contain at least one alphanumeric character.")
+    return cleaned
+
+
+def _json_block(payload: Any) -> str:
+    return json.dumps(payload, indent=2, sort_keys=True)
+
+
+def _relative_path_text(path: Path, root: Path) -> str:
+    return path.resolve().relative_to(root.resolve()).as_posix()
+
+
+def _coerce_runtime_parameters(parameters: Mapping[str, Any]) -> dict[str, Any]:
+    normalized: dict[str, Any] = {}
+    coercers: dict[str, Callable[[Any], Any]] = {
+        "max_tokens": _coerce_int,
+        "reset_threshold": _coerce_float,
+        "action_log_window": _coerce_int,
+        "linkedin_start_url": _coerce_string,
+        "notify_on_pause": _coerce_bool,
+        "pause_webhook": _coerce_optional_string,
+    }
+    for key, value in parameters.items():
+        if key not in coercers:
+            raise ValueError(f"Unsupported LinkedIn runtime parameter '{key}'.")
+        normalized[key] = coercers[key](value)
+    return normalized
+
+
+def _coerce_int(value: Any) -> int:
+    if isinstance(value, bool):
+        raise ValueError("Boolean values are not valid integer runtime parameters.")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip():
+        return int(value)
+    raise ValueError("Runtime parameter must be an integer.")
+
+
+def _coerce_float(value: Any) -> float:
+    if isinstance(value, bool):
+        raise ValueError("Boolean values are not valid float runtime parameters.")
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str) and value.strip():
+        return float(value)
+    raise ValueError("Runtime parameter must be a float.")
+
+
+def _coerce_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "off"}:
+            return False
+    raise ValueError("Runtime parameter must be a boolean.")
+
+
+def _coerce_string(value: Any) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("Runtime parameter must be a non-empty string.")
+    return value
+
+
+def _coerce_optional_string(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        normalized = value.strip()
+        return normalized or None
+    raise ValueError("Runtime parameter must be a string or null.")
 
 
 def _utcnow() -> str:
@@ -661,6 +913,7 @@ __all__ = [
     "ActionLogEntry",
     "JobApplicationRecord",
     "LinkedInAgentConfig",
+    "LinkedInManagedFile",
     "LinkedInJobApplierAgent",
     "LinkedInMemoryStore",
     "ScreenshotPersistor",

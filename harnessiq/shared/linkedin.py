@@ -22,7 +22,12 @@ ACTION_LOG_FILENAME = "action_log.jsonl"
 JOB_PREFERENCES_FILENAME = "job_preferences.md"
 USER_PROFILE_FILENAME = "user_profile.md"
 AGENT_IDENTITY_FILENAME = "agent_identity.md"
+RUNTIME_PARAMETERS_FILENAME = "runtime_parameters.json"
+CUSTOM_PARAMETERS_FILENAME = "custom_parameters.json"
+ADDITIONAL_PROMPT_FILENAME = "additional_prompt.md"
+MANAGED_FILES_INDEX_FILENAME = "managed_files.json"
 SCREENSHOT_DIRNAME = "screenshots"
+MANAGED_FILES_DIRNAME = "managed_files"
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +106,31 @@ class ActionLogEntry:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class LinkedInManagedFile:
+    """Metadata describing a CLI-managed file stored in agent memory."""
+
+    name: str
+    relative_path: str
+    source_path: str | None = None
+    created_at: str | None = None
+    kind: str = "file"
+
+    def as_dict(self) -> dict[str, str]:
+        payload = asdict(self)
+        return {key: value for key, value in payload.items() if value is not None}
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "LinkedInManagedFile":
+        return cls(
+            name=str(payload["name"]),
+            relative_path=str(payload["relative_path"]),
+            source_path=str(payload["source_path"]) if payload.get("source_path") is not None else None,
+            created_at=str(payload["created_at"]) if payload.get("created_at") is not None else None,
+            kind=str(payload.get("kind", "file")),
+        )
+
+
 class ScreenshotPersistor(Protocol):
     """Save the current browser screenshot to the provided path."""
 
@@ -110,9 +140,11 @@ class ScreenshotPersistor(Protocol):
 
 __all__ = [
     "ACTION_LOG_FILENAME",
+    "ADDITIONAL_PROMPT_FILENAME",
     "AGENT_IDENTITY_FILENAME",
     "APPLIED_JOBS_FILENAME",
     "ActionLogEntry",
+    "CUSTOM_PARAMETERS_FILENAME",
     "DEFAULT_AGENT_IDENTITY",
     "DEFAULT_JOB_PREFERENCES",
     "DEFAULT_LINKEDIN_ACTION_LOG_WINDOW",
@@ -122,6 +154,10 @@ __all__ = [
     "JOB_PREFERENCES_FILENAME",
     "JobApplicationRecord",
     "LinkedInAgentConfig",
+    "LinkedInManagedFile",
+    "MANAGED_FILES_DIRNAME",
+    "MANAGED_FILES_INDEX_FILENAME",
+    "RUNTIME_PARAMETERS_FILENAME",
     "SCREENSHOT_DIRNAME",
     "ScreenshotPersistor",
     "USER_PROFILE_FILENAME",
