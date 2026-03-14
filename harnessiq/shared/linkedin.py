@@ -116,7 +116,7 @@ class LinkedInManagedFile:
     created_at: str | None = None
     kind: str = "file"
 
-    def as_dict(self) -> dict[str, str]:
+    def as_dict(self) -> dict[str, Any]:
         payload = asdict(self)
         return {key: value for key, value in payload.items() if value is not None}
 

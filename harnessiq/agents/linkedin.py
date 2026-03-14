@@ -273,14 +273,15 @@ class LinkedInMemoryStore:
             handle.write("\n")
 
     def _write_text(self, path: Path, content: str) -> Path:
-        path.write_text(content.rstrip() + ("\n" if content and not content.endswith("\n") else ""), encoding="utf-8")
+        rendered = content if not content or content.endswith("\n") else f"{content}\n"
+        path.write_text(rendered, encoding="utf-8")
         return path
 
     def _write_json_file(self, path: Path, payload: Any) -> Path:
         path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
         return path
 
-    def _read_json_file(self, path: Path, *, expected_type: type[dict[str, Any]] | type[list[Any]]) -> Any:
+    def _read_json_file(self, path: Path, *, expected_type: type[dict] | type[list]) -> Any:
         if not path.exists():
             return expected_type()
         raw = path.read_text(encoding="utf-8").strip()
@@ -389,7 +390,7 @@ class LinkedInJobApplierAgent(BaseAgent):
             memory_path=memory_path,
             browser_tools=browser_tools,
             screenshot_persistor=screenshot_persistor,
-            **_coerce_runtime_parameters(runtime_parameters),
+            **normalize_linkedin_runtime_parameters(runtime_parameters),
         )
 
     def prepare(self) -> None:
@@ -837,7 +838,17 @@ def _relative_path_text(path: Path, root: Path) -> str:
     return path.resolve().relative_to(root.resolve()).as_posix()
 
 
-def _coerce_runtime_parameters(parameters: Mapping[str, Any]) -> dict[str, Any]:
+SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS = (
+    "max_tokens",
+    "reset_threshold",
+    "action_log_window",
+    "linkedin_start_url",
+    "notify_on_pause",
+    "pause_webhook",
+)
+
+
+def normalize_linkedin_runtime_parameters(parameters: Mapping[str, Any]) -> dict[str, Any]:
     normalized: dict[str, Any] = {}
     coercers: dict[str, Callable[[Any], Any]] = {
         "max_tokens": _coerce_int,
@@ -917,6 +928,8 @@ __all__ = [
     "LinkedInJobApplierAgent",
     "LinkedInMemoryStore",
     "ScreenshotPersistor",
+    "SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS",
     "build_linkedin_browser_tool_definitions",
     "create_linkedin_browser_stub_tools",
+    "normalize_linkedin_runtime_parameters",
 ]

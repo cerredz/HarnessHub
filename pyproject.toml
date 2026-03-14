@@ -26,6 +26,9 @@ classifiers = [
 Homepage = "https://github.com/cerredz/HarnessHub"
 Repository = "https://github.com/cerredz/HarnessHub"
 
+[project.scripts]
+harnessiq = "harnessiq.cli.main:main"
+
 [tool.setuptools]
 include-package-data = true
 
