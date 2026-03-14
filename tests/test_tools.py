@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from copy import deepcopy
 
-from src.shared.tools import (
+from harnessiq.shared.tools import (
     ADD_NUMBERS,
     CONTROL_PAUSE_FOR_HUMAN,
     ECHO_TEXT,
@@ -34,7 +34,7 @@ from src.shared.tools import (
     TEXT_TRUNCATE_TEXT,
     ToolDefinition,
 )
-from src.tools.registry import (
+from harnessiq.tools.registry import (
     DuplicateToolError,
     ToolRegistry,
     ToolValidationError,

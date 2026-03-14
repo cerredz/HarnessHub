@@ -7,8 +7,8 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from src.shared.tools import FILESYSTEM_PATH_EXISTS, PROMPT_CREATE_SYSTEM_PROMPT
-from src.tools import (
+from harnessiq.shared.tools import FILESYSTEM_PATH_EXISTS, PROMPT_CREATE_SYSTEM_PROMPT
+from harnessiq.tools import (
     append_text_file,
     copy_path,
     create_builtin_registry,

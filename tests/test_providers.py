@@ -6,7 +6,7 @@ import asyncio
 import unittest
 from unittest import mock
 
-from src.providers.langsmith import (
+from harnessiq.providers.langsmith import (
     trace_agent_run,
     trace_async_agent_run,
     trace_async_model_call,
@@ -14,8 +14,8 @@ from src.providers.langsmith import (
     trace_model_call,
     trace_tool_call,
 )
-from src.shared.tools import ECHO_TEXT
-from src.tools import create_builtin_registry
+from harnessiq.shared.tools import ECHO_TEXT
+from harnessiq.tools import create_builtin_registry
 
 
 class _FakeRunTree:
@@ -99,7 +99,7 @@ class LangSmithTracingTests(unittest.TestCase):
             metadata={"team": "support"},
         )
 
-        with mock.patch("src.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
+        with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
             result = wrapped("hello")
 
         self.assertEqual(result, {"reply": "HELLO"})
@@ -118,7 +118,7 @@ class LangSmithTracingTests(unittest.TestCase):
             "messages": list(self.messages),
         }
 
-        with mock.patch("src.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
+        with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
             result = trace_model_call(
                 lambda: {"id": "resp_123"},
                 provider="openai",
@@ -152,7 +152,7 @@ class LangSmithTracingTests(unittest.TestCase):
         def run_agent(user_input: str) -> dict[str, str]:
             return {"reply": user_input}
 
-        with mock.patch("src.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
+        with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
             result = run_agent("hello")
 
         self.assertEqual(result, {"reply": "hello"})
@@ -162,7 +162,7 @@ class LangSmithTracingTests(unittest.TestCase):
     def test_trace_tool_call_records_tool_identity_and_result(self) -> None:
         fake_langsmith = _FakeLangSmith()
 
-        with mock.patch("src.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
+        with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
             result = trace_tool_call(
                 lambda: {"text": "done"},
                 tool_name="echo_text",
@@ -186,7 +186,7 @@ class LangSmithTracingTests(unittest.TestCase):
         def boom() -> dict[str, str]:
             raise RuntimeError("provider timed out")
 
-        with mock.patch("src.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
+        with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
             with self.assertRaisesRegex(RuntimeError, "provider timed out"):
                 trace_model_call(
                     boom,
@@ -213,7 +213,7 @@ class AsyncLangSmithTracingTests(unittest.TestCase):
             metadata={"mode": "async"},
         )
 
-        with mock.patch("src.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
+        with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
             result = asyncio.run(wrapped("trace"))
 
         self.assertEqual(result, {"reply": "ecart"})
@@ -230,7 +230,7 @@ class AsyncLangSmithTracingTests(unittest.TestCase):
         async def tool_operation() -> dict[str, str]:
             return {"status": "ok"}
 
-        with mock.patch("src.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
+        with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
             model_result = asyncio.run(
                 trace_async_model_call(
                     model_operation,
@@ -265,7 +265,7 @@ class AsyncLangSmithTracingTests(unittest.TestCase):
         async def run_agent(value: str) -> dict[str, str]:
             return {"reply": value}
 
-        with mock.patch("src.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
+        with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
             result = asyncio.run(run_agent("hello"))
 
         self.assertEqual(result, {"reply": "hello"})

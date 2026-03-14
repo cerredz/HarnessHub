@@ -6,14 +6,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.agents import (
+from harnessiq.agents import (
     AgentModelRequest,
     AgentModelResponse,
     LinkedInJobApplierAgent,
     build_linkedin_browser_tool_definitions,
 )
-from src.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW, LinkedInAgentConfig
-from src.shared.tools import ToolCall
+from harnessiq.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW, LinkedInAgentConfig
+from harnessiq.shared.tools import ToolCall
 
 
 class _FakeModel:
@@ -52,9 +52,14 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
             self.assertTrue(Path(temp_dir, "job_preferences.md").exists())
             self.assertTrue(Path(temp_dir, "user_profile.md").exists())
             self.assertTrue(Path(temp_dir, "agent_identity.md").exists())
+            self.assertTrue(Path(temp_dir, "runtime_parameters.json").exists())
+            self.assertTrue(Path(temp_dir, "custom_parameters.json").exists())
+            self.assertTrue(Path(temp_dir, "additional_prompt.md").exists())
             self.assertTrue(Path(temp_dir, "applied_jobs.jsonl").exists())
             self.assertTrue(Path(temp_dir, "action_log.jsonl").exists())
+            self.assertTrue(Path(temp_dir, "managed_files.json").exists())
             self.assertTrue(Path(temp_dir, "screenshots").exists())
+            self.assertTrue(Path(temp_dir, "managed_files").exists())
             self.assertIn("[IDENTITY]", model.requests[0].system_prompt)
             self.assertIn("[GOAL]", model.requests[0].system_prompt)
             self.assertIn("navigate", model.requests[0].system_prompt)
@@ -69,6 +74,34 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
                     "Recent Actions (last 10)",
                 ],
             )
+
+    def test_memory_store_supports_runtime_params_custom_inputs_and_managed_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source_file = Path(temp_dir, "resume.txt")
+            source_file.write_text("Resume content", encoding="utf-8")
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+
+            store = LinkedInJobApplierAgent(model=model, memory_path=temp_dir).memory_store
+            store.prepare()
+            store.write_runtime_parameters({"max_tokens": 1234, "notify_on_pause": False})
+            store.write_custom_parameters({"target_level": "staff", "remote_only": True})
+            store.write_additional_prompt("Prefer companies with strong infrastructure teams.")
+            copied_file = store.ingest_managed_file(source_file)
+            inline_file = store.write_managed_text_file(name="cover-letter.txt", content="Intro paragraph")
+
+            agent = LinkedInJobApplierAgent.from_memory(model=model, memory_path=temp_dir)
+            sections = {section.title: section.content for section in agent.load_parameter_sections()}
+
+            self.assertEqual(agent.config.max_tokens, 1234)
+            self.assertFalse(agent.config.notify_on_pause)
+            self.assertIn("Runtime Parameters", sections)
+            self.assertIn("Custom Parameters", sections)
+            self.assertIn("Additional Prompt Data", sections)
+            self.assertIn("Managed Files", sections)
+            self.assertIn("resume.txt", sections["Managed Files"])
+            self.assertIn("cover-letter.txt", sections["Managed Files"])
+            self.assertTrue(Path(temp_dir, copied_file.relative_path).exists())
+            self.assertTrue(Path(temp_dir, inline_file.relative_path).exists())
 
     def test_memory_tools_append_update_and_read_append_only_state(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

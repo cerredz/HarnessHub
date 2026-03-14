@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from src.shared.tools import HEAVY_COMPACTION, LOG_COMPACTION, REMOVE_TOOL_RESULTS, REMOVE_TOOLS
-from src.tools import (
+from harnessiq.shared.tools import HEAVY_COMPACTION, LOG_COMPACTION, REMOVE_TOOL_RESULTS, REMOVE_TOOLS
+from harnessiq.tools import (
     apply_log_compaction,
     create_builtin_registry,
     create_context_compaction_tools,
@@ -14,7 +14,7 @@ from src.tools import (
     remove_tool_result_entries,
     summarize_and_log_compact,
 )
-from src.tools.registry import ToolRegistry
+from harnessiq.tools.registry import ToolRegistry
 
 
 class ContextCompactionToolsTests(unittest.TestCase):

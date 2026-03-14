@@ -7,7 +7,7 @@ import json
 import unittest
 from urllib import error, request
 
-from src.providers import (
+from harnessiq.providers import (
     ProviderFormatError,
     ProviderHTTPError,
     SUPPORTED_PROVIDERS,

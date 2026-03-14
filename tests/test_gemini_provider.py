@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from src.providers.gemini import (
+from harnessiq.providers.gemini import (
     GeminiClient,
     build_cached_content_request,
     build_code_execution_tool,
@@ -26,7 +26,7 @@ from src.providers.gemini import (
     build_url_context_tool,
     format_tool_definition,
 )
-from src.tools import ECHO_TEXT, create_builtin_registry
+from harnessiq.tools import ECHO_TEXT, create_builtin_registry
 
 
 class GeminiProviderTests(unittest.TestCase):
