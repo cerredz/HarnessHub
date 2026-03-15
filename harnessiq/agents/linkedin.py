@@ -12,6 +12,7 @@ from typing import Any, Callable, Iterable, Mapping, Sequence
 from urllib import request
 
 from harnessiq.agents.base import BaseAgent
+from harnessiq.config import AgentCredentialBinding, ResolvedAgentCredentials, binding_field_map, resolve_credentials_input
 from harnessiq.shared.agents import (
     DEFAULT_AGENT_MAX_TOKENS,
     DEFAULT_AGENT_RESET_THRESHOLD,
@@ -328,6 +329,8 @@ class LinkedInJobApplierAgent(BaseAgent):
         linkedin_start_url: str = DEFAULT_LINKEDIN_START_URL,
         notify_on_pause: bool = DEFAULT_LINKEDIN_NOTIFY_ON_PAUSE,
         pause_webhook: str | None = None,
+        credentials: AgentCredentialBinding | ResolvedAgentCredentials | None = None,
+        credentials_repo_root: str | Path = ".",
     ) -> None:
         self._config = LinkedInAgentConfig(
             memory_path=Path(memory_path),
@@ -343,6 +346,10 @@ class LinkedInJobApplierAgent(BaseAgent):
             action_log_window=self._config.action_log_window,
         )
         self._screenshot_persistor = screenshot_persistor
+        self._credentials = credentials
+        self._resolved_credentials = (
+            resolve_credentials_input(credentials, repo_root=credentials_repo_root) if credentials is not None else None
+        )
 
         tool_registry = ToolRegistry(
             _merge_tools(
@@ -379,6 +386,8 @@ class LinkedInJobApplierAgent(BaseAgent):
         browser_tools: Iterable[RegisteredTool] = (),
         screenshot_persistor: ScreenshotPersistor | None = None,
         runtime_overrides: Mapping[str, Any] | None = None,
+        credentials: AgentCredentialBinding | ResolvedAgentCredentials | None = None,
+        credentials_repo_root: str | Path = ".",
     ) -> "LinkedInJobApplierAgent":
         memory_store = LinkedInMemoryStore(memory_path=memory_path)
         memory_store.prepare()
@@ -390,6 +399,8 @@ class LinkedInJobApplierAgent(BaseAgent):
             memory_path=memory_path,
             browser_tools=browser_tools,
             screenshot_persistor=screenshot_persistor,
+            credentials=credentials,
+            credentials_repo_root=credentials_repo_root,
             **normalize_linkedin_runtime_parameters(runtime_parameters),
         )
 
@@ -463,6 +474,13 @@ class LinkedInJobApplierAgent(BaseAgent):
         managed_files = [entry.as_dict() for entry in self._memory_store.read_managed_files()]
         if managed_files:
             sections.append(AgentParameterSection(title="Managed Files", content=_json_block(managed_files)))
+        if self._resolved_credentials is not None:
+            sections.append(
+                AgentParameterSection(
+                    title="Credentials",
+                    content=_json_block(_render_agent_credentials(self._credentials, self._resolved_credentials)),
+                )
+            )
         return tuple(sections)
 
     def _build_internal_tools(self) -> tuple[RegisteredTool, ...]:
@@ -836,6 +854,19 @@ def _json_block(payload: Any) -> str:
 
 def _relative_path_text(path: Path, root: Path) -> str:
     return path.resolve().relative_to(root.resolve()).as_posix()
+
+
+def _render_agent_credentials(
+    credentials: AgentCredentialBinding | ResolvedAgentCredentials | None,
+    resolved_credentials: ResolvedAgentCredentials,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "env_path": str(resolved_credentials.env_path),
+        "resolved_fields": resolved_credentials.as_redacted_dict(),
+    }
+    if isinstance(credentials, AgentCredentialBinding):
+        payload["binding"] = binding_field_map(credentials)
+    return payload
 
 
 SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS = (

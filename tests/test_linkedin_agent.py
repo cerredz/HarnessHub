@@ -12,6 +12,7 @@ from harnessiq.agents import (
     LinkedInJobApplierAgent,
     build_linkedin_browser_tool_definitions,
 )
+from harnessiq.config import AgentCredentialBinding, CredentialEnvReference
 from harnessiq.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW, LinkedInAgentConfig
 from harnessiq.shared.tools import ToolCall
 
@@ -199,6 +200,28 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
             self.assertEqual(result.resets, 1)
             self.assertEqual(model.requests[1].transcript, ())
             self.assertIn("Navigated to LinkedIn Jobs", model.requests[1].parameter_sections[-1].content)
+
+    def test_linkedin_agent_accepts_credentials_binding_and_redacts_values(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            Path(temp_dir, ".env").write_text("LINKEDIN_SESSION_TOKEN=li_test_abcdef1234\n", encoding="utf-8")
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+            agent = LinkedInJobApplierAgent(
+                model=model,
+                memory_path=Path(temp_dir, "memory"),
+                credentials=AgentCredentialBinding(
+                    agent_name="linkedin_job_applier",
+                    references=(CredentialEnvReference(field_name="session_token", env_var="LINKEDIN_SESSION_TOKEN"),),
+                ),
+                credentials_repo_root=temp_dir,
+            )
+
+            result = agent.run(max_cycles=1)
+
+            self.assertEqual(result.status, "completed")
+            sections = {section.title: section.content for section in model.requests[0].parameter_sections}
+            self.assertIn("Credentials", sections)
+            self.assertIn("LINKEDIN_SESSION_TOKEN", sections["Credentials"])
+            self.assertNotIn("li_test_abcdef1234", sections["Credentials"])
 
 
 if __name__ == "__main__":

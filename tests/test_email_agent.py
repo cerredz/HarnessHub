@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection, BaseEmailAgent, EmailAgentConfig
+from harnessiq.config import AgentCredentialBinding, CredentialEnvReference
 from harnessiq.shared.tools import ToolCall
 from harnessiq.tools import RESEND_REQUEST, ResendClient, ResendCredentials
 
@@ -24,17 +27,19 @@ class _TestEmailAgent(BaseEmailAgent):
         self,
         *,
         model: _FakeModel,
-        resend_credentials: ResendCredentials,
+        resend_credentials: ResendCredentials | None = None,
+        config: EmailAgentConfig | None = None,
         allowed_resend_operations: tuple[str, ...] | None = None,
         resend_client: ResendClient | None = None,
     ) -> None:
+        agent_config = config or EmailAgentConfig(
+            resend_credentials=resend_credentials,
+            allowed_resend_operations=allowed_resend_operations,
+        )
         super().__init__(
             name="test_email_agent",
             model=model,
-            config=EmailAgentConfig(
-                resend_credentials=resend_credentials,
-                allowed_resend_operations=allowed_resend_operations,
-            ),
+            config=agent_config,
             resend_client=resend_client,
         )
 
@@ -121,6 +126,28 @@ class BaseEmailAgentTests(unittest.TestCase):
             model.requests[0].tools[0].input_schema["properties"]["operation"]["enum"],
             ["send_email", "list_domains"],
         )
+
+    def test_email_agent_can_resolve_credentials_from_binding_and_repo_env(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            Path(temp_dir, ".env").write_text("RESEND_API_KEY=re_test_abcdef1234\n", encoding="utf-8")
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+            agent = _TestEmailAgent(
+                model=model,
+                resend_credentials=None,
+                config=EmailAgentConfig(
+                    credentials=AgentCredentialBinding(
+                        agent_name="test_email_agent",
+                        references=(CredentialEnvReference(field_name="api_key", env_var="RESEND_API_KEY"),),
+                    ),
+                    credentials_repo_root=temp_dir,
+                ),
+            )
+
+            result = agent.run(max_cycles=1)
+
+            self.assertEqual(result.status, "completed")
+            self.assertIn("RESEND_API_KEY", model.requests[0].parameter_sections[0].content)
+            self.assertNotIn("re_test_abcdef1234", model.requests[0].parameter_sections[0].content)
 
 
 if __name__ == "__main__":

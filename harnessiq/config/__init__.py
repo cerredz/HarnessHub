@@ -4,6 +4,7 @@ from .credentials import (
     AgentCredentialBinding,
     AgentCredentialsNotConfiguredError,
     CredentialEnvReference,
+    binding_field_map,
     CredentialsConfig,
     CredentialsConfigError,
     CredentialsConfigStore,
@@ -12,14 +13,17 @@ from .credentials import (
     DEFAULT_ENV_FILENAME,
     DotEnvFileNotFoundError,
     MissingEnvironmentVariableError,
+    mask_secret_value,
     ResolvedAgentCredentials,
     parse_dotenv_file,
+    resolve_credentials_input,
 )
 
 __all__ = [
     "AgentCredentialBinding",
     "AgentCredentialsNotConfiguredError",
     "CredentialEnvReference",
+    "binding_field_map",
     "CredentialsConfig",
     "CredentialsConfigError",
     "CredentialsConfigStore",
@@ -28,6 +32,8 @@ __all__ = [
     "DEFAULT_ENV_FILENAME",
     "DotEnvFileNotFoundError",
     "MissingEnvironmentVariableError",
+    "mask_secret_value",
     "ResolvedAgentCredentials",
     "parse_dotenv_file",
+    "resolve_credentials_input",
 ]
