@@ -153,4 +153,16 @@ def _infer_provider_name(url: str) -> str:
         return "proxycurl"
     if "coresignal" in host:
         return "coresignal"
+    if "creatify" in host:
+        return "creatify"
+    if "arcads" in host:
+        return "arcads"
+    if "instantly" in host:
+        return "instantly"
+    if "outreach" in host:
+        return "outreach"
+    if "lemlist" in host:
+        return "lemlist"
+    if "exa.ai" in host:
+        return "exa"
     return "provider"

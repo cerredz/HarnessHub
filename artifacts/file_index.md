@@ -13,10 +13,13 @@ Source layout:
 - `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
 - `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch
 - `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
+- `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
 - `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
 - `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior
 - `harnessiq/providers/`: provider translation helpers and provider-specific request builders
 - `harnessiq/config/`: credential loader and base credential configuration types; `CredentialLoader` resolves named environment variables from a repo-local `.env` file
+- `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
+- `harnessiq/providers/`: provider-specific request builders, HTTP clients, and operation catalogs; covers both AI LLM providers and external-service API providers
 - `harnessiq/providers/anthropic/`: Anthropic request and tool-translation helpers
 - `harnessiq/providers/openai/`: OpenAI request and tool-translation helpers
 - `harnessiq/providers/grok/`: Grok request and tool-translation helpers
@@ -29,6 +32,12 @@ Source layout:
 - `harnessiq/providers/peopledatalabs/`: People Data Labs people and company data-enrichment API client
 - `harnessiq/providers/proxycurl/`: Proxycurl LinkedIn data API client
 - `harnessiq/providers/coresignal/`: Coresignal professional network data API client
+- `harnessiq/providers/creatify/`: Creatify AI video creation API — credentials, client, and full operation catalog
+- `harnessiq/providers/arcads/`: Arcads AI video ad API — credentials, client, and operation catalog
+- `harnessiq/providers/instantly/`: Instantly.ai cold email API v2 — credentials, client, and full operation catalog
+- `harnessiq/providers/outreach/`: Outreach.io sales engagement API — credentials, OAuth client, and core operation catalog
+- `harnessiq/providers/lemlist/`: Lemlist outreach API — credentials, client, and full operation catalog
+- `harnessiq/providers/exa/`: Exa neural search API — credentials, client, and full operation catalog
 
 Tests:
 - `tests/test_agents_base.py`: coverage for the generic agent loop, transcript handling, context resets, and structured pause behavior
@@ -54,6 +63,14 @@ Tests:
 - `tests/test_peopledatalabs_provider.py`: coverage for the People Data Labs provider client and request builders
 - `tests/test_proxycurl_provider.py`: coverage for the Proxycurl provider client and request builders
 - `tests/test_coresignal_provider.py`: coverage for the Coresignal provider client and request builders
+- `tests/test_config_loader.py`: coverage for CredentialLoader `.env` parsing, error cases, and HTTP transport hostname mapping for all six new providers
+- `tests/test_creatify_provider.py`: coverage for Creatify credentials, client, operation catalog, and tool factory
+- `tests/test_arcads_provider.py`: coverage for Arcads credentials (Basic Auth), client, operation catalog, and tool factory
+- `tests/test_instantly_provider.py`: coverage for Instantly credentials, client, V2 operation catalog, and tool factory
+- `tests/test_outreach_provider.py`: coverage for Outreach credentials (OAuth Bearer), client, core operation catalog, and tool factory
+- `tests/test_lemlist_provider.py`: coverage for Lemlist credentials (Basic Auth), client, operation catalog, and tool factory
+- `tests/test_exa_provider.py`: coverage for Exa credentials, client, search operation catalog, and tool factory
+- `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
 
 Current memory artifacts:
 
@@ -65,3 +82,4 @@ Current memory artifacts:
 - `memory/email-agent-resend-mcp/`: internalization, ticket, quality, and critique artifacts for the Resend-backed email agent base work
 - `memory/shared-definition-consolidation/`: internalization and ticket plan artifacts for the shared-definition cleanup
 - `memory/add-data-providers/`: internalization, ticket, quality, and critique artifacts for the data-service provider expansion (Snov.io, LeadIQ, Salesforge, PhantomBuster, ZoomInfo, People Data Labs, Proxycurl, Coresignal)
+- `memory/add-service-providers/`: internalization, clarifications, and ticket artifacts for adding Creatify, Arcads, Instantly, Outreach, Lemlist, and Exa providers plus the config layer
