@@ -35,6 +35,22 @@ FILESYSTEM_APPEND_TEXT_FILE = "filesystem.append_text_file"
 FILESYSTEM_MAKE_DIRECTORY = "filesystem.make_directory"
 FILESYSTEM_COPY_PATH = "filesystem.copy_path"
 
+# Provider tool key constants
+ARCADS_REQUEST = "arcads.request"
+CREATIFY_REQUEST = "creatify.request"
+EXA_REQUEST = "exa.request"
+INSTANTLY_REQUEST = "instantly.request"
+LEMLIST_REQUEST = "lemlist.request"
+OUTREACH_REQUEST = "outreach.request"
+SNOVIO_REQUEST = "snovio.request"
+LEADIQ_REQUEST = "leadiq.request"
+SALESFORGE_REQUEST = "salesforge.request"
+PHANTOMBUSTER_REQUEST = "phantombuster.request"
+ZOOMINFO_REQUEST = "zoominfo.request"
+PEOPLEDATALABS_REQUEST = "peopledatalabs.request"
+PROXYCURL_REQUEST = "proxycurl.request"
+CORESIGNAL_REQUEST = "coresignal.request"
+
 
 @dataclass(frozen=True, slots=True)
 class ToolDefinition:
@@ -96,8 +112,12 @@ class RegisteredTool:
 
 __all__ = [
     "ADD_NUMBERS",
+    "ARCADS_REQUEST",
     "CONTROL_PAUSE_FOR_HUMAN",
+    "CORESIGNAL_REQUEST",
+    "CREATIFY_REQUEST",
     "ECHO_TEXT",
+    "EXA_REQUEST",
     "FILESYSTEM_APPEND_TEXT_FILE",
     "FILESYSTEM_COPY_PATH",
     "FILESYSTEM_GET_CURRENT_DIRECTORY",
@@ -107,9 +127,16 @@ __all__ = [
     "FILESYSTEM_READ_TEXT_FILE",
     "FILESYSTEM_WRITE_TEXT_FILE",
     "HEAVY_COMPACTION",
+    "INSTANTLY_REQUEST",
     "JsonObject",
+    "LEADIQ_REQUEST",
+    "LEMLIST_REQUEST",
     "LOG_COMPACTION",
+    "OUTREACH_REQUEST",
+    "PEOPLEDATALABS_REQUEST",
+    "PHANTOMBUSTER_REQUEST",
     "PROMPT_CREATE_SYSTEM_PROMPT",
+    "PROXYCURL_REQUEST",
     "RECORDS_COUNT_BY_FIELD",
     "RECORDS_FILTER_RECORDS",
     "RECORDS_LIMIT_RECORDS",
@@ -119,6 +146,8 @@ __all__ = [
     "REMOVE_TOOL_RESULTS",
     "REMOVE_TOOLS",
     "RegisteredTool",
+    "SALESFORGE_REQUEST",
+    "SNOVIO_REQUEST",
     "TEXT_NORMALIZE_WHITESPACE",
     "TEXT_REGEX_EXTRACT",
     "TEXT_TRUNCATE_TEXT",
@@ -127,4 +156,5 @@ __all__ = [
     "ToolDefinition",
     "ToolHandler",
     "ToolResult",
+    "ZOOMINFO_REQUEST",
 ]
