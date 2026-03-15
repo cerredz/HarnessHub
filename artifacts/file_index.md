@@ -16,12 +16,22 @@ Source layout:
 - `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
 - `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
 - `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior
+- `harnessiq/providers/`: provider translation helpers and provider-specific request builders
+- `harnessiq/config/`: credential loader and base credential configuration types; `CredentialLoader` resolves named environment variables from a repo-local `.env` file
 - `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
 - `harnessiq/providers/`: provider-specific request builders, HTTP clients, and operation catalogs; covers both AI LLM providers and external-service API providers
 - `harnessiq/providers/anthropic/`: Anthropic request and tool-translation helpers
 - `harnessiq/providers/openai/`: OpenAI request and tool-translation helpers
 - `harnessiq/providers/grok/`: Grok request and tool-translation helpers
 - `harnessiq/providers/gemini/`: Gemini request and tool-translation helpers
+- `harnessiq/providers/snovio/`: Snov.io email-finding and outreach API client
+- `harnessiq/providers/leadiq/`: LeadIQ lead-intelligence API client (GraphQL)
+- `harnessiq/providers/salesforge/`: Salesforge AI sales-engagement API client
+- `harnessiq/providers/phantombuster/`: PhantomBuster web-automation API client
+- `harnessiq/providers/zoominfo/`: ZoomInfo B2B-intelligence API client (JWT auth)
+- `harnessiq/providers/peopledatalabs/`: People Data Labs people and company data-enrichment API client
+- `harnessiq/providers/proxycurl/`: Proxycurl LinkedIn data API client
+- `harnessiq/providers/coresignal/`: Coresignal professional network data API client
 - `harnessiq/providers/creatify/`: Creatify AI video creation API — credentials, client, and full operation catalog
 - `harnessiq/providers/arcads/`: Arcads AI video ad API — credentials, client, and operation catalog
 - `harnessiq/providers/instantly/`: Instantly.ai cold email API v2 — credentials, client, and full operation catalog
@@ -44,6 +54,15 @@ Tests:
 - `tests/test_grok_provider.py`: coverage for Grok request, tool, and client helpers
 - `tests/test_openai_provider.py`: coverage for OpenAI request, tool, and client helpers
 - `tests/test_gemini_provider.py`: coverage for Gemini content, tool, and client helpers
+- `tests/test_config_loader.py`: coverage for the CredentialLoader and HTTP transport hostname inference
+- `tests/test_snovio_provider.py`: coverage for the Snov.io provider client and request builders
+- `tests/test_leadiq_provider.py`: coverage for the LeadIQ provider client and GraphQL request builders
+- `tests/test_salesforge_provider.py`: coverage for the Salesforge provider client and request builders
+- `tests/test_phantombuster_provider.py`: coverage for the PhantomBuster provider client and request builders
+- `tests/test_zoominfo_provider.py`: coverage for the ZoomInfo provider client and request builders
+- `tests/test_peopledatalabs_provider.py`: coverage for the People Data Labs provider client and request builders
+- `tests/test_proxycurl_provider.py`: coverage for the Proxycurl provider client and request builders
+- `tests/test_coresignal_provider.py`: coverage for the Coresignal provider client and request builders
 - `tests/test_config_loader.py`: coverage for CredentialLoader `.env` parsing, error cases, and HTTP transport hostname mapping for all six new providers
 - `tests/test_creatify_provider.py`: coverage for Creatify credentials, client, operation catalog, and tool factory
 - `tests/test_arcads_provider.py`: coverage for Arcads credentials (Basic Auth), client, operation catalog, and tool factory
@@ -62,4 +81,5 @@ Current memory artifacts:
 - `memory/add-system-prompt-terminal-tools/`: internalization, clarification, ticket, and verification artifacts for prompt and filesystem tool expansion
 - `memory/email-agent-resend-mcp/`: internalization, ticket, quality, and critique artifacts for the Resend-backed email agent base work
 - `memory/shared-definition-consolidation/`: internalization and ticket plan artifacts for the shared-definition cleanup
+- `memory/add-data-providers/`: internalization, ticket, quality, and critique artifacts for the data-service provider expansion (Snov.io, LeadIQ, Salesforge, PhantomBuster, ZoomInfo, People Data Labs, Proxycurl, Coresignal)
 - `memory/add-service-providers/`: internalization, clarifications, and ticket artifacts for adding Creatify, Arcads, Instantly, Outreach, Lemlist, and Exa providers plus the config layer
