@@ -6,8 +6,6 @@ from .operations import (
     OutreachOperation,
     OutreachPreparedRequest,
     build_outreach_operation_catalog,
-    build_outreach_request_tool_definition,
-    create_outreach_tools,
     get_outreach_operation,
 )
 
@@ -18,7 +16,5 @@ __all__ = [
     "OutreachOperation",
     "OutreachPreparedRequest",
     "build_outreach_operation_catalog",
-    "build_outreach_request_tool_definition",
-    "create_outreach_tools",
     "get_outreach_operation",
 ]

@@ -6,8 +6,6 @@ from .operations import (
     LemlistOperation,
     LemlistPreparedRequest,
     build_lemlist_operation_catalog,
-    build_lemlist_request_tool_definition,
-    create_lemlist_tools,
     get_lemlist_operation,
 )
 
@@ -18,7 +16,5 @@ __all__ = [
     "LemlistOperation",
     "LemlistPreparedRequest",
     "build_lemlist_operation_catalog",
-    "build_lemlist_request_tool_definition",
-    "create_lemlist_tools",
     "get_lemlist_operation",
 ]

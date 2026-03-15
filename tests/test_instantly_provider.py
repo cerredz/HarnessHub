@@ -5,13 +5,13 @@ from __future__ import annotations
 import unittest
 
 from harnessiq.providers.instantly import (
-    INSTANTLY_REQUEST,
     InstantlyClient,
     InstantlyCredentials,
     build_instantly_operation_catalog,
-    create_instantly_tools,
     get_instantly_operation,
 )
+from harnessiq.shared.tools import INSTANTLY_REQUEST
+from harnessiq.tools.instantly import create_instantly_tools
 from harnessiq.tools.registry import ToolRegistry
 
 

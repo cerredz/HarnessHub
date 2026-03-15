@@ -6,8 +6,6 @@ from .operations import (
     ExaOperation,
     ExaPreparedRequest,
     build_exa_operation_catalog,
-    build_exa_request_tool_definition,
-    create_exa_tools,
     get_exa_operation,
 )
 
@@ -18,7 +16,5 @@ __all__ = [
     "ExaOperation",
     "ExaPreparedRequest",
     "build_exa_operation_catalog",
-    "build_exa_request_tool_definition",
-    "create_exa_tools",
     "get_exa_operation",
 ]

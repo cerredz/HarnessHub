@@ -6,13 +6,13 @@ import base64
 import unittest
 
 from harnessiq.providers.arcads import (
-    ARCADS_REQUEST,
     ArcadsClient,
     ArcadsCredentials,
     build_arcads_operation_catalog,
-    create_arcads_tools,
     get_arcads_operation,
 )
+from harnessiq.shared.tools import ARCADS_REQUEST
+from harnessiq.tools.arcads import create_arcads_tools
 from harnessiq.tools.registry import ToolRegistry
 
 

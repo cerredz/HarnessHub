@@ -5,13 +5,13 @@ from __future__ import annotations
 import unittest
 
 from harnessiq.providers.outreach import (
-    OUTREACH_REQUEST,
     OutreachClient,
     OutreachCredentials,
     build_outreach_operation_catalog,
-    create_outreach_tools,
     get_outreach_operation,
 )
+from harnessiq.shared.tools import OUTREACH_REQUEST
+from harnessiq.tools.outreach import create_outreach_tools
 from harnessiq.tools.registry import ToolRegistry
 
 
