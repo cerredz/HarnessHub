@@ -40,6 +40,13 @@ REASON_BRAINSTORM = "reason.brainstorm"
 REASON_CHAIN_OF_THOUGHT = "reason.chain_of_thought"
 REASON_CRITIQUE = "reason.critique"
 
+# Knowt tool key constants
+KNOWT_CREATE_SCRIPT = "knowt.create_script"
+KNOWT_CREATE_AVATAR_DESCRIPTION = "knowt.create_avatar_description"
+KNOWT_CREATE_VIDEO = "knowt.create_video"
+KNOWT_CREATE_FILE = "knowt.create_file"
+KNOWT_EDIT_FILE = "knowt.edit_file"
+
 # Provider tool key constants
 ARCADS_REQUEST = "arcads.request"
 CREATIFY_REQUEST = "creatify.request"
@@ -134,6 +141,11 @@ __all__ = [
     "HEAVY_COMPACTION",
     "INSTANTLY_REQUEST",
     "JsonObject",
+    "KNOWT_CREATE_AVATAR_DESCRIPTION",
+    "KNOWT_CREATE_FILE",
+    "KNOWT_CREATE_SCRIPT",
+    "KNOWT_CREATE_VIDEO",
+    "KNOWT_EDIT_FILE",
     "LEADIQ_REQUEST",
     "LEMLIST_REQUEST",
     "LOG_COMPACTION",
