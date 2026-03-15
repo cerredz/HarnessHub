@@ -39,3 +39,22 @@ print(result.status)
 ```
 
 For production usage, replace `StaticModel` with your own adapter around the provider/client layer you want to use.
+
+## Credential Bindings
+
+Harnessiq can also persist repo-local credential bindings that resolve against a `.env` file:
+
+```python
+from harnessiq.config import AgentCredentialBinding, CredentialEnvReference, CredentialsConfigStore
+
+store = CredentialsConfigStore(".")
+store.upsert(
+    AgentCredentialBinding(
+        agent_name="email_agent",
+        references=(CredentialEnvReference(field_name="api_key", env_var="RESEND_API_KEY"),),
+    )
+)
+
+resolved = store.resolve_agent("email_agent")
+print(resolved.as_redacted_dict())
+```

@@ -79,6 +79,7 @@ class HarnessiqPackageTests(unittest.TestCase):
             text=True,
         )
 
+        self.assertIn("config", help_run.stdout)
         self.assertIn("linkedin", help_run.stdout)
         self.assertEqual(help_run.returncode, 0)
 
