@@ -30,14 +30,17 @@ class LeadIQCredentialsTests(unittest.TestCase):
 
 
 class LeadIQHeaderTests(unittest.TestCase):
-    def test_build_headers_includes_x_api_key(self) -> None:
+    def test_build_headers_uses_basic_auth(self) -> None:
+        import base64
+
         headers = build_headers("liq_key")
-        self.assertEqual(headers["X-Api-Key"], "liq_key")
+        expected = "Basic " + base64.b64encode(b"liq_key:").decode("ascii")
+        self.assertEqual(headers["Authorization"], expected)
 
     def test_build_headers_merges_extra_headers(self) -> None:
         headers = build_headers("liq_key", extra_headers={"X-Custom": "val"})
         self.assertEqual(headers["X-Custom"], "val")
-        self.assertEqual(headers["X-Api-Key"], "liq_key")
+        self.assertIn("Authorization", headers)
 
 
 class LeadIQRequestBuilderTests(unittest.TestCase):
@@ -153,11 +156,14 @@ class LeadIQClientTests(unittest.TestCase):
         self.assertIn("searchContacts", body["query"])
         self.assertEqual(body["variables"]["filter"]["name"], "Alice")
 
-    def test_headers_include_x_api_key(self) -> None:
+    def test_headers_include_basic_auth(self) -> None:
+        import base64
+
         captured: list[dict] = []
         client = self._make_client(captured)
         client.get_tags()
-        self.assertEqual(captured[0]["headers"]["X-Api-Key"], "liq_key")
+        expected = "Basic " + base64.b64encode(b"liq_key:").decode("ascii")
+        self.assertEqual(captured[0]["headers"]["Authorization"], expected)
 
     def test_capture_leads_sends_mutation(self) -> None:
         captured: list[dict] = []
