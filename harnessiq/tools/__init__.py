@@ -16,6 +16,9 @@ from harnessiq.shared.tools import (
     JsonObject,
     LOG_COMPACTION,
     PROMPT_CREATE_SYSTEM_PROMPT,
+    REASON_BRAINSTORM,
+    REASON_CHAIN_OF_THOUGHT,
+    REASON_CRITIQUE,
     RECORDS_COUNT_BY_FIELD,
     RECORDS_FILTER_RECORDS,
     RECORDS_LIMIT_RECORDS,
@@ -72,6 +75,7 @@ from .general_purpose import (
     unique_records,
 )
 from .prompting import create_prompt_tools, create_system_prompt
+from .reasoning import brainstorm, chain_of_thought, create_reasoning_tools, critique
 from .resend import (
     DEFAULT_RESEND_BASE_URL,
     DEFAULT_RESEND_USER_AGENT,
@@ -106,6 +110,9 @@ __all__ = [
     "JsonObject",
     "LOG_COMPACTION",
     "PROMPT_CREATE_SYSTEM_PROMPT",
+    "REASON_BRAINSTORM",
+    "REASON_CHAIN_OF_THOUGHT",
+    "REASON_CRITIQUE",
     "RECORDS_COUNT_BY_FIELD",
     "RECORDS_FILTER_RECORDS",
     "RECORDS_LIMIT_RECORDS",
@@ -138,8 +145,12 @@ __all__ = [
     "create_context_compaction_tools",
     "create_filesystem_tools",
     "create_general_purpose_tools",
+    "brainstorm",
+    "chain_of_thought",
     "create_prompt_tools",
+    "create_reasoning_tools",
     "create_resend_tools",
+    "critique",
     "create_system_prompt",
     "DEFAULT_RESEND_BASE_URL",
     "DEFAULT_RESEND_USER_AGENT",
