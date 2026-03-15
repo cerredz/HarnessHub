@@ -35,6 +35,10 @@ FILESYSTEM_APPEND_TEXT_FILE = "filesystem.append_text_file"
 FILESYSTEM_MAKE_DIRECTORY = "filesystem.make_directory"
 FILESYSTEM_COPY_PATH = "filesystem.copy_path"
 
+# Reasoning tool key constants
+REASON_BRAINSTORM = "reason.brainstorm"
+REASON_CHAIN_OF_THOUGHT = "reason.chain_of_thought"
+REASON_CRITIQUE = "reason.critique"
 # Reasoning lens tool key constants
 REASONING_ABDUCTIVE_REASONING = "reasoning.abductive_reasoning"
 REASONING_ANALOGY_GENERATION = "reasoning.analogy_generation"
@@ -189,6 +193,9 @@ __all__ = [
     "PHANTOMBUSTER_REQUEST",
     "PROMPT_CREATE_SYSTEM_PROMPT",
     "PROXYCURL_REQUEST",
+    "REASON_BRAINSTORM",
+    "REASON_CHAIN_OF_THOUGHT",
+    "REASON_CRITIQUE",
     "REASONING_ABDUCTIVE_REASONING",
     "REASONING_ANALOGY_GENERATION",
     "REASONING_ASSUMPTION_SURFACING",
