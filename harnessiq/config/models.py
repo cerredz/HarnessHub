@@ -10,6 +10,9 @@ class ProviderCredentialConfig(TypedDict, total=False):
 
     Concrete per-provider credential TypedDicts extend this base in their
     respective provider packages (e.g. ``harnessiq/providers/snovio/credentials.py``).
+    Concrete subclasses should declare all required fields explicitly and
+    typically use ``total=True`` (the default) to enforce that all keys are
+    present at construction time.
     """
 
 
