@@ -137,4 +137,20 @@ def _infer_provider_name(url: str) -> str:
         return "gemini"
     if "resend" in host:
         return "resend"
+    if "snov.io" in host or "snovio" in host:
+        return "snovio"
+    if "leadiq" in host:
+        return "leadiq"
+    if "salesforge" in host:
+        return "salesforge"
+    if "phantombuster" in host:
+        return "phantombuster"
+    if "zoominfo" in host:
+        return "zoominfo"
+    if "peopledatalabs" in host:
+        return "peopledatalabs"
+    if "nubela" in host or "proxycurl" in host:
+        return "proxycurl"
+    if "coresignal" in host:
+        return "coresignal"
     return "provider"
