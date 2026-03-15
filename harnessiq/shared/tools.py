@@ -35,6 +35,11 @@ FILESYSTEM_APPEND_TEXT_FILE = "filesystem.append_text_file"
 FILESYSTEM_MAKE_DIRECTORY = "filesystem.make_directory"
 FILESYSTEM_COPY_PATH = "filesystem.copy_path"
 
+# Reasoning tool key constants
+REASON_BRAINSTORM = "reason.brainstorm"
+REASON_CHAIN_OF_THOUGHT = "reason.chain_of_thought"
+REASON_CRITIQUE = "reason.critique"
+
 # Provider tool key constants
 ARCADS_REQUEST = "arcads.request"
 CREATIFY_REQUEST = "creatify.request"
@@ -137,6 +142,9 @@ __all__ = [
     "PHANTOMBUSTER_REQUEST",
     "PROMPT_CREATE_SYSTEM_PROMPT",
     "PROXYCURL_REQUEST",
+    "REASON_BRAINSTORM",
+    "REASON_CHAIN_OF_THOUGHT",
+    "REASON_CRITIQUE",
     "RECORDS_COUNT_BY_FIELD",
     "RECORDS_FILTER_RECORDS",
     "RECORDS_LIMIT_RECORDS",
