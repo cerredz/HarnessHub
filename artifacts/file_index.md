@@ -13,6 +13,7 @@ Source layout:
 - `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
 - `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch
 - `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
+- `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
 - `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
 - `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior
 - `harnessiq/providers/`: provider translation helpers and provider-specific request builders
@@ -36,6 +37,7 @@ Tests:
 - `tests/test_grok_provider.py`: coverage for Grok request, tool, and client helpers
 - `tests/test_openai_provider.py`: coverage for OpenAI request, tool, and client helpers
 - `tests/test_gemini_provider.py`: coverage for Gemini content, tool, and client helpers
+- `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
 
 Current memory artifacts:
 
