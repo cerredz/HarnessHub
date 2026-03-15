@@ -228,5 +228,90 @@ class SnovioClientTests(unittest.TestCase):
         self.assertIn("/v2/me", captured[0]["url"])
 
 
+class SnovioOperationCatalogTests(unittest.TestCase):
+    def test_catalog_is_non_empty(self) -> None:
+        from harnessiq.providers.snovio.operations import build_snovio_operation_catalog
+        catalog = build_snovio_operation_catalog()
+        self.assertGreater(len(catalog), 0)
+
+    def test_catalog_covers_core_categories(self) -> None:
+        from harnessiq.providers.snovio.operations import build_snovio_operation_catalog
+        catalog = build_snovio_operation_catalog()
+        categories = {op.category for op in catalog}
+        self.assertIn("Email Discovery", categories)
+        self.assertIn("Prospect", categories)
+        self.assertIn("Campaign", categories)
+        self.assertIn("Account", categories)
+
+    def test_domain_search_is_in_catalog(self) -> None:
+        from harnessiq.providers.snovio.operations import get_snovio_operation
+        op = get_snovio_operation("domain_search")
+        self.assertEqual(op.category, "Email Discovery")
+
+    def test_get_all_campaigns_is_in_catalog(self) -> None:
+        from harnessiq.providers.snovio.operations import get_snovio_operation
+        op = get_snovio_operation("get_all_campaigns")
+        self.assertEqual(op.category, "Campaign")
+
+    def test_get_operation_raises_for_unknown(self) -> None:
+        from harnessiq.providers.snovio.operations import get_snovio_operation
+        with self.assertRaises(ValueError) as ctx:
+            get_snovio_operation("nonexistent_op")
+        self.assertIn("nonexistent_op", str(ctx.exception))
+
+
+class SnovioToolsTests(unittest.TestCase):
+    def _client(self) -> SnovioClient:
+        return SnovioClient(
+            client_id="cid",
+            client_secret="sec",
+            request_executor=lambda m, u, **kw: {"access_token": "tok"},
+        )
+
+    def test_create_snovio_tools_returns_registerable_tuple(self) -> None:
+        from harnessiq.tools.snovio import create_snovio_tools
+        from harnessiq.tools.registry import ToolRegistry
+        tools = create_snovio_tools(client=self._client())
+        self.assertEqual(len(tools), 1)
+        ToolRegistry(tools)
+
+    def test_tool_definition_key_is_snovio_request(self) -> None:
+        from harnessiq.tools.snovio import create_snovio_tools
+        from harnessiq.shared.tools import SNOVIO_REQUEST
+        tools = create_snovio_tools(client=self._client())
+        self.assertEqual(tools[0].definition.key, SNOVIO_REQUEST)
+
+    def test_tool_handler_executes_get_user_info(self) -> None:
+        from harnessiq.tools.snovio import create_snovio_tools
+        from harnessiq.shared.tools import SNOVIO_REQUEST
+        from harnessiq.tools.registry import ToolRegistry
+        captured: list[dict] = []
+
+        def fake(method: str, url: str, **kw: object) -> object:
+            captured.append({"method": method, "url": url})
+            return {"access_token": "tok"} if "oauth" in url else {"credits": 100}
+
+        client = SnovioClient(client_id="cid", client_secret="sec", request_executor=fake)
+        tools = create_snovio_tools(client=client)
+        registry = ToolRegistry(tools)
+        result = registry.execute(SNOVIO_REQUEST, {"operation": "get_user_info"})
+        self.assertEqual(result.output["operation"], "get_user_info")
+        self.assertGreaterEqual(len(captured), 2)
+
+    def test_create_snovio_tools_raises_without_credentials_or_client(self) -> None:
+        from harnessiq.tools.snovio import create_snovio_tools
+        with self.assertRaises(ValueError):
+            create_snovio_tools()
+
+    def test_allowed_operations_subset(self) -> None:
+        from harnessiq.tools.snovio import create_snovio_tools
+        tools = create_snovio_tools(
+            client=self._client(),
+            allowed_operations=["domain_search", "verify_email"],
+        )
+        enum_vals = tools[0].definition.input_schema["properties"]["operation"]["enum"]
+        self.assertEqual(set(enum_vals), {"domain_search", "verify_email"})
+
+
 if __name__ == "__main__":
     unittest.main()
