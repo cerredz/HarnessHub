@@ -1,18 +1,5 @@
-"""Coresignal credential configuration type."""
+"""Coresignal credential configuration type — re-exported from shared."""
 
-from __future__ import annotations
-
-from harnessiq.config.models import ProviderCredentialConfig
-
-
-class CoreSignalCredentials(ProviderCredentialConfig, total=True):
-    """Credentials for authenticating with the Coresignal API.
-
-    Pass the *api_key* in the ``apikey`` request header (lowercase, not
-    ``Authorization`` or ``X-Api-Key``).
-    """
-
-    api_key: str
-
+from harnessiq.shared.credentials import CoreSignalCredentials as CoreSignalCredentials
 
 __all__ = ["CoreSignalCredentials"]

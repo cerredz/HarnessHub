@@ -1,17 +1,5 @@
-"""LeadIQ credential configuration type."""
+"""LeadIQ credential configuration type — re-exported from shared."""
 
-from __future__ import annotations
-
-from harnessiq.config.models import ProviderCredentialConfig
-
-
-class LeadIQCredentials(ProviderCredentialConfig, total=True):
-    """Credentials for authenticating with the LeadIQ API.
-
-    Pass the *api_key* in the ``X-Api-Key`` request header.
-    """
-
-    api_key: str
-
+from harnessiq.shared.credentials import LeadIQCredentials as LeadIQCredentials
 
 __all__ = ["LeadIQCredentials"]

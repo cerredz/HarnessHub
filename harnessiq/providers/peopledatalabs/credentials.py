@@ -1,17 +1,5 @@
-"""People Data Labs credential configuration type."""
+"""People Data Labs credential configuration type — re-exported from shared."""
 
-from __future__ import annotations
-
-from harnessiq.config.models import ProviderCredentialConfig
-
-
-class PeopleDataLabsCredentials(ProviderCredentialConfig, total=True):
-    """Credentials for authenticating with the People Data Labs API.
-
-    Pass the *api_key* in the ``X-Api-Key`` request header.
-    """
-
-    api_key: str
-
+from harnessiq.shared.credentials import PeopleDataLabsCredentials as PeopleDataLabsCredentials
 
 __all__ = ["PeopleDataLabsCredentials"]
