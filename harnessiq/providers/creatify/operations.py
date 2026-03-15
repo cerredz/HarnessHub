@@ -1,4 +1,4 @@
-"""Creatify operation catalog, tool definition, and MCP-style tool factory."""
+"""Creatify API operation catalog and request preparation primitives."""
 
 from __future__ import annotations
 
@@ -9,12 +9,11 @@ from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence
 from urllib.parse import quote
 
 from harnessiq.providers.http import join_url
-from harnessiq.shared.tools import RegisteredTool, ToolArguments, ToolDefinition
+from harnessiq.shared.tools import CREATIFY_REQUEST
 
 if TYPE_CHECKING:
     from harnessiq.providers.creatify.client import CreatifyCredentials
 
-CREATIFY_REQUEST = "creatify.request"
 PayloadKind = Literal["none", "object"]
 
 
@@ -176,91 +175,6 @@ def get_creatify_operation(operation_name: str) -> CreatifyOperation:
     return op
 
 
-def build_creatify_request_tool_definition(
-    *,
-    allowed_operations: Sequence[str] | None = None,
-) -> ToolDefinition:
-    """Return the canonical tool definition for the Creatify request surface."""
-    operations = _select_operations(allowed_operations)
-    operation_names = [op.name for op in operations]
-    return ToolDefinition(
-        key=CREATIFY_REQUEST,
-        name="creatify_request",
-        description=_build_tool_description(operations),
-        input_schema={
-            "type": "object",
-            "properties": {
-                "operation": {
-                    "type": "string",
-                    "enum": operation_names,
-                    "description": "Creatify operation name.",
-                },
-                "path_params": {
-                    "type": "object",
-                    "description": "Path parameters such as the resource id.",
-                    "additionalProperties": True,
-                },
-                "query": {
-                    "type": "object",
-                    "description": "Optional query parameters for list/filter operations.",
-                    "additionalProperties": True,
-                },
-                "payload": {
-                    "type": "object",
-                    "description": "Optional JSON body for create/update operations.",
-                },
-            },
-            "required": ["operation"],
-            "additionalProperties": False,
-        },
-    )
-
-
-def create_creatify_tools(
-    *,
-    credentials: "CreatifyCredentials | None" = None,
-    client: "Any | None" = None,
-    allowed_operations: Sequence[str] | None = None,
-) -> tuple[RegisteredTool, ...]:
-    """Return the MCP-style Creatify request tool backed by the provided client."""
-    from harnessiq.providers.creatify.client import CreatifyClient
-
-    creatify_client = _coerce_client(credentials=credentials, client=client)
-    selected = _select_operations(allowed_operations)
-    allowed_names = frozenset(op.name for op in selected)
-    definition = build_creatify_request_tool_definition(
-        allowed_operations=tuple(op.name for op in selected)
-    )
-
-    def handler(arguments: ToolArguments) -> dict[str, Any]:
-        operation_name = _require_operation_name(arguments, allowed_names)
-        prepared = creatify_client.prepare_request(
-            operation_name,
-            path_params=_optional_mapping(arguments, "path_params"),
-            query=_optional_mapping(arguments, "query"),
-            payload=arguments.get("payload"),
-        )
-        response = creatify_client.request_executor(
-            prepared.method,
-            prepared.url,
-            headers=prepared.headers,
-            json_body=prepared.json_body,
-            timeout_seconds=creatify_client.credentials.timeout_seconds,
-        )
-        return {
-            "operation": prepared.operation.name,
-            "method": prepared.method,
-            "path": prepared.path,
-            "response": response,
-        }
-
-    return (RegisteredTool(definition=definition, handler=handler),)
-
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
 def _build_prepared_request(
     *,
     operation_name: str,
@@ -320,65 +234,11 @@ def _validate_payload(op: CreatifyOperation, payload: Any | None) -> None:
         raise ValueError(f"Operation '{op.name}' requires a payload.")
 
 
-def _select_operations(allowed: Sequence[str] | None) -> tuple[CreatifyOperation, ...]:
-    if allowed is None:
-        return build_creatify_operation_catalog()
-    seen: set[str] = set()
-    selected: list[CreatifyOperation] = []
-    for name in allowed:
-        op = get_creatify_operation(name)
-        if op.name not in seen:
-            seen.add(op.name)
-            selected.append(op)
-    return tuple(selected)
-
-
-def _coerce_client(*, credentials: Any, client: Any) -> Any:
-    from harnessiq.providers.creatify.client import CreatifyClient
-
-    if client is not None:
-        return client
-    if credentials is None:
-        raise ValueError("Either Creatify credentials or a Creatify client must be provided.")
-    return CreatifyClient(credentials=credentials)
-
-
-def _require_operation_name(arguments: Mapping[str, object], allowed: frozenset[str]) -> str:
-    value = arguments["operation"]
-    if not isinstance(value, str):
-        raise ValueError("The 'operation' argument must be a string.")
-    if value not in allowed:
-        raise ValueError(f"Unsupported Creatify operation '{value}'.")
-    return value
-
-
-def _optional_mapping(arguments: Mapping[str, object], key: str) -> Mapping[str, object] | None:
-    v = arguments.get(key)
-    if v is None:
-        return None
-    if not isinstance(v, Mapping):
-        raise ValueError(f"The '{key}' argument must be an object when provided.")
-    return v
-
-
-def _build_tool_description(operations: Sequence[CreatifyOperation]) -> str:
-    grouped: OrderedDict[str, list[str]] = OrderedDict()
-    for op in operations:
-        grouped.setdefault(op.category, []).append(op.summary())
-    lines = ["Execute authenticated Creatify AI video creation API operations."]
-    for category, summaries in grouped.items():
-        lines.append(f"{category}: {', '.join(summaries)}")
-    lines.append("Use 'path_params' for resource ids, 'query' for list filtering, 'payload' for JSON bodies.")
-    return "\n".join(lines)
-
-
 __all__ = [
     "CREATIFY_REQUEST",
     "CreatifyOperation",
     "CreatifyPreparedRequest",
     "_build_prepared_request",
     "build_creatify_operation_catalog",
-    "build_creatify_request_tool_definition",
-    "create_creatify_tools",
     "get_creatify_operation",
 ]

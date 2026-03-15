@@ -6,13 +6,13 @@ import base64
 import unittest
 
 from harnessiq.providers.lemlist import (
-    LEMLIST_REQUEST,
     LemlistClient,
     LemlistCredentials,
     build_lemlist_operation_catalog,
-    create_lemlist_tools,
     get_lemlist_operation,
 )
+from harnessiq.shared.tools import LEMLIST_REQUEST
+from harnessiq.tools.lemlist import create_lemlist_tools
 from harnessiq.tools.registry import ToolRegistry
 
 

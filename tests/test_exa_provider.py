@@ -5,13 +5,13 @@ from __future__ import annotations
 import unittest
 
 from harnessiq.providers.exa import (
-    EXA_REQUEST,
     ExaClient,
     ExaCredentials,
     build_exa_operation_catalog,
-    create_exa_tools,
     get_exa_operation,
 )
+from harnessiq.shared.tools import EXA_REQUEST
+from harnessiq.tools.exa import create_exa_tools
 from harnessiq.tools.registry import ToolRegistry
 
 
