@@ -6,7 +6,7 @@ from importlib import import_module
 from typing import Any
 
 __version__ = "0.1.0"
-_EXPORTED_MODULES = frozenset({"agents", "cli", "providers", "tools"})
+_EXPORTED_MODULES = frozenset({"agents", "cli", "config", "providers", "tools"})
 
 
 def __getattr__(name: str) -> Any:
