@@ -1,17 +1,5 @@
-"""Salesforge credential configuration type."""
+"""Salesforge credential configuration type — re-exported from shared."""
 
-from __future__ import annotations
-
-from harnessiq.config.models import ProviderCredentialConfig
-
-
-class SalesforgeCredentials(ProviderCredentialConfig, total=True):
-    """Credentials for authenticating with the Salesforge API.
-
-    Pass the *api_key* in the ``Authorization: Bearer {api_key}`` request header.
-    """
-
-    api_key: str
-
+from harnessiq.shared.credentials import SalesforgeCredentials as SalesforgeCredentials
 
 __all__ = ["SalesforgeCredentials"]

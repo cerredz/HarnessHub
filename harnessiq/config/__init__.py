@@ -1,13 +1,4 @@
-"""Credential configuration and loader utilities for the Harnessiq SDK."""
 """Credential configuration and environment-variable loading for Harnessiq providers."""
-
-from .loader import CredentialLoader
-from .models import ProviderCredentialConfig
-
-__all__ = [
-    "CredentialLoader",
-    "ProviderCredentialConfig",
-"""Public credential config helpers for Harnessiq."""
 
 from .credentials import (
     AgentCredentialBinding,
@@ -24,11 +15,14 @@ from .credentials import (
     ResolvedAgentCredentials,
     parse_dotenv_file,
 )
+from .loader import CredentialLoader
+from .models import ProviderCredentialConfig
 
 __all__ = [
     "AgentCredentialBinding",
     "AgentCredentialsNotConfiguredError",
     "CredentialEnvReference",
+    "CredentialLoader",
     "CredentialsConfig",
     "CredentialsConfigError",
     "CredentialsConfigStore",
@@ -37,6 +31,7 @@ __all__ = [
     "DEFAULT_ENV_FILENAME",
     "DotEnvFileNotFoundError",
     "MissingEnvironmentVariableError",
+    "ProviderCredentialConfig",
     "ResolvedAgentCredentials",
     "parse_dotenv_file",
 ]

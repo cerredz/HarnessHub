@@ -1,19 +1,5 @@
-"""ZoomInfo credential configuration type."""
+"""ZoomInfo credential configuration type — re-exported from shared."""
 
-from __future__ import annotations
-
-from harnessiq.config.models import ProviderCredentialConfig
-
-
-class ZoomInfoCredentials(ProviderCredentialConfig, total=True):
-    """Credentials for authenticating with the ZoomInfo API.
-
-    ZoomInfo uses a two-step auth: POST /authenticate with username+password
-    to obtain a JWT, then pass the JWT as ``Authorization: Bearer {jwt}``.
-    """
-
-    username: str
-    password: str
-
+from harnessiq.shared.credentials import ZoomInfoCredentials as ZoomInfoCredentials
 
 __all__ = ["ZoomInfoCredentials"]
