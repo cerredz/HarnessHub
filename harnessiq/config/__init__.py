@@ -1,3 +1,11 @@
+"""Credential configuration and environment-variable loading for Harnessiq providers."""
+
+from .loader import CredentialLoader
+from .models import ProviderCredentialConfig
+
+__all__ = [
+    "CredentialLoader",
+    "ProviderCredentialConfig",
 """Public credential config helpers for Harnessiq."""
 
 from .credentials import (

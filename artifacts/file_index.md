@@ -16,11 +16,18 @@ Source layout:
 - `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
 - `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
 - `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior
-- `harnessiq/providers/`: provider translation helpers and provider-specific request builders
+- `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
+- `harnessiq/providers/`: provider-specific request builders, HTTP clients, and operation catalogs; covers both AI LLM providers and external-service API providers
 - `harnessiq/providers/anthropic/`: Anthropic request and tool-translation helpers
 - `harnessiq/providers/openai/`: OpenAI request and tool-translation helpers
 - `harnessiq/providers/grok/`: Grok request and tool-translation helpers
 - `harnessiq/providers/gemini/`: Gemini request and tool-translation helpers
+- `harnessiq/providers/creatify/`: Creatify AI video creation API — credentials, client, and full operation catalog
+- `harnessiq/providers/arcads/`: Arcads AI video ad API — credentials, client, and operation catalog
+- `harnessiq/providers/instantly/`: Instantly.ai cold email API v2 — credentials, client, and full operation catalog
+- `harnessiq/providers/outreach/`: Outreach.io sales engagement API — credentials, OAuth client, and core operation catalog
+- `harnessiq/providers/lemlist/`: Lemlist outreach API — credentials, client, and full operation catalog
+- `harnessiq/providers/exa/`: Exa neural search API — credentials, client, and full operation catalog
 
 Tests:
 - `tests/test_agents_base.py`: coverage for the generic agent loop, transcript handling, context resets, and structured pause behavior
@@ -37,6 +44,13 @@ Tests:
 - `tests/test_grok_provider.py`: coverage for Grok request, tool, and client helpers
 - `tests/test_openai_provider.py`: coverage for OpenAI request, tool, and client helpers
 - `tests/test_gemini_provider.py`: coverage for Gemini content, tool, and client helpers
+- `tests/test_config_loader.py`: coverage for CredentialLoader `.env` parsing, error cases, and HTTP transport hostname mapping for all six new providers
+- `tests/test_creatify_provider.py`: coverage for Creatify credentials, client, operation catalog, and tool factory
+- `tests/test_arcads_provider.py`: coverage for Arcads credentials (Basic Auth), client, operation catalog, and tool factory
+- `tests/test_instantly_provider.py`: coverage for Instantly credentials, client, V2 operation catalog, and tool factory
+- `tests/test_outreach_provider.py`: coverage for Outreach credentials (OAuth Bearer), client, core operation catalog, and tool factory
+- `tests/test_lemlist_provider.py`: coverage for Lemlist credentials (Basic Auth), client, operation catalog, and tool factory
+- `tests/test_exa_provider.py`: coverage for Exa credentials, client, search operation catalog, and tool factory
 - `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
 
 Current memory artifacts:
@@ -48,3 +62,4 @@ Current memory artifacts:
 - `memory/add-system-prompt-terminal-tools/`: internalization, clarification, ticket, and verification artifacts for prompt and filesystem tool expansion
 - `memory/email-agent-resend-mcp/`: internalization, ticket, quality, and critique artifacts for the Resend-backed email agent base work
 - `memory/shared-definition-consolidation/`: internalization and ticket plan artifacts for the shared-definition cleanup
+- `memory/add-service-providers/`: internalization, clarifications, and ticket artifacts for adding Creatify, Arcads, Instantly, Outreach, Lemlist, and Exa providers plus the config layer
