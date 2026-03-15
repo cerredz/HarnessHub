@@ -753,7 +753,7 @@ def _bottleneck_identification(arguments: ToolArguments) -> dict[str, str]:
         f"Apply bottleneck identification to: {intent!r}\n\n"
         f"Optimization metric: {metric}.\n"
         "Map the full process or system pipeline. For each stage, estimate its capacity relative to demand. "
-        "Identify the single stage that most constrains {metric} — the bottleneck. "
+        f"Identify the single stage that most constrains {metric} — the bottleneck. "
         "Quantify how much improvement is theoretically available if the bottleneck is eliminated. "
         "Then identify the next bottleneck that would emerge after the primary one is resolved."
     )
