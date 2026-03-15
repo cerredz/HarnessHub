@@ -13,6 +13,7 @@ Source layout:
 - `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
 - `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch
 - `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
+- `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
 - `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
 - `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior
 - `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
@@ -50,6 +51,7 @@ Tests:
 - `tests/test_outreach_provider.py`: coverage for Outreach credentials (OAuth Bearer), client, core operation catalog, and tool factory
 - `tests/test_lemlist_provider.py`: coverage for Lemlist credentials (Basic Auth), client, operation catalog, and tool factory
 - `tests/test_exa_provider.py`: coverage for Exa credentials, client, search operation catalog, and tool factory
+- `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
 
 Current memory artifacts:
 
