@@ -15,7 +15,21 @@ Source layout:
 - `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
 - `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
 - `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
-- `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior
+- `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior; also contains MCP-style tool factories for all registered data and service providers
+- `harnessiq/tools/creatify/`: MCP-style tool factory for Creatify AI video creation
+- `harnessiq/tools/arcads/`: MCP-style tool factory for Arcads AI advertising video creation
+- `harnessiq/tools/instantly/`: MCP-style tool factory for Instantly cold email platform
+- `harnessiq/tools/outreach/`: MCP-style tool factory for Outreach sales engagement platform
+- `harnessiq/tools/lemlist/`: MCP-style tool factory for Lemlist B2B outreach platform
+- `harnessiq/tools/exa/`: MCP-style tool factory for Exa neural search engine
+- `harnessiq/tools/snovio/`: MCP-style tool factory for Snov.io email intelligence (OAuth2 auth handled transparently)
+- `harnessiq/tools/leadiq/`: MCP-style tool factory for LeadIQ contact intelligence (GraphQL API)
+- `harnessiq/tools/salesforge/`: MCP-style tool factory for Salesforge cold email automation
+- `harnessiq/tools/phantombuster/`: MCP-style tool factory for PhantomBuster browser automation
+- `harnessiq/tools/zoominfo/`: MCP-style tool factory for ZoomInfo B2B intelligence (JWT auth handled transparently)
+- `harnessiq/tools/peopledatalabs/`: MCP-style tool factory for People Data Labs data enrichment
+- `harnessiq/tools/proxycurl/`: MCP-style tool factory for Proxycurl (deprecated — shut down Jan 2025)
+- `harnessiq/tools/coresignal/`: MCP-style tool factory for Coresignal professional data
 - `harnessiq/providers/`: provider translation helpers and provider-specific request builders
 - `harnessiq/config/`: credential loader and base credential configuration types; `CredentialLoader` resolves named environment variables from a repo-local `.env` file
 - `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
@@ -55,14 +69,14 @@ Tests:
 - `tests/test_openai_provider.py`: coverage for OpenAI request, tool, and client helpers
 - `tests/test_gemini_provider.py`: coverage for Gemini content, tool, and client helpers
 - `tests/test_config_loader.py`: coverage for the CredentialLoader and HTTP transport hostname inference
-- `tests/test_snovio_provider.py`: coverage for the Snov.io provider client and request builders
-- `tests/test_leadiq_provider.py`: coverage for the LeadIQ provider client and GraphQL request builders
-- `tests/test_salesforge_provider.py`: coverage for the Salesforge provider client and request builders
-- `tests/test_phantombuster_provider.py`: coverage for the PhantomBuster provider client and request builders
-- `tests/test_zoominfo_provider.py`: coverage for the ZoomInfo provider client and request builders
-- `tests/test_peopledatalabs_provider.py`: coverage for the People Data Labs provider client and request builders
-- `tests/test_proxycurl_provider.py`: coverage for the Proxycurl provider client and request builders
-- `tests/test_coresignal_provider.py`: coverage for the Coresignal provider client and request builders
+- `tests/test_snovio_provider.py`: coverage for Snov.io request builders, client, operation catalog, and tool factory (OAuth2 token exchange)
+- `tests/test_leadiq_provider.py`: coverage for LeadIQ operation catalog and tool factory (GraphQL dispatch)
+- `tests/test_salesforge_provider.py`: coverage for Salesforge operation catalog and tool factory
+- `tests/test_phantombuster_provider.py`: coverage for PhantomBuster operation catalog and tool factory
+- `tests/test_zoominfo_provider.py`: coverage for ZoomInfo operation catalog and tool factory (JWT auth)
+- `tests/test_peopledatalabs_provider.py`: coverage for People Data Labs operation catalog and tool factory
+- `tests/test_proxycurl_provider.py`: coverage for Proxycurl operation catalog and tool factory (deprecated provider)
+- `tests/test_coresignal_provider.py`: coverage for Coresignal operation catalog and tool factory
 - `tests/test_config_loader.py`: coverage for CredentialLoader `.env` parsing, error cases, and HTTP transport hostname mapping for all six new providers
 - `tests/test_creatify_provider.py`: coverage for Creatify credentials, client, operation catalog, and tool factory
 - `tests/test_arcads_provider.py`: coverage for Arcads credentials (Basic Auth), client, operation catalog, and tool factory
