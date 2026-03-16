@@ -125,6 +125,7 @@ from .general_purpose import (
     unique_records,
 )
 from .prompting import create_prompt_tools, create_system_prompt
+from .reasoning import create_reasoning_tools
 from .reasoning.core import brainstorm, chain_of_thought, create_reasoning_tools, critique
 from .resend import (
     DEFAULT_RESEND_BASE_URL,

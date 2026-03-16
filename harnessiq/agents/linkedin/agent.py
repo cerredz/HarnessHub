@@ -47,6 +47,10 @@ from harnessiq.shared.linkedin import (
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
 from harnessiq.tools.registry import ToolRegistry
 
+# Default memory location: the `memory/` folder inside this agent's subdirectory.
+# Users can override this by passing an explicit `memory_path` argument.
+_DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
+
 
 @dataclass(slots=True)
 class LinkedInMemoryStore:
@@ -319,7 +323,7 @@ class LinkedInJobApplierAgent(BaseAgent):
         self,
         *,
         model: AgentModel,
-        memory_path: str | Path,
+        memory_path: str | Path | None = None,
         browser_tools: Iterable[RegisteredTool] = (),
         screenshot_persistor: ScreenshotPersistor | None = None,
         max_tokens: int = DEFAULT_AGENT_MAX_TOKENS,
@@ -330,7 +334,7 @@ class LinkedInJobApplierAgent(BaseAgent):
         pause_webhook: str | None = None,
     ) -> None:
         self._config = LinkedInAgentConfig(
-            memory_path=Path(memory_path),
+            memory_path=_resolve_memory_path(memory_path),
             max_tokens=max_tokens,
             reset_threshold=reset_threshold,
             action_log_window=action_log_window,
@@ -375,19 +379,20 @@ class LinkedInJobApplierAgent(BaseAgent):
         cls,
         *,
         model: AgentModel,
-        memory_path: str | Path,
+        memory_path: str | Path | None = None,
         browser_tools: Iterable[RegisteredTool] = (),
         screenshot_persistor: ScreenshotPersistor | None = None,
         runtime_overrides: Mapping[str, Any] | None = None,
     ) -> "LinkedInJobApplierAgent":
-        memory_store = LinkedInMemoryStore(memory_path=memory_path)
+        resolved_path = _resolve_memory_path(memory_path)
+        memory_store = LinkedInMemoryStore(memory_path=resolved_path)
         memory_store.prepare()
         runtime_parameters = memory_store.read_runtime_parameters()
         if runtime_overrides:
             runtime_parameters.update(runtime_overrides)
         return cls(
             model=model,
-            memory_path=memory_path,
+            memory_path=resolved_path,
             browser_tools=browser_tools,
             screenshot_persistor=screenshot_persistor,
             **normalize_linkedin_runtime_parameters(runtime_parameters),
@@ -759,6 +764,17 @@ def build_linkedin_browser_tool_definitions() -> tuple[ToolDefinition, ...]:
             properties={},
         ),
     )
+
+
+def _resolve_memory_path(memory_path: str | Path | None) -> Path:
+    """Resolve a memory path argument to an absolute Path.
+
+    When ``memory_path`` is ``None`` the agent's default memory directory
+    (``harnessiq/agents/linkedin/memory/``) is used.
+    """
+    if memory_path is None:
+        return _DEFAULT_MEMORY_PATH
+    return Path(memory_path)
 
 
 def _unavailable_browser_handler(tool_name: str):
