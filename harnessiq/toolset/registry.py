@@ -10,7 +10,6 @@ that name available alternatives.
 from __future__ import annotations
 
 import importlib
-from collections.abc import Callable
 
 from harnessiq.shared.tools import RegisteredTool
 
@@ -145,8 +144,8 @@ class ToolsetRegistry:
         by_key: dict[str, RegisteredTool] = {}
         by_family: dict[str, list[RegisteredTool]] = {}
 
-        for _family_name, factory in BUILTIN_FAMILY_FACTORIES.items():
-            tools: tuple[RegisteredTool, ...] = _call_factory(factory)
+        for factory in BUILTIN_FAMILY_FACTORIES:
+            tools: tuple[RegisteredTool, ...] = factory()
             for tool in tools:
                 if tool.key in by_key:
                     continue  # deduplicate (core tools appear in BUILTIN_TOOLS)
@@ -219,12 +218,6 @@ class ToolsetRegistry:
 def _family_of(key: str) -> str:
     """Return the family name (key prefix before the first dot)."""
     return key.split(".")[0]
-
-
-def _call_factory(factory: Callable) -> tuple[RegisteredTool, ...]:  # type: ignore[type-arg]
-    """Call a zero-argument built-in factory and return the result as a tuple."""
-    result = factory()
-    return tuple(result)
 
 
 def _invoke_provider_factory(family: str, credentials: object) -> tuple[RegisteredTool, ...]:

@@ -7,7 +7,12 @@ uses to resolve ``RegisteredTool`` objects on demand.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
+
+from harnessiq.shared.tools import RegisteredTool
+
+_BuiltinFactory = Callable[[], tuple[RegisteredTool, ...]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,55 +43,58 @@ class ToolEntry:
 # family.  Imports are deferred to avoid circular dependencies and to keep
 # module load time low.
 
-def _builtin_core():  # type: ignore[return]
+def _builtin_core() -> tuple[RegisteredTool, ...]:
+    from harnessiq.shared.tools import ADD_NUMBERS, ECHO_TEXT
     from harnessiq.tools.builtin import BUILTIN_TOOLS
-    return tuple(t for t in BUILTIN_TOOLS if t.key.startswith("core."))
+    core_keys = frozenset({ECHO_TEXT, ADD_NUMBERS})
+    return tuple(t for t in BUILTIN_TOOLS if t.key in core_keys)
 
 
-def _builtin_context():  # type: ignore[return]
+def _builtin_context() -> tuple[RegisteredTool, ...]:
     from harnessiq.tools.context_compaction import create_context_compaction_tools
     return create_context_compaction_tools()
 
 
-def _builtin_text_records_control():  # type: ignore[return]
+def _builtin_general_purpose() -> tuple[RegisteredTool, ...]:
+    # Returns text.*, records.*, and control.* tools — grouped in the registry
+    # by their actual key prefix, not by this factory's entry key.
     from harnessiq.tools.general_purpose import create_general_purpose_tools
     return create_general_purpose_tools()
 
 
-def _builtin_prompt():  # type: ignore[return]
+def _builtin_prompt() -> tuple[RegisteredTool, ...]:
     from harnessiq.tools.prompting import create_prompt_tools
     return create_prompt_tools()
 
 
-def _builtin_filesystem():  # type: ignore[return]
+def _builtin_filesystem() -> tuple[RegisteredTool, ...]:
     from harnessiq.tools.filesystem import create_filesystem_tools
     return create_filesystem_tools()
 
 
-def _builtin_reason():  # type: ignore[return]
+def _builtin_reason() -> tuple[RegisteredTool, ...]:
     from harnessiq.tools.reasoning.core import create_reasoning_tools
     return create_reasoning_tools()
 
 
-def _builtin_reasoning():  # type: ignore[return]
+def _builtin_reasoning() -> tuple[RegisteredTool, ...]:
     from harnessiq.tools.reasoning.lenses import create_reasoning_tools
     return create_reasoning_tools()
 
 
-# Ordered mapping of family name → factory callable.
-# The families that span multiple namespaces (text/records/control all come
-# from create_general_purpose_tools) are handled by _load_builtin_tools()
-# in the registry, which groups tools by key prefix after calling each factory.
-BUILTIN_FAMILY_FACTORIES: dict[str, object] = {
-    "core": _builtin_core,
-    "context": _builtin_context,
-    # text, records, control — all from general_purpose; keyed separately below
-    "general": _builtin_text_records_control,
-    "prompt": _builtin_prompt,
-    "filesystem": _builtin_filesystem,
-    "reason": _builtin_reason,
-    "reasoning": _builtin_reasoning,
-}
+# Ordered sequence of built-in factory callables.
+# Tools from each factory are grouped in the registry by their actual key
+# prefix (e.g. _builtin_general_purpose returns text.*, records.*, control.*
+# which end up in three separate families).
+BUILTIN_FAMILY_FACTORIES: tuple[_BuiltinFactory, ...] = (
+    _builtin_core,
+    _builtin_context,
+    _builtin_general_purpose,
+    _builtin_prompt,
+    _builtin_filesystem,
+    _builtin_reason,
+    _builtin_reasoning,
+)
 
 
 # ---------------------------------------------------------------------------
