@@ -18,8 +18,8 @@ from harnessiq.shared.tools import (
     REASON_CRITIQUE,
     KNOWT_CREATE_AVATAR_DESCRIPTION,
     KNOWT_CREATE_VIDEO,
-    KNOWT_CREATE_FILE,
-    KNOWT_EDIT_FILE,
+    FILES_CREATE_FILE,
+    FILES_EDIT_FILE,
 )
 
 
@@ -184,8 +184,8 @@ class TestKnowtAgentAvailableTools(unittest.TestCase):
         self.assertIn(KNOWT_CREATE_SCRIPT, keys)
         self.assertIn(KNOWT_CREATE_AVATAR_DESCRIPTION, keys)
         self.assertIn(KNOWT_CREATE_VIDEO, keys)
-        self.assertIn(KNOWT_CREATE_FILE, keys)
-        self.assertIn(KNOWT_EDIT_FILE, keys)
+        self.assertIn(FILES_CREATE_FILE, keys)
+        self.assertIn(FILES_EDIT_FILE, keys)
 
     def test_total_tool_count_is_eight(self) -> None:
         # 3 reasoning + 5 knowt

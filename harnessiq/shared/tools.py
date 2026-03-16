@@ -40,12 +40,25 @@ REASON_BRAINSTORM = "reason.brainstorm"
 REASON_CHAIN_OF_THOUGHT = "reason.chain_of_thought"
 REASON_CRITIQUE = "reason.critique"
 
+# Numeric bounds for injectable reasoning tools
+REASON_BRAINSTORM_COUNT_MIN = 5
+REASON_BRAINSTORM_COUNT_MAX = 30
+REASON_BRAINSTORM_COUNT_DEFAULT = 10
+REASON_BRAINSTORM_COUNT_PRESETS: dict[str, int] = {
+    "small": 5,
+    "medium": 15,
+    "large": 30,
+}
+REASON_COT_STEPS_MIN = 3
+REASON_COT_STEPS_MAX = 10
+REASON_COT_STEPS_DEFAULT = 5
+
 # Knowt tool key constants
 KNOWT_CREATE_SCRIPT = "knowt.create_script"
 KNOWT_CREATE_AVATAR_DESCRIPTION = "knowt.create_avatar_description"
 KNOWT_CREATE_VIDEO = "knowt.create_video"
-KNOWT_CREATE_FILE = "knowt.create_file"
-KNOWT_EDIT_FILE = "knowt.edit_file"
+FILES_CREATE_FILE = "files.create_file"
+FILES_EDIT_FILE = "files.edit_file"
 # Reasoning lens tool key constants
 REASONING_ABDUCTIVE_REASONING = "reasoning.abductive_reasoning"
 REASONING_ANALOGY_GENERATION = "reasoning.analogy_generation"
@@ -192,11 +205,11 @@ __all__ = [
     "HEAVY_COMPACTION",
     "INSTANTLY_REQUEST",
     "JsonObject",
+    "FILES_CREATE_FILE",
+    "FILES_EDIT_FILE",
     "KNOWT_CREATE_AVATAR_DESCRIPTION",
-    "KNOWT_CREATE_FILE",
     "KNOWT_CREATE_SCRIPT",
     "KNOWT_CREATE_VIDEO",
-    "KNOWT_EDIT_FILE",
     "LEADIQ_REQUEST",
     "LEMLIST_REQUEST",
     "LOG_COMPACTION",
@@ -206,7 +219,14 @@ __all__ = [
     "PROMPT_CREATE_SYSTEM_PROMPT",
     "PROXYCURL_REQUEST",
     "REASON_BRAINSTORM",
+    "REASON_BRAINSTORM_COUNT_DEFAULT",
+    "REASON_BRAINSTORM_COUNT_MAX",
+    "REASON_BRAINSTORM_COUNT_MIN",
+    "REASON_BRAINSTORM_COUNT_PRESETS",
     "REASON_CHAIN_OF_THOUGHT",
+    "REASON_COT_STEPS_DEFAULT",
+    "REASON_COT_STEPS_MAX",
+    "REASON_COT_STEPS_MIN",
     "REASON_CRITIQUE",
     "REASONING_ABDUCTIVE_REASONING",
     "REASONING_ANALOGY_GENERATION",

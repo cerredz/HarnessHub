@@ -10,11 +10,11 @@ from unittest.mock import MagicMock
 
 from harnessiq.shared.knowt import KnowtMemoryStore
 from harnessiq.shared.tools import (
+    FILES_CREATE_FILE,
+    FILES_EDIT_FILE,
     KNOWT_CREATE_AVATAR_DESCRIPTION,
-    KNOWT_CREATE_FILE,
     KNOWT_CREATE_SCRIPT,
     KNOWT_CREATE_VIDEO,
-    KNOWT_EDIT_FILE,
 )
 from harnessiq.tools.knowt import create_knowt_tools
 from harnessiq.tools.registry import ToolRegistry, ToolValidationError
@@ -51,14 +51,14 @@ class TestKnowtToolsFactory(unittest.TestCase):
                 KNOWT_CREATE_SCRIPT,
                 KNOWT_CREATE_AVATAR_DESCRIPTION,
                 KNOWT_CREATE_VIDEO,
-                KNOWT_CREATE_FILE,
-                KNOWT_EDIT_FILE,
+                FILES_CREATE_FILE,
+                FILES_EDIT_FILE,
             ),
         )
 
     def test_tools_register_without_conflict(self) -> None:
         registry = ToolRegistry(self.tools)
-        for key in (KNOWT_CREATE_SCRIPT, KNOWT_CREATE_AVATAR_DESCRIPTION, KNOWT_CREATE_VIDEO, KNOWT_CREATE_FILE, KNOWT_EDIT_FILE):
+        for key in (KNOWT_CREATE_SCRIPT, KNOWT_CREATE_AVATAR_DESCRIPTION, KNOWT_CREATE_VIDEO, FILES_CREATE_FILE, FILES_EDIT_FILE):
             self.assertIn(key, registry)
 
     def test_all_schemas_disallow_additional_properties(self) -> None:
@@ -72,8 +72,8 @@ class TestKnowtToolsFactory(unittest.TestCase):
         self.assertEqual(KNOWT_CREATE_SCRIPT, "knowt.create_script")
         self.assertEqual(KNOWT_CREATE_AVATAR_DESCRIPTION, "knowt.create_avatar_description")
         self.assertEqual(KNOWT_CREATE_VIDEO, "knowt.create_video")
-        self.assertEqual(KNOWT_CREATE_FILE, "knowt.create_file")
-        self.assertEqual(KNOWT_EDIT_FILE, "knowt.edit_file")
+        self.assertEqual(FILES_CREATE_FILE, "files.create_file")
+        self.assertEqual(FILES_EDIT_FILE, "files.edit_file")
 
 
 class TestCreateScriptTool(unittest.TestCase):
@@ -343,20 +343,20 @@ class TestCreateFileTool(unittest.TestCase):
         self.registry = ToolRegistry(create_knowt_tools(memory_store=self.store))
 
     def test_creates_file_in_memory_directory(self) -> None:
-        self.registry.execute(KNOWT_CREATE_FILE, {"filename": "notes.md", "content": "my notes"})
+        self.registry.execute(FILES_CREATE_FILE, {"filename": "notes.md", "content": "my notes"})
         self.assertTrue((Path(self.tmp) / "notes.md").exists())
 
     def test_returns_action_created(self) -> None:
-        result = self.registry.execute(KNOWT_CREATE_FILE, {"filename": "draft.md", "content": "draft"})
+        result = self.registry.execute(FILES_CREATE_FILE, {"filename": "draft.md", "content": "draft"})
         self.assertEqual(result.output["action"], "created")
 
     def test_path_traversal_rejected(self) -> None:
         with self.assertRaises(Exception):
-            self.registry.execute(KNOWT_CREATE_FILE, {"filename": "../escape.txt", "content": "bad"})
+            self.registry.execute(FILES_CREATE_FILE, {"filename": "../escape.txt", "content": "bad"})
 
     def test_missing_filename_raises(self) -> None:
         with self.assertRaises(ToolValidationError):
-            self.registry.execute(KNOWT_CREATE_FILE, {"content": "text"})
+            self.registry.execute(FILES_CREATE_FILE, {"content": "text"})
 
 
 class TestEditFileTool(unittest.TestCase):
@@ -368,19 +368,19 @@ class TestEditFileTool(unittest.TestCase):
         self.registry = ToolRegistry(create_knowt_tools(memory_store=self.store))
 
     def test_overwrites_file_content(self) -> None:
-        self.registry.execute(KNOWT_CREATE_FILE, {"filename": "notes.md", "content": "original"})
-        self.registry.execute(KNOWT_EDIT_FILE, {"filename": "notes.md", "content": "updated"})
+        self.registry.execute(FILES_CREATE_FILE, {"filename": "notes.md", "content": "original"})
+        self.registry.execute(FILES_EDIT_FILE, {"filename": "notes.md", "content": "updated"})
         content = self.store.read_file("notes.md").strip()
         self.assertEqual(content, "updated")
 
     def test_returns_action_edited(self) -> None:
-        self.registry.execute(KNOWT_CREATE_FILE, {"filename": "f.md", "content": "first"})
-        result = self.registry.execute(KNOWT_EDIT_FILE, {"filename": "f.md", "content": "second"})
+        self.registry.execute(FILES_CREATE_FILE, {"filename": "f.md", "content": "first"})
+        result = self.registry.execute(FILES_EDIT_FILE, {"filename": "f.md", "content": "second"})
         self.assertEqual(result.output["action"], "edited")
 
     def test_path_traversal_rejected(self) -> None:
         with self.assertRaises(Exception):
-            self.registry.execute(KNOWT_EDIT_FILE, {"filename": "../../etc/passwd", "content": "x"})
+            self.registry.execute(FILES_EDIT_FILE, {"filename": "../../etc/passwd", "content": "x"})
 
 
 if __name__ == "__main__":

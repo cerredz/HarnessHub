@@ -13,7 +13,7 @@ This package exposes two complementary tool sets:
   factory ``create_reasoning_tools`` exported from this package assembles all 50.
 """
 
-from .core import brainstorm, chain_of_thought, critique
+from .core import brainstorm, chain_of_thought, create_injectable_reasoning_tools, critique
 
 from harnessiq.shared.tools import (
     REASONING_ABDUCTIVE_REASONING,
@@ -73,6 +73,7 @@ from .lenses import create_reasoning_tools
 __all__ = [
     "brainstorm",
     "chain_of_thought",
+    "create_injectable_reasoning_tools",
     "critique",
     "REASONING_ABDUCTIVE_REASONING",
     "REASONING_ANALOGY_GENERATION",

@@ -4,33 +4,30 @@ from __future__ import annotations
 
 from harnessiq.shared.tools import (
     REASON_BRAINSTORM,
+    REASON_BRAINSTORM_COUNT_DEFAULT,
+    REASON_BRAINSTORM_COUNT_MAX,
+    REASON_BRAINSTORM_COUNT_MIN,
+    REASON_BRAINSTORM_COUNT_PRESETS,
     REASON_CHAIN_OF_THOUGHT,
+    REASON_COT_STEPS_DEFAULT,
+    REASON_COT_STEPS_MAX,
+    REASON_COT_STEPS_MIN,
     REASON_CRITIQUE,
     RegisteredTool,
     ToolArguments,
     ToolDefinition,
 )
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-_BRAINSTORM_COUNT_MIN = 5
-_BRAINSTORM_COUNT_MAX = 30
-_BRAINSTORM_COUNT_DEFAULT = 10
-
-# String presets for the brainstorm count parameter.  Each key resolves to a
-# concrete idea count so callers can express intent without knowing the exact
-# numeric boundary.
-_BRAINSTORM_COUNT_PRESETS: dict[str, int] = {
-    "small": 5,
-    "medium": 15,
-    "large": 30,
-}
-
-_COT_STEPS_MIN = 3
-_COT_STEPS_MAX = 10
-_COT_STEPS_DEFAULT = 5
+# Constants are defined in harnessiq.shared.tools as REASON_BRAINSTORM_COUNT_*
+# and REASON_COT_STEPS_* — import aliases for backward compatibility within
+# this module.
+_BRAINSTORM_COUNT_MIN = REASON_BRAINSTORM_COUNT_MIN
+_BRAINSTORM_COUNT_MAX = REASON_BRAINSTORM_COUNT_MAX
+_BRAINSTORM_COUNT_DEFAULT = REASON_BRAINSTORM_COUNT_DEFAULT
+_BRAINSTORM_COUNT_PRESETS = REASON_BRAINSTORM_COUNT_PRESETS
+_COT_STEPS_MIN = REASON_COT_STEPS_MIN
+_COT_STEPS_MAX = REASON_COT_STEPS_MAX
+_COT_STEPS_DEFAULT = REASON_COT_STEPS_DEFAULT
 
 
 # ---------------------------------------------------------------------------
@@ -139,7 +136,7 @@ def critique(arguments: ToolArguments) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
-def create_reasoning_tools() -> tuple[RegisteredTool, ...]:
+def create_injectable_reasoning_tools() -> tuple[RegisteredTool, ...]:
     """Return the three core injectable reasoning tools as a stable tuple.
 
     These tools inject structured reasoning instructions into the agent's
@@ -361,6 +358,6 @@ def _optional_int(arguments: ToolArguments, key: str, default: int) -> int:
 __all__ = [
     "brainstorm",
     "chain_of_thought",
-    "create_reasoning_tools",
+    "create_injectable_reasoning_tools",
     "critique",
 ]
