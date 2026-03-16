@@ -684,9 +684,9 @@ class TestBrainstormTool(unittest.TestCase):
         with self.assertRaises(ValueError):
             brainstorm({"topic": "hooks", "count": True})
 
-    def test_instruction_header_present(self) -> None:
+    def test_instruction_starts_with_invocation_phrase(self) -> None:
         result = brainstorm({"topic": "hooks"})
-        self.assertIn("[REASONING: BRAINSTORM]", result["reasoning_instruction"])
+        self.assertIn("You have invoked a brainstorm tool call", result["reasoning_instruction"])
 
 
 class TestChainOfThoughtTool(unittest.TestCase):
@@ -715,8 +715,8 @@ class TestChainOfThoughtTool(unittest.TestCase):
 
     def test_context_absent_when_not_provided(self) -> None:
         result = chain_of_thought({"task": "plan"})
-        # Prose format embeds context inline; when absent the context sentence is omitted.
-        self.assertNotIn("should inform your reasoning", result["reasoning_instruction"])
+        # Context sentence is "Use the following context to inform your reasoning: …"
+        self.assertNotIn("to inform your reasoning", result["reasoning_instruction"])
 
     def test_steps_below_minimum_raises(self) -> None:
         with self.assertRaises(ValueError):
@@ -736,9 +736,9 @@ class TestChainOfThoughtTool(unittest.TestCase):
         with self.assertRaises(ValueError):
             chain_of_thought({"task": ""})
 
-    def test_instruction_header_present(self) -> None:
+    def test_instruction_starts_with_invocation_phrase(self) -> None:
         result = chain_of_thought({"task": "plan"})
-        self.assertIn("[REASONING: CHAIN OF THOUGHT]", result["reasoning_instruction"])
+        self.assertIn("You have invoked a chain-of-thought tool call", result["reasoning_instruction"])
 
 
 class TestCritiqueTool(unittest.TestCase):
@@ -791,9 +791,9 @@ class TestCritiqueTool(unittest.TestCase):
         with self.assertRaises(ValueError):
             critique({"content": "draft", "aspects": "correctness"})
 
-    def test_instruction_header_present(self) -> None:
+    def test_instruction_starts_with_invocation_phrase(self) -> None:
         result = critique({"content": "draft"})
-        self.assertIn("[REASONING: CRITIQUE]", result["reasoning_instruction"])
+        self.assertIn("You have invoked a critique tool call", result["reasoning_instruction"])
 
     def test_instruction_is_string_key_only(self) -> None:
         result = critique({"content": "draft"})
