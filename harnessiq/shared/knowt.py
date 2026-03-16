@@ -18,6 +18,8 @@ from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESE
 CURRENT_SCRIPT_FILENAME = "current_script.md"
 CURRENT_AVATAR_DESCRIPTION_FILENAME = "current_avatar_description.md"
 CREATION_LOG_FILENAME = "creation_log.jsonl"
+PROMPTS_DIRNAME = "prompts"
+MASTER_PROMPT_FILENAME = "master_prompt.md"
 
 
 # ---------------------------------------------------------------------------
@@ -226,4 +228,6 @@ __all__ = [
     "KnowtAgentConfig",
     "KnowtCreationLogEntry",
     "KnowtMemoryStore",
+    "MASTER_PROMPT_FILENAME",
+    "PROMPTS_DIRNAME",
 ]
