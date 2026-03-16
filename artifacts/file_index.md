@@ -33,6 +33,12 @@ Source layout:
 - `harnessiq/tools/reasoning/`: reasoning tool package — exposes the three core injectable tools (`brainstorm`, `chain_of_thought`, `critique`) and the 50-lens cognitive scaffolding catalog
 - `harnessiq/tools/reasoning/core.py`: three high-level injectable reasoning tools (`reason.brainstorm`, `reason.chain_of_thought`, `reason.critique`) plus `create_reasoning_tools()` factory; supports brainstorm count presets (`"small"`, `"medium"`, `"large"`); instruction outputs are natural language prose injected into the agent context window
 - `harnessiq/tools/reasoning/lenses.py`: 50 reasoning lens tools for agent cognitive scaffolding — includes step-by-step, tree-of-thoughts, first-principles, red-teaming, pre-mortem, and 45 others across 8 cognitive categories (core logical, analytical, perspective, creative, systems, temporal, evaluative, scientific)
+- `harnessiq/tools/knowt/`: Knowt-specific content creation tool factory (create_script, create_avatar_description, create_video via Creatify lipsync_v2, create_file, edit_file)
+- `harnessiq/tools/reasoning.py`: injectable reasoning tools (`reason.brainstorm`, `reason.chain_of_thought`, `reason.critique`) — inject structured reasoning instructions into the agent context window
+- `harnessiq/agents/knowt/`: Knowt TikTok content creation agent harness; enforces brainstorm → script → avatar → video pipeline via deterministic file-backed memory
+- `harnessiq/agents/knowt/prompts/`: system prompt files for the Knowt agent; `master_prompt.md` loaded at runtime so it can be updated without touching Python source
+- `harnessiq/shared/knowt.py`: `KnowtMemoryStore` (file-backed), `KnowtAgentConfig`, `KnowtCreationLogEntry`, and filename constants for the Knowt agent harness
+- `harnessiq/tools/reasoning/`: 50 reasoning lens tools for agent cognitive scaffolding — includes step-by-step, tree-of-thoughts, first-principles, red-teaming, pre-mortem, and 45 others across 8 cognitive categories (core logical, analytical, perspective, creative, systems, temporal, evaluative, scientific)
 - `harnessiq/providers/`: provider translation helpers and provider-specific request builders
 - `harnessiq/config/`: credential loader and base credential configuration types; `CredentialLoader` resolves named environment variables from a repo-local `.env` file
 - `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
@@ -89,6 +95,10 @@ Tests:
 - `tests/test_exa_provider.py`: coverage for Exa credentials, client, search operation catalog, and tool factory
 - `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
 - `tests/test_reasoning_tools.py`: coverage for the three core reasoning tools (brainstorm, chain_of_thought, critique) — handler behavior, count presets, boundary validation, registry integration, and instruction output shape
+- `tests/test_reasoning_tools.py`: coverage for reasoning tool implementations, boundary validation, and instruction formatting
+- `tests/test_knowt_tools.py`: coverage for Knowt tool handlers, memory guard enforcement, Creatify integration, and file-scoped create/edit operations
+- `tests/test_knowt_agent.py`: coverage for the Knowt agent harness — construction, system prompt file loading, parameter sections, tool wiring, and run loop behavior
+- `tests/test_reasoning_tools.py`: coverage for all 50 reasoning lens tool handlers, registry execution, argument validation, and prompt output shape
 
 Current memory artifacts:
 
@@ -101,4 +111,5 @@ Current memory artifacts:
 - `memory/shared-definition-consolidation/`: internalization and ticket plan artifacts for the shared-definition cleanup
 - `memory/add-data-providers/`: internalization, ticket, quality, and critique artifacts for the data-service provider expansion (Snov.io, LeadIQ, Salesforge, PhantomBuster, ZoomInfo, People Data Labs, Proxycurl, Coresignal)
 - `memory/add-service-providers/`: internalization, clarifications, and ticket artifacts for adding Creatify, Arcads, Instantly, Outreach, Lemlist, and Exa providers plus the config layer
+- `memory/knowt-agent/`: internalization, clarification, ticket, and verification artifacts for the reasoning tools and Knowt TikTok content creation agent work
 - `memory/add-reasoning-tools/`: internalization, tickets, quality, and critique artifacts for the 50 reasoning lens tool expansion
