@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+from harnessiq.shared.reasoning import (
+    BRAINSTORM_COUNT_DEFAULT,
+    BRAINSTORM_COUNT_MAX,
+    BRAINSTORM_COUNT_MIN,
+    BRAINSTORM_COUNT_PRESETS,
+    COT_STEPS_DEFAULT,
+    COT_STEPS_MAX,
+    COT_STEPS_MIN,
+)
 from harnessiq.shared.tools import (
     REASON_BRAINSTORM,
     REASON_CHAIN_OF_THOUGHT,
@@ -10,27 +19,6 @@ from harnessiq.shared.tools import (
     ToolArguments,
     ToolDefinition,
 )
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-_BRAINSTORM_COUNT_MIN = 5
-_BRAINSTORM_COUNT_MAX = 30
-_BRAINSTORM_COUNT_DEFAULT = 10
-
-# String presets for the brainstorm count parameter.  Each key resolves to a
-# concrete idea count so callers can express intent without knowing the exact
-# numeric boundary.
-_BRAINSTORM_COUNT_PRESETS: dict[str, int] = {
-    "small": 5,
-    "medium": 15,
-    "large": 30,
-}
-
-_COT_STEPS_MIN = 3
-_COT_STEPS_MAX = 10
-_COT_STEPS_DEFAULT = 5
 
 
 # ---------------------------------------------------------------------------
@@ -45,59 +33,43 @@ def brainstorm(arguments: ToolArguments) -> dict[str, str]:
     context = _optional_string(arguments, "context")
     constraints = _optional_string(arguments, "constraints")
 
-    parts = [
-        "[REASONING: BRAINSTORM]",
-        (
-            f"You are beginning a structured brainstorm on the following topic: {topic}. "
-            f"Your goal is to generate {count} distinct, well-considered ideas before "
-            "committing to any single direction."
-        ),
+    sentences = [
+        f"You have invoked a brainstorm tool call.",
+        f"Generate {count} distinct ideas on the following topic: {topic}.",
+        "For each idea, provide a concise title, a one-sentence rationale explaining "
+        "why it could work, and an estimated impact level of low, medium, or high.",
+        f"After generating all {count} ideas, identify the single strongest one and "
+        "explain your selection reasoning.",
     ]
     if context:
-        parts.append(f"Your brainstorm should be grounded in the following context: {context}.")
+        sentences.append(f"Your brainstorm should draw on the following context: {context}.")
     if constraints:
-        parts.append(
-            f"Every idea you generate must satisfy the following constraints: {constraints}."
-        )
-    parts.append(
-        f"For each of the {count} ideas, provide a concise title, a one-sentence rationale "
-        "explaining why it could work, and an estimated impact level (low, medium, or high). "
-        "Think through each idea independently and carefully before moving to the next — "
-        "do not converge on a favourite prematurely. After generating all "
-        f"{count} ideas, identify the single strongest one and explain your selection "
-        "reasoning in full."
-    )
-    return {"reasoning_instruction": "\n\n".join(parts)}
+        sentences.append(f"Every idea must also satisfy these constraints: {constraints}.")
+
+    return {"reasoning_instruction": " ".join(sentences)}
 
 
 def chain_of_thought(arguments: ToolArguments) -> dict[str, str]:
     """Inject a chain-of-thought reasoning instruction into the agent's context window."""
     task = _require_string(arguments, "task")
-    steps = _optional_int(arguments, "steps", _COT_STEPS_DEFAULT)
-    if not (_COT_STEPS_MIN <= steps <= _COT_STEPS_MAX):
+    steps = _optional_int(arguments, "steps", COT_STEPS_DEFAULT)
+    if not (COT_STEPS_MIN <= steps <= COT_STEPS_MAX):
         raise ValueError(
-            f"'steps' must be between {_COT_STEPS_MIN} and {_COT_STEPS_MAX}, got {steps}."
+            f"'steps' must be between {COT_STEPS_MIN} and {COT_STEPS_MAX}, got {steps}."
         )
     context = _optional_string(arguments, "context")
 
-    parts = [
-        "[REASONING: CHAIN OF THOUGHT]",
-        (
-            f"You are beginning a structured chain-of-thought analysis of the following task: "
-            f"{task}. Work through this problem in exactly {steps} sequential, explicitly "
-            "numbered steps."
-        ),
+    sentences = [
+        "You have invoked a chain-of-thought tool call.",
+        f"Reason through the following task in exactly {steps} sequential steps: {task}.",
+        "For each step, state what aspect of the problem you are focusing on, develop "
+        "your reasoning fully, and state a clear partial conclusion before moving to the next step.",
+        f"After completing all {steps} steps, state your final integrated conclusion.",
     ]
     if context:
-        parts.append(f"The following context should inform your reasoning: {context}.")
-    parts.append(
-        f"For each of the {steps} steps, state what specific aspect of the problem you are "
-        "reasoning about in that step, develop your reasoning fully before drawing any "
-        "conclusion, and then state a clear partial conclusion before proceeding to the next "
-        "step. Do not skip steps, combine steps, or jump to the final answer ahead of time. "
-        f"After completing all {steps} steps, state your final integrated conclusion."
-    )
-    return {"reasoning_instruction": "\n\n".join(parts)}
+        sentences.append(f"Use the following context to inform your reasoning: {context}.")
+
+    return {"reasoning_instruction": " ".join(sentences)}
 
 
 def critique(arguments: ToolArguments) -> dict[str, str]:
@@ -117,21 +89,20 @@ def critique(arguments: ToolArguments) -> dict[str, str]:
     # Truncate content preview to keep the instruction concise.
     preview = content if len(content) <= 300 else content[:297] + "..."
 
-    aspects_prose = ", ".join(aspects[:-1]) + (f", and {aspects[-1]}" if len(aspects) > 1 else aspects[0])
+    aspects_prose = (
+        ", ".join(aspects[:-1]) + (f", and {aspects[-1]}" if len(aspects) > 1 else aspects[0])
+    )
 
-    parts = [
-        "[REASONING: CRITIQUE]",
-        f"You are conducting a structured critique of the following content: {preview}",
-        (
-            f"Evaluate the content across these specific aspects: {aspects_prose}. "
-            "For each aspect, describe what you observe in concrete and specific terms, "
-            "identify its strengths, surface any weaknesses or gaps, and suggest one "
-            "actionable improvement. Avoid vague generalizations — be precise about what "
-            "is working and what is not. After completing all aspects, provide an overall "
-            "assessment and identify the single highest-priority improvement."
-        ),
+    sentences = [
+        "You have invoked a critique tool call.",
+        f"Evaluate the following content: {preview}.",
+        f"Assess it across these specific aspects: {aspects_prose}.",
+        "For each aspect, describe what you observe, identify specific strengths and "
+        "weaknesses, and suggest one concrete improvement.",
+        "After completing all aspects, provide an overall assessment and state the "
+        "single highest-priority improvement.",
     ]
-    return {"reasoning_instruction": "\n\n".join(parts)}
+    return {"reasoning_instruction": " ".join(sentences)}
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +154,7 @@ def create_reasoning_tools() -> tuple[RegisteredTool, ...]:
                             "description": (
                                 'Number of ideas to generate. Accepts an integer (5–30) or a '
                                 'preset string: "small" (5), "medium" (15), or "large" (30). '
-                                f"Defaults to {_BRAINSTORM_COUNT_DEFAULT}."
+                                f"Defaults to {BRAINSTORM_COUNT_DEFAULT}."
                             ),
                         },
                         "context": {
@@ -236,8 +207,8 @@ def create_reasoning_tools() -> tuple[RegisteredTool, ...]:
                         "steps": {
                             "type": "integer",
                             "description": (
-                                f"Number of reasoning steps ({_COT_STEPS_MIN}–{_COT_STEPS_MAX}). "
-                                f"Defaults to {_COT_STEPS_DEFAULT}. Use more steps for complex "
+                                f"Number of reasoning steps ({COT_STEPS_MIN}–{COT_STEPS_MAX}). "
+                                f"Defaults to {COT_STEPS_DEFAULT}. Use more steps for complex "
                                 "multi-factor decisions and fewer for simpler evaluations."
                             ),
                         },
@@ -311,21 +282,21 @@ def _resolve_brainstorm_count(arguments: ToolArguments) -> int:
     """Resolve the brainstorm count from an int, a preset string, or the default."""
     raw = arguments.get("count")
     if raw is None:
-        return _BRAINSTORM_COUNT_DEFAULT
+        return BRAINSTORM_COUNT_DEFAULT
     if isinstance(raw, bool):
         raise ValueError("'count' must be an integer or preset string, not a boolean.")
     if isinstance(raw, str):
-        if raw not in _BRAINSTORM_COUNT_PRESETS:
-            valid = ", ".join(f'"{k}"' for k in _BRAINSTORM_COUNT_PRESETS)
+        if raw not in BRAINSTORM_COUNT_PRESETS:
+            valid = ", ".join(f'"{k}"' for k in BRAINSTORM_COUNT_PRESETS)
             raise ValueError(
                 f"'count' preset must be one of {valid}, got '{raw}'."
             )
-        return _BRAINSTORM_COUNT_PRESETS[raw]
+        return BRAINSTORM_COUNT_PRESETS[raw]
     if isinstance(raw, int):
-        if not (_BRAINSTORM_COUNT_MIN <= raw <= _BRAINSTORM_COUNT_MAX):
+        if not (BRAINSTORM_COUNT_MIN <= raw <= BRAINSTORM_COUNT_MAX):
             raise ValueError(
-                f"'count' must be between {_BRAINSTORM_COUNT_MIN} and "
-                f"{_BRAINSTORM_COUNT_MAX}, got {raw}."
+                f"'count' must be between {BRAINSTORM_COUNT_MIN} and "
+                f"{BRAINSTORM_COUNT_MAX}, got {raw}."
             )
         return raw
     raise ValueError("'count' must be an integer or preset string when provided.")

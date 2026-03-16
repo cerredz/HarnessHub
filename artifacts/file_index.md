@@ -15,6 +15,7 @@ Source layout:
 - `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
 - `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
 - `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
+- `harnessiq/shared/reasoning.py`: public behavioral constants for the core injectable reasoning tools — brainstorm count bounds and presets (`BRAINSTORM_COUNT_MIN/MAX/DEFAULT`, `BRAINSTORM_COUNT_PRESETS`) and chain-of-thought step bounds (`COT_STEPS_MIN/MAX/DEFAULT`)
 - `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior; also contains MCP-style tool factories for all registered data and service providers
 - `harnessiq/tools/creatify/`: MCP-style tool factory for Creatify AI video creation
 - `harnessiq/tools/arcads/`: MCP-style tool factory for Arcads AI advertising video creation
