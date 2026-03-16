@@ -623,27 +623,54 @@ class TestBrainstormTool(unittest.TestCase):
 
     def test_context_absent_when_not_provided(self) -> None:
         result = brainstorm({"topic": "hooks"})
-        self.assertNotIn("Context:", result["reasoning_instruction"])
+        # Prose format embeds context inline; when absent the context sentence is omitted.
+        self.assertNotIn("grounded in the following context", result["reasoning_instruction"])
 
     def test_constraints_absent_when_not_provided(self) -> None:
         result = brainstorm({"topic": "hooks"})
-        self.assertNotIn("Constraints:", result["reasoning_instruction"])
+        # Prose format embeds constraints inline; when absent the constraints sentence is omitted.
+        self.assertNotIn("satisfy the following constraints", result["reasoning_instruction"])
 
     def test_count_below_minimum_raises(self) -> None:
         with self.assertRaises(ValueError, msg="count=4 should be rejected"):
             brainstorm({"topic": "hooks", "count": 4})
 
     def test_count_above_maximum_raises(self) -> None:
+        # Max is now 30; 31 should be rejected.
         with self.assertRaises(ValueError):
-            brainstorm({"topic": "hooks", "count": 26})
+            brainstorm({"topic": "hooks", "count": 31})
 
     def test_count_at_minimum_boundary_accepted(self) -> None:
         result = brainstorm({"topic": "hooks", "count": 5})
         self.assertIn("5", result["reasoning_instruction"])
 
     def test_count_at_maximum_boundary_accepted(self) -> None:
-        result = brainstorm({"topic": "hooks", "count": 25})
-        self.assertIn("25", result["reasoning_instruction"])
+        # Max extended to 30 to align with the "large" preset.
+        result = brainstorm({"topic": "hooks", "count": 30})
+        self.assertIn("30", result["reasoning_instruction"])
+
+    def test_count_26_now_accepted_within_new_max(self) -> None:
+        # 26 was previously above the old max of 25; it is now valid.
+        result = brainstorm({"topic": "hooks", "count": 26})
+        self.assertIn("26", result["reasoning_instruction"])
+
+    # -- count string presets --------------------------------------------------
+
+    def test_count_preset_small_resolves_to_five(self) -> None:
+        result = brainstorm({"topic": "hooks", "count": "small"})
+        self.assertIn("5", result["reasoning_instruction"])
+
+    def test_count_preset_medium_resolves_to_fifteen(self) -> None:
+        result = brainstorm({"topic": "hooks", "count": "medium"})
+        self.assertIn("15", result["reasoning_instruction"])
+
+    def test_count_preset_large_resolves_to_thirty(self) -> None:
+        result = brainstorm({"topic": "hooks", "count": "large"})
+        self.assertIn("30", result["reasoning_instruction"])
+
+    def test_count_unknown_preset_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            brainstorm({"topic": "hooks", "count": "huge"})
 
     def test_empty_topic_raises(self) -> None:
         with self.assertRaises(ValueError):
@@ -688,7 +715,8 @@ class TestChainOfThoughtTool(unittest.TestCase):
 
     def test_context_absent_when_not_provided(self) -> None:
         result = chain_of_thought({"task": "plan"})
-        self.assertNotIn("Context:", result["reasoning_instruction"])
+        # Prose format embeds context inline; when absent the context sentence is omitted.
+        self.assertNotIn("should inform your reasoning", result["reasoning_instruction"])
 
     def test_steps_below_minimum_raises(self) -> None:
         with self.assertRaises(ValueError):
