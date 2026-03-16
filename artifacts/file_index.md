@@ -30,7 +30,9 @@ Source layout:
 - `harnessiq/tools/peopledatalabs/`: MCP-style tool factory for People Data Labs data enrichment
 - `harnessiq/tools/proxycurl/`: MCP-style tool factory for Proxycurl (deprecated — shut down Jan 2025)
 - `harnessiq/tools/coresignal/`: MCP-style tool factory for Coresignal professional data
-- `harnessiq/tools/reasoning/`: 50 reasoning lens tools for agent cognitive scaffolding — includes step-by-step, tree-of-thoughts, first-principles, red-teaming, pre-mortem, and 45 others across 8 cognitive categories (core logical, analytical, perspective, creative, systems, temporal, evaluative, scientific)
+- `harnessiq/tools/reasoning/`: reasoning tool package — exposes the three core injectable tools (`brainstorm`, `chain_of_thought`, `critique`) and the 50-lens cognitive scaffolding catalog
+- `harnessiq/tools/reasoning/core.py`: three high-level injectable reasoning tools (`reason.brainstorm`, `reason.chain_of_thought`, `reason.critique`) plus `create_reasoning_tools()` factory; supports brainstorm count presets (`"small"`, `"medium"`, `"large"`); instruction outputs are natural language prose injected into the agent context window
+- `harnessiq/tools/reasoning/lenses.py`: 50 reasoning lens tools for agent cognitive scaffolding — includes step-by-step, tree-of-thoughts, first-principles, red-teaming, pre-mortem, and 45 others across 8 cognitive categories (core logical, analytical, perspective, creative, systems, temporal, evaluative, scientific)
 - `harnessiq/providers/`: provider translation helpers and provider-specific request builders
 - `harnessiq/config/`: credential loader and base credential configuration types; `CredentialLoader` resolves named environment variables from a repo-local `.env` file
 - `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
@@ -86,7 +88,7 @@ Tests:
 - `tests/test_lemlist_provider.py`: coverage for Lemlist credentials (Basic Auth), client, operation catalog, and tool factory
 - `tests/test_exa_provider.py`: coverage for Exa credentials, client, search operation catalog, and tool factory
 - `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
-- `tests/test_reasoning_tools.py`: coverage for all 50 reasoning lens tool handlers, registry execution, argument validation, and prompt output shape
+- `tests/test_reasoning_tools.py`: coverage for the three core reasoning tools (brainstorm, chain_of_thought, critique) — handler behavior, count presets, boundary validation, registry integration, and instruction output shape
 
 Current memory artifacts:
 
