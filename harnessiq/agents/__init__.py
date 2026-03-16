@@ -22,6 +22,9 @@ from harnessiq.shared.linkedin import (
 
 from .base import BaseAgent
 from .email import BaseEmailAgent, DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
+from harnessiq.shared.knowt import KnowtMemoryStore
+
+from .knowt import KnowtAgent
 from .linkedin import (
     LinkedInJobApplierAgent,
     LinkedInMemoryStore,
@@ -44,6 +47,8 @@ __all__ = [
     "BaseAgent",
     "BaseEmailAgent",
     "DEFAULT_EMAIL_AGENT_IDENTITY",
+    "KnowtAgent",
+    "KnowtMemoryStore",
     "EmailAgentConfig",
     "JobApplicationRecord",
     "LinkedInAgentConfig",
