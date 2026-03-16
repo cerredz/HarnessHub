@@ -1,5 +1,4 @@
-"""Tests for the reasoning lens tool family."""
-"""Tests for the injectable reasoning tools."""
+"""Tests for the reasoning lens tool family and injectable reasoning tools."""
 
 from __future__ import annotations
 
@@ -550,16 +549,16 @@ class ReasoningToolsTests(unittest.TestCase):
         for key in _ALL_KEYS:
             self.assertIn(key, self.registry, msg=f"Key '{key}' missing from builtin registry")
 from harnessiq.shared.tools import REASON_BRAINSTORM, REASON_CHAIN_OF_THOUGHT, REASON_CRITIQUE
-from harnessiq.tools import create_reasoning_tools
+from harnessiq.tools import create_injectable_reasoning_tools
 from harnessiq.tools.reasoning import brainstorm, chain_of_thought, critique
 from harnessiq.tools.registry import ToolRegistry, ToolValidationError
 
 
 class TestReasoningToolsRegistry(unittest.TestCase):
-    """Verify factory output and registry integration."""
+    """Verify injectable reasoning factory output and registry integration."""
 
     def setUp(self) -> None:
-        self.tools = create_reasoning_tools()
+        self.tools = create_injectable_reasoning_tools()
 
     def test_factory_returns_three_tools(self) -> None:
         self.assertEqual(len(self.tools), 3)
@@ -773,10 +772,10 @@ class TestCritiqueTool(unittest.TestCase):
 
 
 class TestReasoningToolsSchema(unittest.TestCase):
-    """Verify tool definitions have correct schema structure."""
+    """Verify injectable tool definitions have correct schema structure."""
 
     def setUp(self) -> None:
-        self.tools = {t.key: t for t in create_reasoning_tools()}
+        self.tools = {t.key: t for t in create_injectable_reasoning_tools()}
 
     def _schema(self, key: str) -> dict:
         return self.tools[key].definition.input_schema
