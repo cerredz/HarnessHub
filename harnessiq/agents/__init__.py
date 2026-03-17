@@ -24,6 +24,8 @@ from .base import BaseAgent
 from .email import BaseEmailAgent, DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
 from harnessiq.shared.knowt import KnowtMemoryStore
 
+from .exa_outreach import ExaOutreachAgent
+from harnessiq.shared.exa_outreach import ExaOutreachMemoryStore
 from .knowt import KnowtAgent
 from .linkedin import (
     LinkedInJobApplierAgent,
@@ -46,6 +48,8 @@ __all__ = [
     "AgentTranscriptEntry",
     "BaseAgent",
     "BaseEmailAgent",
+    "ExaOutreachAgent",
+    "ExaOutreachMemoryStore",
     "DEFAULT_EMAIL_AGENT_IDENTITY",
     "KnowtAgent",
     "KnowtMemoryStore",
