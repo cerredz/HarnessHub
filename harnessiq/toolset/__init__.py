@@ -61,6 +61,7 @@ from __future__ import annotations
 from harnessiq.shared.tools import RegisteredTool
 
 from .catalog import ToolEntry
+from .factory import define_tool, tool
 from .registry import ToolsetRegistry
 
 # Shared module-level registry instance — initialized lazily on first access.
@@ -167,8 +168,10 @@ def list_tools() -> list[ToolEntry]:
 __all__ = [
     "ToolEntry",
     "ToolsetRegistry",
+    "define_tool",
     "get_family",
     "get_tool",
     "get_tools",
     "list_tools",
+    "tool",
 ]
