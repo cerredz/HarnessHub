@@ -15,6 +15,10 @@ Source layout:
 - `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
 - `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
 - `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
+- `harnessiq/toolset/`: plug-and-play toolset access layer; exposes `get_tool`, `get_tools`, `get_family`, `list_tools`, `define_tool`, and the `@tool` decorator — mirrors the `master_prompts` API
+- `harnessiq/toolset/catalog.py`: `ToolEntry` dataclass + built-in factory dispatch table + static provider catalog entries
+- `harnessiq/toolset/registry.py`: `ToolsetRegistry` — lazy-loading registry backed by the catalog; resolves `RegisteredTool` for built-in and provider families
+- `harnessiq/toolset/factory.py`: `define_tool()` factory and `@tool` decorator for ergonomic custom tool creation; validates `tool_type` against supported types with informative errors for planned future types
 - `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior; also contains MCP-style tool factories for all registered data and service providers
 - `harnessiq/tools/creatify/`: MCP-style tool factory for Creatify AI video creation
 - `harnessiq/tools/arcads/`: MCP-style tool factory for Arcads AI advertising video creation
@@ -63,6 +67,8 @@ Source layout:
 - `harnessiq/providers/exa/`: Exa neural search API — credentials, client, and full operation catalog
 
 Tests:
+- `tests/test_toolset_registry.py`: coverage for the toolset catalog, `ToolsetRegistry`, and module-level `get_tool` / `get_tools` / `get_family` / `list_tools` API
+- `tests/test_toolset_factory.py`: coverage for `define_tool()`, the `@tool` decorator, `ToolDefinition.tool_type`, and custom tool integration with `ToolRegistry`
 - `tests/test_agents_base.py`: coverage for the generic agent loop, transcript handling, context resets, and structured pause behavior
 - `tests/test_email_agent.py`: coverage for the abstract email-capable harness, masked Resend credentials, and Resend tool integration through the agent loop
 - `tests/test_linkedin_agent.py`: coverage for the LinkedIn-specific harness, memory files, and durable state tools
