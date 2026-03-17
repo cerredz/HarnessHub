@@ -5,9 +5,15 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Any
+
+from harnessiq.utils.run_storage import (
+    RUNS_DIRNAME,
+    FileSystemStorageBackend,
+    RunRecord,
+    StorageBackend,
+)
 
 # ---------------------------------------------------------------------------
 # File name constants
@@ -16,7 +22,6 @@ from typing import Any, Protocol, runtime_checkable
 QUERY_CONFIG_FILENAME = "query_config.json"
 AGENT_IDENTITY_FILENAME = "agent_identity.txt"
 ADDITIONAL_PROMPT_FILENAME = "additional_prompt.txt"
-RUNS_DIRNAME = "runs"
 
 DEFAULT_AGENT_IDENTITY = (
     "A disciplined outreach specialist who finds relevant prospects via Exa neural "
@@ -197,142 +202,6 @@ class OutreachRunLog:
             "emails_sent": [r.as_dict() for r in self.emails_sent],
         }
 
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "OutreachRunLog":
-        return cls(
-            run_id=str(data["run_id"]),
-            started_at=str(data["started_at"]),
-            query=str(data["query"]),
-            leads_found=[LeadRecord.from_dict(r) for r in data.get("leads_found", [])],
-            emails_sent=[EmailSentRecord.from_dict(r) for r in data.get("emails_sent", [])],
-            completed_at=str(data["completed_at"]) if data.get("completed_at") else None,
-        )
-
-
-# ---------------------------------------------------------------------------
-# StorageBackend protocol
-# ---------------------------------------------------------------------------
-
-
-@runtime_checkable
-class StorageBackend(Protocol):
-    """Pluggable persistence layer for ExaOutreachAgent run data.
-
-    The default implementation is :class:`FileSystemStorageBackend`.
-    Custom implementations can route to any backend (database, spreadsheet,
-    CRM, etc.) by implementing this protocol.
-    """
-
-    def start_run(self, run_id: str, query: str) -> None:
-        """Initialise storage for a new run before the agent loop starts."""
-        ...
-
-    def finish_run(self, run_id: str, completed_at: str) -> None:
-        """Mark a run as complete after the agent loop exits."""
-        ...
-
-    def log_lead(self, run_id: str, lead: LeadRecord) -> None:
-        """Persist a newly discovered lead.  Called deterministically inside the tool handler."""
-        ...
-
-    def log_email_sent(self, run_id: str, record: EmailSentRecord) -> None:
-        """Persist a sent email record.  Called deterministically inside the tool handler."""
-        ...
-
-    def is_contacted(self, url: str) -> bool:
-        """Return True if the Exa profile URL has appeared in any prior run."""
-        ...
-
-    def current_run_id(self) -> str | None:
-        """Return the active run ID, or None if no run has been started."""
-        ...
-
-
-# ---------------------------------------------------------------------------
-# FileSystemStorageBackend
-# ---------------------------------------------------------------------------
-
-
-class FileSystemStorageBackend:
-    """Default :class:`StorageBackend` that writes ``run_N.json`` files to disk.
-
-    Each run gets its own file under ``memory_path/runs/run_N.json``.
-    The run number N is the next integer after the highest existing run file.
-    ``is_contacted`` scans all existing run files for a matching URL.
-    """
-
-    def __init__(self, memory_path: Path) -> None:
-        self._memory_path = Path(memory_path)
-        self._runs_dir = self._memory_path / RUNS_DIRNAME
-        self._current_run_id: str | None = None
-        self._current_run_path: Path | None = None
-
-    # ------------------------------------------------------------------
-    # StorageBackend implementation
-    # ------------------------------------------------------------------
-
-    def start_run(self, run_id: str, query: str) -> None:
-        self._runs_dir.mkdir(parents=True, exist_ok=True)
-        self._current_run_id = run_id
-        run_log = OutreachRunLog(
-            run_id=run_id,
-            started_at=_utcnow(),
-            query=query,
-        )
-        path = self._run_path(run_id)
-        self._current_run_path = path
-        _write_json(path, run_log.as_dict())
-
-    def finish_run(self, run_id: str, completed_at: str) -> None:
-        path = self._run_path(run_id)
-        run_log = self._read_run_log(path)
-        run_log.completed_at = completed_at
-        _write_json(path, run_log.as_dict())
-
-    def log_lead(self, run_id: str, lead: LeadRecord) -> None:
-        path = self._run_path(run_id)
-        run_log = self._read_run_log(path)
-        run_log.leads_found.append(lead)
-        _write_json(path, run_log.as_dict())
-
-    def log_email_sent(self, run_id: str, record: EmailSentRecord) -> None:
-        path = self._run_path(run_id)
-        run_log = self._read_run_log(path)
-        run_log.emails_sent.append(record)
-        _write_json(path, run_log.as_dict())
-
-    def is_contacted(self, url: str) -> bool:
-        if not self._runs_dir.exists():
-            return False
-        for run_path in self._list_run_paths():
-            try:
-                run_log = self._read_run_log(run_path)
-            except (json.JSONDecodeError, KeyError, ValueError):
-                continue
-            for lead in run_log.leads_found:
-                if lead.url == url:
-                    return True
-        return False
-
-    def current_run_id(self) -> str | None:
-        return self._current_run_id
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _run_path(self, run_id: str) -> Path:
-        return self._runs_dir / f"{run_id}.json"
-
-    def _read_run_log(self, path: Path) -> OutreachRunLog:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return OutreachRunLog.from_dict(data)
-
-    def _list_run_paths(self) -> list[Path]:
-        """Return run JSON files sorted by run number ascending."""
-        paths = list(self._runs_dir.glob("run_*.json"))
-        return sorted(paths, key=_run_file_sort_key)
-
 
 # ---------------------------------------------------------------------------
 # ExaOutreachMemoryStore
@@ -385,12 +254,35 @@ class ExaOutreachMemoryStore:
         return sorted(paths, key=_run_file_sort_key)
 
     def read_run(self, run_id: str) -> OutreachRunLog:
-        """Read and return a run log by run ID."""
+        """Read and return a run log by run ID.
+
+        Reconstructs an :class:`OutreachRunLog` from the generic
+        :class:`~harnessiq.utils.run_storage.RunRecord` event log written by
+        :class:`~harnessiq.utils.run_storage.FileSystemStorageBackend`.
+        """
         path = self.runs_dir / f"{run_id}.json"
         if not path.exists():
             raise FileNotFoundError(f"Run file for '{run_id}' not found at '{path}'.")
         data = json.loads(path.read_text(encoding="utf-8"))
-        return OutreachRunLog.from_dict(data)
+        record = RunRecord.from_dict(data)
+        leads_found = [
+            LeadRecord.from_dict(e["data"])
+            for e in record.events
+            if e.get("type") == "lead"
+        ]
+        emails_sent = [
+            EmailSentRecord.from_dict(e["data"])
+            for e in record.events
+            if e.get("type") == "email_sent"
+        ]
+        return OutreachRunLog(
+            run_id=record.run_id,
+            started_at=record.started_at,
+            query=str(record.metadata.get("query", "")),
+            leads_found=leads_found,
+            emails_sent=emails_sent,
+            completed_at=record.completed_at,
+        )
 
     def read_query_config(self) -> dict[str, Any]:
         return _read_json_file(self.query_config_path, expected_type=dict)
@@ -414,10 +306,6 @@ class ExaOutreachMemoryStore:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
-
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _write_json(path: Path, payload: Any) -> None:

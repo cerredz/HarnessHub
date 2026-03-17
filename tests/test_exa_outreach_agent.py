@@ -118,6 +118,8 @@ class TestExaOutreachAgentConstruction:
         custom_backend = MagicMock()
         custom_backend.start_run = MagicMock()
         custom_backend.finish_run = MagicMock()
+        custom_backend.log_event = MagicMock()
+        custom_backend.has_seen = MagicMock(return_value=False)
         custom_backend.log_lead = MagicMock()
         custom_backend.log_email_sent = MagicMock()
         custom_backend.is_contacted = MagicMock(return_value=False)

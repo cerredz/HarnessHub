@@ -132,6 +132,8 @@ from .reasoning import (
     create_reasoning_tools,
     critique,
 )
+from .reasoning import create_reasoning_tools
+from .reasoning.core import brainstorm, chain_of_thought, critique
 from .resend import (
     DEFAULT_RESEND_BASE_URL,
     DEFAULT_RESEND_USER_AGENT,

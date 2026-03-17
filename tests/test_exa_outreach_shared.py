@@ -175,21 +175,19 @@ class TestOutreachRunLog:
             )
         )
         d = log.as_dict()
-        restored = OutreachRunLog.from_dict(d)
-        assert restored.run_id == "run_1"
-        assert len(restored.leads_found) == 1
-        assert len(restored.emails_sent) == 1
-        assert restored.completed_at is None
+        assert d["run_id"] == "run_1"
+        assert len(d["leads_found"]) == 1
+        assert len(d["emails_sent"]) == 1
+        assert d["completed_at"] is None
 
-    def test_completed_at_round_trip(self):
+    def test_completed_at_field(self):
         log = OutreachRunLog(
             run_id="run_2",
             started_at="2025-01-01T00:00:00Z",
             query="test",
             completed_at="2025-01-01T01:00:00Z",
         )
-        restored = OutreachRunLog.from_dict(log.as_dict())
-        assert restored.completed_at == "2025-01-01T01:00:00Z"
+        assert log.completed_at == "2025-01-01T01:00:00Z"
 
 
 # ---------------------------------------------------------------------------
@@ -200,31 +198,31 @@ class TestOutreachRunLog:
 class TestFileSystemStorageBackend:
     def test_start_run_creates_file(self, tmp_path):
         backend = FileSystemStorageBackend(tmp_path)
-        backend.start_run("run_1", "VPs in NYC")
+        backend.start_run("run_1", {"query": "VPs in NYC"})
         run_path = tmp_path / "runs" / "run_1.json"
         assert run_path.exists()
         data = json.loads(run_path.read_text())
         assert data["run_id"] == "run_1"
-        assert data["query"] == "VPs in NYC"
-        assert data["leads_found"] == []
-        assert data["emails_sent"] == []
+        assert data["metadata"]["query"] == "VPs in NYC"
+        assert data["events"] == []
 
-    def test_log_lead_appends_to_run(self, tmp_path):
+    def test_log_event_lead_appends_to_run(self, tmp_path):
         backend = FileSystemStorageBackend(tmp_path)
-        backend.start_run("run_1", "test query")
+        backend.start_run("run_1", {"query": "test query"})
         lead = LeadRecord(
             url="https://linkedin.com/in/alice",
             name="Alice",
             found_at="2025-01-01T00:00:00Z",
         )
-        backend.log_lead("run_1", lead)
+        backend.log_event("run_1", "lead", lead.as_dict())
         data = json.loads((tmp_path / "runs" / "run_1.json").read_text())
-        assert len(data["leads_found"]) == 1
-        assert data["leads_found"][0]["url"] == "https://linkedin.com/in/alice"
+        lead_events = [e for e in data["events"] if e["type"] == "lead"]
+        assert len(lead_events) == 1
+        assert lead_events[0]["data"]["url"] == "https://linkedin.com/in/alice"
 
-    def test_log_email_sent_appends_to_run(self, tmp_path):
+    def test_log_event_email_sent_appends_to_run(self, tmp_path):
         backend = FileSystemStorageBackend(tmp_path)
-        backend.start_run("run_1", "test query")
+        backend.start_run("run_1", {"query": "test query"})
         record = EmailSentRecord(
             to_email="alice@example.com",
             to_name="Alice",
@@ -232,54 +230,71 @@ class TestFileSystemStorageBackend:
             template_id="cold-intro",
             sent_at="2025-01-01T00:01:00Z",
         )
-        backend.log_email_sent("run_1", record)
+        backend.log_event("run_1", "email_sent", record.as_dict())
         data = json.loads((tmp_path / "runs" / "run_1.json").read_text())
-        assert len(data["emails_sent"]) == 1
-        assert data["emails_sent"][0]["to_email"] == "alice@example.com"
+        email_events = [e for e in data["events"] if e["type"] == "email_sent"]
+        assert len(email_events) == 1
+        assert email_events[0]["data"]["to_email"] == "alice@example.com"
 
     def test_finish_run_sets_completed_at(self, tmp_path):
         backend = FileSystemStorageBackend(tmp_path)
-        backend.start_run("run_1", "test query")
+        backend.start_run("run_1", {"query": "test query"})
         backend.finish_run("run_1", "2025-01-01T01:00:00Z")
         data = json.loads((tmp_path / "runs" / "run_1.json").read_text())
         assert data["completed_at"] == "2025-01-01T01:00:00Z"
 
-    def test_is_contacted_true_when_url_exists(self, tmp_path):
+    def test_has_seen_true_when_url_exists(self, tmp_path):
         backend = FileSystemStorageBackend(tmp_path)
-        backend.start_run("run_1", "test")
-        backend.log_lead("run_1", LeadRecord(url="https://example.com/profile", name="Bob", found_at="2025-01-01T00:00:00Z"))
-        assert backend.is_contacted("https://example.com/profile") is True
+        backend.start_run("run_1", {})
+        lead = LeadRecord(url="https://example.com/profile", name="Bob", found_at="2025-01-01T00:00:00Z")
+        backend.log_event("run_1", "lead", lead.as_dict())
+        assert backend.has_seen("url", "https://example.com/profile", event_type="lead") is True
 
-    def test_is_contacted_false_when_url_absent(self, tmp_path):
+    def test_has_seen_false_when_url_absent(self, tmp_path):
         backend = FileSystemStorageBackend(tmp_path)
-        backend.start_run("run_1", "test")
-        assert backend.is_contacted("https://example.com/unknown") is False
+        backend.start_run("run_1", {})
+        assert backend.has_seen("url", "https://example.com/unknown", event_type="lead") is False
 
-    def test_is_contacted_false_with_no_runs(self, tmp_path):
+    def test_has_seen_false_with_no_runs(self, tmp_path):
         backend = FileSystemStorageBackend(tmp_path)
-        assert backend.is_contacted("https://example.com") is False
+        assert backend.has_seen("url", "https://example.com") is False
 
     def test_current_run_id_after_start(self, tmp_path):
         backend = FileSystemStorageBackend(tmp_path)
         assert backend.current_run_id() is None
-        backend.start_run("run_3", "test")
+        backend.start_run("run_3", {})
         assert backend.current_run_id() == "run_3"
 
-    def test_multiple_leads_and_sends(self, tmp_path):
+    def test_multiple_events_appended(self, tmp_path):
         backend = FileSystemStorageBackend(tmp_path)
-        backend.start_run("run_1", "test")
+        backend.start_run("run_1", {})
         for i in range(3):
-            backend.log_lead("run_1", LeadRecord(url=f"https://example.com/{i}", name=f"Person {i}", found_at="2025-01-01T00:00:00Z"))
+            lead = LeadRecord(url=f"https://example.com/{i}", name=f"Person {i}", found_at="2025-01-01T00:00:00Z")
+            backend.log_event("run_1", "lead", lead.as_dict())
         data = json.loads((tmp_path / "runs" / "run_1.json").read_text())
-        assert len(data["leads_found"]) == 3
+        assert len([e for e in data["events"] if e["type"] == "lead"]) == 3
 
-    def test_is_contacted_scans_across_runs(self, tmp_path):
+    def test_has_seen_scans_across_runs(self, tmp_path):
         backend = FileSystemStorageBackend(tmp_path)
-        backend.start_run("run_1", "q1")
-        backend.log_lead("run_1", LeadRecord(url="https://example.com/alice", name="Alice", found_at="2025-01-01T00:00:00Z"))
-        backend.start_run("run_2", "q2")
-        # alice was in run_1, should still be detected
-        assert backend.is_contacted("https://example.com/alice") is True
+        backend.start_run("run_1", {"query": "q1"})
+        lead = LeadRecord(url="https://example.com/alice", name="Alice", found_at="2025-01-01T00:00:00Z")
+        backend.log_event("run_1", "lead", lead.as_dict())
+        backend.start_run("run_2", {"query": "q2"})
+        # alice was in run_1 — has_seen must find her across runs
+        assert backend.has_seen("url", "https://example.com/alice", event_type="lead") is True
+
+    def test_has_seen_without_event_type_filter(self, tmp_path):
+        backend = FileSystemStorageBackend(tmp_path)
+        backend.start_run("run_1", {})
+        backend.log_event("run_1", "email_sent", {"to_email": "bob@example.com"})
+        assert backend.has_seen("to_email", "bob@example.com") is True
+
+    def test_has_seen_event_type_filter_excludes_other_types(self, tmp_path):
+        backend = FileSystemStorageBackend(tmp_path)
+        backend.start_run("run_1", {})
+        backend.log_event("run_1", "email_sent", {"url": "https://example.com/alice"})
+        # url is in an email_sent event, but we filter for "lead" only — should be False
+        assert backend.has_seen("url", "https://example.com/alice", event_type="lead") is False
 
 
 # ---------------------------------------------------------------------------
@@ -355,6 +370,31 @@ class TestExaOutreachMemoryStore:
         store.prepare()
         store.write_additional_prompt("Keep emails under 80 words.")
         assert store.read_additional_prompt() == "Keep emails under 80 words."
+
+    def test_read_run_reconstructs_outreach_log(self, tmp_path):
+        """read_run must reconstruct OutreachRunLog from the generic event format."""
+        store = ExaOutreachMemoryStore(memory_path=tmp_path / "outreach")
+        store.prepare()
+        backend = FileSystemStorageBackend(tmp_path / "outreach")
+        backend.start_run("run_1", {"query": "VPs in NYC"})
+        lead = LeadRecord(url="https://example.com/alice", name="Alice", found_at="2025-01-01T00:00:00Z")
+        email = EmailSentRecord(
+            to_email="alice@example.com",
+            to_name="Alice",
+            subject="Hi",
+            template_id="t1",
+            sent_at="2025-01-01T00:01:00Z",
+        )
+        backend.log_event("run_1", "lead", lead.as_dict())
+        backend.log_event("run_1", "email_sent", email.as_dict())
+
+        run_log = store.read_run("run_1")
+        assert run_log.run_id == "run_1"
+        assert run_log.query == "VPs in NYC"
+        assert len(run_log.leads_found) == 1
+        assert run_log.leads_found[0].url == "https://example.com/alice"
+        assert len(run_log.emails_sent) == 1
+        assert run_log.emails_sent[0].to_email == "alice@example.com"
 
 
 # ---------------------------------------------------------------------------
