@@ -35,10 +35,18 @@ Source layout:
 - `harnessiq/tools/reasoning/lenses.py`: 50 reasoning lens tools for agent cognitive scaffolding — includes step-by-step, tree-of-thoughts, first-principles, red-teaming, pre-mortem, and 45 others across 8 cognitive categories (core logical, analytical, perspective, creative, systems, temporal, evaluative, scientific)
 - `harnessiq/tools/knowt/`: Knowt-specific content creation tool factory (create_script, create_avatar_description, create_video via Creatify lipsync_v2, create_file, edit_file)
 - `harnessiq/tools/reasoning.py`: injectable reasoning tools (`reason.brainstorm`, `reason.chain_of_thought`, `reason.critique`) — inject structured reasoning instructions into the agent context window
+- `harnessiq/agents/harness_architect/`: Harness Architect meta-agent; produces complete, immediately deployable harness specifications covering all three context window zones, typed in-context memory schemas, reset protocols, tool access configuration, BaseAgent parameter blocks, and CLI invocation contracts
+- `harnessiq/agents/harness_architect/prompts/`: system prompt files for the Harness Architect agent; `master_prompt.md` loaded at runtime — encodes the three-zone architecture model, in-context memory schema design rules, reset protocol specification checklist, and annotated BaseAgent reference code
+- `harnessiq/agents/prompt_architect/`: Prompt Architect meta-agent; produces complete, immediately deployable action-oriented master prompts via a 15-phase sequential workflow covering domain reconstruction, atomic phase decomposition, persona drafting, structural review, and phase sequence stress testing
+- `harnessiq/agents/prompt_architect/prompts/`: system prompt files for the Prompt Architect agent; `master_prompt.md` loaded at runtime — encodes the full 15-phase prompt engineering workflow, checklist for phase/checklist separation and domain specificity, failure mode guardrails, and eight observable success criteria
+- `harnessiq/agents/linkedin/prompts/`: system prompt files for the LinkedIn agent; `master_prompt.md` loaded at runtime by `build_system_prompt()` with `{{AGENT_IDENTITY}}`, `{{TOOL_LIST}}`, and `{{ACTION_LOG_WINDOW}}` template substitution — covers search strategy, Easy Apply flows, form-filling rules, error recovery, and custom instructions integration
 - `harnessiq/agents/knowt/`: Knowt TikTok content creation agent harness; enforces brainstorm → script → avatar → video pipeline via deterministic file-backed memory
 - `harnessiq/agents/knowt/prompts/`: system prompt files for the Knowt agent; `master_prompt.md` loaded at runtime so it can be updated without touching Python source
 - `harnessiq/shared/knowt.py`: `KnowtMemoryStore` (file-backed), `KnowtAgentConfig`, `KnowtCreationLogEntry`, and filename constants for the Knowt agent harness
+- `harnessiq/shared/linkedin.py`: LinkedIn constants and data models — `JobSearchConfig` (structured filter params: title, location, remote_type, experience_levels, date_posted, easy_apply_only, salary range, job_type, companies, industries, description), `JobApplicationRecord`, `ActionLogEntry`, `LinkedInAgentConfig`, `LinkedInManagedFile`, filename constants
 - `harnessiq/tools/reasoning/`: 50 reasoning lens tools for agent cognitive scaffolding — includes step-by-step, tree-of-thoughts, first-principles, red-teaming, pre-mortem, and 45 others across 8 cognitive categories (core logical, analytical, perspective, creative, systems, temporal, evaluative, scientific)
+- `harnessiq/toolset/`: plug-and-play toolset SDK — `get_tool`, `get_tools`, `get_family`, `list_tools`, `define_tool`, `@tool` decorator, `register_tool`, `register_tools`; backed by `ToolsetRegistry` and a static provider catalog
+- `harnessiq/toolset/factory.py`: `define_tool()` factory and `@tool` decorator for ergonomic custom `RegisteredTool` creation; validates `tool_type` with clear planned-vs-unknown messaging
 - `harnessiq/providers/`: provider translation helpers and provider-specific request builders
 - `harnessiq/config/`: credential loader and base credential configuration types; `CredentialLoader` resolves named environment variables from a repo-local `.env` file
 - `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
@@ -69,7 +77,7 @@ Source layout:
 Tests:
 - `tests/test_agents_base.py`: coverage for the generic agent loop, transcript handling, context resets, and structured pause behavior
 - `tests/test_email_agent.py`: coverage for the abstract email-capable harness, masked Resend credentials, and Resend tool integration through the agent loop
-- `tests/test_linkedin_agent.py`: coverage for the LinkedIn-specific harness, memory files, and durable state tools
+- `tests/test_linkedin_agent.py`: coverage for the LinkedIn-specific harness, memory files, durable state tools, JobSearchConfig structured/string parameter, context window section ordering, and custom instructions injection
 - `tests/test_tools.py`: coverage for tool definitions, registry behavior, validation, execution, and built-in key ordering
 - `tests/test_context_compaction_tools.py`: coverage for the context-window compaction tool family
 - `tests/test_general_tools.py`: coverage for the reusable text, record, and control-flow tool family
@@ -103,6 +111,8 @@ Tests:
 - `tests/test_knowt_tools.py`: coverage for Knowt tool handlers, memory guard enforcement, Creatify integration, and file-scoped create/edit operations
 - `tests/test_knowt_agent.py`: coverage for the Knowt agent harness — construction, system prompt file loading, parameter sections, tool wiring, and run loop behavior
 - `tests/test_reasoning_tools.py`: coverage for all 50 reasoning lens tool handlers, registry execution, argument validation, and prompt output shape
+- `tests/test_toolset_factory.py`: coverage for `define_tool()` factory and `@tool` decorator — construction, schema building, handler execution, `tool_type` validation, `ToolDefinition.tool_type` backwards compatibility
+- `tests/test_toolset_registry.py`: coverage for `ToolsetRegistry` — built-in/provider/custom tool lookup, `register_tool`/`register_tools`, collision detection, `list_tools`, `get_family`
 - `tests/test_exa_outreach_shared.py`: coverage for `EmailTemplate`, `LeadRecord`, `EmailSentRecord`, `OutreachRunLog`, `FileSystemStorageBackend`, `ExaOutreachMemoryStore`, and tool key constants
 - `tests/test_exa_outreach_agent.py`: coverage for `ExaOutreachAgent` construction, available tools, system prompt building, parameter section ordering, all five internal tool handlers, prepare/run lifecycle, and SDK exports
 - `tests/test_exa_outreach_cli.py`: coverage for the ExaOutreach CLI — parser registration, `prepare`/`configure`/`show`/`run` handlers, `normalize_exa_outreach_runtime_parameters`, and `SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS`
@@ -120,4 +130,5 @@ Current memory artifacts:
 - `memory/add-service-providers/`: internalization, clarifications, and ticket artifacts for adding Creatify, Arcads, Instantly, Outreach, Lemlist, and Exa providers plus the config layer
 - `memory/knowt-agent/`: internalization, clarification, ticket, and verification artifacts for the reasoning tools and Knowt TikTok content creation agent work
 - `memory/add-reasoning-tools/`: internalization, tickets, quality, and critique artifacts for the 50 reasoning lens tool expansion
+- `memory/apply-pr-112-review-feedback/`: internalization, tickets, quality, and critique artifacts for the PR #112 review feedback — porting define_tool()/tool() to main and adding register_tool()/register_tools() to ToolsetRegistry
 - `memory/exa-outreach-agent/`: internalization, clarification, tickets, and verification artifacts for the ExaOutreach agent and CLI work (issues #114–#117)
