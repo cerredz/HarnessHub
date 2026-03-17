@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Mapping
 
 from harnessiq.shared.tools import (
+    FILES_CREATE_FILE,
+    FILES_EDIT_FILE,
     KNOWT_CREATE_AVATAR_DESCRIPTION,
-    KNOWT_CREATE_FILE,
     KNOWT_CREATE_SCRIPT,
     KNOWT_CREATE_VIDEO,
-    KNOWT_EDIT_FILE,
     RegisteredTool,
     ToolArguments,
     ToolDefinition,
@@ -326,7 +326,7 @@ def _build_create_file_tool(memory_store: "KnowtMemoryStore") -> RegisteredTool:
 
     return RegisteredTool(
         definition=ToolDefinition(
-            key=KNOWT_CREATE_FILE,
+            key=FILES_CREATE_FILE,
             name="create_file",
             description=(
                 "Create or overwrite a file inside the agent's memory directory. "
@@ -369,7 +369,7 @@ def _build_edit_file_tool(memory_store: "KnowtMemoryStore") -> RegisteredTool:
 
     return RegisteredTool(
         definition=ToolDefinition(
-            key=KNOWT_EDIT_FILE,
+            key=FILES_EDIT_FILE,
             name="edit_file",
             description=(
                 "Overwrite the content of an existing file inside the agent's memory directory. "
