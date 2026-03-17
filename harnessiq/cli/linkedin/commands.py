@@ -15,6 +15,7 @@ from harnessiq.agents import LinkedInJobApplierAgent, LinkedInMemoryStore
 from harnessiq.agents.linkedin import (
     SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS,
     JobApplicationRecord,
+    JobSearchConfig,
     normalize_linkedin_runtime_parameters,
 )
 
@@ -37,6 +38,23 @@ def register_linkedin_commands(subparsers: argparse._SubParsersAction[argparse.A
     _add_text_or_file_options(configure_parser, "user_profile", "User profile")
     _add_text_or_file_options(configure_parser, "agent_identity", "Agent identity")
     _add_text_or_file_options(configure_parser, "additional_prompt", "Additional prompt")
+    # Job description: accepts plain text or a JSON object (auto-detected).
+    job_desc_group = configure_parser.add_mutually_exclusive_group()
+    job_desc_group.add_argument(
+        "--job-description",
+        metavar="TEXT_OR_JSON",
+        help=(
+            "Job search criteria as plain text or a JSON object with LinkedIn filter fields "
+            "(title, location, remote_type, experience_levels, date_posted, easy_apply_only, "
+            "salary_min, salary_max, job_type, companies, industries). "
+            "Mutually exclusive with --job-description-file."
+        ),
+    )
+    job_desc_group.add_argument(
+        "--job-description-file",
+        metavar="PATH",
+        help="Path to a file containing the job description as plain text or JSON.",
+    )
     configure_parser.add_argument(
         "--runtime-param",
         action="append",
@@ -147,6 +165,11 @@ def _handle_configure(args: argparse.Namespace) -> int:
     if additional_prompt is not None:
         store.write_additional_prompt(additional_prompt)
         updated.append("additional_prompt")
+
+    raw_job_description = _resolve_text_argument(args.job_description, args.job_description_file)
+    if raw_job_description is not None:
+        store.write_job_search_config(_parse_job_description(raw_job_description))
+        updated.append("job_search_config")
 
     runtime_parameters = store.read_runtime_parameters()
     runtime_parameters.update(_parse_runtime_assignments(args.runtime_param))
@@ -327,12 +350,30 @@ def _parse_scalar(value: str) -> Any:
         return value
 
 
+def _parse_job_description(raw: str) -> JobSearchConfig:
+    """Parse a raw CLI job description string into a ``JobSearchConfig``.
+
+    If the string is a valid JSON object, it is treated as structured filter data.
+    Otherwise it is treated as a free-form description string.
+    """
+    stripped = raw.strip()
+    try:
+        parsed = json.loads(stripped)
+        if isinstance(parsed, dict):
+            return JobSearchConfig.from_dict(parsed)
+    except (json.JSONDecodeError, ValueError):
+        pass
+    return JobSearchConfig.from_string(stripped)
+
+
 def _build_summary(store: LinkedInMemoryStore) -> dict[str, Any]:
+    job_search_config = store.read_job_search_config()
     return {
         "additional_prompt": store.read_additional_prompt(),
         "agent_identity": store.read_agent_identity(),
         "custom_parameters": store.read_custom_parameters(),
         "job_preferences": store.read_job_preferences(),
+        "job_search_config": job_search_config.as_dict() if job_search_config is not None else {},
         "managed_files": [record.as_dict() for record in store.read_managed_files()],
         "memory_path": str(store.memory_path.resolve()),
         "runtime_parameters": store.read_runtime_parameters(),

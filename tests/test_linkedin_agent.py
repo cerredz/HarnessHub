@@ -9,6 +9,7 @@ from pathlib import Path
 from harnessiq.agents import (
     AgentModelRequest,
     AgentModelResponse,
+    JobSearchConfig,
     LinkedInJobApplierAgent,
     build_linkedin_browser_tool_definitions,
 )
@@ -65,12 +66,13 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
             self.assertIn("navigate", model.requests[0].system_prompt)
             self.assertIn("pause_and_notify", model.requests[0].system_prompt)
             self.assertEqual(agent.config.action_log_window, DEFAULT_LINKEDIN_ACTION_LOG_WINDOW)
+            self.assertTrue(Path(temp_dir, "job_search_config.json").exists())
             self.assertEqual(
                 [section.title for section in model.requests[0].parameter_sections],
                 [
+                    "Jobs Already Applied To",
                     "Job Preferences",
                     "User Profile",
-                    "Jobs Already Applied To",
                     "Recent Actions (last 10)",
                 ],
             )
@@ -96,7 +98,7 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
             self.assertFalse(agent.config.notify_on_pause)
             self.assertIn("Runtime Parameters", sections)
             self.assertIn("Custom Parameters", sections)
-            self.assertIn("Additional Prompt Data", sections)
+            self.assertIn("Additional Prompt Data", sections)  # section title updated in ticket 3
             self.assertIn("Managed Files", sections)
             self.assertIn("resume.txt", sections["Managed Files"])
             self.assertIn("cover-letter.txt", sections["Managed Files"])
@@ -162,6 +164,75 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
             self.assertEqual(len(agent.memory_store.read_applied_jobs()), 3)
             self.assertEqual(agent.memory_store.current_jobs()["job-1"].status, "failed")
             self.assertEqual(agent.memory_store.current_jobs()["job-2"].status, "skipped")
+
+    def test_job_search_config_injected_into_context_window(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+
+            # String description is persisted during prepare() and rendered into context.
+            agent = LinkedInJobApplierAgent(
+                model=model,
+                memory_path=temp_dir,
+                job_search_config="Senior software engineer, remote, salary > $150k",
+            )
+            result = agent.run(max_cycles=1)
+
+            self.assertEqual(result.status, "completed")
+            sections = {s.title: s.content for s in model.requests[0].parameter_sections}
+            self.assertIn("Job Search Config", sections)
+            self.assertIn("Senior software engineer", sections["Job Search Config"])
+            # Applied jobs is still first even when job_search_config is present.
+            self.assertEqual(model.requests[0].parameter_sections[0].title, "Jobs Already Applied To")
+            self.assertEqual(model.requests[0].parameter_sections[1].title, "Job Search Config")
+
+    def test_job_search_config_structured_fields_render_correctly(self) -> None:
+        config = JobSearchConfig(
+            title="Staff Engineer",
+            location="San Francisco, CA",
+            remote_type="remote",
+            experience_levels=("mid_senior", "director"),
+            date_posted="past_week",
+            easy_apply_only=True,
+            salary_min=200_000,
+            salary_max=350_000,
+            job_type=("full_time", "contract"),
+        )
+        rendered = config.render()
+        self.assertIn("Staff Engineer", rendered)
+        self.assertIn("San Francisco, CA", rendered)
+        self.assertIn("Remote", rendered)
+        self.assertIn("Mid Senior", rendered)
+        self.assertIn("Past Week", rendered)
+        self.assertIn("Easy Apply Only: Yes", rendered)
+        self.assertIn("$200,000", rendered)
+        self.assertIn("$350,000", rendered)
+        self.assertIn("Full Time", rendered)
+
+        roundtripped = JobSearchConfig.from_dict(config.as_dict())
+        self.assertEqual(roundtripped.title, config.title)
+        self.assertEqual(roundtripped.remote_type, config.remote_type)
+        self.assertEqual(roundtripped.experience_levels, config.experience_levels)
+        self.assertEqual(roundtripped.easy_apply_only, config.easy_apply_only)
+        self.assertEqual(roundtripped.salary_min, config.salary_min)
+
+    def test_job_search_config_from_memory_override_takes_precedence(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+            store = LinkedInJobApplierAgent(model=model, memory_path=temp_dir).memory_store
+            store.prepare()
+            # Persist one config via the store.
+            store.write_job_search_config({"title": "Product Manager"})
+
+            # Override via from_memory() with a different config.
+            override_config = JobSearchConfig(title="Engineering Manager", location="NYC")
+            agent = LinkedInJobApplierAgent.from_memory(
+                model=model,
+                memory_path=temp_dir,
+                job_search_config=override_config,
+            )
+            agent.run(max_cycles=1)
+            sections = {s.title: s.content for s in model.requests[0].parameter_sections}
+            self.assertIn("Engineering Manager", sections["Job Search Config"])
 
     def test_context_reset_reloads_recent_actions_from_memory(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

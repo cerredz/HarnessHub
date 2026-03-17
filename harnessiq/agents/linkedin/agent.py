@@ -22,26 +22,28 @@ from harnessiq.shared.agents import (
 )
 from harnessiq.shared.linkedin import (
     ACTION_LOG_FILENAME,
+    ADDITIONAL_PROMPT_FILENAME,
     AGENT_IDENTITY_FILENAME,
     APPLIED_JOBS_FILENAME,
-    ADDITIONAL_PROMPT_FILENAME,
+    CUSTOM_PARAMETERS_FILENAME,
     DEFAULT_AGENT_IDENTITY,
     DEFAULT_JOB_PREFERENCES,
     DEFAULT_LINKEDIN_ACTION_LOG_WINDOW,
     DEFAULT_LINKEDIN_NOTIFY_ON_PAUSE,
     DEFAULT_LINKEDIN_START_URL,
     DEFAULT_USER_PROFILE,
-    CUSTOM_PARAMETERS_FILENAME,
     JOB_PREFERENCES_FILENAME,
+    JOB_SEARCH_CONFIG_FILENAME,
     MANAGED_FILES_DIRNAME,
     MANAGED_FILES_INDEX_FILENAME,
+    RUNTIME_PARAMETERS_FILENAME,
     SCREENSHOT_DIRNAME,
     USER_PROFILE_FILENAME,
     ActionLogEntry,
     JobApplicationRecord,
+    JobSearchConfig,
     LinkedInAgentConfig,
     LinkedInManagedFile,
-    RUNTIME_PARAMETERS_FILENAME,
     ScreenshotPersistor,
 )
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
@@ -109,6 +111,10 @@ class LinkedInMemoryStore:
     def managed_files_index_path(self) -> Path:
         return self.memory_path / MANAGED_FILES_INDEX_FILENAME
 
+    @property
+    def job_search_config_path(self) -> Path:
+        return self.memory_path / JOB_SEARCH_CONFIG_FILENAME
+
     def prepare(self) -> None:
         self.memory_path.mkdir(parents=True, exist_ok=True)
         self.screenshot_dir.mkdir(parents=True, exist_ok=True)
@@ -120,6 +126,7 @@ class LinkedInMemoryStore:
         _ensure_json_file(self.custom_parameters_path, {})
         _ensure_text_file(self.additional_prompt_path, "")
         _ensure_json_file(self.managed_files_index_path, [])
+        _ensure_json_file(self.job_search_config_path, {})
         _ensure_text_file(self.applied_jobs_path, "")
         _ensure_text_file(self.action_log_path, "")
 
@@ -158,6 +165,26 @@ class LinkedInMemoryStore:
 
     def write_additional_prompt(self, content: str) -> Path:
         return self._write_text(self.additional_prompt_path, content)
+
+    def read_job_search_config(self) -> JobSearchConfig | None:
+        """Return the persisted job search config, or ``None`` if not set."""
+        payload = self._read_json_file(self.job_search_config_path, expected_type=dict)
+        if not payload:
+            return None
+        return JobSearchConfig.from_dict(payload)
+
+    def write_job_search_config(
+        self,
+        config: str | dict[str, Any] | JobSearchConfig,
+    ) -> Path:
+        """Persist a job search config from a string, dict, or ``JobSearchConfig``."""
+        if isinstance(config, str):
+            resolved = JobSearchConfig.from_string(config)
+        elif isinstance(config, dict):
+            resolved = JobSearchConfig.from_dict(config)
+        else:
+            resolved = config
+        return self._write_json_file(self.job_search_config_path, resolved.as_dict())
 
     def read_applied_jobs_raw(self) -> str:
         return self.applied_jobs_path.read_text(encoding="utf-8").strip()
@@ -329,6 +356,7 @@ class LinkedInJobApplierAgent(BaseAgent):
         memory_path: str | Path | None = None,
         browser_tools: Iterable[RegisteredTool] = (),
         screenshot_persistor: ScreenshotPersistor | None = None,
+        job_search_config: str | dict[str, Any] | JobSearchConfig | None = None,
         max_tokens: int = DEFAULT_AGENT_MAX_TOKENS,
         reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD,
         action_log_window: int = DEFAULT_LINKEDIN_ACTION_LOG_WINDOW,
@@ -350,6 +378,7 @@ class LinkedInJobApplierAgent(BaseAgent):
             action_log_window=self._config.action_log_window,
         )
         self._screenshot_persistor = screenshot_persistor
+        self._initial_job_search_config = job_search_config
 
         tool_registry = ToolRegistry(
             _merge_tools(
@@ -385,6 +414,7 @@ class LinkedInJobApplierAgent(BaseAgent):
         memory_path: str | Path | None = None,
         browser_tools: Iterable[RegisteredTool] = (),
         screenshot_persistor: ScreenshotPersistor | None = None,
+        job_search_config: str | dict[str, Any] | JobSearchConfig | None = None,
         runtime_overrides: Mapping[str, Any] | None = None,
     ) -> "LinkedInJobApplierAgent":
         resolved_path = _resolve_memory_path(memory_path)
@@ -398,11 +428,14 @@ class LinkedInJobApplierAgent(BaseAgent):
             memory_path=resolved_path,
             browser_tools=browser_tools,
             screenshot_persistor=screenshot_persistor,
+            job_search_config=job_search_config,
             **normalize_linkedin_runtime_parameters(runtime_parameters),
         )
 
     def prepare(self) -> None:
         self._memory_store.prepare()
+        if self._initial_job_search_config is not None:
+            self._memory_store.write_job_search_config(self._initial_job_search_config)
 
     def build_system_prompt(self) -> str:
         template = _MASTER_PROMPT_PATH.read_text(encoding="utf-8")
@@ -420,6 +453,10 @@ class LinkedInJobApplierAgent(BaseAgent):
         recent_actions_text = "\n".join(json.dumps(entry.as_dict(), sort_keys=True) for entry in recent_actions)
         sections: list[AgentParameterSection] = [
             AgentParameterSection(
+                title="Jobs Already Applied To",
+                content=_or_placeholder(self._memory_store.read_applied_jobs_raw(), "(no applications recorded yet)"),
+            ),
+            AgentParameterSection(
                 title="Job Preferences",
                 content=_or_placeholder(self._memory_store.read_job_preferences(), "(job preferences not set)"),
             ),
@@ -428,14 +465,13 @@ class LinkedInJobApplierAgent(BaseAgent):
                 content=_or_placeholder(self._memory_store.read_user_profile(), "(user profile not set)"),
             ),
             AgentParameterSection(
-                title="Jobs Already Applied To",
-                content=_or_placeholder(self._memory_store.read_applied_jobs_raw(), "(no applications recorded yet)"),
-            ),
-            AgentParameterSection(
                 title=f"Recent Actions (last {self._config.action_log_window})",
                 content=_or_placeholder(recent_actions_text, "(no recent actions recorded yet)"),
             ),
         ]
+        job_search_config = self._memory_store.read_job_search_config()
+        if job_search_config is not None and not job_search_config.is_empty():
+            sections.insert(1, AgentParameterSection(title="Job Search Config", content=job_search_config.render()))
         runtime_parameters = self._memory_store.read_runtime_parameters()
         if runtime_parameters:
             sections.append(AgentParameterSection(title="Runtime Parameters", content=_json_block(runtime_parameters)))
@@ -919,6 +955,7 @@ def _timestamp_for_filename() -> str:
 __all__ = [
     "ActionLogEntry",
     "JobApplicationRecord",
+    "JobSearchConfig",
     "LinkedInAgentConfig",
     "LinkedInManagedFile",
     "LinkedInJobApplierAgent",
