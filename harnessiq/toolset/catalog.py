@@ -73,8 +73,8 @@ def _builtin_filesystem() -> tuple[RegisteredTool, ...]:
 
 
 def _builtin_reason() -> tuple[RegisteredTool, ...]:
-    from harnessiq.tools.reasoning.core import create_reasoning_tools
-    return create_reasoning_tools()
+    from harnessiq.tools.reasoning.core import create_injectable_reasoning_tools
+    return create_injectable_reasoning_tools()
 
 
 def _builtin_reasoning() -> tuple[RegisteredTool, ...]:

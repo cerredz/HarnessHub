@@ -69,6 +69,10 @@ Source layout:
 - `harnessiq/providers/outreach/`: Outreach.io sales engagement API — credentials, OAuth client, and core operation catalog
 - `harnessiq/providers/lemlist/`: Lemlist outreach API — credentials, client, and full operation catalog
 - `harnessiq/providers/exa/`: Exa neural search API — credentials, client, and full operation catalog
+- `harnessiq/agents/exa_outreach/`: ExaOutreach agent harness — finds prospects via Exa search, sends personalised emails via Resend, and deterministically persists leads and email records to a pluggable `StorageBackend`
+- `harnessiq/agents/exa_outreach/prompts/`: system prompt files for the ExaOutreach agent; `master_prompt.md` loaded at runtime
+- `harnessiq/shared/exa_outreach.py`: `EmailTemplate`, `LeadRecord`, `EmailSentRecord`, `OutreachRunLog`, `StorageBackend` protocol, `FileSystemStorageBackend` (per-run JSON files under `runs/`), and `ExaOutreachMemoryStore`
+- `harnessiq/cli/exa_outreach/`: ExaOutreach CLI — `prepare`, `configure`, `show`, and `run` subcommands registered under `harnessiq outreach`
 
 Tests:
 - `tests/test_agents_base.py`: coverage for the generic agent loop, transcript handling, context resets, and structured pause behavior
@@ -109,6 +113,9 @@ Tests:
 - `tests/test_reasoning_tools.py`: coverage for all 50 reasoning lens tool handlers, registry execution, argument validation, and prompt output shape
 - `tests/test_toolset_factory.py`: coverage for `define_tool()` factory and `@tool` decorator — construction, schema building, handler execution, `tool_type` validation, `ToolDefinition.tool_type` backwards compatibility
 - `tests/test_toolset_registry.py`: coverage for `ToolsetRegistry` — built-in/provider/custom tool lookup, `register_tool`/`register_tools`, collision detection, `list_tools`, `get_family`
+- `tests/test_exa_outreach_shared.py`: coverage for `EmailTemplate`, `LeadRecord`, `EmailSentRecord`, `OutreachRunLog`, `FileSystemStorageBackend`, `ExaOutreachMemoryStore`, and tool key constants
+- `tests/test_exa_outreach_agent.py`: coverage for `ExaOutreachAgent` construction, available tools, system prompt building, parameter section ordering, all five internal tool handlers, prepare/run lifecycle, and SDK exports
+- `tests/test_exa_outreach_cli.py`: coverage for the ExaOutreach CLI — parser registration, `prepare`/`configure`/`show`/`run` handlers, `normalize_exa_outreach_runtime_parameters`, and `SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS`
 
 Current memory artifacts:
 
@@ -124,3 +131,4 @@ Current memory artifacts:
 - `memory/knowt-agent/`: internalization, clarification, ticket, and verification artifacts for the reasoning tools and Knowt TikTok content creation agent work
 - `memory/add-reasoning-tools/`: internalization, tickets, quality, and critique artifacts for the 50 reasoning lens tool expansion
 - `memory/apply-pr-112-review-feedback/`: internalization, tickets, quality, and critique artifacts for the PR #112 review feedback — porting define_tool()/tool() to main and adding register_tool()/register_tools() to ToolsetRegistry
+- `memory/exa-outreach-agent/`: internalization, clarification, tickets, and verification artifacts for the ExaOutreach agent and CLI work (issues #114–#117)

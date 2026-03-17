@@ -1,10 +1,11 @@
 """Toolset registry — resolves ``RegisteredTool`` objects from the catalog.
 
 ``ToolsetRegistry`` is the backing implementation for the module-level
-``get_tool``, ``get_tools``, ``get_family``, and ``list_tools`` helpers.  It
-mirrors the design of ``MasterPromptRegistry``: lazy initialization on first
-access, an in-memory cache, and clear ``KeyError`` / ``ValueError`` messages
-that name available alternatives.
+``get_tool``, ``get_tools``, ``get_family``, ``list_tools``, ``register_tool``,
+and ``register_tools`` helpers.  It mirrors the design of
+``MasterPromptRegistry``: lazy initialization on first access, an in-memory
+cache, and clear ``KeyError`` / ``ValueError`` messages that name available
+alternatives.
 """
 
 from __future__ import annotations
@@ -28,6 +29,8 @@ class ToolsetRegistry:
     Built-in tools (no credentials required) are instantiated once and cached.
     Provider tools (credentials required) are instantiated on demand by
     delegating to their respective ``create_*_tools()`` factory.
+    Custom tools can be inserted at runtime via :meth:`register_tool` and
+    :meth:`register_tools` so they appear alongside built-ins in all lookups.
 
     Example::
 
@@ -35,6 +38,10 @@ class ToolsetRegistry:
         brainstorm = registry.get("reason.brainstorm")
         reasoning_tools = registry.get_family("reasoning", count=4)
         all_entries = registry.list()
+
+        # Register a custom tool so it's retrievable by key
+        registry.register_tool(my_custom_tool)
+        retrieved = registry.get("custom.my_tool")
     """
 
     def __init__(self) -> None:
@@ -42,6 +49,9 @@ class ToolsetRegistry:
         self._builtin_by_key: dict[str, RegisteredTool] | None = None
         # family → ordered tuple of RegisteredTool for built-in families
         self._builtin_by_family: dict[str, tuple[RegisteredTool, ...]] | None = None
+        # Custom tools registered at runtime via register_tool()
+        self._custom_by_key: dict[str, RegisteredTool] = {}
+        self._custom_by_family: dict[str, list[RegisteredTool]] = {}
 
     # ------------------------------------------------------------------
     # Public API
@@ -52,7 +62,8 @@ class ToolsetRegistry:
 
         For built-in tools *credentials* is ignored.  For provider tools
         *credentials* is required — passing ``None`` raises ``ValueError``
-        with a descriptive message.
+        with a descriptive message.  Custom tools registered via
+        :meth:`register_tool` are resolved before raising ``KeyError``.
 
         Raises:
             KeyError: If *key* is not in the catalog.
@@ -64,10 +75,79 @@ class ToolsetRegistry:
         assert self._builtin_by_key is not None  # noqa: S101
         if key in self._builtin_by_key:
             return self._builtin_by_key[key]
+        if key in self._custom_by_key:
+            return self._custom_by_key[key]
         raise KeyError(
             f"No tool with key '{key}' in the Harnessiq catalog. "
             f"Call list_tools() to see all available keys."
         )
+
+    def register_tool(self, tool: RegisteredTool) -> None:
+        """Insert *tool* into the registry so it is retrievable by key.
+
+        After registration, ``get(tool.key)`` returns *tool* and
+        ``get_family(family)`` includes it in the appropriate family bucket.
+        ``list_tools()`` also returns a metadata entry for the tool.
+
+        Args:
+            tool: A :class:`~harnessiq.shared.tools.RegisteredTool` to insert.
+                Typically created with :func:`~harnessiq.toolset.define_tool`
+                or the :func:`~harnessiq.toolset.tool` decorator.
+
+        Raises:
+            ValueError: If *tool.key* already exists in the built-in catalog,
+                the provider catalog, or a previously registered custom tool.
+
+        Example::
+
+            my_tool = define_tool(
+                key="custom.shout",
+                description="Uppercase.",
+                parameters={"text": {"type": "string"}},
+                handler=lambda args: args["text"].upper(),
+            )
+            registry.register_tool(my_tool)
+            registry.get("custom.shout")  # returns my_tool
+        """
+        key = tool.key
+        self._ensure_builtin_loaded()
+        assert self._builtin_by_key is not None  # noqa: S101
+        if key in self._builtin_by_key:
+            raise ValueError(
+                f"Cannot register custom tool: key '{key}' is already used by a "
+                f"built-in Harnessiq tool."
+            )
+        if key in PROVIDER_ENTRY_INDEX:
+            raise ValueError(
+                f"Cannot register custom tool: key '{key}' is already used by a "
+                f"provider tool."
+            )
+        if key in self._custom_by_key:
+            raise ValueError(
+                f"Cannot register custom tool: key '{key}' has already been "
+                f"registered as a custom tool."
+            )
+        self._custom_by_key[key] = tool
+        family = _family_of(key)
+        self._custom_by_family.setdefault(family, []).append(tool)
+
+    def register_tools(self, *tools: RegisteredTool) -> None:
+        """Insert multiple tools into the registry in order.
+
+        Equivalent to calling :meth:`register_tool` for each tool in *tools*.
+        If any key collides, the error is raised immediately and subsequent
+        tools in the call are not registered.
+
+        Args:
+            *tools: One or more :class:`~harnessiq.shared.tools.RegisteredTool`
+                objects to register.
+
+        Raises:
+            ValueError: If any key already exists in the built-in, provider,
+                or custom catalog.
+        """
+        for tool in tools:
+            self.register_tool(tool)
 
     def get_many(self, *keys: str, credentials: object = None) -> tuple[RegisteredTool, ...]:
         """Return a tuple of ``RegisteredTool`` objects for the given keys.
@@ -116,7 +196,8 @@ class ToolsetRegistry:
         """Return metadata entries for all registered tools, built-ins first.
 
         Built-in entries are derived from instantiated tool definitions;
-        provider entries are returned from the static catalog.
+        provider entries are returned from the static catalog; custom entries
+        appear last.
         """
         self._ensure_builtin_loaded()
         assert self._builtin_by_key is not None  # noqa: S101
@@ -131,7 +212,17 @@ class ToolsetRegistry:
             )
             for tool in self._builtin_by_key.values()
         ]
-        return [*builtin_entries, *PROVIDER_ENTRIES]
+        custom_entries = [
+            ToolEntry(
+                key=tool.definition.key,
+                name=tool.definition.name,
+                description=tool.definition.description,
+                family=_family_of(tool.definition.key),
+                requires_credentials=False,
+            )
+            for tool in self._custom_by_key.values()
+        ]
+        return [*builtin_entries, *PROVIDER_ENTRIES, *custom_entries]
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -177,11 +268,15 @@ class ToolsetRegistry:
         # Built-in family?
         self._ensure_builtin_loaded()
         assert self._builtin_by_family is not None  # noqa: S101
-        if family in self._builtin_by_family:
-            return self._builtin_by_family[family]
+        builtin = self._builtin_by_family.get(family)
+        custom = tuple(self._custom_by_family.get(family, []))
+        if builtin is not None or custom:
+            return (*builtin, *custom) if builtin is not None else custom
 
         available = sorted(
-            set(self._builtin_by_family.keys()) | set(PROVIDER_FACTORY_MAP.keys())
+            set(self._builtin_by_family.keys())
+            | set(PROVIDER_FACTORY_MAP.keys())
+            | set(self._custom_by_family.keys())
         )
         raise KeyError(
             f"No tool family '{family}' in the Harnessiq catalog. "
@@ -228,4 +323,4 @@ def _invoke_provider_factory(family: str, credentials: object) -> tuple[Register
     return tuple(factory(credentials=credentials))
 
 
-__all__ = ["ToolsetRegistry"]
+__all__ = ["ToolsetRegistry"]  # register_tool / register_tools are on the instance
