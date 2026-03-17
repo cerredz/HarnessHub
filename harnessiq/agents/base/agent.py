@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, Sequence
 
 from harnessiq.shared.agents import (
@@ -44,11 +45,13 @@ class BaseAgent(ABC):
         model: AgentModel,
         tool_executor: AgentToolExecutor,
         runtime_config: AgentRuntimeConfig | None = None,
+        memory_path: Path | None = None,
     ) -> None:
         self._name = name
         self._model = model
         self._tool_executor = tool_executor
         self._runtime_config = runtime_config or AgentRuntimeConfig()
+        self._memory_path = memory_path
         self._parameter_sections: tuple[AgentParameterSection, ...] = ()
         self._transcript: list[AgentTranscriptEntry] = []
         self._reset_count = 0
@@ -76,6 +79,10 @@ class BaseAgent(ABC):
     @property
     def reset_count(self) -> int:
         return self._reset_count
+
+    @property
+    def memory_path(self) -> Path | None:
+        return self._memory_path
 
     def build_context_window(self) -> AgentContextWindow:
         """Return the current context window including parameters and transcript entries."""

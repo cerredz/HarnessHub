@@ -192,6 +192,45 @@ class TestKnowtAgentAvailableTools(unittest.TestCase):
         self.assertEqual(len(self.agent.available_tools()), 8)
 
 
+class TestKnowtAgentInjection(unittest.TestCase):
+    """Verify injectable config and tools parameters."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.mkdtemp()
+        self.model = _mock_model()
+
+    def test_injected_config_overrides_scalar_params(self) -> None:
+        config = KnowtAgentConfig(memory_path=Path(self.tmp), max_tokens=99_000, reset_threshold=0.9)
+        agent = KnowtAgent(model=self.model, memory_path=self.tmp, config=config)
+        self.assertEqual(agent.config.max_tokens, 99_000)
+        self.assertAlmostEqual(agent.config.reset_threshold, 0.9)
+
+    def test_injected_config_takes_precedence_over_scalar_params(self) -> None:
+        config = KnowtAgentConfig(memory_path=Path(self.tmp), max_tokens=55_000)
+        agent = KnowtAgent(model=self.model, memory_path=self.tmp, max_tokens=10_000, config=config)
+        self.assertEqual(agent.config.max_tokens, 55_000)
+
+    def test_injected_tools_replace_defaults(self) -> None:
+        from harnessiq.shared.tools import RegisteredTool, ToolDefinition
+        stub = RegisteredTool(
+            definition=ToolDefinition(
+                key="custom.stub",
+                name="stub",
+                description="A stub tool.",
+                input_schema={"type": "object", "properties": {}, "additionalProperties": False},
+            ),
+            handler=lambda args: {},
+        )
+        agent = KnowtAgent(model=self.model, memory_path=self.tmp, tools=[stub])
+        keys = {t.key for t in agent.available_tools()}
+        self.assertIn("custom.stub", keys)
+        self.assertNotIn(REASON_BRAINSTORM, keys)
+
+    def test_memory_path_exposed_on_base_agent(self) -> None:
+        agent = KnowtAgent(model=self.model, memory_path=self.tmp)
+        self.assertEqual(agent.memory_path, Path(self.tmp))
+
+
 class TestKnowtAgentRunLoop(unittest.TestCase):
     """Verify the agent can run a simple loop to completion."""
 

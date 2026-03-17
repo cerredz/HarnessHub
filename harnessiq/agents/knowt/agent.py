@@ -13,7 +13,13 @@ from harnessiq.shared.agents import (
     AgentParameterSection,
     AgentRuntimeConfig,
 )
-from harnessiq.shared.knowt import KnowtAgentConfig, KnowtMemoryStore
+from harnessiq.shared.knowt import (
+    KnowtAgentConfig,
+    KnowtMemoryStore,
+    MASTER_PROMPT_FILENAME,
+    PROMPTS_DIRNAME,
+)
+from harnessiq.shared.tools import RegisteredTool
 from harnessiq.tools.knowt import create_knowt_tools
 from harnessiq.tools.reasoning import create_injectable_reasoning_tools
 from harnessiq.tools.registry import ToolRegistry
@@ -21,8 +27,8 @@ from harnessiq.tools.registry import ToolRegistry
 if TYPE_CHECKING:
     from harnessiq.providers.creatify.client import CreatifyClient, CreatifyCredentials
 
-_PROMPTS_DIR = Path(__file__).parent / "prompts"
-_MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
+_PROMPTS_DIR = Path(__file__).parent / PROMPTS_DIRNAME
+_MASTER_PROMPT_PATH = _PROMPTS_DIR / MASTER_PROMPT_FILENAME
 
 
 class KnowtAgent(BaseAgent):
@@ -44,8 +50,10 @@ class KnowtAgent(BaseAgent):
         creatify_credentials: "CreatifyCredentials | None" = None,
         max_tokens: int = DEFAULT_AGENT_MAX_TOKENS,
         reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD,
+        config: KnowtAgentConfig | None = None,
+        tools: "Sequence[RegisteredTool] | None" = None,
     ) -> None:
-        self._config = KnowtAgentConfig(
+        self._config = config or KnowtAgentConfig(
             memory_path=Path(memory_path),
             max_tokens=max_tokens,
             reset_threshold=reset_threshold,
@@ -53,16 +61,15 @@ class KnowtAgent(BaseAgent):
         self._memory_store = KnowtMemoryStore(memory_path=self._config.memory_path)
         self._memory_store.prepare()
 
-        tool_registry = ToolRegistry(
-            (
-                *create_injectable_reasoning_tools(),
-                *create_knowt_tools(
-                    memory_store=self._memory_store,
-                    creatify_client=creatify_client,
-                    creatify_credentials=creatify_credentials,
-                ),
-            )
+        resolved_tools: tuple[RegisteredTool, ...] = tuple(tools) if tools is not None else (
+            *create_injectable_reasoning_tools(),
+            *create_knowt_tools(
+                memory_store=self._memory_store,
+                creatify_client=creatify_client,
+                creatify_credentials=creatify_credentials,
+            ),
         )
+        tool_registry = ToolRegistry(resolved_tools)
         runtime_config = AgentRuntimeConfig(
             max_tokens=self._config.max_tokens,
             reset_threshold=self._config.reset_threshold,
@@ -72,6 +79,7 @@ class KnowtAgent(BaseAgent):
             model=model,
             tool_executor=tool_registry,
             runtime_config=runtime_config,
+            memory_path=self._config.memory_path,
         )
 
     @property
