@@ -16,6 +16,7 @@ from harnessiq.shared.agents import (
 from harnessiq.shared.linkedin import (
     ActionLogEntry,
     JobApplicationRecord,
+    JobSearchConfig,
     LinkedInAgentConfig,
     ScreenshotPersistor,
 )
@@ -55,6 +56,7 @@ __all__ = [
     "KnowtMemoryStore",
     "EmailAgentConfig",
     "JobApplicationRecord",
+    "JobSearchConfig",
     "LinkedInAgentConfig",
     "LinkedInJobApplierAgent",
     "LinkedInMemoryStore",

@@ -54,8 +54,130 @@ RUNTIME_PARAMETERS_FILENAME = "runtime_parameters.json"
 CUSTOM_PARAMETERS_FILENAME = "custom_parameters.json"
 ADDITIONAL_PROMPT_FILENAME = "additional_prompt.md"
 MANAGED_FILES_INDEX_FILENAME = "managed_files.json"
+JOB_SEARCH_CONFIG_FILENAME = "job_search_config.json"
 SCREENSHOT_DIRNAME = "screenshots"
 MANAGED_FILES_DIRNAME = "managed_files"
+
+
+@dataclass(frozen=True, slots=True)
+class JobSearchConfig:
+    """Structured LinkedIn job search configuration mirroring LinkedIn's filter UI.
+
+    All fields are optional.  Pass ``description`` alone for a free-form fallback
+    when structured filter fields are not provided.
+
+    Valid values for ``remote_type``: ``"onsite"``, ``"remote"``, ``"hybrid"``.
+    Valid values for ``experience_levels``: ``"internship"``, ``"entry"``,
+    ``"associate"``, ``"mid_senior"``, ``"director"``, ``"executive"``.
+    Valid values for ``date_posted``: ``"past_24_hours"``, ``"past_week"``,
+    ``"past_month"``, ``"any_time"``.
+    Valid values for ``job_type``: ``"full_time"``, ``"part_time"``,
+    ``"contract"``, ``"temporary"``, ``"volunteer"``, ``"other"``.
+    """
+
+    title: str | None = None
+    location: str | None = None
+    remote_type: str | None = None
+    experience_levels: tuple[str, ...] = ()
+    date_posted: str | None = None
+    easy_apply_only: bool = False
+    salary_min: int | None = None
+    salary_max: int | None = None
+    job_type: tuple[str, ...] = ()
+    companies: tuple[str, ...] = ()
+    industries: tuple[str, ...] = ()
+    description: str | None = None
+
+    def is_empty(self) -> bool:
+        """Return True when no field carries a meaningful value."""
+        return not self.as_dict()
+
+    def render(self) -> str:
+        """Human-readable string suitable for injection into the agent context window."""
+        lines: list[str] = []
+        if self.description:
+            lines.append(self.description)
+            lines.append("")
+        if self.title:
+            lines.append(f"Title: {self.title}")
+        if self.location:
+            lines.append(f"Location: {self.location}")
+        if self.remote_type:
+            lines.append(f"Remote Type: {self.remote_type.replace('_', ' ').title()}")
+        if self.experience_levels:
+            formatted = ", ".join(lvl.replace("_", " ").title() for lvl in self.experience_levels)
+            lines.append(f"Experience Levels: {formatted}")
+        if self.date_posted:
+            lines.append(f"Date Posted: {self.date_posted.replace('_', ' ').title()}")
+        if self.easy_apply_only:
+            lines.append("Easy Apply Only: Yes")
+        if self.salary_min is not None and self.salary_max is not None:
+            lines.append(f"Salary Range: ${self.salary_min:,} \u2013 ${self.salary_max:,}")
+        elif self.salary_min is not None:
+            lines.append(f"Salary: ${self.salary_min:,}+")
+        elif self.salary_max is not None:
+            lines.append(f"Salary: Up to ${self.salary_max:,}")
+        if self.job_type:
+            formatted = ", ".join(jt.replace("_", " ").title() for jt in self.job_type)
+            lines.append(f"Job Types: {formatted}")
+        if self.companies:
+            lines.append(f"Companies: {', '.join(self.companies)}")
+        if self.industries:
+            lines.append(f"Industries: {', '.join(self.industries)}")
+        return "\n".join(lines) if lines else "(job search config not set)"
+
+    def as_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        if self.title:
+            payload["title"] = self.title
+        if self.location:
+            payload["location"] = self.location
+        if self.remote_type:
+            payload["remote_type"] = self.remote_type
+        if self.experience_levels:
+            payload["experience_levels"] = list(self.experience_levels)
+        if self.date_posted:
+            payload["date_posted"] = self.date_posted
+        if self.easy_apply_only:
+            payload["easy_apply_only"] = True
+        if self.salary_min is not None:
+            payload["salary_min"] = self.salary_min
+        if self.salary_max is not None:
+            payload["salary_max"] = self.salary_max
+        if self.job_type:
+            payload["job_type"] = list(self.job_type)
+        if self.companies:
+            payload["companies"] = list(self.companies)
+        if self.industries:
+            payload["industries"] = list(self.industries)
+        if self.description:
+            payload["description"] = self.description
+        return payload
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "JobSearchConfig":
+        return cls(
+            title=payload.get("title") or None,
+            location=payload.get("location") or None,
+            remote_type=payload.get("remote_type") or None,
+            experience_levels=tuple(payload.get("experience_levels") or ()),
+            date_posted=payload.get("date_posted") or None,
+            easy_apply_only=bool(payload.get("easy_apply_only", False)),
+            salary_min=int(payload["salary_min"]) if payload.get("salary_min") is not None else None,
+            salary_max=int(payload["salary_max"]) if payload.get("salary_max") is not None else None,
+            job_type=tuple(payload.get("job_type") or ()),
+            companies=tuple(payload.get("companies") or ()),
+            industries=tuple(payload.get("industries") or ()),
+            description=payload.get("description") or None,
+        )
+
+    @classmethod
+    def from_string(cls, description: str) -> "JobSearchConfig":
+        """Construct a config with only a free-form description string."""
+        stripped = description.strip()
+        if not stripped:
+            raise ValueError("Job search description must not be empty.")
+        return cls(description=stripped)
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,7 +302,9 @@ __all__ = [
     "DEFAULT_LINKEDIN_START_URL",
     "DEFAULT_USER_PROFILE",
     "JOB_PREFERENCES_FILENAME",
+    "JOB_SEARCH_CONFIG_FILENAME",
     "JobApplicationRecord",
+    "JobSearchConfig",
     "LinkedInAgentConfig",
     "LinkedInManagedFile",
     "MANAGED_FILES_DIRNAME",
