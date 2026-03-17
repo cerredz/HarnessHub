@@ -1,4 +1,19 @@
-"""Reasoning lens tools for agent cognitive scaffolding."""
+"""Reasoning tools for agent cognitive scaffolding.
+
+This package exposes two complementary tool sets:
+
+- Core reasoning tools (``brainstorm``, ``chain_of_thought``, ``critique``) defined
+  in ``reasoning.core`` — three high-level injectable tools for structured ideation,
+  sequential analysis, and self-evaluation.  Import via
+  ``from harnessiq.tools.reasoning import brainstorm`` or add to an agent with
+  ``create_reasoning_tools()`` from ``harnessiq.tools``.
+
+- Reasoning lens tools (50 cognitive scaffolding lenses) defined in
+  ``reasoning.lenses`` — a broad catalog of named reasoning patterns.  The lens
+  factory ``create_reasoning_tools`` exported from this package assembles all 50.
+"""
+
+from .core import brainstorm, chain_of_thought, critique
 
 from harnessiq.shared.tools import (
     REASONING_ABDUCTIVE_REASONING,
