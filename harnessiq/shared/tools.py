@@ -98,6 +98,13 @@ REASONING_TREND_EXTRAPOLATION = "reasoning.trend_extrapolation"
 REASONING_VARIABLE_ISOLATION = "reasoning.variable_isolation"
 REASONING_WORST_IDEA_GENERATION = "reasoning.worst_idea_generation"
 
+# ExaOutreach agent internal tool key constants
+EXA_OUTREACH_LIST_TEMPLATES = "exa_outreach.list_templates"
+EXA_OUTREACH_GET_TEMPLATE = "exa_outreach.get_template"
+EXA_OUTREACH_CHECK_CONTACTED = "exa_outreach.check_contacted"
+EXA_OUTREACH_LOG_LEAD = "exa_outreach.log_lead"
+EXA_OUTREACH_LOG_EMAIL_SENT = "exa_outreach.log_email_sent"
+
 # Provider tool key constants
 ARCADS_REQUEST = "arcads.request"
 CREATIFY_REQUEST = "creatify.request"
@@ -180,6 +187,11 @@ __all__ = [
     "CORESIGNAL_REQUEST",
     "CREATIFY_REQUEST",
     "ECHO_TEXT",
+    "EXA_OUTREACH_CHECK_CONTACTED",
+    "EXA_OUTREACH_GET_TEMPLATE",
+    "EXA_OUTREACH_LIST_TEMPLATES",
+    "EXA_OUTREACH_LOG_EMAIL_SENT",
+    "EXA_OUTREACH_LOG_LEAD",
     "EXA_REQUEST",
     "FILESYSTEM_APPEND_TEXT_FILE",
     "FILESYSTEM_COPY_PATH",
