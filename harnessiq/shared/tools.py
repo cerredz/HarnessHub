@@ -139,15 +139,33 @@ CORESIGNAL_REQUEST = "coresignal.request"
 
 @dataclass(frozen=True, slots=True)
 class ToolDefinition:
-    """Provider-agnostic metadata for a callable tool."""
+    """Provider-agnostic metadata for a callable tool.
+
+    Attributes:
+        key: Unique tool identifier in ``namespace.name`` format.
+        name: Short human-readable name (snake_case).
+        description: What the tool does and when to use it.
+        input_schema: JSON Schema object describing accepted arguments.
+        tool_type: The execution type for this tool.  Currently only
+            ``"function"`` is supported.  Additional types
+            (``"computer_use"``, ``"code_interpreter"``, ``"multi_agent"``,
+            etc.) will be introduced in future SDK releases.
+    """
 
     key: str
     name: str
     description: str
     input_schema: JsonObject
+    tool_type: str = "function"
 
     def as_dict(self) -> JsonObject:
-        """Return the canonical metadata without executable runtime state."""
+        """Return the canonical metadata without executable runtime state.
+
+        ``tool_type`` is intentionally omitted — it is SDK metadata used to
+        identify the tool's execution model, not part of the model API payload.
+        Provider adapters serialise ``ToolDefinition`` to their own wire format
+        independently of this method.
+        """
         return {
             "key": self.key,
             "name": self.name,
