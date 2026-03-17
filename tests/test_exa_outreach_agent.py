@@ -120,6 +120,9 @@ class TestExaOutreachAgentConstruction:
         custom_backend.finish_run = MagicMock()
         custom_backend.log_event = MagicMock()
         custom_backend.has_seen = MagicMock(return_value=False)
+        custom_backend.log_lead = MagicMock()
+        custom_backend.log_email_sent = MagicMock()
+        custom_backend.is_contacted = MagicMock(return_value=False)
         custom_backend.current_run_id = MagicMock(return_value=None)
         agent = _make_agent(tmp_path, storage_backend=custom_backend)
         assert agent.config.storage_backend is custom_backend
@@ -286,12 +289,11 @@ class TestLogLeadHandler:
         )
         assert result.output["url"] == "https://example.com/bob"
         assert result.output["name"] == "Bob"
-        # Verify written to disk in generic event format
+        # Verify written to disk
         run_file = tmp_path / "outreach" / "runs" / "run_1.json"
         data = json.loads(run_file.read_text())
-        lead_events = [e for e in data["events"] if e["type"] == "lead"]
-        assert len(lead_events) == 1
-        assert lead_events[0]["data"]["url"] == "https://example.com/bob"
+        assert len(data["leads_found"]) == 1
+        assert data["leads_found"][0]["url"] == "https://example.com/bob"
 
     def test_log_lead_without_prepare_raises(self, tmp_path):
         agent = _make_agent(tmp_path)
@@ -318,9 +320,8 @@ class TestLogEmailSentHandler:
         assert result.output["to_email"] == "alice@example.com"
         run_file = tmp_path / "outreach" / "runs" / "run_1.json"
         data = json.loads(run_file.read_text())
-        email_events = [e for e in data["events"] if e["type"] == "email_sent"]
-        assert len(email_events) == 1
-        assert email_events[0]["data"]["template_id"] == "t1"
+        assert len(data["emails_sent"]) == 1
+        assert data["emails_sent"][0]["template_id"] == "t1"
 
     def test_log_email_sent_without_prepare_raises(self, tmp_path):
         agent = _make_agent(tmp_path)
