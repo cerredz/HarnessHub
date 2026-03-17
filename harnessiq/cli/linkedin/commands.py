@@ -5,13 +5,18 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 import re
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
 from harnessiq.agents import LinkedInJobApplierAgent, LinkedInMemoryStore
-from harnessiq.agents.linkedin import SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS, normalize_linkedin_runtime_parameters
+from harnessiq.agents.linkedin import (
+    SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS,
+    JobApplicationRecord,
+    normalize_linkedin_runtime_parameters,
+)
 
 
 def register_linkedin_commands(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -86,6 +91,13 @@ def register_linkedin_commands(subparsers: argparse._SubParsersAction[argparse.A
     )
     run_parser.add_argument("--max-cycles", type=int, help="Optional max cycle count passed to agent.run().")
     run_parser.set_defaults(command_handler=_handle_run)
+
+    init_browser_parser = linkedin_subparsers.add_parser(
+        "init-browser",
+        help="Open a browser, wait for LinkedIn login, and save the session for future runs",
+    )
+    _add_agent_options(init_browser_parser)
+    init_browser_parser.set_defaults(command_handler=_handle_init_browser)
 
 
 def _add_agent_options(parser: argparse.ArgumentParser) -> None:
@@ -174,6 +186,12 @@ def _handle_show(args: argparse.Namespace) -> int:
 def _handle_run(args: argparse.Namespace) -> int:
     store = _load_store(args)
     store.prepare()
+
+    # Auto-use a saved browser session if it exists in the agent's memory path.
+    browser_data_dir = store.memory_path / "browser-data"
+    if browser_data_dir.exists() and "HARNESSIQ_BROWSER_SESSION_DIR" not in os.environ:
+        os.environ["HARNESSIQ_BROWSER_SESSION_DIR"] = str(browser_data_dir.resolve())
+
     model = _load_factory(args.model_factory)()
     if not hasattr(model, "generate_turn"):
         raise TypeError("Model factory must return an object that implements generate_turn(request).")
@@ -194,16 +212,61 @@ def _handle_run(args: argparse.Namespace) -> int:
         runtime_overrides=runtime_overrides,
     )
     result = agent.run(max_cycles=args.max_cycles)
+
+    # Print applied jobs summary to stdout so the user can see what the agent did.
+    applied_jobs = store.read_applied_jobs()
+    _print_applied_jobs_summary(applied_jobs, store.applied_jobs_path)
+
     _emit_json(
         {
             "agent": args.agent,
             "memory_path": str(store.memory_path.resolve()),
+            "applied_jobs_file": str(store.applied_jobs_path.resolve()),
             "result": {
                 "cycles_completed": result.cycles_completed,
                 "pause_reason": result.pause_reason,
                 "resets": result.resets,
                 "status": result.status,
             },
+        }
+    )
+    return 0
+
+
+def _handle_init_browser(args: argparse.Namespace) -> int:
+    """Open a persistent browser session and wait for the user to log in to LinkedIn."""
+    store = _load_store(args)
+    store.prepare()
+    browser_data_dir = store.memory_path / "browser-data"
+
+    try:
+        from harnessiq.integrations.linkedin_playwright import PlaywrightLinkedInSession
+    except ImportError as exc:
+        raise RuntimeError(
+            "playwright is required. Install with: pip install playwright && python -m playwright install chromium"
+        ) from exc
+
+    session = PlaywrightLinkedInSession(session_dir=browser_data_dir)
+    session.start()
+
+    print(f"Browser session saved to: {browser_data_dir.resolve()}")
+    print()
+    print("Session saved. You can now run the agent with:")
+    print(f"  harnessiq linkedin run \\")
+    print(f"    --agent {args.agent} \\")
+    print(f"    --model-factory harnessiq.integrations.grok_model:create_grok_model \\")
+    print(f"    --browser-tools-factory harnessiq.integrations.linkedin_playwright:create_browser_tools \\")
+    print(f"    --max-cycles 20")
+    print()
+    print("The browser session in the above directory will be reused automatically.")
+    print("Press Enter to close the browser and exit.")
+    input()
+    session.stop()
+    _emit_json(
+        {
+            "agent": args.agent,
+            "browser_data_dir": str(browser_data_dir.resolve()),
+            "status": "session_saved",
         }
     )
     return 0
@@ -292,6 +355,28 @@ def _load_factory(spec: str):
 
 def _emit_json(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True))
+
+
+def _print_applied_jobs_summary(jobs: list[JobApplicationRecord], applied_jobs_path: Path) -> None:
+    """Print a human-readable summary of job applications to stdout."""
+    print()
+    print("=" * 64)
+    if not jobs:
+        print("  NO JOBS APPLIED TO IN THIS RUN")
+    else:
+        print(f"  JOBS APPLIED TO ({len(jobs)} total)")
+        print("  " + "─" * 60)
+        for job in jobs:
+            status_label = job.status.upper() if job.status else "?"
+            print(f"  [{status_label}] {job.title} @ {job.company}")
+            print(f"           {job.url}")
+            if job.notes:
+                print(f"           Note: {job.notes}")
+    print()
+    print(f"  Full records saved to:")
+    print(f"  {applied_jobs_path.resolve()}")
+    print("=" * 64)
+    print()
 
 
 def _print_help(parser: argparse.ArgumentParser) -> int:
