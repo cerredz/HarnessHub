@@ -68,11 +68,13 @@ from harnessiq.shared.tools import (
     REASONING_WORST_IDEA_GENERATION,
 )
 
+from .injectable import brainstorm, chain_of_thought, create_injectable_reasoning_tools, critique
 from .lenses import create_reasoning_tools
 
 __all__ = [
     "brainstorm",
     "chain_of_thought",
+    "create_injectable_reasoning_tools",
     "critique",
     "REASONING_ABDUCTIVE_REASONING",
     "REASONING_ANALOGY_GENERATION",

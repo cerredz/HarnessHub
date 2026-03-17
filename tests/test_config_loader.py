@@ -1,5 +1,4 @@
-"""Tests for the CredentialLoader and ProviderCredentialConfig config layer."""
-"""Tests for harnessiq.config.loader and harnessiq.config.models."""
+"""Tests for the CredentialLoader, ProviderCredentialConfig, and harnessiq.config.models."""
 
 from __future__ import annotations
 

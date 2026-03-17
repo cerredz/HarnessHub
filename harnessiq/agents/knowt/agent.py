@@ -15,7 +15,7 @@ from harnessiq.shared.agents import (
 )
 from harnessiq.shared.knowt import KnowtAgentConfig, KnowtMemoryStore
 from harnessiq.tools.knowt import create_knowt_tools
-from harnessiq.tools.reasoning import create_reasoning_tools
+from harnessiq.tools.reasoning import create_injectable_reasoning_tools
 from harnessiq.tools.registry import ToolRegistry
 
 if TYPE_CHECKING:
@@ -55,7 +55,7 @@ class KnowtAgent(BaseAgent):
 
         tool_registry = ToolRegistry(
             (
-                *create_reasoning_tools(),
+                *create_injectable_reasoning_tools(),
                 *create_knowt_tools(
                     memory_store=self._memory_store,
                     creatify_client=creatify_client,

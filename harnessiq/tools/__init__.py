@@ -125,6 +125,13 @@ from .general_purpose import (
     unique_records,
 )
 from .prompting import create_prompt_tools, create_system_prompt
+from .reasoning import (
+    brainstorm,
+    chain_of_thought,
+    create_injectable_reasoning_tools,
+    create_reasoning_tools,
+    critique,
+)
 from .reasoning import create_reasoning_tools
 from .reasoning.core import brainstorm, chain_of_thought, create_reasoning_tools, critique
 from .resend import (
@@ -252,6 +259,7 @@ __all__ = [
     "create_general_purpose_tools",
     "brainstorm",
     "chain_of_thought",
+    "create_injectable_reasoning_tools",
     "create_prompt_tools",
     "create_reasoning_tools",
     "create_resend_tools",
