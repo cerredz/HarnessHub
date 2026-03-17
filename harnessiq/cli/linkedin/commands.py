@@ -37,7 +37,7 @@ def register_linkedin_commands(subparsers: argparse._SubParsersAction[argparse.A
     _add_text_or_file_options(configure_parser, "job_preferences", "Job preferences")
     _add_text_or_file_options(configure_parser, "user_profile", "User profile")
     _add_text_or_file_options(configure_parser, "agent_identity", "Agent identity")
-    _add_text_or_file_options(configure_parser, "additional_prompt", "Additional prompt")
+    _add_text_or_file_options(configure_parser, "custom_instructions", "Custom instructions")
     # Job description: accepts plain text or a JSON object (auto-detected).
     job_desc_group = configure_parser.add_mutually_exclusive_group()
     job_desc_group.add_argument(
@@ -161,10 +161,10 @@ def _handle_configure(args: argparse.Namespace) -> int:
         store.write_agent_identity(agent_identity)
         updated.append("agent_identity")
 
-    additional_prompt = _resolve_text_argument(args.additional_prompt_text, args.additional_prompt_file)
-    if additional_prompt is not None:
-        store.write_additional_prompt(additional_prompt)
-        updated.append("additional_prompt")
+    custom_instructions = _resolve_text_argument(args.custom_instructions_text, args.custom_instructions_file)
+    if custom_instructions is not None:
+        store.write_additional_prompt(custom_instructions)
+        updated.append("custom_instructions")
 
     raw_job_description = _resolve_text_argument(args.job_description, args.job_description_file)
     if raw_job_description is not None:

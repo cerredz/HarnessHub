@@ -98,7 +98,7 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
             self.assertFalse(agent.config.notify_on_pause)
             self.assertIn("Runtime Parameters", sections)
             self.assertIn("Custom Parameters", sections)
-            self.assertIn("Additional Prompt Data", sections)  # section title updated in ticket 3
+            self.assertIn("Custom Instructions", sections)
             self.assertIn("Managed Files", sections)
             self.assertIn("resume.txt", sections["Managed Files"])
             self.assertIn("cover-letter.txt", sections["Managed Files"])

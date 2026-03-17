@@ -480,7 +480,7 @@ class LinkedInJobApplierAgent(BaseAgent):
             sections.append(AgentParameterSection(title="Custom Parameters", content=_json_block(custom_parameters)))
         additional_prompt = self._memory_store.read_additional_prompt()
         if additional_prompt:
-            sections.append(AgentParameterSection(title="Additional Prompt Data", content=additional_prompt))
+            sections.append(AgentParameterSection(title="Custom Instructions", content=additional_prompt))
         managed_files = [entry.as_dict() for entry in self._memory_store.read_managed_files()]
         if managed_files:
             sections.append(AgentParameterSection(title="Managed Files", content=_json_block(managed_files)))
