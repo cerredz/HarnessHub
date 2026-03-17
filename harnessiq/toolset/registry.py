@@ -273,10 +273,6 @@ class ToolsetRegistry:
         if builtin is not None or custom:
             return (*builtin, *custom) if builtin is not None else custom
 
-        # Custom-only family (key prefix not in built-ins)?
-        if family in self._custom_by_family:  # pragma: no cover — covered above
-            return tuple(self._custom_by_family[family])
-
         available = sorted(
             set(self._builtin_by_family.keys())
             | set(PROVIDER_FACTORY_MAP.keys())
