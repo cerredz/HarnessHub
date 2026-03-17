@@ -103,6 +103,13 @@ BUILTIN_FAMILY_FACTORIES: tuple[_BuiltinFactory, ...] = (
 
 PROVIDER_ENTRIES: tuple[ToolEntry, ...] = (
     ToolEntry(
+        key="apollo.request",
+        name="apollo_request",
+        description="Execute authenticated Apollo.io B2B sales intelligence and engagement API operations.",
+        family="apollo",
+        requires_credentials=True,
+    ),
+    ToolEntry(
         key="arcads.request",
         name="arcads_request",
         description="Execute authenticated Arcads AI advertising video creation API operations.",
@@ -131,10 +138,24 @@ PROVIDER_ENTRIES: tuple[ToolEntry, ...] = (
         requires_credentials=True,
     ),
     ToolEntry(
+        key="expandi.request",
+        name="expandi_request",
+        description="Execute authenticated Expandi LinkedIn outreach automation API operations.",
+        family="expandi",
+        requires_credentials=True,
+    ),
+    ToolEntry(
         key="instantly.request",
         name="instantly_request",
         description="Execute authenticated Instantly cold email platform API operations.",
         family="instantly",
+        requires_credentials=True,
+    ),
+    ToolEntry(
+        key="lusha.request",
+        name="lusha_request",
+        description="Execute authenticated Lusha B2B contact and company intelligence API operations.",
+        family="lusha",
         requires_credentials=True,
     ),
     ToolEntry(
@@ -190,6 +211,13 @@ PROVIDER_ENTRIES: tuple[ToolEntry, ...] = (
         requires_credentials=True,
     ),
     ToolEntry(
+        key="smartlead.request",
+        name="smartlead_request",
+        description="Execute authenticated Smartlead cold email outreach and warm-up API operations.",
+        family="smartlead",
+        requires_credentials=True,
+    ),
+    ToolEntry(
         key="salesforge.request",
         name="salesforge_request",
         description="Execute authenticated Salesforge cold email automation API operations.",
@@ -201,6 +229,13 @@ PROVIDER_ENTRIES: tuple[ToolEntry, ...] = (
         name="snovio_request",
         description="Execute authenticated Snov.io email intelligence API operations (OAuth2).",
         family="snovio",
+        requires_credentials=True,
+    ),
+    ToolEntry(
+        key="zerobounce.request",
+        name="zerobounce_request",
+        description="Execute authenticated ZeroBounce email validation and intelligence API operations.",
+        family="zerobounce",
         requires_credentials=True,
     ),
     ToolEntry(
@@ -223,12 +258,15 @@ PROVIDER_ENTRY_INDEX: dict[str, ToolEntry] = {e.key: e for e in PROVIDER_ENTRIES
 # HTTP clients and credentials types.
 
 PROVIDER_FACTORY_MAP: dict[str, tuple[str, str]] = {
+    "apollo": ("harnessiq.tools.apollo", "create_apollo_tools"),
     "arcads": ("harnessiq.tools.arcads", "create_arcads_tools"),
     "coresignal": ("harnessiq.tools.coresignal", "create_coresignal_tools"),
     "creatify": ("harnessiq.tools.creatify", "create_creatify_tools"),
     "exa": ("harnessiq.tools.exa", "create_exa_tools"),
+    "expandi": ("harnessiq.tools.expandi", "create_expandi_tools"),
     "instantly": ("harnessiq.tools.instantly", "create_instantly_tools"),
     "leadiq": ("harnessiq.tools.leadiq", "create_leadiq_tools"),
+    "lusha": ("harnessiq.tools.lusha", "create_lusha_tools"),
     "lemlist": ("harnessiq.tools.lemlist", "create_lemlist_tools"),
     "outreach": ("harnessiq.tools.outreach", "create_outreach_tools"),
     "peopledatalabs": ("harnessiq.tools.peopledatalabs", "create_peopledatalabs_tools"),
@@ -236,7 +274,9 @@ PROVIDER_FACTORY_MAP: dict[str, tuple[str, str]] = {
     "proxycurl": ("harnessiq.tools.proxycurl", "create_proxycurl_tools"),
     "resend": ("harnessiq.tools.resend", "create_resend_tools"),
     "salesforge": ("harnessiq.tools.salesforge", "create_salesforge_tools"),
+    "smartlead": ("harnessiq.tools.smartlead", "create_smartlead_tools"),
     "snovio": ("harnessiq.tools.snovio", "create_snovio_tools"),
+    "zerobounce": ("harnessiq.tools.zerobounce", "create_zerobounce_tools"),
     "zoominfo": ("harnessiq.tools.zoominfo", "create_zoominfo_tools"),
 }
 

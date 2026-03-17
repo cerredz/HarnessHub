@@ -135,6 +135,11 @@ ZOOMINFO_REQUEST = "zoominfo.request"
 PEOPLEDATALABS_REQUEST = "peopledatalabs.request"
 PROXYCURL_REQUEST = "proxycurl.request"
 CORESIGNAL_REQUEST = "coresignal.request"
+APOLLO_REQUEST = "apollo.request"
+ZEROBOUNCE_REQUEST = "zerobounce.request"
+EXPANDI_REQUEST = "expandi.request"
+SMARTLEAD_REQUEST = "smartlead.request"
+LUSHA_REQUEST = "lusha.request"
 
 
 @dataclass(frozen=True, slots=True)
@@ -197,6 +202,7 @@ class RegisteredTool:
 
 __all__ = [
     "ADD_NUMBERS",
+    "APOLLO_REQUEST",
     "ARCADS_REQUEST",
     "CONTROL_PAUSE_FOR_HUMAN",
     "CORESIGNAL_REQUEST",
@@ -204,6 +210,7 @@ __all__ = [
     "ECHO_TEXT",
     "EXA_OUTREACH_CHECK_CONTACTED",
     "EXA_OUTREACH_GET_TEMPLATE",
+    "EXPANDI_REQUEST",
     "EXA_OUTREACH_LIST_TEMPLATES",
     "EXA_OUTREACH_LOG_EMAIL_SENT",
     "EXA_OUTREACH_LOG_LEAD",
@@ -225,6 +232,7 @@ __all__ = [
     "KNOWT_CREATE_SCRIPT",
     "KNOWT_CREATE_VIDEO",
     "LEADIQ_REQUEST",
+    "LUSHA_REQUEST",
     "LEMLIST_REQUEST",
     "LOG_COMPACTION",
     "OUTREACH_REQUEST",
@@ -302,6 +310,7 @@ __all__ = [
     "REMOVE_TOOLS",
     "RegisteredTool",
     "SALESFORGE_REQUEST",
+    "SMARTLEAD_REQUEST",
     "SNOVIO_REQUEST",
     "TEXT_NORMALIZE_WHITESPACE",
     "TEXT_REGEX_EXTRACT",
@@ -311,5 +320,6 @@ __all__ = [
     "ToolDefinition",
     "ToolHandler",
     "ToolResult",
+    "ZEROBOUNCE_REQUEST",
     "ZOOMINFO_REQUEST",
 ]
