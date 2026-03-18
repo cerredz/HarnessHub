@@ -110,6 +110,16 @@ PROVIDER_ENTRIES: tuple[ToolEntry, ...] = (
         requires_credentials=True,
     ),
     ToolEntry(
+        key="arxiv.request",
+        name="arxiv_request",
+        description=(
+            "Execute arXiv academic paper search and retrieval API operations "
+            "(no credentials required)."
+        ),
+        family="arxiv",
+        requires_credentials=False,
+    ),
+    ToolEntry(
         key="coresignal.request",
         name="coresignal_request",
         description="Execute authenticated Coresignal professional network data API operations.",
@@ -224,6 +234,7 @@ PROVIDER_ENTRY_INDEX: dict[str, ToolEntry] = {e.key: e for e in PROVIDER_ENTRIES
 
 PROVIDER_FACTORY_MAP: dict[str, tuple[str, str]] = {
     "arcads": ("harnessiq.tools.arcads", "create_arcads_tools"),
+    "arxiv": ("harnessiq.tools.arxiv", "create_arxiv_tools"),
     "coresignal": ("harnessiq.tools.coresignal", "create_coresignal_tools"),
     "creatify": ("harnessiq.tools.creatify", "create_creatify_tools"),
     "exa": ("harnessiq.tools.exa", "create_exa_tools"),

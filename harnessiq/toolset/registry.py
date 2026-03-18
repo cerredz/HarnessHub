@@ -165,7 +165,10 @@ class ToolsetRegistry:
     ) -> tuple[RegisteredTool, ...]:
         # Provider family?
         if family in PROVIDER_FACTORY_MAP:
-            if credentials is None:
+            needs_creds = any(
+                e.requires_credentials for e in PROVIDER_ENTRIES if e.family == family
+            )
+            if credentials is None and needs_creds:
                 raise ValueError(
                     f"Provider family '{family}' requires credentials. "
                     f"Pass the appropriate credentials object via the "
@@ -195,7 +198,7 @@ class ToolsetRegistry:
     ) -> RegisteredTool:
         entry = PROVIDER_ENTRY_INDEX[key]
         family = entry.family
-        if credentials is None:
+        if credentials is None and entry.requires_credentials:
             raise ValueError(
                 f"Tool '{key}' requires credentials for the '{family}' provider. "
                 f"Pass the appropriate credentials object via the "
