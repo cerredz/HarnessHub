@@ -133,6 +133,12 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         if self._initial_icp_descriptions:
             self._memory_store.write_icp_profiles(self._initial_icp_descriptions)
 
+    def run(self, *, max_cycles: int | None = None):
+        try:
+            return super().run(max_cycles=max_cycles)
+        finally:
+            self.close()
+
     def build_system_prompt(self) -> str:
         if not _MASTER_PROMPT_PATH.exists():
             raise FileNotFoundError(
@@ -183,6 +189,11 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
 
     def get_search_history(self):
         return tuple(self._memory_store.read_search_history())
+
+    def close(self) -> None:
+        close_backend = getattr(self._search_backend, "close", None)
+        if callable(close_backend):
+            close_backend()
 
     def _execute_tool(self, tool_call: ToolCall) -> ToolResult:
         result = super()._execute_tool(tool_call)

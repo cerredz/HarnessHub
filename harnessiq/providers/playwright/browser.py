@@ -8,6 +8,84 @@ from pathlib import Path
 from typing import Any
 
 
+class PlaywrightBrowserSession:
+    """Manage a reusable Playwright runtime, browser, and context."""
+
+    def __init__(
+        self,
+        *,
+        session_dir: str | Path | None = None,
+        channel: str,
+        headless: bool,
+        viewport: Mapping[str, int],
+        import_error_message: str,
+    ) -> None:
+        self._session_dir = Path(session_dir) if session_dir is not None else None
+        self._channel = channel
+        self._headless = headless
+        self._viewport = dict(viewport)
+        self._import_error_message = import_error_message
+        self._playwright: Any = None
+        self._browser: Any = None
+        self._context: Any = None
+
+    @property
+    def context(self) -> Any:
+        if self._context is None:
+            raise RuntimeError("Playwright browser session has not been started.")
+        return self._context
+
+    def start(self) -> None:
+        """Start the Playwright runtime and Chromium context once."""
+        if self._context is not None:
+            return
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError as exc:
+            raise RuntimeError(self._import_error_message) from exc
+
+        self._playwright = sync_playwright().start()
+        if self._session_dir is not None:
+            self._session_dir.mkdir(parents=True, exist_ok=True)
+            self._context = self._playwright.chromium.launch_persistent_context(
+                str(self._session_dir),
+                channel=self._channel,
+                headless=self._headless,
+                viewport=dict(self._viewport),
+            )
+            self._browser = None
+            return
+        self._browser = self._playwright.chromium.launch(
+            channel=self._channel,
+            headless=self._headless,
+        )
+        self._context = self._browser.new_context(viewport=dict(self._viewport))
+
+    def get_or_create_page(self) -> Any:
+        """Return the first existing page in the live context or create one."""
+        return get_or_create_page(self.context)
+
+    def new_page(self) -> Any:
+        """Create a new page in the live context."""
+        return self.context.new_page()
+
+    def close(self) -> None:
+        """Close the context, browser, and Playwright runtime safely."""
+        try:
+            if self._context is not None:
+                self._context.close()
+        finally:
+            try:
+                if self._browser is not None:
+                    self._browser.close()
+            finally:
+                if self._playwright is not None:
+                    self._playwright.stop()
+        self._playwright = None
+        self._browser = None
+        self._context = None
+
+
 @contextmanager
 def playwright_runtime(*, import_error_message: str) -> Iterator[Any]:
     """Yield the Playwright runtime or raise a clear dependency error."""
@@ -89,6 +167,7 @@ def safe_page_title(page: Any) -> str:
 
 
 __all__ = [
+    "PlaywrightBrowserSession",
     "chromium_context",
     "get_or_create_page",
     "goto_page",
