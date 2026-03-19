@@ -1,4 +1,4 @@
-"""Apollo.io operation catalog, tool definition, and MCP-style tool factory."""
+"""Apollo operation catalog, tool definition, and request preparation."""
 
 from __future__ import annotations
 
@@ -8,11 +8,25 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence
 from urllib.parse import quote
 
-from harnessiq.providers.http import join_url
+from harnessiq.providers.apollo.api import build_headers, url
+from harnessiq.providers.apollo.requests import (
+    build_add_contacts_to_sequence_request,
+    build_bulk_enrich_organizations_request,
+    build_bulk_enrich_people_request,
+    build_create_contact_request,
+    build_enrich_organization_query,
+    build_enrich_person_request,
+    build_search_contacts_request,
+    build_search_organizations_request,
+    build_search_people_request,
+    build_search_sequences_request,
+    build_update_contact_request,
+    build_usage_stats_request,
+)
 from harnessiq.shared.tools import RegisteredTool, ToolArguments, ToolDefinition
 
 if TYPE_CHECKING:
-    from harnessiq.providers.apollo.client import ApolloCredentials
+    from harnessiq.providers.apollo.credentials import ApolloCredentials
 
 APOLLO_REQUEST = "apollo.request"
 PayloadKind = Literal["none", "object"]
@@ -20,11 +34,11 @@ PayloadKind = Literal["none", "object"]
 
 @dataclass(frozen=True, slots=True)
 class ApolloOperation:
-    """Declarative metadata for one Apollo.io API operation."""
+    """Declarative metadata for one Apollo API operation."""
 
     name: str
     category: str
-    method: Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
+    method: Literal["GET", "POST", "PATCH"]
     path_hint: str
     required_path_params: tuple[str, ...] = ()
     payload_kind: PayloadKind = "none"
@@ -37,7 +51,7 @@ class ApolloOperation:
 
 @dataclass(frozen=True, slots=True)
 class ApolloPreparedRequest:
-    """A validated Apollo.io request ready for execution."""
+    """A validated Apollo request ready for execution."""
 
     operation: ApolloOperation
     method: str
@@ -47,14 +61,10 @@ class ApolloPreparedRequest:
     json_body: Any | None
 
 
-# ---------------------------------------------------------------------------
-# Catalog
-# ---------------------------------------------------------------------------
-
 def _op(
     name: str,
     category: str,
-    method: Literal["GET", "POST", "PUT", "PATCH", "DELETE"],
+    method: Literal["GET", "POST", "PATCH"],
     path_hint: str,
     *,
     required_path_params: Sequence[str] = (),
@@ -79,77 +89,44 @@ def _op(
 
 _APOLLO_CATALOG: OrderedDict[str, ApolloOperation] = OrderedDict(
     (
-        # People — Apollo database (contact intelligence)
-        _op("search_people", "People", "POST", "/mixed_people/api_search", payload_kind="object", payload_required=True),
-        _op("enrich_person", "People", "POST", "/people/match", payload_kind="object", payload_required=True),
-        _op("bulk_enrich_people", "People", "POST", "/people/bulk_match", payload_kind="object", payload_required=True),
-
-        # Contacts — CRM records
-        _op("search_contacts", "Contacts", "POST", "/contacts/search", payload_kind="object", payload_required=True),
-        _op("create_contact", "Contacts", "POST", "/contacts", payload_kind="object", payload_required=True),
-        _op("update_contact", "Contacts", "PATCH", "/contacts/{contact_id}", required_path_params=("contact_id",), payload_kind="object", payload_required=True),
-
-        # Organizations — Apollo database
-        _op("search_organizations", "Organizations", "POST", "/mixed_companies/search", payload_kind="object", payload_required=True),
-        _op("enrich_organization", "Organizations", "GET", "/organizations/enrich", allow_query=True),
-
-        # Accounts — CRM records
-        _op("search_accounts", "Accounts", "POST", "/accounts/search", payload_kind="object", payload_required=True),
-        _op("bulk_create_accounts", "Accounts", "POST", "/accounts/bulk_create", payload_kind="object", payload_required=True),
-        _op("update_account", "Accounts", "PATCH", "/accounts/{account_id}", required_path_params=("account_id",), payload_kind="object", payload_required=True),
-
-        # Sequences (emailer campaigns)
-        _op("search_sequences", "Sequences", "POST", "/emailer_campaigns/search", payload_kind="object", payload_required=True),
-        _op("add_contacts_to_sequence", "Sequences", "POST", "/emailer_campaigns/{sequence_id}/add_contact_ids", required_path_params=("sequence_id",), payload_kind="object", payload_required=True),
-        _op("remove_contacts_from_sequence", "Sequences", "POST", "/emailer_campaigns/remove_or_stop_contact_ids", payload_kind="object", payload_required=True),
-
-        # Email Accounts
-        _op("list_email_accounts", "Email Accounts", "GET", "/email_accounts"),
-
-        # Deals / Opportunities
-        _op("search_deals", "Deals", "GET", "/opportunities/search", allow_query=True),
-        _op("create_deal", "Deals", "POST", "/opportunities", payload_kind="object", payload_required=True),
-        _op("update_deal", "Deals", "PATCH", "/opportunities/{opportunity_id}", required_path_params=("opportunity_id",), payload_kind="object", payload_required=True),
-
-        # Tasks
-        _op("search_tasks", "Tasks", "POST", "/tasks/search", payload_kind="object", payload_required=True),
-        _op("bulk_create_tasks", "Tasks", "POST", "/tasks/bulk_create", payload_kind="object", payload_required=True),
-
-        # Calls
-        _op("search_calls", "Calls", "POST", "/phone_calls/search", payload_kind="object", payload_required=True),
-        _op("create_call", "Calls", "POST", "/phone_calls", payload_kind="object", payload_required=True),
-        _op("update_call", "Calls", "PUT", "/phone_calls/{call_id}", required_path_params=("call_id",), payload_kind="object", payload_required=True),
-
-        # Admin
-        _op("list_users", "Admin", "GET", "/users/search", allow_query=True),
-        _op("get_api_usage", "Admin", "POST", "/usage_stats/api_usage_stats", payload_kind="object"),
+        _op("search_people", "Search", "POST", "/mixed_people/api_search", payload_kind="object", payload_required=True),
+        _op("search_organizations", "Search", "POST", "/mixed_companies/search", payload_kind="object", payload_required=True),
+        _op("enrich_person", "Enrichment", "POST", "/people/match", payload_kind="object", payload_required=True),
+        _op("bulk_enrich_people", "Enrichment", "POST", "/people/bulk_match", payload_kind="object", payload_required=True),
+        _op("enrich_organization", "Enrichment", "GET", "/organizations/enrich", allow_query=True),
+        _op("bulk_enrich_organizations", "Enrichment", "POST", "/organizations/bulk_enrich", payload_kind="object", payload_required=True),
+        _op("create_contact", "Contact", "POST", "/contacts", payload_kind="object", payload_required=True, allow_query=True),
+        _op("search_contacts", "Contact", "POST", "/contacts/search", payload_kind="object"),
+        _op("view_contact", "Contact", "GET", "/contacts/{contact_id}", required_path_params=("contact_id",)),
+        _op("update_contact", "Contact", "PATCH", "/contacts/{contact_id}", required_path_params=("contact_id",), payload_kind="object", payload_required=True, allow_query=True),
+        _op("search_sequences", "Sequence", "POST", "/emailer_campaigns/search", payload_kind="object"),
+        _op("add_contacts_to_sequence", "Sequence", "POST", "/emailer_campaigns/{sequence_id}/add_contact_ids", required_path_params=("sequence_id",), payload_kind="object", payload_required=True),
+        _op("view_usage_stats", "Utility", "POST", "/usage_stats/api_usage_stats", payload_kind="object"),
     )
 )
 
 
 def build_apollo_operation_catalog() -> tuple[ApolloOperation, ...]:
-    """Return the supported Apollo.io operation catalog in stable order."""
+    """Return the supported Apollo operation catalog in stable order."""
     return tuple(_APOLLO_CATALOG.values())
 
 
 def get_apollo_operation(operation_name: str) -> ApolloOperation:
-    """Return a supported Apollo.io operation or raise a clear error."""
-    op = _APOLLO_CATALOG.get(operation_name)
-    if op is None:
+    """Return a supported Apollo operation or raise a clear error."""
+    operation = _APOLLO_CATALOG.get(operation_name)
+    if operation is None:
         available = ", ".join(_APOLLO_CATALOG)
-        raise ValueError(
-            f"Unsupported Apollo.io operation '{operation_name}'. Available: {available}."
-        )
-    return op
+        raise ValueError(f"Unsupported Apollo operation '{operation_name}'. Available: {available}.")
+    return operation
 
 
 def build_apollo_request_tool_definition(
     *,
     allowed_operations: Sequence[str] | None = None,
 ) -> ToolDefinition:
-    """Return the canonical tool definition for the Apollo.io request surface."""
+    """Return the canonical tool definition for the Apollo request surface."""
     operations = _select_operations(allowed_operations)
-    operation_names = [op.name for op in operations]
+    operation_names = [operation.name for operation in operations]
     return ToolDefinition(
         key=APOLLO_REQUEST,
         name="apollo_request",
@@ -160,21 +137,21 @@ def build_apollo_request_tool_definition(
                 "operation": {
                     "type": "string",
                     "enum": operation_names,
-                    "description": "Apollo.io operation name.",
+                    "description": "Apollo operation name.",
                 },
                 "path_params": {
                     "type": "object",
-                    "description": "Path parameters such as contact_id, account_id, sequence_id, opportunity_id, call_id.",
+                    "description": "Path parameters such as contact_id or sequence_id.",
                     "additionalProperties": True,
                 },
                 "query": {
                     "type": "object",
-                    "description": "Optional query parameters for GET operations such as enrich_organization and search_deals.",
+                    "description": "Optional query parameters for GET enrichment or dedupe toggles.",
                     "additionalProperties": True,
                 },
                 "payload": {
                     "type": "object",
-                    "description": "JSON body for search, enrich, create, and update operations.",
+                    "description": "Optional JSON body for search, enrichment, contact, and sequence operations.",
                 },
             },
             "required": ["operation"],
@@ -189,12 +166,12 @@ def create_apollo_tools(
     client: "Any | None" = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
-    """Return the MCP-style Apollo.io request tool backed by the provided client."""
+    """Return the MCP-style Apollo request tool backed by the provided client."""
     apollo_client = _coerce_client(credentials=credentials, client=client)
     selected = _select_operations(allowed_operations)
-    allowed_names = frozenset(op.name for op in selected)
+    allowed_names = frozenset(operation.name for operation in selected)
     definition = build_apollo_request_tool_definition(
-        allowed_operations=tuple(op.name for op in selected)
+        allowed_operations=tuple(operation.name for operation in selected)
     )
 
     def handler(arguments: ToolArguments) -> dict[str, Any]:
@@ -222,10 +199,6 @@ def create_apollo_tools(
     return (RegisteredTool(definition=definition, handler=handler),)
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
 def _build_prepared_request(
     *,
     operation_name: str,
@@ -234,36 +207,34 @@ def _build_prepared_request(
     query: Mapping[str, object] | None,
     payload: Any | None,
 ) -> ApolloPreparedRequest:
-    from harnessiq.providers.apollo.api import build_headers
-
-    op = get_apollo_operation(operation_name)
-    normalized_params = {str(k): str(v) for k, v in (path_params or {}).items()}
-    missing = [k for k in op.required_path_params if not normalized_params.get(k)]
+    operation = get_apollo_operation(operation_name)
+    normalized_params = {str(key): str(value) for key, value in (path_params or {}).items()}
+    missing = [key for key in operation.required_path_params if not normalized_params.get(key)]
     if missing:
-        raise ValueError(
-            f"Operation '{op.name}' requires path parameters: {', '.join(missing)}."
-        )
+        raise ValueError(f"Operation '{operation.name}' requires path parameters: {', '.join(missing)}.")
 
-    if op.payload_kind == "none" and payload is not None:
-        raise ValueError(f"Operation '{op.name}' does not accept a payload.")
-    if op.payload_required and payload is None:
-        raise ValueError(f"Operation '{op.name}' requires a payload.")
+    if operation.payload_kind == "none" and payload is not None:
+        raise ValueError(f"Operation '{operation.name}' does not accept a payload.")
+    if operation.payload_required and payload is None:
+        raise ValueError(f"Operation '{operation.name}' requires a payload.")
 
-    path = op.path_hint
+    path = operation.path_hint
     for key, value in normalized_params.items():
         path = path.replace(f"{{{key}}}", quote(value, safe=""))
 
-    normalized_query = {str(k): v for k, v in query.items()} if query else None
-    full_url = join_url(credentials.base_url, path, query=normalized_query)  # type: ignore[arg-type]
-    headers = build_headers(credentials.api_key)
+    normalized_query: dict[str, str | int | float | bool] | None = None
+    if query is not None:
+        if not operation.allow_query:
+            raise ValueError(f"Operation '{operation.name}' does not accept query parameters.")
+        normalized_query = _normalize_query(operation.name, query)
 
     return ApolloPreparedRequest(
-        operation=op,
-        method=op.method,
+        operation=operation,
+        method=operation.method,
         path=path,
-        url=full_url,
-        headers=headers,
-        json_body=deepcopy(payload) if payload is not None else None,
+        url=url(credentials.base_url, path, query=normalized_query),
+        headers=build_headers(credentials.api_key),
+        json_body=_normalize_payload(operation.name, payload),
     )
 
 
@@ -273,15 +244,16 @@ def _select_operations(allowed: Sequence[str] | None) -> tuple[ApolloOperation, 
     seen: set[str] = set()
     selected: list[ApolloOperation] = []
     for name in allowed:
-        op = get_apollo_operation(name)
-        if op.name not in seen:
-            seen.add(op.name)
-            selected.append(op)
+        operation = get_apollo_operation(name)
+        if operation.name not in seen:
+            seen.add(operation.name)
+            selected.append(operation)
     return tuple(selected)
 
 
 def _coerce_client(*, credentials: Any, client: Any) -> Any:
     from harnessiq.providers.apollo.client import ApolloClient
+
     if client is not None:
         return client
     if credentials is None:
@@ -294,32 +266,67 @@ def _require_operation_name(arguments: Mapping[str, object], allowed: frozenset[
     if not isinstance(value, str):
         raise ValueError("The 'operation' argument must be a string.")
     if value not in allowed:
-        allowed_str = ", ".join(sorted(allowed))
-        raise ValueError(f"Unsupported Apollo.io operation '{value}'. Allowed: {allowed_str}.")
+        raise ValueError(f"Unsupported Apollo operation '{value}'.")
     return value
 
 
 def _optional_mapping(arguments: Mapping[str, object], key: str) -> Mapping[str, object] | None:
-    v = arguments.get(key)
-    if v is None:
+    value = arguments.get(key)
+    if value is None:
         return None
-    if not isinstance(v, Mapping):
+    if not isinstance(value, Mapping):
         raise ValueError(f"The '{key}' argument must be an object when provided.")
-    return v
+    return value
 
 
 def _build_tool_description(operations: Sequence[ApolloOperation]) -> str:
     grouped: OrderedDict[str, list[str]] = OrderedDict()
-    for op in operations:
-        grouped.setdefault(op.category, []).append(op.summary())
-    lines = ["Execute authenticated Apollo.io sales intelligence API operations."]
+    for operation in operations:
+        grouped.setdefault(operation.category, []).append(operation.summary())
+    lines = [
+        "Execute authenticated Apollo sales intelligence and engagement API operations.",
+        "",
+        "Use people and organization search for prospect discovery, enrichment operations for shortlist enrichment, contact operations for Apollo-native persistence, sequence operations for campaign handoff, and usage stats for budget introspection.",
+    ]
     for category, summaries in grouped.items():
         lines.append(f"{category}: {', '.join(summaries)}")
-    lines.append(
-        "Use 'path_params' for resource ids, 'query' for GET filter operations, "
-        "'payload' for search/enrich/create/update JSON bodies."
-    )
+    lines.append("Use 'path_params' for resource ids, 'query' for GET enrichment and dedupe toggles, and 'payload' for JSON request bodies.")
     return "\n".join(lines)
+
+
+def _normalize_payload(operation_name: str, payload: Any | None) -> Any | None:
+    if payload is None:
+        return None
+    if not isinstance(payload, dict):
+        raise ValueError(f"Operation '{operation_name}' requires an object payload.")
+
+    builders = {
+        "search_people": build_search_people_request,
+        "search_organizations": build_search_organizations_request,
+        "enrich_person": build_enrich_person_request,
+        "bulk_enrich_people": build_bulk_enrich_people_request,
+        "bulk_enrich_organizations": build_bulk_enrich_organizations_request,
+        "create_contact": build_create_contact_request,
+        "search_contacts": build_search_contacts_request,
+        "update_contact": build_update_contact_request,
+        "search_sequences": build_search_sequences_request,
+        "add_contacts_to_sequence": build_add_contacts_to_sequence_request,
+        "view_usage_stats": build_usage_stats_request,
+    }
+    builder = builders.get(operation_name)
+    if builder is None:
+        return deepcopy(payload)
+    return builder(payload)
+
+
+def _normalize_query(
+    operation_name: str,
+    query: Mapping[str, object],
+) -> dict[str, str | int | float | bool]:
+    normalized = dict(query)
+    if operation_name == "enrich_organization":
+        return build_enrich_organization_query(normalized)
+    return {str(key): value for key, value in normalized.items()}
 
 
 __all__ = [

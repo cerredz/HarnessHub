@@ -263,6 +263,9 @@ class HttpTransportHostnameTests(unittest.TestCase):
     def test_snovio_hostname(self) -> None:
         self.assertEqual(self._infer("https://api.snov.io/v1/domain-search"), "snovio")
 
+    def test_apollo_hostname(self) -> None:
+        self.assertEqual(self._infer("https://api.apollo.io/api/v1/mixed_people/api_search"), "apollo")
+
     def test_leadiq_hostname(self) -> None:
         self.assertEqual(self._infer("https://api.leadiq.com/graphql"), "leadiq")
 
