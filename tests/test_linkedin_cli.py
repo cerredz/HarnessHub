@@ -6,7 +6,7 @@ import io
 import json
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse
@@ -112,7 +112,8 @@ class LinkedInCLITests(unittest.TestCase):
                 )
 
             run_stdout = io.StringIO()
-            with redirect_stdout(run_stdout):
+            run_stderr = io.StringIO()
+            with redirect_stdout(run_stdout), redirect_stderr(run_stderr):
                 exit_code = main(
                     [
                         "linkedin",
@@ -130,8 +131,10 @@ class LinkedInCLITests(unittest.TestCase):
 
             self.assertEqual(exit_code, 0)
             payload = json.loads(run_stdout.getvalue())
+            self.assertTrue(payload["ledger_run_id"])
             self.assertEqual(payload["result"]["status"], "completed")
             self.assertEqual(payload["result"]["cycles_completed"], 1)
+            self.assertIn("DURABLE LINKEDIN APPLICATION RECORDS", run_stderr.getvalue())
 
 
 if __name__ == "__main__":

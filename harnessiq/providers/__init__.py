@@ -12,6 +12,13 @@ from .langsmith import (
     trace_model_call,
     trace_tool_call,
 )
+from .output_sinks import (
+    ConfluenceClient,
+    LinearClient,
+    NotionClient,
+    SupabaseClient,
+    WebhookDeliveryClient,
+    extract_model_metadata,
 from .playwright import (
     chromium_context,
     get_or_create_page,
@@ -29,7 +36,13 @@ __all__ = [
     "ProviderName",
     "RequestExecutor",
     "RequestPayload",
+    "SupabaseClient",
     "SUPPORTED_PROVIDERS",
+    "WebhookDeliveryClient",
+    "ConfluenceClient",
+    "LinearClient",
+    "NotionClient",
+    "extract_model_metadata",
     "chromium_context",
     "get_or_create_page",
     "goto_page",

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from abc import ABC, abstractmethod
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
+from harnessiq.providers.output_sinks import extract_model_metadata
 from harnessiq.shared.agents import (
     AgentContextEntry,
     AgentContextWindow,
@@ -24,6 +27,9 @@ from harnessiq.shared.agents import (
 )
 from harnessiq.shared.tools import HEAVY_COMPACTION, LOG_COMPACTION, REMOVE_TOOL_RESULTS, REMOVE_TOOLS
 from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
+from harnessiq.utils.ledger import JSONLLedgerSink, LedgerEntry, new_run_id
+
+logger = logging.getLogger(__name__)
 
 
 class BaseAgent(ABC):
@@ -55,6 +61,7 @@ class BaseAgent(ABC):
         self._parameter_sections: tuple[AgentParameterSection, ...] = ()
         self._transcript: list[AgentTranscriptEntry] = []
         self._reset_count = 0
+        self._last_run_id: str | None = None
         self._last_prune_progress = 0
 
     @property
@@ -84,6 +91,10 @@ class BaseAgent(ABC):
     @property
     def memory_path(self) -> Path | None:
         return self._memory_path
+
+    @property
+    def last_run_id(self) -> str | None:
+        return self._last_run_id
 
     def build_context_window(self) -> AgentContextWindow:
         """Return the current context window including parameters and transcript entries."""
@@ -154,41 +165,145 @@ class BaseAgent(ABC):
         self._reset_count = 0
         self._transcript.clear()
         self.refresh_parameters()
+        self._last_run_id = new_run_id()
+        started_at = _utcnow()
+        total_estimated_request_tokens = 0
         self._last_prune_progress = self.pruning_progress_value()
 
         cycles_completed = 0
-        while max_cycles is None or cycles_completed < max_cycles:
-            request = self.build_model_request()
-            response = self._model.generate_turn(request)
-            cycles_completed += 1
-            self._record_assistant_response(response)
+        try:
+            while max_cycles is None or cycles_completed < max_cycles:
+                request = self.build_model_request()
+                total_estimated_request_tokens += request.estimated_tokens()
+                response = self._model.generate_turn(request)
+                cycles_completed += 1
+                self._record_assistant_response(response)
 
-            if response.pause_reason is not None:
-                return AgentRunResult(
-                    status="paused",
-                    cycles_completed=cycles_completed,
-                    resets=self._reset_count,
-                    pause_reason=response.pause_reason,
-                )
+                if response.pause_reason is not None:
+                    return self._complete_run(
+                        AgentRunResult(
+                            status="paused",
+                            cycles_completed=cycles_completed,
+                            resets=self._reset_count,
+                            pause_reason=response.pause_reason,
+                        ),
+                        started_at=started_at,
+                        total_estimated_request_tokens=total_estimated_request_tokens,
+                    )
 
-            pause_signal: AgentPauseSignal | None = None
-            for tool_call in response.tool_calls:
-                result = self._execute_tool(tool_call)
-                if self._apply_compaction_result(result):
-                    continue
-                self._record_tool_result(result)
-                if isinstance(result.output, AgentPauseSignal):
-                    pause_signal = result.output
-                    break
+                pause_signal: AgentPauseSignal | None = None
+                for tool_call in response.tool_calls:
+                    result = self._execute_tool(tool_call)
+                    if self._apply_compaction_result(result):
+                        continue
+                    self._record_tool_result(result)
+                    if isinstance(result.output, AgentPauseSignal):
+                        pause_signal = result.output
+                        break
 
-            if pause_signal is not None:
-                return AgentRunResult(
-                    status="paused",
-                    cycles_completed=cycles_completed,
-                    resets=self._reset_count,
-                    pause_reason=pause_signal.reason,
-                )
+                if pause_signal is not None:
+                    return self._complete_run(
+                        AgentRunResult(
+                            status="paused",
+                            cycles_completed=cycles_completed,
+                            resets=self._reset_count,
+                            pause_reason=pause_signal.reason,
+                        ),
+                        started_at=started_at,
+                        total_estimated_request_tokens=total_estimated_request_tokens,
+                    )
 
+                if self._should_reset_context():
+                    self.reset_context()
+
+                if not response.should_continue:
+                    return self._complete_run(
+                        AgentRunResult(
+                            status="completed",
+                            cycles_completed=cycles_completed,
+                            resets=self._reset_count,
+                        ),
+                        started_at=started_at,
+                        total_estimated_request_tokens=total_estimated_request_tokens,
+                    )
+        except Exception as exc:
+            self._emit_ledger_entry(
+                started_at=started_at,
+                finished_at=_utcnow(),
+                status="error",
+                cycles_completed=cycles_completed,
+                total_estimated_request_tokens=total_estimated_request_tokens,
+                pause_reason=None,
+                error=exc,
+            )
+            raise
+
+        return self._complete_run(
+            AgentRunResult(
+                status="max_cycles_reached",
+                cycles_completed=cycles_completed,
+                resets=self._reset_count,
+            ),
+            started_at=started_at,
+            total_estimated_request_tokens=total_estimated_request_tokens,
+        )
+
+    def build_ledger_outputs(self) -> dict[str, Any]:
+        """Return structured outputs for the completed run."""
+        return {}
+
+    def build_ledger_tags(self) -> list[str]:
+        """Return tags attached to the completed run."""
+        return []
+
+    def build_ledger_metadata(self) -> dict[str, Any]:
+        """Return additional framework- or agent-specific metadata for the run."""
+        return {}
+
+    def _complete_run(
+        self,
+        result: AgentRunResult,
+        *,
+        started_at: datetime,
+        total_estimated_request_tokens: int,
+    ) -> AgentRunResult:
+        self._emit_ledger_entry(
+            started_at=started_at,
+            finished_at=_utcnow(),
+            status=result.status,
+            cycles_completed=result.cycles_completed,
+            total_estimated_request_tokens=total_estimated_request_tokens,
+            pause_reason=result.pause_reason,
+            error=None,
+        )
+        return result
+
+    def _emit_ledger_entry(
+        self,
+        *,
+        started_at: datetime,
+        finished_at: datetime,
+        status: str,
+        cycles_completed: int,
+        total_estimated_request_tokens: int,
+        pause_reason: str | None,
+        error: Exception | None,
+    ) -> None:
+        entry = LedgerEntry(
+            run_id=self._last_run_id or new_run_id(),
+            agent_name=self.name,
+            started_at=started_at,
+            finished_at=finished_at,
+            status=status,  # type: ignore[arg-type]
+            reset_count=self._reset_count,
+            outputs=self.build_ledger_outputs(),
+            tags=self.build_ledger_tags(),
+            metadata=self._build_ledger_metadata(
+                cycles_completed=cycles_completed,
+                total_estimated_request_tokens=total_estimated_request_tokens,
+                pause_reason=pause_reason,
+                error=error,
+            ),
             if not response.should_continue:
                 return AgentRunResult(
                     status="completed",
@@ -209,6 +324,45 @@ class BaseAgent(ABC):
             cycles_completed=cycles_completed,
             resets=self._reset_count,
         )
+        for sink in self._resolved_output_sinks():
+            try:
+                sink.on_run_complete(entry)
+            except Exception as sink_exc:  # pragma: no cover - sink failures are explicitly swallowed
+                logger.warning("OutputSink %s failed: %s", type(sink).__name__, sink_exc)
+
+    def _build_ledger_metadata(
+        self,
+        *,
+        cycles_completed: int,
+        total_estimated_request_tokens: int,
+        pause_reason: str | None,
+        error: Exception | None,
+    ) -> dict[str, Any]:
+        metadata: dict[str, Any] = {
+            "cycles_completed": cycles_completed,
+            "estimated_request_tokens": total_estimated_request_tokens,
+            "max_tokens": self._runtime_config.max_tokens,
+            "memory_path": str(self._memory_path) if self._memory_path is not None else None,
+            "reset_threshold": self._runtime_config.reset_threshold,
+            "tool_count": len(self.available_tools()),
+        }
+        if pause_reason is not None:
+            metadata["pause_reason"] = pause_reason
+        if error is not None:
+            metadata["error"] = {
+                "message": str(error),
+                "type": type(error).__name__,
+            }
+        metadata.update(extract_model_metadata(self._model))
+        metadata.update(self.build_ledger_metadata())
+        return metadata
+
+    def _resolved_output_sinks(self) -> tuple[Any, ...]:
+        sinks: list[Any] = []
+        if self._runtime_config.include_default_output_sink:
+            sinks.append(JSONLLedgerSink())
+        sinks.extend(self._runtime_config.output_sinks)
+        return tuple(sinks)
 
     def _execute_tool(self, tool_call: ToolCall) -> ToolResult:
         try:
@@ -327,6 +481,10 @@ class BaseAgent(ABC):
         if entry.entry_type == "summary":
             return {"kind": "summary", "content": entry.content}
         return {"kind": "tool_result", "content": entry.content}
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 __all__ = [

@@ -52,6 +52,7 @@ class KnowtAgent(BaseAgent):
         reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD,
         config: KnowtAgentConfig | None = None,
         tools: "Sequence[RegisteredTool] | None" = None,
+        runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         self._config = config or KnowtAgentConfig(
             memory_path=Path(memory_path),
@@ -73,6 +74,10 @@ class KnowtAgent(BaseAgent):
         runtime_config = AgentRuntimeConfig(
             max_tokens=self._config.max_tokens,
             reset_threshold=self._config.reset_threshold,
+            output_sinks=runtime_config.output_sinks if runtime_config is not None else (),
+            include_default_output_sink=(
+                runtime_config.include_default_output_sink if runtime_config is not None else True
+            ),
         )
         super().__init__(
             name="knowt_content_creator",
@@ -120,6 +125,16 @@ class KnowtAgent(BaseAgent):
                 ),
             ),
         )
+
+    def build_ledger_outputs(self) -> dict[str, object]:
+        return {
+            "script": self._memory_store.read_script(),
+            "avatar_description": self._memory_store.read_avatar_description(),
+            "creation_log": [entry.as_dict() for entry in self._memory_store.read_creation_log()],
+        }
+
+    def build_ledger_tags(self) -> list[str]:
+        return ["knowt", "content", "video"]
 
 
 __all__ = ["KnowtAgent"]

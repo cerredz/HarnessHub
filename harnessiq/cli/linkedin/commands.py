@@ -7,16 +7,19 @@ import importlib
 import json
 import os
 import re
+import sys
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
 from harnessiq.agents import LinkedInJobApplierAgent, LinkedInMemoryStore
+from harnessiq.shared.agents import AgentRuntimeConfig
 from harnessiq.agents.linkedin import (
     SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS,
     JobApplicationRecord,
     normalize_linkedin_runtime_parameters,
 )
+from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
 
 def register_linkedin_commands(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -88,6 +91,13 @@ def register_linkedin_commands(subparsers: argparse._SubParsersAction[argparse.A
         default=[],
         metavar="KEY=VALUE",
         help="Override a persisted LinkedIn runtime parameter for this run only.",
+    )
+    run_parser.add_argument(
+        "--sink",
+        action="append",
+        default=[],
+        metavar="SPEC",
+        help="Add a per-run output sink override using kind:value or kind:key=value,key=value.",
     )
     run_parser.add_argument("--max-cycles", type=int, help="Optional max cycle count passed to agent.run().")
     run_parser.set_defaults(command_handler=_handle_run)
@@ -205,11 +215,13 @@ def _handle_run(args: argparse.Namespace) -> int:
         else:
             browser_tools = tuple(created_tools)
     runtime_overrides = _parse_runtime_assignments(args.runtime_param)
+    runtime_config = _build_runtime_config(args.sink)
     agent = LinkedInJobApplierAgent.from_memory(
         model=model,
         memory_path=store.memory_path,
         browser_tools=tuple(browser_tools),
         runtime_overrides=runtime_overrides,
+        runtime_config=runtime_config,
     )
     result = agent.run(max_cycles=args.max_cycles)
 
@@ -220,6 +232,7 @@ def _handle_run(args: argparse.Namespace) -> int:
     _emit_json(
         {
             "agent": args.agent,
+            "ledger_run_id": agent.last_run_id,
             "memory_path": str(store.memory_path.resolve()),
             "applied_jobs_file": str(store.applied_jobs_path.resolve()),
             "result": {
@@ -340,6 +353,13 @@ def _build_summary(store: LinkedInMemoryStore) -> dict[str, Any]:
     }
 
 
+def _build_runtime_config(sink_specs: Sequence[str]) -> AgentRuntimeConfig:
+    connections = ConnectionsConfigStore().load().enabled_connections()
+    return AgentRuntimeConfig(
+        output_sinks=build_output_sinks(connections=connections, sink_specs=sink_specs),
+    )
+
+
 def _load_factory(spec: str):
     module_name, separator, attribute_path = spec.partition(":")
     if not separator or not module_name or not attribute_path:
@@ -377,6 +397,29 @@ def _print_applied_jobs_summary(jobs: list[JobApplicationRecord], applied_jobs_p
     print(f"  {applied_jobs_path.resolve()}")
     print("=" * 64)
     print()
+
+
+def _print_applied_jobs_summary(jobs: list[JobApplicationRecord], applied_jobs_path: Path) -> None:
+    """Print a human-readable summary of job applications to stderr."""
+    stream = sys.stderr
+    print(file=stream)
+    print("=" * 64, file=stream)
+    if not jobs:
+        print("  NO DURABLE LINKEDIN APPLICATION RECORDS FOUND", file=stream)
+    else:
+        print(f"  DURABLE LINKEDIN APPLICATION RECORDS ({len(jobs)} total)", file=stream)
+        print("  " + "-" * 60, file=stream)
+        for job in jobs:
+            status_label = job.status.upper() if job.status else "?"
+            print(f"  [{status_label}] {job.title} @ {job.company}", file=stream)
+            print(f"           {job.url}", file=stream)
+            if job.notes:
+                print(f"           Note: {job.notes}", file=stream)
+    print(file=stream)
+    print("  Full records saved to:", file=stream)
+    print(f"  {applied_jobs_path.resolve()}", file=stream)
+    print("=" * 64, file=stream)
+    print(file=stream)
 
 
 def _print_help(parser: argparse.ArgumentParser) -> int:
