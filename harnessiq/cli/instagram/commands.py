@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from harnessiq.cli._langsmith import seed_langsmith_environment
 from harnessiq.shared.instagram import InstagramMemoryStore, normalize_instagram_runtime_parameters
 
 SUPPORTED_INSTAGRAM_RUNTIME_PARAMETERS = (
@@ -175,6 +176,7 @@ def _handle_run(args: argparse.Namespace) -> int:
 
     store = _load_store(args)
     store.prepare()
+    seed_langsmith_environment(Path(args.memory_root).expanduser())
 
     model = _load_factory(args.model_factory)()
     if not hasattr(model, "generate_turn"):
