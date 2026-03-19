@@ -122,6 +122,7 @@ EXA_OUTREACH_LOG_EMAIL_SENT = "exa_outreach.log_email_sent"
 
 # Provider tool key constants
 ARCADS_REQUEST = "arcads.request"
+ARXIV_REQUEST = "arxiv.request"
 CREATIFY_REQUEST = "creatify.request"
 EXA_REQUEST = "exa.request"
 INSTANTLY_REQUEST = "instantly.request"
@@ -222,6 +223,7 @@ __all__ = [
     "ADD_NUMBERS",
     "APOLLO_REQUEST",
     "ARCADS_REQUEST",
+    "ARXIV_REQUEST",
     "CONTROL_PAUSE_FOR_HUMAN",
     "CORESIGNAL_REQUEST",
     "CREATIFY_REQUEST",
