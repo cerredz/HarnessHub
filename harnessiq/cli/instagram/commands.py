@@ -1,0 +1,364 @@
+"""CLI commands for the Instagram keyword discovery agent."""
+
+from __future__ import annotations
+
+import argparse
+import importlib
+import json
+import os
+import re
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Any
+
+from harnessiq.shared.instagram import InstagramMemoryStore, normalize_instagram_runtime_parameters
+
+SUPPORTED_INSTAGRAM_RUNTIME_PARAMETERS = (
+    "max_tokens",
+    "recent_result_window",
+    "recent_search_window",
+    "reset_threshold",
+    "search_result_limit",
+)
+
+_DEFAULT_SEARCH_BACKEND_FACTORY = "harnessiq.integrations.instagram_playwright:create_search_backend"
+
+
+def register_instagram_commands(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    parser = subparsers.add_parser("instagram", help="Manage and run the Instagram keyword discovery agent")
+    parser.set_defaults(command_handler=lambda args: _print_help(parser))
+    instagram_subparsers = parser.add_subparsers(dest="instagram_command")
+
+    prepare_parser = instagram_subparsers.add_parser(
+        "prepare",
+        help="Create or refresh an Instagram agent memory folder",
+    )
+    _add_agent_options(prepare_parser)
+    prepare_parser.set_defaults(command_handler=_handle_prepare)
+
+    configure_parser = instagram_subparsers.add_parser(
+        "configure",
+        help="Persist ICPs, identity, prompt text, and runtime parameters for the Instagram agent",
+    )
+    _add_agent_options(configure_parser)
+    configure_parser.add_argument(
+        "--icp",
+        action="append",
+        default=[],
+        help="One ICP description. Repeat the flag to provide multiple ICPs.",
+    )
+    configure_parser.add_argument(
+        "--icp-file",
+        help="Path to a JSON array or newline-delimited UTF-8 text file containing ICP descriptions.",
+    )
+    _add_text_or_file_options(configure_parser, "agent_identity", "Agent identity")
+    _add_text_or_file_options(configure_parser, "additional_prompt", "Additional prompt")
+    configure_parser.add_argument(
+        "--runtime-param",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help=(
+            f"Persist a runtime parameter. Supported keys: "
+            f"{', '.join(SUPPORTED_INSTAGRAM_RUNTIME_PARAMETERS)}."
+        ),
+    )
+    configure_parser.set_defaults(command_handler=_handle_configure)
+
+    show_parser = instagram_subparsers.add_parser(
+        "show",
+        help="Render the current Instagram agent state as JSON",
+    )
+    _add_agent_options(show_parser)
+    show_parser.set_defaults(command_handler=_handle_show)
+
+    run_parser = instagram_subparsers.add_parser(
+        "run",
+        help="Run the Instagram keyword discovery agent from persisted memory",
+    )
+    _add_agent_options(run_parser)
+    run_parser.add_argument(
+        "--model-factory",
+        required=True,
+        help="Import path (module:callable) that returns an AgentModel instance.",
+    )
+    run_parser.add_argument(
+        "--search-backend-factory",
+        default=_DEFAULT_SEARCH_BACKEND_FACTORY,
+        help=(
+            "Import path (module:callable) that returns an InstagramSearchBackend instance. "
+            f"Defaults to {_DEFAULT_SEARCH_BACKEND_FACTORY}."
+        ),
+    )
+    run_parser.add_argument(
+        "--runtime-param",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Override a persisted runtime parameter for this run only.",
+    )
+    run_parser.add_argument("--max-cycles", type=int, help="Optional max cycle count passed to agent.run().")
+    run_parser.set_defaults(command_handler=_handle_run)
+
+    get_emails_parser = instagram_subparsers.add_parser(
+        "get-emails",
+        help="Return all persisted discovered emails for the configured Instagram agent",
+    )
+    _add_agent_options(get_emails_parser)
+    get_emails_parser.set_defaults(command_handler=_handle_get_emails)
+
+
+def _handle_prepare(args: argparse.Namespace) -> int:
+    store = _load_store(args)
+    store.prepare()
+    _emit_json(
+        {
+            "agent": args.agent,
+            "memory_path": str(store.memory_path.resolve()),
+            "status": "prepared",
+        }
+    )
+    return 0
+
+
+def _handle_configure(args: argparse.Namespace) -> int:
+    store = _load_store(args)
+    store.prepare()
+    updated: list[str] = []
+
+    icp_profiles = _resolve_icp_input(args.icp, args.icp_file)
+    if icp_profiles is not None:
+        store.write_icp_profiles(icp_profiles)
+        updated.append("icp_profiles")
+
+    agent_identity = _resolve_text_argument(
+        getattr(args, "agent_identity_text", None),
+        getattr(args, "agent_identity_file", None),
+    )
+    if agent_identity is not None:
+        store.write_agent_identity(agent_identity)
+        updated.append("agent_identity")
+
+    additional_prompt = _resolve_text_argument(
+        getattr(args, "additional_prompt_text", None),
+        getattr(args, "additional_prompt_file", None),
+    )
+    if additional_prompt is not None:
+        store.write_additional_prompt(additional_prompt)
+        updated.append("additional_prompt")
+
+    runtime_parameters = _parse_runtime_assignments(args.runtime_param)
+    if runtime_parameters:
+        current = store.read_runtime_parameters()
+        current.update(runtime_parameters)
+        store.write_runtime_parameters(current)
+        updated.append("runtime_parameters")
+
+    payload = _build_summary(store)
+    payload["status"] = "configured"
+    payload["updated"] = updated
+    _emit_json(payload)
+    return 0
+
+
+def _handle_show(args: argparse.Namespace) -> int:
+    store = _load_store(args)
+    store.prepare()
+    _emit_json(_build_summary(store))
+    return 0
+
+
+def _handle_run(args: argparse.Namespace) -> int:
+    from harnessiq.agents.instagram import InstagramKeywordDiscoveryAgent
+
+    store = _load_store(args)
+    store.prepare()
+
+    model = _load_factory(args.model_factory)()
+    if not hasattr(model, "generate_turn"):
+        raise TypeError("Model factory must return an object that implements generate_turn(request).")
+
+    browser_data_dir = store.memory_path / "browser-data"
+    if "HARNESSIQ_INSTAGRAM_SESSION_DIR" not in os.environ:
+        os.environ["HARNESSIQ_INSTAGRAM_SESSION_DIR"] = str(browser_data_dir.resolve())
+
+    search_backend = _load_factory(args.search_backend_factory)()
+    runtime_overrides = _parse_runtime_assignments(args.runtime_param)
+
+    agent = InstagramKeywordDiscoveryAgent.from_memory(
+        model=model,
+        search_backend=search_backend,
+        memory_path=store.memory_path,
+        runtime_overrides=runtime_overrides,
+    )
+    result = agent.run(max_cycles=args.max_cycles)
+    _emit_json(
+        {
+            "agent": args.agent,
+            "email_count": len(agent.get_emails()),
+            "memory_path": str(store.memory_path.resolve()),
+            "result": {
+                "cycles_completed": result.cycles_completed,
+                "pause_reason": result.pause_reason,
+                "resets": result.resets,
+                "status": result.status,
+            },
+        }
+    )
+    return 0
+
+
+def _handle_get_emails(args: argparse.Namespace) -> int:
+    store = _load_store(args)
+    store.prepare()
+    emails = store.get_emails()
+    _emit_json(
+        {
+            "agent": args.agent,
+            "count": len(emails),
+            "emails": emails,
+            "memory_path": str(store.memory_path.resolve()),
+        }
+    )
+    return 0
+
+
+def _load_store(args: argparse.Namespace) -> InstagramMemoryStore:
+    return InstagramMemoryStore(memory_path=_resolve_memory_path(args.agent, args.memory_root))
+
+
+def _resolve_memory_path(agent_name: str, memory_root: str) -> Path:
+    return Path(memory_root).expanduser() / _slugify_agent_name(agent_name)
+
+
+def _slugify_agent_name(agent_name: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", agent_name.strip()).strip("-")
+    if not cleaned:
+        raise ValueError("Agent names must contain at least one alphanumeric character.")
+    return cleaned
+
+
+def _add_agent_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--agent",
+        required=True,
+        help="Logical agent name used to resolve the memory folder.",
+    )
+    parser.add_argument(
+        "--memory-root",
+        default="memory/instagram",
+        help="Root directory that holds per-agent instagram memory folders.",
+    )
+
+
+def _add_text_or_file_options(parser: argparse.ArgumentParser, field_name: str, label: str) -> None:
+    group = parser.add_mutually_exclusive_group()
+    option_name = field_name.replace("_", "-")
+    group.add_argument(f"--{option_name}-text", help=f"{label} content provided inline.")
+    group.add_argument(
+        f"--{option_name}-file",
+        help=f"Path to a UTF-8 text file containing {label.lower()} content.",
+    )
+
+
+def _resolve_text_argument(text_value: str | None, file_value: str | None) -> str | None:
+    if text_value is not None:
+        return text_value
+    if file_value is not None:
+        return Path(file_value).read_text(encoding="utf-8")
+    return None
+
+
+def _resolve_icp_input(inline_values: Sequence[str], file_value: str | None) -> list[str] | None:
+    cleaned_inline = [value.strip() for value in inline_values if value and value.strip()]
+    if file_value is None:
+        return cleaned_inline or None
+    raw = Path(file_value).read_text(encoding="utf-8").strip()
+    if not raw:
+        return []
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return [line.strip() for line in raw.splitlines() if line.strip()]
+    if not isinstance(payload, list):
+        raise ValueError("ICP file must be a JSON array or newline-delimited text file.")
+    return [str(value).strip() for value in payload if str(value).strip()]
+
+
+def _parse_runtime_assignments(assignments: Sequence[str]) -> dict[str, Any]:
+    return normalize_instagram_runtime_parameters(_parse_generic_assignments(assignments))
+
+
+def _parse_generic_assignments(assignments: Sequence[str]) -> dict[str, Any]:
+    parsed: dict[str, Any] = {}
+    for assignment in assignments:
+        key, raw_value = _split_assignment(assignment)
+        parsed[key] = _parse_scalar(raw_value)
+    return parsed
+
+
+def _split_assignment(assignment: str) -> tuple[str, str]:
+    key, separator, value = assignment.partition("=")
+    if not separator:
+        raise ValueError(f"Expected KEY=VALUE assignment, received '{assignment}'.")
+    normalized_key = key.strip()
+    if not normalized_key:
+        raise ValueError(f"Expected a non-empty key in assignment '{assignment}'.")
+    return normalized_key, value
+
+
+def _parse_scalar(value: str) -> Any:
+    trimmed = value.strip()
+    if not trimmed:
+        return ""
+    try:
+        return json.loads(trimmed)
+    except json.JSONDecodeError:
+        return value
+
+
+def _build_summary(store: InstagramMemoryStore) -> dict[str, Any]:
+    search_history = store.read_search_history()
+    lead_database = store.read_lead_database()
+    return {
+        "additional_prompt": store.read_additional_prompt(),
+        "agent_identity": store.read_agent_identity(),
+        "email_count": len(lead_database.emails),
+        "icp_profiles": store.read_icp_profiles(),
+        "lead_count": len(lead_database.leads),
+        "memory_path": str(store.memory_path.resolve()),
+        "recent_searches": [record.as_dict() for record in search_history[-5:]],
+        "runtime_parameters": store.read_runtime_parameters(),
+        "search_count": len(search_history),
+    }
+
+
+def _load_factory(spec: str):
+    module_name, separator, attribute_path = spec.partition(":")
+    if not separator or not module_name or not attribute_path:
+        raise ValueError(f"Factory import paths must use the form module:callable. Received '{spec}'.")
+    module = importlib.import_module(module_name)
+    target: Any = module
+    for attribute_name in attribute_path.split("."):
+        target = getattr(target, attribute_name)
+    if not callable(target):
+        raise TypeError(f"Imported object '{spec}' is not callable.")
+    return target
+
+
+def _emit_json(payload: dict[str, Any]) -> None:
+    print(json.dumps(payload, indent=2, sort_keys=True))
+
+
+def _print_help(parser: argparse.ArgumentParser) -> int:
+    parser.print_help()
+    return 0
+
+
+__all__ = [
+    "SUPPORTED_INSTAGRAM_RUNTIME_PARAMETERS",
+    "normalize_instagram_runtime_parameters",
+    "register_instagram_commands",
+]

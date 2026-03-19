@@ -13,9 +13,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     from harnessiq.cli.linkedin import register_linkedin_commands
     from harnessiq.cli.exa_outreach import register_exa_outreach_commands
+    from harnessiq.cli.instagram import register_instagram_commands
 
     register_linkedin_commands(subparsers)
     register_exa_outreach_commands(subparsers)
+    register_instagram_commands(subparsers)
     return parser
 
 
