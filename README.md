@@ -745,6 +745,7 @@ Run the leads agent from persisted CLI state.
 ```bash
 harnessiq leads run \
   --agent campaign-a \
+  --memory-root ./memory/leads \
   --model-factory my_module:create_model \
   --provider-credentials-factory apollo=my_module:create_apollo_credentials \
   --storage-backend-factory my_module:create_leads_storage_backend \
