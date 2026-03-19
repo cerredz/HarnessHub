@@ -72,6 +72,7 @@ Source layout:
 - `harnessiq/agents/exa_outreach/`: ExaOutreach agent harness — finds prospects via Exa search, sends personalised emails via Resend, and deterministically persists leads and email records to a pluggable `StorageBackend`
 - `harnessiq/agents/exa_outreach/prompts/`: system prompt files for the ExaOutreach agent; `master_prompt.md` loaded at runtime
 - `harnessiq/shared/exa_outreach.py`: `EmailTemplate`, `LeadRecord`, `EmailSentRecord`, `OutreachRunLog`, `StorageBackend` protocol, `FileSystemStorageBackend` (per-run JSON files under `runs/`), and `ExaOutreachMemoryStore`
+- `harnessiq/shared/leads.py`: leads-agent shared domain models including `LeadRunConfig`, `LeadRunState`, `LeadICP`, `LeadICPState`, `LeadSearchRecord`, `LeadSearchSummary`, `LeadRecord`, `LeadsMemoryStore`, and `FileSystemLeadsStorageBackend` for per-ICP durable search state plus cross-run lead dedupe/persistence
 - `harnessiq/cli/exa_outreach/`: ExaOutreach CLI — `prepare`, `configure`, `show`, and `run` subcommands registered under `harnessiq outreach`
 
 Tests:
@@ -117,6 +118,7 @@ Tests:
 - `tests/test_exa_outreach_agent.py`: coverage for `ExaOutreachAgent` construction, available tools, system prompt building, parameter section ordering, all five internal tool handlers, prepare/run lifecycle, and SDK exports
 - `tests/test_exa_outreach_cli.py`: coverage for the ExaOutreach CLI — parser registration, `prepare`/`configure`/`show`/`run` handlers, `normalize_exa_outreach_runtime_parameters`, and `SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS`
 
+- `tests/test_leads_shared.py`: coverage for the leads-agent shared types, per-ICP memory store, search compaction persistence, and filesystem save-backend dedupe behavior
 Current memory artifacts:
 
 - `memory/refactor-types-constants/`: planning, ticket, quality, critique, and PR-body artifacts for the shared definitions refactor
