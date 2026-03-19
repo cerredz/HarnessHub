@@ -72,6 +72,11 @@ def _builtin_filesystem() -> tuple[RegisteredTool, ...]:
     return create_filesystem_tools()
 
 
+def _builtin_instagram() -> tuple[RegisteredTool, ...]:
+    from harnessiq.tools.instagram import create_instagram_tools
+    return create_instagram_tools()
+
+
 def _builtin_reason() -> tuple[RegisteredTool, ...]:
     from harnessiq.tools.reasoning.core import create_injectable_reasoning_tools
     return create_injectable_reasoning_tools()
@@ -92,6 +97,7 @@ BUILTIN_FAMILY_FACTORIES: tuple[_BuiltinFactory, ...] = (
     _builtin_general_purpose,
     _builtin_prompt,
     _builtin_filesystem,
+    _builtin_instagram,
     _builtin_reason,
     _builtin_reasoning,
 )

@@ -8,7 +8,21 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, quote_plus, urljoin, urlparse
 
+from harnessiq.providers.playwright import (
+    chromium_context,
+    get_or_create_page,
+    goto_page,
+    playwright_runtime,
+    read_page_text,
+    safe_page_title,
+    wait_for_page_ready,
+)
 from harnessiq.shared.instagram import (
+    DEFAULT_INSTAGRAM_BROWSER_CHANNEL,
+    DEFAULT_INSTAGRAM_BROWSER_VIEWPORT,
+    DEFAULT_INSTAGRAM_NETWORK_IDLE_TIMEOUT_MS,
+    DEFAULT_INSTAGRAM_TIMEOUT_MS,
+    INSTAGRAM_GOOGLE_SEARCH_URL,
     InstagramLeadRecord,
     InstagramSearchBackend,
     InstagramSearchExecution,
@@ -16,10 +30,6 @@ from harnessiq.shared.instagram import (
     build_instagram_google_query,
     extract_emails,
 )
-
-_GOOGLE_SEARCH_URL = "https://www.google.com/search"
-_DEFAULT_TIMEOUT_MS = 30_000
-_NETWORK_IDLE_TIMEOUT_MS = 5_000
 
 
 class PlaywrightInstagramSearchBackend:
@@ -30,9 +40,9 @@ class PlaywrightInstagramSearchBackend:
         *,
         session_dir: str | Path | None = None,
         headless: bool = True,
-        channel: str = "chrome",
-        timeout_ms: int = _DEFAULT_TIMEOUT_MS,
-        network_idle_timeout_ms: int = _NETWORK_IDLE_TIMEOUT_MS,
+        channel: str = DEFAULT_INSTAGRAM_BROWSER_CHANNEL,
+        timeout_ms: int = DEFAULT_INSTAGRAM_TIMEOUT_MS,
+        network_idle_timeout_ms: int = DEFAULT_INSTAGRAM_NETWORK_IDLE_TIMEOUT_MS,
     ) -> None:
         self._session_dir = Path(session_dir) if session_dir else None
         self._headless = headless
@@ -42,35 +52,28 @@ class PlaywrightInstagramSearchBackend:
 
     def search_keyword(self, *, keyword: str, max_results: int) -> InstagramSearchExecution:
         query = build_instagram_google_query(keyword)
-        search_url = f"{_GOOGLE_SEARCH_URL}?q={quote_plus(query)}"
+        search_url = f"{INSTAGRAM_GOOGLE_SEARCH_URL}?q={quote_plus(query)}"
 
-        try:
-            from playwright.sync_api import sync_playwright
-        except ImportError as exc:
-            raise RuntimeError(
+        with playwright_runtime(
+            import_error_message=(
                 "playwright is required for instagram search.\n"
                 "Install with: pip install playwright && python -m playwright install chromium"
-            ) from exc
-
-        with sync_playwright() as playwright:
-            if self._session_dir is not None:
-                self._session_dir.mkdir(parents=True, exist_ok=True)
-                context = playwright.chromium.launch_persistent_context(
-                    str(self._session_dir),
-                    channel=self._channel,
-                    headless=self._headless,
-                    viewport={"width": 1280, "height": 900},
+            )
+        ) as playwright:
+            with chromium_context(
+                playwright,
+                session_dir=self._session_dir,
+                channel=self._channel,
+                headless=self._headless,
+                viewport=DEFAULT_INSTAGRAM_BROWSER_VIEWPORT,
+            ) as context:
+                search_page = get_or_create_page(context)
+                goto_page(search_page, url=search_url, timeout_ms=self._timeout_ms)
+                wait_for_page_ready(
+                    search_page,
+                    timeout_ms=self._timeout_ms,
+                    network_idle_timeout_ms=self._network_idle_timeout_ms,
                 )
-                browser = None
-            else:
-                browser = playwright.chromium.launch(channel=self._channel, headless=self._headless)
-                context = browser.new_context(viewport={"width": 1280, "height": 900})
-
-            try:
-                search_page = context.pages[0] if context.pages else context.new_page()
-                search_page.goto(search_url, wait_until="domcontentloaded", timeout=self._timeout_ms)
-                self._wait_for_page_ready(search_page)
-
                 candidate_urls = self._extract_instagram_urls(search_page, max_results=max_results)
                 visited_urls: list[str] = []
                 leads: list[InstagramLeadRecord] = []
@@ -78,10 +81,14 @@ class PlaywrightInstagramSearchBackend:
                 for url in candidate_urls:
                     detail_page = context.new_page()
                     try:
-                        detail_page.goto(url, wait_until="domcontentloaded", timeout=self._timeout_ms)
-                        self._wait_for_page_ready(detail_page)
+                        goto_page(detail_page, url=url, timeout_ms=self._timeout_ms)
+                        wait_for_page_ready(
+                            detail_page,
+                            timeout_ms=self._timeout_ms,
+                            network_idle_timeout_ms=self._network_idle_timeout_ms,
+                        )
                         visited_urls.append(detail_page.url)
-                        text = self._read_page_text(detail_page)
+                        text = read_page_text(detail_page)
                         emails = extract_emails(text)
                         if not emails:
                             continue
@@ -91,7 +98,7 @@ class PlaywrightInstagramSearchBackend:
                                 source_keyword=keyword,
                                 found_at=_utcnow(),
                                 emails=tuple(emails),
-                                title=self._safe_title(detail_page),
+                                title=safe_page_title(detail_page),
                                 snippet=text[:500].strip(),
                             )
                         )
@@ -108,18 +115,6 @@ class PlaywrightInstagramSearchBackend:
                     email_count=email_count,
                 )
                 return InstagramSearchExecution(search_record=search_record, leads=tuple(leads))
-            finally:
-                context.close()
-                if browser is not None:
-                    browser.close()
-
-    def _wait_for_page_ready(self, page: Any) -> None:
-        page.wait_for_load_state("domcontentloaded", timeout=self._timeout_ms)
-        page.wait_for_load_state("load", timeout=self._timeout_ms)
-        try:
-            page.wait_for_load_state("networkidle", timeout=self._network_idle_timeout_ms)
-        except Exception:
-            pass
 
     def _extract_instagram_urls(self, page: Any, *, max_results: int) -> list[str]:
         raw_entries = page.eval_on_selector_all(
@@ -141,23 +136,14 @@ class PlaywrightInstagramSearchBackend:
                 break
         return result
 
-    def _read_page_text(self, page: Any) -> str:
-        try:
-            return str(page.inner_text("body"))
-        except Exception:
-            return str(page.content())
-
-    def _safe_title(self, page: Any) -> str:
-        try:
-            return str(page.title()).strip()
-        except Exception:
-            return ""
-
 
 def create_search_backend() -> InstagramSearchBackend:
     """Factory for CLI usage via --search-backend-factory."""
     session_dir_env = os.environ.get("HARNESSIQ_INSTAGRAM_SESSION_DIR", "").strip()
-    channel = os.environ.get("HARNESSIQ_INSTAGRAM_BROWSER_CHANNEL", "chrome").strip() or "chrome"
+    channel = (
+        os.environ.get("HARNESSIQ_INSTAGRAM_BROWSER_CHANNEL", DEFAULT_INSTAGRAM_BROWSER_CHANNEL).strip()
+        or DEFAULT_INSTAGRAM_BROWSER_CHANNEL
+    )
     headless = _parse_bool(os.environ.get("HARNESSIQ_INSTAGRAM_HEADLESS"), default=True)
     session_dir = Path(session_dir_env) if session_dir_env else None
     return PlaywrightInstagramSearchBackend(
