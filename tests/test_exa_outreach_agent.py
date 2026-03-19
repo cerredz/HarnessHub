@@ -19,6 +19,7 @@ from harnessiq.shared.tools import (
     EXA_OUTREACH_LOG_EMAIL_SENT,
     EXA_OUTREACH_LOG_LEAD,
     EXA_REQUEST,
+    ToolCall,
 )
 
 
@@ -381,6 +382,43 @@ class TestPrepareAndRunOutputs:
             exa_client=_make_exa_client(),
         )
         assert agent.build_ledger_tags() == ["outreach", "sales", "lead_discovery"]
+
+    def test_search_only_run_completes_with_lead_logged_and_no_emails(self, tmp_path):
+        model = MagicMock()
+        model.generate_turn.return_value = AgentModelResponse(
+            assistant_message="Found one new lead.",
+            tool_calls=(
+                ToolCall(
+                    tool_key=EXA_OUTREACH_CHECK_CONTACTED,
+                    arguments={"url": "https://example.com/prospects/alice"},
+                ),
+                ToolCall(
+                    tool_key=EXA_OUTREACH_LOG_LEAD,
+                    arguments={
+                        "url": "https://example.com/prospects/alice",
+                        "name": "Alice Prospect",
+                        "email_address": "alice@example.com",
+                    },
+                ),
+            ),
+            should_continue=False,
+        )
+        agent = ExaOutreachAgent(
+            model=model,
+            email_data=[],
+            search_only=True,
+            memory_path=tmp_path / "outreach",
+            exa_client=_make_exa_client(),
+        )
+
+        result = agent.run(max_cycles=1)
+        run_log = agent.memory_store.read_run("run_1")
+
+        assert result.status == "completed"
+        assert result.cycles_completed == 1
+        assert len(run_log.leads_found) == 1
+        assert run_log.leads_found[0].url == "https://example.com/prospects/alice"
+        assert run_log.emails_sent == []
 
 
 class TestSDKExport:
