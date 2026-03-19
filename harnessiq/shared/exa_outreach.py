@@ -24,10 +24,9 @@ AGENT_IDENTITY_FILENAME = "agent_identity.txt"
 ADDITIONAL_PROMPT_FILENAME = "additional_prompt.txt"
 
 DEFAULT_AGENT_IDENTITY = (
-    "A disciplined outreach specialist who finds relevant prospects via Exa neural "
-    "search, selects the most appropriate email template for each lead, personalizes "
-    "the message with specific details from their profile, and sends concise, "
-    "value-first cold emails."
+    "A disciplined Exa prospecting specialist who finds relevant prospects via Exa "
+    "neural search, logs new leads deterministically, and, when email tools are "
+    "available, can progress qualified leads into personalized outreach."
 )
 
 DEFAULT_SEARCH_QUERY = "(search query not configured)"

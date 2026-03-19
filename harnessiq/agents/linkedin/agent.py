@@ -377,7 +377,6 @@ class LinkedInJobApplierAgent(BaseAgent):
                 max_tokens=self._config.max_tokens,
                 reset_threshold=self._config.reset_threshold,
             ),
-            runtime_config=runtime_config,
             memory_path=self._config.memory_path,
         )
 
