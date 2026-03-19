@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
@@ -15,13 +14,13 @@ from harnessiq.shared.agents import (
     AgentModel,
     AgentParameterSection,
     AgentRuntimeConfig,
-    merge_agent_runtime_config,
 )
 from harnessiq.shared.exa_outreach import (
     DEFAULT_AGENT_IDENTITY,
     DEFAULT_SEARCH_QUERY,
     EmailSentRecord,
     EmailTemplate,
+    ExaOutreachAgentConfig,
     ExaOutreachMemoryStore,
     FileSystemStorageBackend,
     LeadRecord,
@@ -43,38 +42,6 @@ _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
 
 # Default memory path: memory/ folder inside this agent's subdirectory.
 _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
-
-
-@dataclass(frozen=True, slots=True)
-class ExaOutreachAgentConfig:
-    """Runtime configuration for :class:`ExaOutreachAgent`.
-
-    Attributes:
-        email_data: Non-empty tuple of email templates available to the agent.
-        search_query: The Exa search query used to find prospects each run.
-        memory_path: Root directory for per-agent durable state files.
-        storage_backend: Pluggable persistence layer.  Defaults to
-            :class:`~harnessiq.shared.exa_outreach.FileSystemStorageBackend`.
-        max_tokens: Context-window budget passed to :class:`AgentRuntimeConfig`.
-        reset_threshold: Fractional threshold at which the context is reset.
-        allowed_resend_operations: Optional allowlist of Resend operation names.
-            ``None`` permits the full catalog.
-        allowed_exa_operations: Optional allowlist of Exa operation names.
-            ``None`` defaults to ``("search", "get_contents", "search_and_contents")``.
-    """
-
-    email_data: tuple[EmailTemplate, ...]
-    memory_path: Path
-    storage_backend: StorageBackend
-    search_query: str = DEFAULT_SEARCH_QUERY
-    max_tokens: int = DEFAULT_AGENT_MAX_TOKENS
-    reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD
-    allowed_resend_operations: tuple[str, ...] | None = None
-    allowed_exa_operations: tuple[str, ...] | None = None
-
-    def __post_init__(self) -> None:
-        if not self.email_data:
-            raise ValueError("ExaOutreachAgentConfig.email_data must not be empty.")
 
 
 class ExaOutreachAgent(BaseAgent):
@@ -171,17 +138,29 @@ class ExaOutreachAgent(BaseAgent):
             include_default_output_sink=(
                 runtime_config.include_default_output_sink if runtime_config is not None else True
             ),
+            prune_progress_interval=(
+                runtime_config.prune_progress_interval if runtime_config is not None else None
+            ),
+            prune_token_limit=(
+                runtime_config.prune_token_limit if runtime_config is not None else None
+            ),
+            langsmith_tracing_enabled=(
+                runtime_config.langsmith_tracing_enabled if runtime_config is not None else True
+            ),
+            langsmith_api_key=(
+                runtime_config.langsmith_api_key if runtime_config is not None else None
+            ),
+            langsmith_project=(
+                runtime_config.langsmith_project if runtime_config is not None else None
+            ),
+            langsmith_api_url=(
+                runtime_config.langsmith_api_url if runtime_config is not None else None
+            ),
         )
         super().__init__(
             name="exa_outreach",
             model=model,
             tool_executor=tool_registry,
-            runtime_config=merge_agent_runtime_config(
-                runtime_config,
-                max_tokens=self._config.max_tokens,
-                reset_threshold=self._config.reset_threshold,
-            ),
-            memory_path=self._config.memory_path,
             runtime_config=runtime_config,
             memory_path=resolved_path,
         )
