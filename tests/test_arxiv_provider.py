@@ -472,5 +472,221 @@ class ArxivClientTests(unittest.TestCase):
             mock_sleep.assert_not_called()
 
 
+# ---------------------------------------------------------------------------
+# ArxivToolsTests
+# ---------------------------------------------------------------------------
+
+
+class ArxivToolsTests(unittest.TestCase):
+    """Tests for create_arxiv_tools() and the arxiv.request tool handler."""
+
+    def _client(self, xml: str = _SAMPLE_ATOM) -> ArxivClient:
+        return ArxivClient(
+            config=ArxivConfig(),
+            request_executor=_fake_executor(xml),
+        )
+
+    def test_create_arxiv_tools_no_args_returns_one_tool(self) -> None:
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        tools = create_arxiv_tools()
+        self.assertEqual(len(tools), 1)
+        self.assertEqual(tools[0].key, "arxiv.request")
+
+    def test_create_arxiv_tools_with_client(self) -> None:
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        tools = create_arxiv_tools(client=self._client())
+        self.assertEqual(len(tools), 1)
+
+    def test_create_arxiv_tools_with_config(self) -> None:
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        tools = create_arxiv_tools(credentials=ArxivConfig())
+        self.assertEqual(len(tools), 1)
+
+    def test_allowed_operations_filters_enum(self) -> None:
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        tools = create_arxiv_tools(
+            client=self._client(), allowed_operations=["search"]
+        )
+        schema = tools[0].definition.input_schema
+        self.assertEqual(schema["properties"]["operation"]["enum"], ["search"])
+
+    def test_unknown_allowed_operation_raises(self) -> None:
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        with self.assertRaises(ValueError):
+            create_arxiv_tools(allowed_operations=["nonexistent"])
+
+    def test_handler_search_returns_results_and_count(self) -> None:
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        tools = create_arxiv_tools(client=self._client())
+        result = tools[0].handler({"operation": "search", "query": "ti:attention"})
+        self.assertEqual(result["operation"], "search")
+        self.assertIn("results", result)
+        self.assertIn("count", result)
+        self.assertEqual(result["count"], len(result["results"]))
+
+    def test_handler_search_raw_returns_xml_string(self) -> None:
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        tools = create_arxiv_tools(client=self._client())
+        result = tools[0].handler({"operation": "search_raw", "query": "ti:attention"})
+        self.assertEqual(result["operation"], "search_raw")
+        self.assertIsInstance(result["xml"], str)
+
+    def test_handler_get_paper_returns_paper_dict(self) -> None:
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        tools = create_arxiv_tools(client=self._client())
+        result = tools[0].handler(
+            {"operation": "get_paper", "paper_id": "2301.12345"}
+        )
+        self.assertEqual(result["operation"], "get_paper")
+        self.assertIn("paper", result)
+
+    def test_handler_download_paper_returns_saved_to(self) -> None:
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        pdf_bytes = b"%PDF-1.4 content"
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = mock_urlopen.return_value.__enter__.return_value
+            mock_response.read.return_value = pdf_bytes
+            with tempfile.TemporaryDirectory() as tmpdir:
+                save_path = os.path.join(tmpdir, "paper.pdf")
+                tools = create_arxiv_tools()
+                result = tools[0].handler(
+                    {
+                        "operation": "download_paper",
+                        "paper_id": "2301.12345",
+                        "save_path": save_path,
+                    }
+                )
+                self.assertEqual(result["operation"], "download_paper")
+                self.assertEqual(result["saved_to"], save_path)
+
+    def test_handler_missing_query_raises(self) -> None:
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        tools = create_arxiv_tools(client=self._client())
+        with self.assertRaises(ValueError) as ctx:
+            tools[0].handler({"operation": "search"})
+        self.assertIn("query", str(ctx.exception))
+
+    def test_handler_unknown_operation_raises(self) -> None:
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        tools = create_arxiv_tools(client=self._client())
+        with self.assertRaises(ValueError):
+            tools[0].handler({"operation": "invalid_op"})
+
+    def test_handler_missing_operation_raises(self) -> None:
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        tools = create_arxiv_tools(client=self._client())
+        with self.assertRaises(ValueError):
+            tools[0].handler({})
+
+    def test_tool_key_constant_matches(self) -> None:
+        from harnessiq.shared.tools import ARXIV_REQUEST
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        tools = create_arxiv_tools()
+        self.assertEqual(tools[0].key, ARXIV_REQUEST)
+
+    def test_pagination_params_forwarded_to_search(self) -> None:
+        from harnessiq.tools.arxiv import create_arxiv_tools
+
+        captured_urls: list[str] = []
+
+        def _capturing_exec(
+            method: str,
+            url: str,
+            *,
+            headers: Any = None,
+            json_body: Any = None,
+            timeout_seconds: float = 30.0,
+        ) -> str:
+            captured_urls.append(url)
+            return _EMPTY_ATOM
+
+        client = ArxivClient(config=ArxivConfig(), request_executor=_capturing_exec)
+        tools = create_arxiv_tools(client=client)
+        tools[0].handler(
+            {
+                "operation": "search",
+                "query": "all:transformer",
+                "max_results": 50,
+                "start": 100,
+                "sort_by": "submittedDate",
+                "sort_order": "ascending",
+            }
+        )
+        self.assertEqual(len(captured_urls), 1)
+        self.assertIn("max_results=50", captured_urls[0])
+        self.assertIn("start=100", captured_urls[0])
+
+
+# ---------------------------------------------------------------------------
+# ArxivRegistryIntegrationTests
+# ---------------------------------------------------------------------------
+
+
+class ArxivRegistryIntegrationTests(unittest.TestCase):
+    """Verify arXiv is correctly wired into ToolsetRegistry."""
+
+    def test_get_arxiv_request_without_credentials_succeeds(self) -> None:
+        from harnessiq.toolset.registry import ToolsetRegistry
+
+        registry = ToolsetRegistry()
+        tool = registry.get("arxiv.request")
+        self.assertEqual(tool.key, "arxiv.request")
+
+    def test_get_family_arxiv_without_credentials_succeeds(self) -> None:
+        from harnessiq.toolset.registry import ToolsetRegistry
+
+        registry = ToolsetRegistry()
+        tools = registry.get_family("arxiv")
+        self.assertEqual(len(tools), 1)
+        self.assertEqual(tools[0].key, "arxiv.request")
+
+    def test_existing_provider_still_requires_credentials(self) -> None:
+        """Regression: exa.request must still fail without credentials."""
+        from harnessiq.toolset.registry import ToolsetRegistry
+
+        registry = ToolsetRegistry()
+        with self.assertRaises(ValueError) as ctx:
+            registry.get("exa.request")
+        self.assertIn("credentials", str(ctx.exception).lower())
+
+    def test_existing_family_still_requires_credentials(self) -> None:
+        """Regression: exa family must still fail without credentials."""
+        from harnessiq.toolset.registry import ToolsetRegistry
+
+        registry = ToolsetRegistry()
+        with self.assertRaises(ValueError):
+            registry.get_family("exa")
+
+    def test_arxiv_appears_in_provider_entries(self) -> None:
+        from harnessiq.toolset.catalog import PROVIDER_ENTRY_INDEX
+
+        self.assertIn("arxiv.request", PROVIDER_ENTRY_INDEX)
+
+    def test_arxiv_entry_requires_credentials_false(self) -> None:
+        from harnessiq.toolset.catalog import PROVIDER_ENTRY_INDEX
+
+        entry = PROVIDER_ENTRY_INDEX["arxiv.request"]
+        self.assertFalse(entry.requires_credentials)
+
+    def test_infer_provider_name_arxiv(self) -> None:
+        from harnessiq.providers.http import _infer_provider_name
+
+        self.assertEqual(_infer_provider_name("https://export.arxiv.org/api/query"), "arxiv")
+        self.assertEqual(_infer_provider_name("https://arxiv.org/pdf/2301.12345"), "arxiv")
+
+
 if __name__ == "__main__":
     unittest.main()

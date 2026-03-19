@@ -1,6 +1,6 @@
 # Harnessiq
 
-Harnessiq is a Python SDK for building production-grade tool-using agents. It ships a complete agent runtime, a large library of injectable tools, MCP-style factories for 14+ external service APIs, four concrete agent harnesses, and a scriptable CLI — all composable without framework lock-in.
+Harnessiq is a Python SDK for building production-grade tool-using agents. It ships a complete agent runtime, a large library of injectable tools, MCP-style factories for 15+ external service APIs, five concrete agent harnesses, and a scriptable CLI — all composable without framework lock-in.
 
 ---
 
@@ -15,6 +15,7 @@ Harnessiq is a Python SDK for building production-grade tool-using agents. It sh
   - [LinkedInJobApplierAgent](#linkedinjobapplieragent)
   - [KnowtAgent](#knowtagent)
   - [ExaOutreachAgent](#exaoutreachagent)
+  - [LeadsAgent](#leadsagent)
 - [Tool Layer](#tool-layer)
   - [Built-in Tools](#built-in-tools)
   - [Context Compaction Tools](#context-compaction-tools)
@@ -31,6 +32,7 @@ Harnessiq is a Python SDK for building production-grade tool-using agents. It sh
 - [Master Prompts](#master-prompts)
 - [CLI](#cli)
   - [LinkedIn Commands](#linkedin-commands)
+  - [Leads Commands](#leads-commands)
   - [Outreach Commands](#outreach-commands)
 - [Configuration and Credentials](#configuration-and-credentials)
 - [Further Reading](#further-reading)
@@ -296,6 +298,65 @@ class MyDatabaseBackend:
 agent = ExaOutreachAgent(..., storage_backend=MyDatabaseBackend())
 ```
 
+### LeadsAgent
+
+A rotating multi-ICP prospect discovery harness. One agent instance works through a list of ICPs, injects provider tools by family (`apollo`, `leadiq`, `lemlist`, `zoominfo`, and others already registered in the SDK), persists every search deterministically, compacts older search history into summaries, and deduplicates saved leads through a pluggable `LeadsStorageBackend`.
+
+```python
+from pathlib import Path
+
+from harnessiq.agents import LeadsAgent
+from harnessiq.providers.apollo.client import ApolloCredentials
+
+agent = LeadsAgent(
+    model=model,
+    company_background="We sell outbound infrastructure to B2B SaaS revenue teams.",
+    icps=(
+        "VP Sales at Series A SaaS companies",
+        "Head of Revenue at 50-200 employee SaaS companies",
+    ),
+    platforms=("apollo",),
+    provider_credentials={
+        "apollo": ApolloCredentials(api_key="apollo_..."),
+    },
+    memory_path=Path("./memory/leads/campaign-a"),
+    prune_search_interval=25,
+    prune_token_limit=60_000,
+    search_summary_every=250,
+    search_tail_size=15,
+    max_leads_per_icp=50,
+)
+result = agent.run(max_cycles=40)
+```
+
+**Durable memory layout** (`memory_path/`):
+
+| File or folder | Purpose |
+|----------------|---------|
+| `run_config.json` | Company background, ICP list, provider platform list, and durable search-compaction settings |
+| `run_state.json` | Active ICP index and overall run lifecycle state |
+| `icps/*.json` | Per-ICP state: raw searches, search summaries, saved lead keys, completion markers |
+| `lead_storage/saved_leads.json` | Cross-run deduplicated saved leads |
+| `lead_storage/runs/` | Per-run event log emitted by the default filesystem backend |
+
+**Internal tools:** `leads.log_search`, `leads.compact_search_history`, `leads.check_seen_lead`, `leads.save_leads`.
+
+**Pluggable storage via `LeadsStorageBackend` protocol.** The default backend is `FileSystemLeadsStorageBackend`, but the harness can save into any custom store:
+
+```python
+from harnessiq.shared.leads import LeadRecord, LeadSaveResult
+
+class MyLeadWarehouse:
+    def start_run(self, run_id: str, metadata: dict) -> None: ...
+    def finish_run(self, run_id: str, completed_at: str) -> None: ...
+    def save_leads(self, run_id: str, icp_key: str, leads, metadata=None) -> tuple[LeadSaveResult, ...]: ...
+    def has_seen_lead(self, dedupe_key: str) -> bool: ...
+    def list_leads(self, *, icp_key: str | None = None) -> list[LeadRecord]: ...
+    def current_run_id(self) -> str | None: ...
+
+agent = LeadsAgent(..., storage_backend=MyLeadWarehouse())
+```
+
 ---
 
 ## Tool Layer
@@ -491,6 +552,7 @@ tools = create_exa_tools(
 
 | Provider | Tool key constant | Factory | Operations | Auth mechanism |
 |----------|-------------------|---------|-----------|----------------|
+| **Apollo.io** | `APOLLO_REQUEST` | `create_apollo_tools()` | 25 | API key (`X-Api-Key` header) |
 | **Exa** | `EXA_REQUEST` | `create_exa_tools()` | 15 | API key (`x-api-key` header) |
 | **Snov.io** | `SNOVIO_REQUEST` | `create_snovio_tools()` | 23 | OAuth2 — client ID + secret, token exchange is transparent |
 | **LeadIQ** | `LEADIQ_REQUEST` | `create_leadiq_tools()` | 12 | API key (GraphQL `Authorization: Bearer`) |
@@ -501,7 +563,7 @@ tools = create_exa_tools(
 
 **Exa operation categories:** Search, Contents, Find Similar, Answer, Research (search + contents), Webset management (create, update, delete, list, items, searches).
 
-Import constants: `from harnessiq.shared.tools import EXA_REQUEST, SNOVIO_REQUEST, LEADIQ_REQUEST, ...`
+Import constants: `from harnessiq.shared.tools import APOLLO_REQUEST, EXA_REQUEST, SNOVIO_REQUEST, LEADIQ_REQUEST, ...`
 
 ### Sales Engagement Providers
 
@@ -562,6 +624,7 @@ The `harnessiq` CLI is installed automatically with the package. All commands em
 ```bash
 harnessiq --help
 harnessiq linkedin --help
+harnessiq leads --help
 harnessiq outreach --help
 ```
 
@@ -631,6 +694,67 @@ harnessiq linkedin init-browser --agent candidate-a
 ```
 
 Requires: `pip install playwright && python -m playwright install chromium`
+
+---
+
+### Leads Commands
+
+#### `harnessiq leads prepare`
+
+Create or refresh a leads agent memory folder.
+
+```bash
+harnessiq leads prepare \
+  --agent campaign-a \
+  --memory-root ./memory/leads
+```
+
+#### `harnessiq leads configure`
+
+Write company background, ICPs, enabled platforms, and persisted runtime/config parameters.
+
+```bash
+harnessiq leads configure \
+  --agent campaign-a \
+  --memory-root ./memory/leads \
+  --company-background-file ./company_background.md \
+  --icp-text "VP Sales at Series A SaaS companies" \
+  --icp-text "Head of Revenue at 50-200 employee SaaS companies" \
+  --platform apollo \
+  --platform leadiq \
+  --runtime-param search_summary_every=250 \
+  --runtime-param search_tail_size=15 \
+  --runtime-param max_tokens=80000 \
+  --runtime-param prune_search_interval=25
+```
+
+**Supported `--runtime-param` keys:** `max_tokens`, `reset_threshold`, `prune_search_interval`, `prune_token_limit`, `search_summary_every`, `search_tail_size`, `max_leads_per_icp`.
+
+#### `harnessiq leads show`
+
+Render the current leads agent state as JSON, including persisted run config, runtime parameters, and per-ICP state files.
+
+```bash
+harnessiq leads show --agent campaign-a
+```
+
+#### `harnessiq leads run`
+
+Run the leads agent from persisted CLI state.
+
+```bash
+harnessiq leads run \
+  --agent campaign-a \
+  --memory-root ./memory/leads \
+  --model-factory my_module:create_model \
+  --provider-credentials-factory apollo=my_module:create_apollo_credentials \
+  --storage-backend-factory my_module:create_leads_storage_backend \
+  --runtime-param max_tokens=60000 \
+  --runtime-param search_summary_every=100 \
+  --max-cycles 40
+```
+
+`--model-factory`, `--provider-tools-factory`, `--provider-credentials-factory`, `--provider-client-factory`, and `--storage-backend-factory` all accept `module:callable` import paths. If `--provider-tools-factory` is omitted, the CLI builds provider tools from the configured `platforms` list and the injected credentials or clients.
 
 ---
 
@@ -708,6 +832,7 @@ creds = loader.load_all(["EXA_API_KEY", "RESEND_API_KEY"])
 
 ```
 # Search and intelligence
+APOLLO_API_KEY=...
 EXA_API_KEY=your_exa_key
 SNOVIO_CLIENT_ID=...
 SNOVIO_CLIENT_SECRET=...
@@ -743,4 +868,5 @@ RESEND_API_KEY=re_...
 
 - `docs/tools.md` — tool API reference and composition patterns
 - `docs/agent-runtime.md` — context window mechanics, compaction strategies, and pause/reset flow
+- `docs/leads-agent.md` — leads agent SDK and CLI workflow, storage backend injection, and deterministic search memory
 - `docs/linkedin-agent.md` — LinkedIn agent CLI workflow and Playwright browser integration guide

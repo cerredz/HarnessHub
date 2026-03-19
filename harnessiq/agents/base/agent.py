@@ -55,6 +55,7 @@ class BaseAgent(ABC):
         self._parameter_sections: tuple[AgentParameterSection, ...] = ()
         self._transcript: list[AgentTranscriptEntry] = []
         self._reset_count = 0
+        self._last_prune_progress = 0
 
     @property
     def name(self) -> str:
@@ -110,6 +111,14 @@ class BaseAgent(ABC):
     def available_tools(self) -> tuple[ToolDefinition, ...]:
         return tuple(self._tool_executor.definitions())
 
+    def inspect_tools(self, tool_keys: Sequence[str] | None = None) -> tuple[dict[str, Any], ...]:
+        """Return rich inspection metadata for all or selected tools."""
+        inspector = getattr(self._tool_executor, "inspect", None)
+        if callable(inspector):
+            return tuple(inspector(tool_keys))
+        definitions = self._tool_executor.definitions(tool_keys)
+        return tuple(definition.inspect() for definition in definitions)
+
     def refresh_parameters(self) -> tuple[AgentParameterSection, ...]:
         sections = tuple(self.load_parameter_sections())
         self._parameter_sections = sections
@@ -131,12 +140,21 @@ class BaseAgent(ABC):
             tools=self.available_tools(),
         )
 
+    def pruning_progress_value(self) -> int:
+        """Return the generic progress counter used by deterministic pruning.
+
+        Concrete agents can override this to map pruning to durable domain work
+        such as saved searches, queued tasks, or processed records.
+        """
+        return len(self._transcript)
+
     def run(self, *, max_cycles: int | None = None) -> AgentRunResult:
         """Run the agent loop until it pauses, completes, or hits ``max_cycles``."""
         self.prepare()
         self._reset_count = 0
         self._transcript.clear()
         self.refresh_parameters()
+        self._last_prune_progress = self.pruning_progress_value()
 
         cycles_completed = 0
         while max_cycles is None or cycles_completed < max_cycles:
@@ -171,15 +189,20 @@ class BaseAgent(ABC):
                     pause_reason=pause_signal.reason,
                 )
 
-            if self._should_reset_context():
-                self.reset_context()
-
             if not response.should_continue:
                 return AgentRunResult(
                     status="completed",
                     cycles_completed=cycles_completed,
                     resets=self._reset_count,
                 )
+
+            if self._should_prune_context():
+                self.reset_context()
+                self._last_prune_progress = self.pruning_progress_value()
+
+            if self._should_reset_context():
+                self.reset_context()
+                self._last_prune_progress = self.pruning_progress_value()
 
         return AgentRunResult(
             status="max_cycles_reached",
@@ -226,8 +249,24 @@ class BaseAgent(ABC):
         if not self._transcript:
             return False
 
+        return self._is_reset_helpful(self._runtime_config.reset_token_limit)
+
+    def _should_prune_context(self) -> bool:
+        progress_interval = self._runtime_config.prune_progress_interval
+        if progress_interval is not None:
+            current_progress = self.pruning_progress_value()
+            if current_progress - self._last_prune_progress >= progress_interval:
+                return True
+
+        prune_token_limit = self._runtime_config.prune_token_limit
+        if prune_token_limit is not None and self._transcript:
+            return self._is_reset_helpful(prune_token_limit)
+
+        return False
+
+    def _is_reset_helpful(self, token_limit: int) -> bool:
         request = self.build_model_request()
-        if request.estimated_tokens() < self._runtime_config.reset_token_limit:
+        if request.estimated_tokens() < token_limit:
             return False
 
         reset_request = AgentModelRequest(
@@ -237,7 +276,7 @@ class BaseAgent(ABC):
             transcript=(),
             tools=request.tools,
         )
-        return reset_request.estimated_tokens() < self._runtime_config.reset_token_limit
+        return reset_request.estimated_tokens() < token_limit
 
     def _apply_compaction_result(self, result: ToolResult) -> bool:
         if result.tool_key not in self._COMPACTION_TOOL_KEYS:
