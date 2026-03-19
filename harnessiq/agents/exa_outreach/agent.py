@@ -41,6 +41,14 @@ from harnessiq.tools.registry import ToolRegistry
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
 _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
+_LEGACY_DEFAULT_AGENT_IDENTITIES = frozenset(
+    {
+        "A disciplined outreach specialist who finds relevant prospects via Exa neural "
+        "search, selects the most appropriate email template for each lead, personalizes "
+        "the message with specific details from their profile, and sends concise, "
+        "value-first cold emails."
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,7 +178,7 @@ class ExaOutreachAgent(BaseAgent):
             else DEFAULT_AGENT_IDENTITY
         )
         prompt = _MASTER_PROMPT_PATH.read_text(encoding="utf-8")
-        if identity and identity != DEFAULT_AGENT_IDENTITY:
+        if identity and identity not in {DEFAULT_AGENT_IDENTITY, *_LEGACY_DEFAULT_AGENT_IDENTITIES}:
             prompt = prompt.replace(
                 "[IDENTITY]\nYou are ExaOutreachAgent.",
                 f"[IDENTITY]\n{identity}\n\n(You are ExaOutreachAgent.)",

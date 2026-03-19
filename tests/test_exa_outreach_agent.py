@@ -223,6 +223,27 @@ class TestBuildSystemPrompt:
         assert "Search-only mode is enabled." in prompt
         assert "Do not attempt template selection, email drafting, or email sending." in prompt
 
+    def test_legacy_default_identity_is_not_treated_as_custom_override(self, tmp_path):
+        legacy_identity = (
+            "A disciplined outreach specialist who finds relevant prospects via Exa neural "
+            "search, selects the most appropriate email template for each lead, personalizes "
+            "the message with specific details from their profile, and sends concise, "
+            "value-first cold emails."
+        )
+        agent = ExaOutreachAgent(
+            model=_make_model(),
+            email_data=[],
+            search_only=True,
+            memory_path=tmp_path / "outreach",
+            exa_client=_make_exa_client(),
+        )
+        agent.prepare()
+        agent.memory_store.write_agent_identity(legacy_identity)
+
+        prompt = agent.build_system_prompt()
+
+        assert "(You are ExaOutreachAgent.)" not in prompt
+
 
 class TestLoadParameterSections:
     def test_normal_mode_returns_three_sections(self, tmp_path):
