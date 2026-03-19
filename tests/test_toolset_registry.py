@@ -1,4 +1,4 @@
-"""Tests for harnessiq.toolset catalog and registry (Ticket 1)."""
+"""Tests for harnessiq.toolset catalog and registry (Tickets 1 & 2)."""
 
 from __future__ import annotations
 
@@ -8,10 +8,13 @@ from harnessiq.shared.tools import RegisteredTool
 from harnessiq.toolset import (
     ToolEntry,
     ToolsetRegistry,
+    define_tool,
     get_family,
     get_tool,
     get_tools,
     list_tools,
+    register_tool,
+    register_tools,
 )
 from harnessiq.toolset.catalog import PROVIDER_ENTRY_INDEX, PROVIDER_FACTORY_MAP
 
@@ -74,6 +77,10 @@ class TestGetToolBuiltin:
     def test_prompt_tool(self):
         tool = get_tool("prompt.create_system_prompt")
         assert tool.key == "prompt.create_system_prompt"
+
+    def test_instagram_tool(self):
+        tool = get_tool("instagram.search_keyword")
+        assert tool.key == "instagram.search_keyword"
 
     def test_unknown_key_raises_key_error(self):
         with pytest.raises(KeyError, match="'no.such.tool'"):
@@ -160,6 +167,10 @@ class TestGetFamily:
     def test_filesystem_family_has_eight_tools(self):
         tools = get_family("filesystem")
         assert len(tools) == 8
+
+    def test_instagram_family_has_search_tool(self):
+        tools = get_family("instagram")
+        assert [tool.key for tool in tools] == ["instagram.search_keyword"]
 
     def test_count_limits_results(self):
         tools = get_family("reasoning", count=4)
@@ -319,3 +330,177 @@ class TestToolsetRegistryDirect:
         entries = registry.list()
         assert isinstance(entries, list)
         assert len(entries) > 0
+
+
+# ---------------------------------------------------------------------------
+# register_tool — ToolsetRegistry instance
+# ---------------------------------------------------------------------------
+
+
+def _make_tool(key: str = "custom.shout") -> RegisteredTool:
+    return define_tool(
+        key=key,
+        description="Test tool.",
+        parameters={"text": {"type": "string"}},
+        handler=lambda args: args.get("text", "").upper(),
+    )
+
+
+class TestRegisterToolInstance:
+    def test_registered_tool_retrievable_by_key(self):
+        registry = ToolsetRegistry()
+        t = _make_tool("custom.alpha")
+        registry.register_tool(t)
+        assert registry.get("custom.alpha") is t
+
+    def test_registered_tool_executes_correctly(self):
+        registry = ToolsetRegistry()
+        t = _make_tool("custom.upper")
+        registry.register_tool(t)
+        result = registry.get("custom.upper").execute({"text": "hello"})
+        assert result.output == "HELLO"
+
+    def test_registered_tool_appears_in_list(self):
+        registry = ToolsetRegistry()
+        t = _make_tool("custom.listed")
+        registry.register_tool(t)
+        keys = [e.key for e in registry.list()]
+        assert "custom.listed" in keys
+
+    def test_list_entry_has_correct_family(self):
+        registry = ToolsetRegistry()
+        t = _make_tool("myfam.mytool")
+        registry.register_tool(t)
+        entry = next(e for e in registry.list() if e.key == "myfam.mytool")
+        assert entry.family == "myfam"
+
+    def test_list_entry_requires_credentials_false(self):
+        registry = ToolsetRegistry()
+        t = _make_tool("custom.nocreds")
+        registry.register_tool(t)
+        entry = next(e for e in registry.list() if e.key == "custom.nocreds")
+        assert entry.requires_credentials is False
+
+    def test_registered_tool_appears_in_get_family(self):
+        registry = ToolsetRegistry()
+        t = _make_tool("myfam2.atool")
+        registry.register_tool(t)
+        family = registry.get_family("myfam2")
+        assert any(tool.key == "myfam2.atool" for tool in family)
+
+    def test_register_tool_in_existing_builtin_family(self):
+        registry = ToolsetRegistry()
+        t = _make_tool("reason.custom_extension")
+        registry.register_tool(t)
+        family = registry.get_family("reason")
+        keys = [tool.key for tool in family]
+        assert "reason.brainstorm" in keys
+        assert "reason.custom_extension" in keys
+
+    def test_collision_with_builtin_raises(self):
+        registry = ToolsetRegistry()
+        # reason.brainstorm is a built-in key
+        duplicate = define_tool(
+            key="reason.brainstorm",
+            description="Duplicate.",
+            parameters={},
+            handler=lambda args: None,
+        )
+        with pytest.raises(ValueError, match="built-in"):
+            registry.register_tool(duplicate)
+
+    def test_collision_with_provider_raises(self):
+        registry = ToolsetRegistry()
+        duplicate = define_tool(
+            key="creatify.request",
+            description="Duplicate.",
+            parameters={},
+            handler=lambda args: None,
+        )
+        with pytest.raises(ValueError, match="provider"):
+            registry.register_tool(duplicate)
+
+    def test_collision_with_existing_custom_raises(self):
+        registry = ToolsetRegistry()
+        t = _make_tool("custom.once")
+        registry.register_tool(t)
+        duplicate = define_tool(
+            key="custom.once",
+            description="Duplicate.",
+            parameters={},
+            handler=lambda args: None,
+        )
+        with pytest.raises(ValueError, match="already been registered"):
+            registry.register_tool(duplicate)
+
+    def test_key_not_found_before_registration(self):
+        registry = ToolsetRegistry()
+        with pytest.raises(KeyError):
+            registry.get("custom.not_yet_registered")
+
+
+class TestRegisterToolsInstance:
+    def test_register_multiple_tools(self):
+        registry = ToolsetRegistry()
+        t1 = _make_tool("batch.one")
+        t2 = _make_tool("batch.two")
+        registry.register_tools(t1, t2)
+        assert registry.get("batch.one") is t1
+        assert registry.get("batch.two") is t2
+
+    def test_register_tools_all_appear_in_list(self):
+        registry = ToolsetRegistry()
+        t1 = _make_tool("batch2.a")
+        t2 = _make_tool("batch2.b")
+        registry.register_tools(t1, t2)
+        keys = [e.key for e in registry.list()]
+        assert "batch2.a" in keys
+        assert "batch2.b" in keys
+
+    def test_register_tools_stops_on_collision(self):
+        registry = ToolsetRegistry()
+        t1 = _make_tool("coll.first")
+        registry.register_tool(t1)
+        duplicate = define_tool(
+            key="coll.first",
+            description="Dup.",
+            parameters={},
+            handler=lambda args: None,
+        )
+        t3 = _make_tool("coll.third")
+        with pytest.raises(ValueError):
+            registry.register_tools(duplicate, t3)
+        # t3 was never registered because the error stopped the loop
+        with pytest.raises(KeyError):
+            registry.get("coll.third")
+
+
+# ---------------------------------------------------------------------------
+# register_tool — module-level functions
+# ---------------------------------------------------------------------------
+
+
+class TestModuleLevelRegisterTool:
+    """These tests use isolated ToolsetRegistry instances to avoid polluting
+    the module-level singleton used by other tests."""
+
+    def test_register_tool_delegates_to_registry(self):
+        # Use a direct instance to avoid module singleton pollution
+        registry = ToolsetRegistry()
+        t = _make_tool("mod.alpha")
+        registry.register_tool(t)
+        assert registry.get("mod.alpha") is t
+
+    def test_register_tools_delegates_to_registry(self):
+        registry = ToolsetRegistry()
+        t1 = _make_tool("mod2.x")
+        t2 = _make_tool("mod2.y")
+        registry.register_tools(t1, t2)
+        assert registry.get("mod2.x") is t1
+        assert registry.get("mod2.y") is t2
+
+    def test_module_level_import_works(self):
+        # Confirm the module-level symbols are importable
+        from harnessiq.toolset import register_tool, register_tools  # noqa: F401
+        assert callable(register_tool)
+        assert callable(register_tools)

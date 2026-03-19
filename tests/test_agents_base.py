@@ -39,10 +39,13 @@ class _InspectableAgent(BaseAgent):
         model: _FakeModel,
         tool_executor: ToolRegistry,
         parameter_versions: list[str] | None = None,
+        progress_step: int | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         self._parameter_versions = parameter_versions or ["initial"]
         self._parameter_index = 0
+        self._progress_step = progress_step
+        self._progress_value = 0
         super().__init__(
             name="inspectable_agent",
             model=model,
@@ -77,6 +80,12 @@ class _FailingSink:
     def on_run_complete(self, entry: LedgerEntry) -> None:
         del entry
         raise RuntimeError("sink failed")
+    def pruning_progress_value(self) -> int:
+        if self._progress_step is None:
+            return super().pruning_progress_value()
+        value = self._progress_value
+        self._progress_value += self._progress_step
+        return value
 
 
 def _constant_tool(tool_key: str, name: str, handler):
@@ -96,17 +105,23 @@ def _constant_tool(tool_key: str, name: str, handler):
     )
 
 
+def _echo_handler(arguments: dict[str, object]) -> dict[str, object]:
+    return {"echoed": arguments["text"]}
+
+
 class BaseAgentTests(unittest.TestCase):
     def test_runtime_config_defaults_align_with_shared_constants(self) -> None:
         runtime_config = AgentRuntimeConfig()
 
         self.assertEqual(runtime_config.max_tokens, DEFAULT_AGENT_MAX_TOKENS)
         self.assertEqual(runtime_config.reset_threshold, DEFAULT_AGENT_RESET_THRESHOLD)
+        self.assertIsNone(runtime_config.prune_progress_interval)
+        self.assertIsNone(runtime_config.prune_token_limit)
 
     def test_run_records_tool_results_and_passes_transcript_to_next_turn(self) -> None:
         registry = ToolRegistry(
             [
-                _constant_tool("session.echo", "echo", lambda arguments: {"echoed": arguments["text"]}),
+                _constant_tool("session.echo", "echo", _echo_handler),
             ]
         )
         model = _FakeModel(
@@ -217,6 +232,61 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(model.requests[1].transcript, ())
         self.assertEqual(model.requests[1].parameter_sections[0].content, "refreshed")
 
+    def test_run_resets_context_when_prune_progress_interval_is_reached(self) -> None:
+        registry = ToolRegistry([])
+        model = _FakeModel(
+            [
+                AgentModelResponse(assistant_message="keep going", should_continue=True),
+                AgentModelResponse(assistant_message="done", should_continue=False),
+            ]
+        )
+        agent = _InspectableAgent(
+            model=model,
+            tool_executor=registry,
+            parameter_versions=["initial", "refreshed"],
+            progress_step=2,
+            runtime_config=AgentRuntimeConfig(
+                max_tokens=10_000,
+                reset_threshold=0.95,
+                prune_progress_interval=2,
+            ),
+        )
+
+        result = agent.run(max_cycles=3)
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.resets, 1)
+        self.assertEqual(len(model.requests), 2)
+        self.assertEqual(model.requests[1].transcript, ())
+        self.assertEqual(model.requests[1].parameter_sections[0].content, "refreshed")
+
+    def test_run_resets_context_when_explicit_prune_token_limit_is_reached(self) -> None:
+        registry = ToolRegistry([])
+        model = _FakeModel(
+            [
+                AgentModelResponse(assistant_message="x" * 400, should_continue=True),
+                AgentModelResponse(assistant_message="done", should_continue=False),
+            ]
+        )
+        agent = _InspectableAgent(
+            model=model,
+            tool_executor=registry,
+            parameter_versions=["initial", "refreshed"],
+            runtime_config=AgentRuntimeConfig(
+                max_tokens=10_000,
+                reset_threshold=0.99,
+                prune_token_limit=80,
+            ),
+        )
+
+        result = agent.run(max_cycles=3)
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.resets, 1)
+        self.assertEqual(len(model.requests), 2)
+        self.assertEqual(model.requests[1].transcript, ())
+        self.assertEqual(model.requests[1].parameter_sections[0].content, "refreshed")
+
     def test_compaction_tool_result_rewrites_agent_context_window(self) -> None:
         registry = ToolRegistry(create_context_compaction_tools())
         compactable_window = [
@@ -300,6 +370,27 @@ class BaseAgentTests(unittest.TestCase):
                 ledger_path = Path(temp_dir, "runs.jsonl")
                 self.assertTrue(ledger_path.exists())
                 self.assertIn("inspectable_agent", ledger_path.read_text(encoding="utf-8"))
+    def test_runtime_config_rejects_invalid_prune_values(self) -> None:
+        with self.assertRaises(ValueError):
+            AgentRuntimeConfig(prune_progress_interval=0)
+        with self.assertRaises(ValueError):
+            AgentRuntimeConfig(prune_token_limit=0)
+    def test_inspect_tools_returns_rich_metadata_for_registered_tools(self) -> None:
+        registry = ToolRegistry(
+            [
+                _constant_tool("session.echo", "echo", _echo_handler),
+            ]
+        )
+        agent = _InspectableAgent(model=_FakeModel([]), tool_executor=registry)
+
+        payload = agent.inspect_tools()
+
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["key"], "session.echo")
+        self.assertEqual(payload[0]["description"], "echo tool")
+        self.assertEqual(payload[0]["parameters"], [])
+        self.assertEqual(payload[0]["function"]["module"], __name__)
+        self.assertEqual(payload[0]["function"]["qualname"], "_echo_handler")
 
 
 if __name__ == "__main__":

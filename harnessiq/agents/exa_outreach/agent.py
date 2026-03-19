@@ -200,7 +200,7 @@ class ExaOutreachAgent(BaseAgent):
         self._memory_store.prepare()
         run_id = self._memory_store.next_run_id()
         self._current_run_id = run_id
-        self._config.storage_backend.start_run(run_id, {"query": self._config.search_query})
+        self._config.storage_backend.start_run(run_id, self._config.search_query)
 
     def build_system_prompt(self) -> str:
         """Load and return the master prompt from the prompts directory."""
@@ -415,38 +415,40 @@ class ExaOutreachAgent(BaseAgent):
 
     def _handle_check_contacted(self, arguments: dict[str, Any]) -> dict[str, Any]:
         url = str(arguments["url"])
-        already_contacted = self._config.storage_backend.has_seen("url", url, event_type="lead")
+        already_contacted = self._config.storage_backend.is_contacted(url)
         return {"url": url, "already_contacted": already_contacted}
 
     def _handle_log_lead(self, arguments: dict[str, Any]) -> dict[str, Any]:
         run_id = self._current_run_id
         if run_id is None:
             raise RuntimeError("Cannot log a lead before prepare() has been called.")
+        from harnessiq.shared.exa_outreach import _utcnow
         lead = LeadRecord(
             url=str(arguments["url"]),
             name=str(arguments["name"]),
-            found_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            found_at=_utcnow(),
             email_address=str(arguments["email_address"]) if arguments.get("email_address") else None,
             notes=str(arguments["notes"]) if arguments.get("notes") else None,
         )
         # Deterministic write — this runs inside the tool handler regardless of agent behaviour.
-        self._config.storage_backend.log_event(run_id, "lead", lead.as_dict())
+        self._config.storage_backend.log_lead(run_id, lead)
         return lead.as_dict()
 
     def _handle_log_email_sent(self, arguments: dict[str, Any]) -> dict[str, Any]:
         run_id = self._current_run_id
         if run_id is None:
             raise RuntimeError("Cannot log an email before prepare() has been called.")
+        from harnessiq.shared.exa_outreach import _utcnow
         record = EmailSentRecord(
             to_email=str(arguments["to_email"]),
             to_name=str(arguments["to_name"]),
             subject=str(arguments["subject"]),
             template_id=str(arguments["template_id"]),
-            sent_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            sent_at=_utcnow(),
             notes=str(arguments["notes"]) if arguments.get("notes") else None,
         )
         # Deterministic write — called regardless of agent behaviour.
-        self._config.storage_backend.log_event(run_id, "email_sent", record.as_dict())
+        self._config.storage_backend.log_email_sent(run_id, record)
         return record.as_dict()
 
     def _read_current_run_log(self):

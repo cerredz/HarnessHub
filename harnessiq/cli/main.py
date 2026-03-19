@@ -12,12 +12,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.set_defaults(command_handler=lambda args: _print_help(parser))
 
     from harnessiq.cli.linkedin import register_linkedin_commands
+    from harnessiq.cli.leads import register_leads_commands
     from harnessiq.cli.exa_outreach import register_exa_outreach_commands
     from harnessiq.cli.ledger import register_ledger_commands
+    from harnessiq.cli.instagram import register_instagram_commands
 
     register_ledger_commands(subparsers)
     register_linkedin_commands(subparsers)
+    register_leads_commands(subparsers)
     register_exa_outreach_commands(subparsers)
+    register_instagram_commands(subparsers)
     return parser
 
 

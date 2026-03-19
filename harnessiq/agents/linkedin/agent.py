@@ -51,6 +51,9 @@ from harnessiq.tools.registry import ToolRegistry
 # Users can override this by passing an explicit `memory_path` argument.
 _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
 
+# System prompt template loaded from disk so it can be updated without touching Python source.
+_MASTER_PROMPT_PATH = Path(__file__).parent / "prompts" / "master_prompt.md"
+
 
 @dataclass(slots=True)
 class LinkedInMemoryStore:
@@ -410,38 +413,15 @@ class LinkedInJobApplierAgent(BaseAgent):
         self._memory_store.prepare()
 
     def build_system_prompt(self) -> str:
+        template = _MASTER_PROMPT_PATH.read_text(encoding="utf-8")
         identity = self._memory_store.read_agent_identity() or DEFAULT_AGENT_IDENTITY
-        tool_lines = [f"- {tool.name}: {tool.description}" for tool in self.available_tools()]
-        behavioral_rules = [
-            "- Never apply to a job whose `job_id` appears in applied_jobs.jsonl.",
-            "- After each application, append to applied_jobs.jsonl immediately.",
-            "- After each meaningful action, append a semantic description to action_log.jsonl.",
-            "- If a CAPTCHA or login wall is encountered, call `pause_and_notify`.",
-            "- Do not apply to roles that do not match the user's stated criteria.",
-            "- Prefer LinkedIn Easy Apply when available.",
-            "- Use user_profile.md for application fields instead of inventing answers.",
-        ]
-        sections = [
-            "[IDENTITY]",
-            identity,
-            "[GOAL]",
-            (
-                "Continuously search LinkedIn for open roles matching the user's preferences, "
-                "apply to each qualifying role that is not already in the applied jobs list, "
-                "and preserve durable state across context resets."
-            ),
-            "[INPUT DESCRIPTION]",
-            (
-                "You will receive the following context: job preferences, user profile, the full applied jobs log, "
-                f"and the most recent {self._config.action_log_window} semantic actions. "
-                f"Begin navigation from {self._config.linkedin_start_url}."
-            ),
-            "[TOOLS]",
-            "\n".join(tool_lines),
-            "[BEHAVIORAL RULES]",
-            "\n".join(behavioral_rules),
-        ]
-        return "\n\n".join(section for section in sections if section)
+        tool_lines = "\n".join(f"- {tool.name}: {tool.description}" for tool in self.available_tools())
+        return (
+            template
+            .replace("{{AGENT_IDENTITY}}", identity)
+            .replace("{{TOOL_LIST}}", tool_lines)
+            .replace("{{ACTION_LOG_WINDOW}}", str(self._config.action_log_window))
+        )
 
     def load_parameter_sections(self) -> Sequence[AgentParameterSection]:
         recent_actions = self._memory_store.read_recent_actions()

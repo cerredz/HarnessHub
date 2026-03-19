@@ -36,3 +36,136 @@ Source layout:
 - `harnessiq/tools/`: the executable tool runtime layer, including built-in tools, prompt/filesystem helpers, reasoning tools, and provider-backed tool factories
 - `harnessiq/toolset/`: plug-and-play toolset SDK for retrieving, composing, and registering built-in, provider, and custom tools
 - `harnessiq/utils/`: agent-agnostic utility infrastructure such as run storage and other reusable support code that does not belong to a single agent, provider, or tool family, including the framework-level audit ledger and output-sink implementation used by all agents
+- `harnessiq/agents/base/agent.py`: shared `BaseAgent` runtime loop plus additive tool introspection helpers; agents still expose canonical `available_tools()` and now also a richer inherited inspection surface for descriptions, parameters, schemas, and backing function metadata
+- `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch
+- `harnessiq/cli/leads/`: leads-agent CLI commands for managed multi-ICP configuration and execution
+- `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
+- `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
+- `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
+- `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior; also contains MCP-style tool factories for all registered data and service providers
+- `harnessiq/tools/apollo/`: MCP-style tool factory for Apollo.io sales intelligence and engagement APIs
+- `harnessiq/tools/registry.py`: deterministic registry for executable tools; exposes canonical `definitions()` for model-facing metadata and a richer `inspect()` surface for human/tooling introspection of parameters and handler identity
+- `harnessiq/tools/creatify/`: MCP-style tool factory for Creatify AI video creation
+- `harnessiq/tools/arcads/`: MCP-style tool factory for Arcads AI advertising video creation
+- `harnessiq/tools/instantly/`: MCP-style tool factory for Instantly cold email platform
+- `harnessiq/tools/outreach/`: MCP-style tool factory for Outreach sales engagement platform
+- `harnessiq/tools/lemlist/`: MCP-style tool factory for Lemlist B2B outreach platform
+- `harnessiq/tools/exa/`: MCP-style tool factory for Exa neural search engine
+- `harnessiq/tools/snovio/`: MCP-style tool factory for Snov.io email intelligence (OAuth2 auth handled transparently)
+- `harnessiq/tools/leadiq/`: MCP-style tool factory for LeadIQ contact intelligence (GraphQL API)
+- `harnessiq/tools/salesforge/`: MCP-style tool factory for Salesforge cold email automation
+- `harnessiq/tools/phantombuster/`: MCP-style tool factory for PhantomBuster browser automation
+- `harnessiq/tools/zoominfo/`: MCP-style tool factory for ZoomInfo B2B intelligence (JWT auth handled transparently)
+- `harnessiq/tools/peopledatalabs/`: MCP-style tool factory for People Data Labs data enrichment
+- `harnessiq/tools/proxycurl/`: MCP-style tool factory for Proxycurl (deprecated — shut down Jan 2025)
+- `harnessiq/tools/coresignal/`: MCP-style tool factory for Coresignal professional data
+- `harnessiq/tools/reasoning/`: reasoning tool package — exposes the three core injectable tools (`brainstorm`, `chain_of_thought`, `critique`) and the 50-lens cognitive scaffolding catalog
+- `harnessiq/tools/reasoning/core.py`: three high-level injectable reasoning tools (`reason.brainstorm`, `reason.chain_of_thought`, `reason.critique`) plus `create_reasoning_tools()` factory; supports brainstorm count presets (`"small"`, `"medium"`, `"large"`); instruction outputs are natural language prose injected into the agent context window
+- `harnessiq/tools/reasoning/lenses.py`: 50 reasoning lens tools for agent cognitive scaffolding — includes step-by-step, tree-of-thoughts, first-principles, red-teaming, pre-mortem, and 45 others across 8 cognitive categories (core logical, analytical, perspective, creative, systems, temporal, evaluative, scientific)
+- `harnessiq/tools/knowt/`: Knowt-specific content creation tool factory (create_script, create_avatar_description, create_video via Creatify lipsync_v2, create_file, edit_file)
+- `harnessiq/tools/reasoning.py`: injectable reasoning tools (`reason.brainstorm`, `reason.chain_of_thought`, `reason.critique`) — inject structured reasoning instructions into the agent context window
+- `harnessiq/agents/harness_architect/`: Harness Architect meta-agent; produces complete, immediately deployable harness specifications covering all three context window zones, typed in-context memory schemas, reset protocols, tool access configuration, BaseAgent parameter blocks, and CLI invocation contracts
+- `harnessiq/agents/harness_architect/prompts/`: system prompt files for the Harness Architect agent; `master_prompt.md` loaded at runtime — encodes the three-zone architecture model, in-context memory schema design rules, reset protocol specification checklist, and annotated BaseAgent reference code
+- `harnessiq/agents/prompt_architect/`: Prompt Architect meta-agent; produces complete, immediately deployable action-oriented master prompts via a 15-phase sequential workflow covering domain reconstruction, atomic phase decomposition, persona drafting, structural review, and phase sequence stress testing
+- `harnessiq/agents/prompt_architect/prompts/`: system prompt files for the Prompt Architect agent; `master_prompt.md` loaded at runtime — encodes the full 15-phase prompt engineering workflow, checklist for phase/checklist separation and domain specificity, failure mode guardrails, and eight observable success criteria
+- `harnessiq/agents/linkedin/prompts/`: system prompt files for the LinkedIn agent; `master_prompt.md` loaded at runtime by `build_system_prompt()` with `{{AGENT_IDENTITY}}`, `{{TOOL_LIST}}`, and `{{ACTION_LOG_WINDOW}}` template substitution — covers search strategy, Easy Apply flows, form-filling rules, error recovery, and custom instructions integration
+- `harnessiq/agents/knowt/`: Knowt TikTok content creation agent harness; enforces brainstorm → script → avatar → video pipeline via deterministic file-backed memory
+- `harnessiq/agents/knowt/prompts/`: system prompt files for the Knowt agent; `master_prompt.md` loaded at runtime so it can be updated without touching Python source
+- `harnessiq/agents/leads/`: multi-ICP leads discovery agent harness; rotates one agent instance across ICPs, composes provider tools by platform family, persists searches/leads deterministically, and uses durable search progress for transcript pruning
+- `harnessiq/agents/leads/prompts/`: system prompt files for the leads agent; `master_prompt.md` loaded at runtime with `{{PLATFORMS}}`, `{{SEARCH_SUMMARY_EVERY}}`, `{{SEARCH_TAIL_SIZE}}`, and `{{TOOL_LIST}}` template substitution
+- `harnessiq/shared/knowt.py`: `KnowtMemoryStore` (file-backed), `KnowtAgentConfig`, `KnowtCreationLogEntry`, and filename constants for the Knowt agent harness
+- `harnessiq/shared/linkedin.py`: LinkedIn constants and data models — `JobSearchConfig` (structured filter params: title, location, remote_type, experience_levels, date_posted, easy_apply_only, salary range, job_type, companies, industries, description), `JobApplicationRecord`, `ActionLogEntry`, `LinkedInAgentConfig`, `LinkedInManagedFile`, filename constants
+- `harnessiq/tools/reasoning/`: 50 reasoning lens tools for agent cognitive scaffolding — includes step-by-step, tree-of-thoughts, first-principles, red-teaming, pre-mortem, and 45 others across 8 cognitive categories (core logical, analytical, perspective, creative, systems, temporal, evaluative, scientific)
+- `harnessiq/toolset/`: plug-and-play toolset SDK — `get_tool`, `get_tools`, `get_family`, `list_tools`, `define_tool`, `@tool` decorator, `register_tool`, `register_tools`; backed by `ToolsetRegistry` and a static provider catalog
+- `harnessiq/toolset/factory.py`: `define_tool()` factory and `@tool` decorator for ergonomic custom `RegisteredTool` creation; validates `tool_type` with clear planned-vs-unknown messaging
+- `harnessiq/providers/`: provider translation helpers and provider-specific request builders
+- `harnessiq/config/`: credential loader and base credential configuration types; `CredentialLoader` resolves named environment variables from a repo-local `.env` file
+- `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
+- `harnessiq/providers/`: provider-specific request builders, HTTP clients, and operation catalogs; covers both AI LLM providers and external-service API providers
+- `harnessiq/providers/apollo/`: Apollo.io sales intelligence API client, request catalog, and credential model
+- `harnessiq/providers/anthropic/`: Anthropic request and tool-translation helpers
+- `harnessiq/providers/openai/`: OpenAI request and tool-translation helpers
+- `harnessiq/providers/grok/`: Grok request and tool-translation helpers
+- `harnessiq/providers/gemini/`: Gemini request and tool-translation helpers
+- `harnessiq/providers/snovio/`: Snov.io email-finding and outreach API client
+- `harnessiq/providers/leadiq/`: LeadIQ lead-intelligence API client (GraphQL)
+- `harnessiq/providers/salesforge/`: Salesforge AI sales-engagement API client
+- `harnessiq/providers/phantombuster/`: PhantomBuster web-automation API client
+- `harnessiq/providers/zoominfo/`: ZoomInfo B2B-intelligence API client (JWT auth)
+- `harnessiq/providers/peopledatalabs/`: People Data Labs people and company data-enrichment API client
+- `harnessiq/providers/proxycurl/`: Proxycurl LinkedIn data API client
+- `harnessiq/providers/coresignal/`: Coresignal professional network data API client
+- `harnessiq/providers/arxiv/`: public arXiv API client with Atom feed parsing and PDF download helpers
+- `harnessiq/providers/creatify/`: Creatify AI video creation API — credentials, client, and full operation catalog
+- `harnessiq/providers/arcads/`: Arcads AI video ad API — credentials, client, and operation catalog
+- `harnessiq/providers/instantly/`: Instantly.ai cold email API v2 — credentials, client, and full operation catalog
+- `harnessiq/providers/outreach/`: Outreach.io sales engagement API — credentials, OAuth client, and core operation catalog
+- `harnessiq/providers/lemlist/`: Lemlist outreach API — credentials, client, and full operation catalog
+- `harnessiq/providers/exa/`: Exa neural search API — credentials, client, and full operation catalog
+- `harnessiq/agents/exa_outreach/`: ExaOutreach agent harness — finds prospects via Exa search, sends personalised emails via Resend, and deterministically persists leads and email records to a pluggable `StorageBackend`
+- `harnessiq/agents/exa_outreach/prompts/`: system prompt files for the ExaOutreach agent; `master_prompt.md` loaded at runtime
+- `harnessiq/shared/exa_outreach.py`: `EmailTemplate`, `LeadRecord`, `EmailSentRecord`, `OutreachRunLog`, `StorageBackend` protocol, `FileSystemStorageBackend` (per-run JSON files under `runs/`), and `ExaOutreachMemoryStore`
+- `harnessiq/shared/leads.py`: leads-agent shared domain models including `LeadRunConfig`, `LeadRunState`, `LeadICP`, `LeadICPState`, `LeadSearchRecord`, `LeadSearchSummary`, `LeadRecord`, `LeadsMemoryStore`, and `FileSystemLeadsStorageBackend` for per-ICP durable search state plus cross-run lead dedupe/persistence
+- `harnessiq/cli/exa_outreach/`: ExaOutreach CLI — `prepare`, `configure`, `show`, and `run` subcommands registered under `harnessiq outreach`
+
+Tests:
+- `tests/test_agents_base.py`: coverage for the generic agent loop, transcript handling, context resets, and structured pause behavior
+- `tests/test_email_agent.py`: coverage for the abstract email-capable harness, masked Resend credentials, and Resend tool integration through the agent loop
+- `tests/test_linkedin_agent.py`: coverage for the LinkedIn-specific harness, memory files, durable state tools, JobSearchConfig structured/string parameter, context window section ordering, and custom instructions injection
+- `tests/test_tools.py`: coverage for tool definitions, registry behavior, validation, execution, and built-in key ordering
+- `tests/test_context_compaction_tools.py`: coverage for the context-window compaction tool family
+- `tests/test_general_tools.py`: coverage for the reusable text, record, and control-flow tool family
+- `tests/test_prompt_filesystem_tools.py`: coverage for system-prompt generation and non-destructive filesystem tools
+- `tests/test_resend_tools.py`: coverage for the Resend operation catalog, MCP-style request tool, and Resend-specific transport/header behavior
+- `tests/test_provider_base.py`: coverage for shared provider helpers and HTTP transport
+- `tests/test_providers.py`: coverage for provider message normalization and request translation across all supported providers
+- `tests/test_anthropic_provider.py`: coverage for Anthropic request, tool, and client helpers
+- `tests/test_grok_provider.py`: coverage for Grok request, tool, and client helpers
+- `tests/test_openai_provider.py`: coverage for OpenAI request, tool, and client helpers
+- `tests/test_gemini_provider.py`: coverage for Gemini content, tool, and client helpers
+- `tests/test_config_loader.py`: coverage for the CredentialLoader and HTTP transport hostname inference
+- `tests/test_snovio_provider.py`: coverage for Snov.io request builders, client, operation catalog, and tool factory (OAuth2 token exchange)
+- `tests/test_leadiq_provider.py`: coverage for LeadIQ operation catalog and tool factory (GraphQL dispatch)
+- `tests/test_salesforge_provider.py`: coverage for Salesforge operation catalog and tool factory
+- `tests/test_phantombuster_provider.py`: coverage for PhantomBuster operation catalog and tool factory
+- `tests/test_zoominfo_provider.py`: coverage for ZoomInfo operation catalog and tool factory (JWT auth)
+- `tests/test_peopledatalabs_provider.py`: coverage for People Data Labs operation catalog and tool factory
+- `tests/test_proxycurl_provider.py`: coverage for Proxycurl operation catalog and tool factory (deprecated provider)
+- `tests/test_coresignal_provider.py`: coverage for Coresignal operation catalog and tool factory
+- `tests/test_config_loader.py`: coverage for CredentialLoader `.env` parsing, error cases, and HTTP transport hostname mapping for all six new providers
+- `tests/test_creatify_provider.py`: coverage for Creatify credentials, client, operation catalog, and tool factory
+- `tests/test_arcads_provider.py`: coverage for Arcads credentials (Basic Auth), client, operation catalog, and tool factory
+- `tests/test_instantly_provider.py`: coverage for Instantly credentials, client, V2 operation catalog, and tool factory
+- `tests/test_outreach_provider.py`: coverage for Outreach credentials (OAuth Bearer), client, core operation catalog, and tool factory
+- `tests/test_lemlist_provider.py`: coverage for Lemlist credentials (Basic Auth), client, operation catalog, and tool factory
+- `tests/test_exa_provider.py`: coverage for Exa credentials, client, search operation catalog, and tool factory
+- `tests/test_arxiv_provider.py`: coverage for arXiv transport config, Atom feed parsing, URL builders, client/download behavior, and operation catalog
+- `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
+- `tests/test_reasoning_tools.py`: coverage for the three core reasoning tools (brainstorm, chain_of_thought, critique) — handler behavior, count presets, boundary validation, registry integration, and instruction output shape
+- `tests/test_reasoning_tools.py`: coverage for reasoning tool implementations, boundary validation, and instruction formatting
+- `tests/test_knowt_tools.py`: coverage for Knowt tool handlers, memory guard enforcement, Creatify integration, and file-scoped create/edit operations
+- `tests/test_knowt_agent.py`: coverage for the Knowt agent harness — construction, system prompt file loading, parameter sections, tool wiring, and run loop behavior
+- `tests/test_reasoning_tools.py`: coverage for all 50 reasoning lens tool handlers, registry execution, argument validation, and prompt output shape
+- `tests/test_toolset_factory.py`: coverage for `define_tool()` factory and `@tool` decorator — construction, schema building, handler execution, `tool_type` validation, `ToolDefinition.tool_type` backwards compatibility
+- `tests/test_toolset_registry.py`: coverage for `ToolsetRegistry` — built-in/provider/custom tool lookup, `register_tool`/`register_tools`, collision detection, `list_tools`, `get_family`
+- `tests/test_exa_outreach_shared.py`: coverage for `EmailTemplate`, `LeadRecord`, `EmailSentRecord`, `OutreachRunLog`, `FileSystemStorageBackend`, `ExaOutreachMemoryStore`, and tool key constants
+- `tests/test_exa_outreach_agent.py`: coverage for `ExaOutreachAgent` construction, available tools, system prompt building, parameter section ordering, all five internal tool handlers, prepare/run lifecycle, and SDK exports
+- `tests/test_exa_outreach_cli.py`: coverage for the ExaOutreach CLI — parser registration, `prepare`/`configure`/`show`/`run` handlers, `normalize_exa_outreach_runtime_parameters`, and `SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS`
+
+- `tests/test_leads_shared.py`: coverage for the leads-agent shared types, per-ICP memory store, search compaction persistence, and filesystem save-backend dedupe behavior
+- `tests/test_leads_agent.py`: coverage for the leads-agent harness â€” construction, prompt/parameter sections, ICP rotation, deterministic search persistence, save/dedupe behavior, and pruning tied to durable search progress
+- `tests/test_leads_cli.py`: coverage for the leads CLI â€” parser registration, configure/show state management, runtime parameter normalization, storage backend injection, and run wiring
+Current memory artifacts:
+
+- `memory/refactor-types-constants/`: planning, ticket, quality, critique, and PR-body artifacts for the shared definitions refactor
+- `memory/linkedin-agent-harness/`: internalization, tickets, and verification artifacts for the LinkedIn harness work
+- `memory/add-context-compaction-tools/`: internalization, tickets, and verification artifacts for the context-window compaction work
+- `memory/add-generalizable-tools/`: internalization, brainstorming, ticket, and verification artifacts for the general-purpose tool expansion
+- `memory/add-system-prompt-terminal-tools/`: internalization, clarification, ticket, and verification artifacts for prompt and filesystem tool expansion
+- `memory/email-agent-resend-mcp/`: internalization, ticket, quality, and critique artifacts for the Resend-backed email agent base work
+- `memory/shared-definition-consolidation/`: internalization and ticket plan artifacts for the shared-definition cleanup
+- `memory/add-data-providers/`: internalization, ticket, quality, and critique artifacts for the data-service provider expansion (Snov.io, LeadIQ, Salesforge, PhantomBuster, ZoomInfo, People Data Labs, Proxycurl, Coresignal)
+- `memory/add-service-providers/`: internalization, clarifications, and ticket artifacts for adding Creatify, Arcads, Instantly, Outreach, Lemlist, and Exa providers plus the config layer
+- `memory/knowt-agent/`: internalization, clarification, ticket, and verification artifacts for the reasoning tools and Knowt TikTok content creation agent work
+- `memory/add-reasoning-tools/`: internalization, tickets, quality, and critique artifacts for the 50 reasoning lens tool expansion
+- `memory/apply-pr-112-review-feedback/`: internalization, tickets, quality, and critique artifacts for the PR #112 review feedback — porting define_tool()/tool() to main and adding register_tool()/register_tools() to ToolsetRegistry

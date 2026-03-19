@@ -39,3 +39,23 @@ print(result.status)
 ```
 
 For production usage, replace `StaticModel` with your own adapter around the provider/client layer you want to use.
+
+`BaseAgent` runtime behavior is configured with `AgentRuntimeConfig`:
+
+```python
+from harnessiq.agents import AgentRuntimeConfig
+
+runtime = AgentRuntimeConfig(
+    max_tokens=80_000,
+    reset_threshold=0.9,
+    prune_progress_interval=25,
+    prune_token_limit=60_000,
+)
+```
+
+- `max_tokens`: total context budget used for reset heuristics.
+- `reset_threshold`: fraction of `max_tokens` that triggers a transcript reset.
+- `prune_progress_interval`: deterministic pruning cadence based on a durable progress counter exposed by the agent.
+- `prune_token_limit`: optional hard cap that triggers pruning even if the progress interval has not elapsed.
+
+Concrete agents can override `pruning_progress_value()` to tie pruning to durable work instead of raw transcript size. The leads agent uses this to prune after a configurable number of persisted searches while preserving the durable search summaries in parameter sections.

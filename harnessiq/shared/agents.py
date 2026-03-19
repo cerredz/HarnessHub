@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 
 DEFAULT_AGENT_MAX_TOKENS = 80_000
 DEFAULT_AGENT_RESET_THRESHOLD = 0.9
+DEFAULT_AGENT_PRUNE_PROGRESS_INTERVAL: int | None = None
+DEFAULT_AGENT_PRUNE_TOKEN_LIMIT: int | None = None
 
 AgentContextEntryKind = Literal["parameter", "message", "tool_call", "tool_result", "summary"]
 AgentMessageRole = Literal["system", "user", "assistant"]
@@ -55,6 +57,8 @@ class AgentRuntimeConfig:
     reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD
     output_sinks: tuple["OutputSink", ...] = ()
     include_default_output_sink: bool = True
+    prune_progress_interval: int | None = DEFAULT_AGENT_PRUNE_PROGRESS_INTERVAL
+    prune_token_limit: int | None = DEFAULT_AGENT_PRUNE_TOKEN_LIMIT
 
     def __post_init__(self) -> None:
         if self.max_tokens <= 0:
@@ -64,6 +68,12 @@ class AgentRuntimeConfig:
             message = "reset_threshold must be between 0 and 1."
             raise ValueError(message)
         object.__setattr__(self, "output_sinks", tuple(self.output_sinks))
+        if self.prune_progress_interval is not None and self.prune_progress_interval <= 0:
+            message = "prune_progress_interval must be greater than zero when provided."
+            raise ValueError(message)
+        if self.prune_token_limit is not None and self.prune_token_limit <= 0:
+            message = "prune_token_limit must be greater than zero when provided."
+            raise ValueError(message)
 
     @property
     def reset_token_limit(self) -> int:
@@ -192,6 +202,8 @@ __all__ = [
     "AgentTranscriptEntry",
     "AgentTranscriptEntryType",
     "DEFAULT_AGENT_MAX_TOKENS",
+    "DEFAULT_AGENT_PRUNE_PROGRESS_INTERVAL",
+    "DEFAULT_AGENT_PRUNE_TOKEN_LIMIT",
     "DEFAULT_AGENT_RESET_THRESHOLD",
     "estimate_text_tokens",
 ]

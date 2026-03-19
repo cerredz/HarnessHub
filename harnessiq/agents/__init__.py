@@ -26,7 +26,10 @@ from harnessiq.shared.knowt import KnowtMemoryStore
 
 from .exa_outreach import ExaOutreachAgent
 from harnessiq.shared.exa_outreach import ExaOutreachMemoryStore
+from .instagram import InstagramKeywordDiscoveryAgent
+from harnessiq.shared.instagram import InstagramMemoryStore
 from .knowt import KnowtAgent
+from .leads import LeadsAgent
 from .linkedin import (
     LinkedInJobApplierAgent,
     LinkedInMemoryStore,
@@ -51,8 +54,11 @@ __all__ = [
     "ExaOutreachAgent",
     "ExaOutreachMemoryStore",
     "DEFAULT_EMAIL_AGENT_IDENTITY",
+    "InstagramKeywordDiscoveryAgent",
+    "InstagramMemoryStore",
     "KnowtAgent",
     "KnowtMemoryStore",
+    "LeadsAgent",
     "EmailAgentConfig",
     "JobApplicationRecord",
     "LinkedInAgentConfig",
