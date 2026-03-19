@@ -63,6 +63,7 @@ Source layout:
 - `harnessiq/providers/peopledatalabs/`: People Data Labs people and company data-enrichment API client
 - `harnessiq/providers/proxycurl/`: Proxycurl LinkedIn data API client
 - `harnessiq/providers/coresignal/`: Coresignal professional network data API client
+- `harnessiq/providers/arxiv/`: public arXiv API client with Atom feed parsing and PDF download helpers
 - `harnessiq/providers/creatify/`: Creatify AI video creation API — credentials, client, and full operation catalog
 - `harnessiq/providers/arcads/`: Arcads AI video ad API — credentials, client, and operation catalog
 - `harnessiq/providers/instantly/`: Instantly.ai cold email API v2 — credentials, client, and full operation catalog
@@ -101,6 +102,7 @@ Tests:
 - `tests/test_outreach_provider.py`: coverage for Outreach credentials (OAuth Bearer), client, core operation catalog, and tool factory
 - `tests/test_lemlist_provider.py`: coverage for Lemlist credentials (Basic Auth), client, operation catalog, and tool factory
 - `tests/test_exa_provider.py`: coverage for Exa credentials, client, search operation catalog, and tool factory
+- `tests/test_arxiv_provider.py`: coverage for arXiv transport config, Atom feed parsing, URL builders, client/download behavior, and operation catalog
 - `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
 - `tests/test_reasoning_tools.py`: coverage for the three core reasoning tools (brainstorm, chain_of_thought, critique) — handler behavior, count presets, boundary validation, registry integration, and instruction output shape
 - `tests/test_reasoning_tools.py`: coverage for reasoning tool implementations, boundary validation, and instruction formatting
