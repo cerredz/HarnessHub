@@ -127,11 +127,13 @@ LEADS_LOG_SEARCH = "leads.log_search"
 LEADS_SAVE_LEADS = "leads.save_leads"
 
 # Provider tool key constants
+ATTIO_REQUEST = "attio.request"
 ARCADS_REQUEST = "arcads.request"
 ARXIV_REQUEST = "arxiv.request"
 CREATIFY_REQUEST = "creatify.request"
 EXA_REQUEST = "exa.request"
 INSTANTLY_REQUEST = "instantly.request"
+INBOXAPP_REQUEST = "inboxapp.request"
 LEMLIST_REQUEST = "lemlist.request"
 OUTREACH_REQUEST = "outreach.request"
 SNOVIO_REQUEST = "snovio.request"
@@ -148,6 +150,7 @@ EXPANDI_REQUEST = "expandi.request"
 SMARTLEAD_REQUEST = "smartlead.request"
 LUSHA_REQUEST = "lusha.request"
 PAPERCLIP_REQUEST = "paperclip.request"
+SERPER_REQUEST = "serper.request"
 INSTAGRAM_SEARCH_KEYWORD = "instagram.search_keyword"
 
 
@@ -293,6 +296,7 @@ def _describe_handler(handler: ToolHandler) -> JsonObject:
 
 __all__ = [
     "ADD_NUMBERS",
+    "ATTIO_REQUEST",
     "APOLLO_REQUEST",
     "ARCADS_REQUEST",
     "ARXIV_REQUEST",
@@ -316,6 +320,7 @@ __all__ = [
     "FILESYSTEM_READ_TEXT_FILE",
     "FILESYSTEM_WRITE_TEXT_FILE",
     "HEAVY_COMPACTION",
+    "INBOXAPP_REQUEST",
     "INSTANTLY_REQUEST",
     "INSTAGRAM_SEARCH_KEYWORD",
     "JsonObject",
@@ -408,6 +413,7 @@ __all__ = [
     "REMOVE_TOOLS",
     "RegisteredTool",
     "SALESFORGE_REQUEST",
+    "SERPER_REQUEST",
     "SMARTLEAD_REQUEST",
     "SNOVIO_REQUEST",
     "TEXT_NORMALIZE_WHITESPACE",
