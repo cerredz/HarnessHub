@@ -122,6 +122,7 @@ EXA_OUTREACH_LOG_EMAIL_SENT = "exa_outreach.log_email_sent"
 
 # Provider tool key constants
 ARCADS_REQUEST = "arcads.request"
+ARXIV_REQUEST = "arxiv.request"
 CREATIFY_REQUEST = "creatify.request"
 EXA_REQUEST = "exa.request"
 INSTANTLY_REQUEST = "instantly.request"
@@ -135,19 +136,42 @@ ZOOMINFO_REQUEST = "zoominfo.request"
 PEOPLEDATALABS_REQUEST = "peopledatalabs.request"
 PROXYCURL_REQUEST = "proxycurl.request"
 CORESIGNAL_REQUEST = "coresignal.request"
+APOLLO_REQUEST = "apollo.request"
+ZEROBOUNCE_REQUEST = "zerobounce.request"
+EXPANDI_REQUEST = "expandi.request"
+SMARTLEAD_REQUEST = "smartlead.request"
+LUSHA_REQUEST = "lusha.request"
 
 
 @dataclass(frozen=True, slots=True)
 class ToolDefinition:
-    """Provider-agnostic metadata for a callable tool."""
+    """Provider-agnostic metadata for a callable tool.
+
+    Attributes:
+        key: Unique tool identifier in ``namespace.name`` format.
+        name: Short human-readable name (snake_case).
+        description: What the tool does and when to use it.
+        input_schema: JSON Schema object describing accepted arguments.
+        tool_type: The execution type for this tool.  Currently only
+            ``"function"`` is supported.  Additional types
+            (``"computer_use"``, ``"code_interpreter"``, ``"multi_agent"``,
+            etc.) will be introduced in future SDK releases.
+    """
 
     key: str
     name: str
     description: str
     input_schema: JsonObject
+    tool_type: str = "function"
 
     def as_dict(self) -> JsonObject:
-        """Return the canonical metadata without executable runtime state."""
+        """Return the canonical metadata without executable runtime state.
+
+        ``tool_type`` is intentionally omitted — it is SDK metadata used to
+        identify the tool's execution model, not part of the model API payload.
+        Provider adapters serialise ``ToolDefinition`` to their own wire format
+        independently of this method.
+        """
         return {
             "key": self.key,
             "name": self.name,
@@ -261,13 +285,16 @@ def _describe_handler(handler: ToolHandler) -> JsonObject:
 
 __all__ = [
     "ADD_NUMBERS",
+    "APOLLO_REQUEST",
     "ARCADS_REQUEST",
+    "ARXIV_REQUEST",
     "CONTROL_PAUSE_FOR_HUMAN",
     "CORESIGNAL_REQUEST",
     "CREATIFY_REQUEST",
     "ECHO_TEXT",
     "EXA_OUTREACH_CHECK_CONTACTED",
     "EXA_OUTREACH_GET_TEMPLATE",
+    "EXPANDI_REQUEST",
     "EXA_OUTREACH_LIST_TEMPLATES",
     "EXA_OUTREACH_LOG_EMAIL_SENT",
     "EXA_OUTREACH_LOG_LEAD",
@@ -289,6 +316,7 @@ __all__ = [
     "KNOWT_CREATE_SCRIPT",
     "KNOWT_CREATE_VIDEO",
     "LEADIQ_REQUEST",
+    "LUSHA_REQUEST",
     "LEMLIST_REQUEST",
     "LOG_COMPACTION",
     "OUTREACH_REQUEST",
@@ -366,6 +394,7 @@ __all__ = [
     "REMOVE_TOOLS",
     "RegisteredTool",
     "SALESFORGE_REQUEST",
+    "SMARTLEAD_REQUEST",
     "SNOVIO_REQUEST",
     "TEXT_NORMALIZE_WHITESPACE",
     "TEXT_REGEX_EXTRACT",
@@ -375,5 +404,6 @@ __all__ = [
     "ToolDefinition",
     "ToolHandler",
     "ToolResult",
+    "ZEROBOUNCE_REQUEST",
     "ZOOMINFO_REQUEST",
 ]

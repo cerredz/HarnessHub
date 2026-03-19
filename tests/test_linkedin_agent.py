@@ -186,10 +186,12 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
                     ),
                 ]
             )
+            # max_tokens is sized to accommodate the master_prompt.md base (~5519 tokens)
+            # while still triggering a reset once the first transcript turn is appended.
             agent = LinkedInJobApplierAgent(
                 model=model,
                 memory_path=temp_dir,
-                max_tokens=3000,
+                max_tokens=5900,
                 reset_threshold=0.95,
             )
 
