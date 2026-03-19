@@ -42,6 +42,8 @@ Source layout:
 - `harnessiq/agents/linkedin/prompts/`: system prompt files for the LinkedIn agent; `master_prompt.md` loaded at runtime by `build_system_prompt()` with `{{AGENT_IDENTITY}}`, `{{TOOL_LIST}}`, and `{{ACTION_LOG_WINDOW}}` template substitution — covers search strategy, Easy Apply flows, form-filling rules, error recovery, and custom instructions integration
 - `harnessiq/agents/knowt/`: Knowt TikTok content creation agent harness; enforces brainstorm → script → avatar → video pipeline via deterministic file-backed memory
 - `harnessiq/agents/knowt/prompts/`: system prompt files for the Knowt agent; `master_prompt.md` loaded at runtime so it can be updated without touching Python source
+- `harnessiq/agents/leads/`: multi-ICP leads discovery agent harness; rotates one agent instance across ICPs, composes provider tools by platform family, persists searches/leads deterministically, and uses durable search progress for transcript pruning
+- `harnessiq/agents/leads/prompts/`: system prompt files for the leads agent; `master_prompt.md` loaded at runtime with `{{PLATFORMS}}`, `{{SEARCH_SUMMARY_EVERY}}`, `{{SEARCH_TAIL_SIZE}}`, and `{{TOOL_LIST}}` template substitution
 - `harnessiq/shared/knowt.py`: `KnowtMemoryStore` (file-backed), `KnowtAgentConfig`, `KnowtCreationLogEntry`, and filename constants for the Knowt agent harness
 - `harnessiq/shared/linkedin.py`: LinkedIn constants and data models — `JobSearchConfig` (structured filter params: title, location, remote_type, experience_levels, date_posted, easy_apply_only, salary range, job_type, companies, industries, description), `JobApplicationRecord`, `ActionLogEntry`, `LinkedInAgentConfig`, `LinkedInManagedFile`, filename constants
 - `harnessiq/tools/reasoning/`: 50 reasoning lens tools for agent cognitive scaffolding — includes step-by-step, tree-of-thoughts, first-principles, red-teaming, pre-mortem, and 45 others across 8 cognitive categories (core logical, analytical, perspective, creative, systems, temporal, evaluative, scientific)
@@ -119,6 +121,7 @@ Tests:
 - `tests/test_exa_outreach_cli.py`: coverage for the ExaOutreach CLI — parser registration, `prepare`/`configure`/`show`/`run` handlers, `normalize_exa_outreach_runtime_parameters`, and `SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS`
 
 - `tests/test_leads_shared.py`: coverage for the leads-agent shared types, per-ICP memory store, search compaction persistence, and filesystem save-backend dedupe behavior
+- `tests/test_leads_agent.py`: coverage for the leads-agent harness â€” construction, prompt/parameter sections, ICP rotation, deterministic search persistence, save/dedupe behavior, and pruning tied to durable search progress
 Current memory artifacts:
 
 - `memory/refactor-types-constants/`: planning, ticket, quality, critique, and PR-body artifacts for the shared definitions refactor
