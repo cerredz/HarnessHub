@@ -179,6 +179,52 @@ class ToolDefinition:
             "input_schema": deepcopy(self.input_schema),
         }
 
+    def inspect(self) -> JsonObject:
+        """Return a richer inspection payload for humans and tooling."""
+        properties = self.input_schema.get("properties", {})
+        if not isinstance(properties, dict):
+            properties = {}
+        required_parameters = self.input_schema.get("required", ())
+        if not isinstance(required_parameters, list):
+            required_parameters = list(required_parameters)
+        required_parameter_names = [str(parameter) for parameter in required_parameters]
+        required_lookup = set(required_parameter_names)
+        property_names: set[str] = set()
+
+        parameters: list[JsonObject] = []
+        for parameter_name, parameter_schema in properties.items():
+            normalized_name = str(parameter_name)
+            property_names.add(normalized_name)
+            normalized_schema = deepcopy(parameter_schema) if isinstance(parameter_schema, dict) else {}
+            parameters.append(
+                {
+                    "name": normalized_name,
+                    "required": normalized_name in required_lookup,
+                    "type": normalized_schema.get("type"),
+                    "description": normalized_schema.get("description"),
+                    "schema": normalized_schema,
+                }
+            )
+
+        for parameter_name in required_parameter_names:
+            if parameter_name in property_names:
+                continue
+            parameters.append(
+                {
+                    "name": parameter_name,
+                    "required": True,
+                    "type": None,
+                    "description": None,
+                    "schema": {},
+                }
+            )
+
+        payload = self.as_dict()
+        payload["parameters"] = parameters
+        payload["required_parameters"] = required_parameter_names
+        payload["additional_properties"] = deepcopy(self.input_schema.get("additionalProperties", True))
+        return payload
+
 
 @dataclass(frozen=True, slots=True)
 class ToolCall:
@@ -217,6 +263,24 @@ class RegisteredTool:
     def execute(self, arguments: ToolArguments) -> ToolResult:
         """Run the tool handler and normalize its output."""
         return ToolResult(tool_key=self.key, output=self.handler(arguments))
+
+    def inspect(self) -> JsonObject:
+        """Return serialized tool metadata including handler identity."""
+        payload = self.definition.inspect()
+        payload["function"] = _describe_handler(self.handler)
+        return payload
+
+
+def _describe_handler(handler: ToolHandler) -> JsonObject:
+    handler_type = type(handler)
+    module = getattr(handler, "__module__", handler_type.__module__)
+    qualname = getattr(handler, "__qualname__", handler_type.__qualname__)
+    name = getattr(handler, "__name__", qualname.split(".")[-1])
+    return {
+        "module": str(module),
+        "qualname": str(qualname),
+        "name": str(name),
+    }
 
 
 __all__ = [
