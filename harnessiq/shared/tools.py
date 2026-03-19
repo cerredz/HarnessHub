@@ -147,6 +147,7 @@ ZEROBOUNCE_REQUEST = "zerobounce.request"
 EXPANDI_REQUEST = "expandi.request"
 SMARTLEAD_REQUEST = "smartlead.request"
 LUSHA_REQUEST = "lusha.request"
+PAPERCLIP_REQUEST = "paperclip.request"
 INSTAGRAM_SEARCH_KEYWORD = "instagram.search_keyword"
 
 
@@ -332,6 +333,7 @@ __all__ = [
     "LEMLIST_REQUEST",
     "LOG_COMPACTION",
     "OUTREACH_REQUEST",
+    "PAPERCLIP_REQUEST",
     "PEOPLEDATALABS_REQUEST",
     "PHANTOMBUSTER_REQUEST",
     "PROMPT_CREATE_SYSTEM_PROMPT",

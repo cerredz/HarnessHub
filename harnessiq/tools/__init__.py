@@ -15,6 +15,7 @@ from harnessiq.shared.tools import (
     HEAVY_COMPACTION,
     JsonObject,
     LOG_COMPACTION,
+    PAPERCLIP_REQUEST,
     PROMPT_CREATE_SYSTEM_PROMPT,
     REASON_BRAINSTORM,
     REASON_CHAIN_OF_THOUGHT,
@@ -125,6 +126,10 @@ from .general_purpose import (
     unique_records,
 )
 from .instagram import create_instagram_tools
+from .paperclip import (
+    build_paperclip_request_tool_definition,
+    create_paperclip_tools,
+)
 from .prompting import create_prompt_tools, create_system_prompt
 from .reasoning import (
     brainstorm,
@@ -170,6 +175,7 @@ __all__ = [
     "HEAVY_COMPACTION",
     "JsonObject",
     "LOG_COMPACTION",
+    "PAPERCLIP_REQUEST",
     "PROMPT_CREATE_SYSTEM_PROMPT",
     "REASON_BRAINSTORM",
     "REASON_CHAIN_OF_THOUGHT",
@@ -250,6 +256,7 @@ __all__ = [
     "TruncatePosition",
     "append_text_file",
     "apply_log_compaction",
+    "build_paperclip_request_tool_definition",
     "build_resend_operation_catalog",
     "build_resend_request_tool_definition",
     "copy_path",
@@ -259,6 +266,7 @@ __all__ = [
     "create_filesystem_tools",
     "create_general_purpose_tools",
     "create_instagram_tools",
+    "create_paperclip_tools",
     "brainstorm",
     "chain_of_thought",
     "create_injectable_reasoning_tools",
