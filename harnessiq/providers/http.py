@@ -137,6 +137,8 @@ def _infer_provider_name(url: str) -> str:
         return "gemini"
     if "resend" in host:
         return "resend"
+    if "apollo" in host:
+        return "apollo"
     if "snov.io" in host or "snovio" in host:
         return "snovio"
     if "leadiq" in host:
@@ -165,4 +167,6 @@ def _infer_provider_name(url: str) -> str:
         return "lemlist"
     if "exa.ai" in host:
         return "exa"
+    if "arxiv" in host:
+        return "arxiv"
     return "provider"

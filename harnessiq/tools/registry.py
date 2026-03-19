@@ -45,6 +45,11 @@ class ToolRegistry:
         selected = self.select(tool_keys) if tool_keys is not None else self._registry.values()
         return [tool.definition for tool in selected]
 
+    def inspect(self, tool_keys: Sequence[str] | None = None) -> list[dict[str, object]]:
+        """Return rich inspection payloads for all or selected tools."""
+        selected = self.select(tool_keys) if tool_keys is not None else self._registry.values()
+        return [tool.inspect() for tool in selected]
+
     def get(self, tool_key: str) -> RegisteredTool | None:
         """Look up a tool without throwing on missing keys."""
         return self._registry.get(tool_key)

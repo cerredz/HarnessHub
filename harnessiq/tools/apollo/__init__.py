@@ -1,4 +1,4 @@
-"""Apollo.io tool registration for the Harnessiq tool layer."""
+"""Apollo MCP-style tool factory."""
 
 from harnessiq.tools.apollo.operations import (
     build_apollo_request_tool_definition,

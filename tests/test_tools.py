@@ -250,6 +250,50 @@ class ToolRegistryTests(unittest.TestCase):
 
         self.assertNotEqual(copied_schema, original_payload["input_schema"])
 
+    def test_registry_inspect_includes_parameters_and_function_metadata(self) -> None:
+        definition = ToolDefinition(
+            key="custom.inspectable",
+            name="inspectable",
+            description="Inspect me.",
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Input text."},
+                    "count": {"type": "integer", "description": "Number of times."},
+                },
+                "required": ["text"],
+                "additionalProperties": False,
+            },
+        )
+        registry = ToolRegistry([RegisteredTool(definition=definition, handler=_constant_handler)])
+
+        payload = registry.inspect(["custom.inspectable"])[0]
+
+        self.assertEqual(payload["key"], "custom.inspectable")
+        self.assertEqual(payload["required_parameters"], ["text"])
+        self.assertFalse(payload["additional_properties"])
+        self.assertEqual(
+            payload["parameters"],
+            [
+                {
+                    "name": "text",
+                    "required": True,
+                    "type": "string",
+                    "description": "Input text.",
+                    "schema": {"type": "string", "description": "Input text."},
+                },
+                {
+                    "name": "count",
+                    "required": False,
+                    "type": "integer",
+                    "description": "Number of times.",
+                    "schema": {"type": "integer", "description": "Number of times."},
+                },
+            ],
+        )
+        self.assertEqual(payload["function"]["module"], __name__)
+        self.assertEqual(payload["function"]["qualname"], "_constant_handler")
+
 
 if __name__ == "__main__":
     unittest.main()

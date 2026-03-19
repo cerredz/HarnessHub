@@ -111,6 +111,14 @@ class BaseAgent(ABC):
     def available_tools(self) -> tuple[ToolDefinition, ...]:
         return tuple(self._tool_executor.definitions())
 
+    def inspect_tools(self, tool_keys: Sequence[str] | None = None) -> tuple[dict[str, Any], ...]:
+        """Return rich inspection metadata for all or selected tools."""
+        inspector = getattr(self._tool_executor, "inspect", None)
+        if callable(inspector):
+            return tuple(inspector(tool_keys))
+        definitions = self._tool_executor.definitions(tool_keys)
+        return tuple(definition.inspect() for definition in definitions)
+
     def refresh_parameters(self) -> tuple[AgentParameterSection, ...]:
         sections = tuple(self.load_parameter_sections())
         self._parameter_sections = sections
