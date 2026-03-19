@@ -12,6 +12,14 @@ from .langsmith import (
     trace_model_call,
     trace_tool_call,
 )
+from .output_sinks import (
+    ConfluenceClient,
+    LinearClient,
+    NotionClient,
+    SupabaseClient,
+    WebhookDeliveryClient,
+    extract_model_metadata,
+)
 
 __all__ = [
     "ProviderFormatError",
@@ -20,7 +28,13 @@ __all__ = [
     "ProviderName",
     "RequestExecutor",
     "RequestPayload",
+    "SupabaseClient",
     "SUPPORTED_PROVIDERS",
+    "WebhookDeliveryClient",
+    "ConfluenceClient",
+    "LinearClient",
+    "NotionClient",
+    "extract_model_metadata",
     "normalize_messages",
     "omit_none_values",
     "request_json",

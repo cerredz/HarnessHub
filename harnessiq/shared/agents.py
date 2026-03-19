@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, Sequence, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, Protocol, Sequence, TypedDict
 
 from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
+
+if TYPE_CHECKING:
+    from harnessiq.utils.ledger import OutputSink
 
 DEFAULT_AGENT_MAX_TOKENS = 80_000
 DEFAULT_AGENT_RESET_THRESHOLD = 0.9
@@ -50,6 +53,8 @@ class AgentRuntimeConfig:
 
     max_tokens: int = DEFAULT_AGENT_MAX_TOKENS
     reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD
+    output_sinks: tuple["OutputSink", ...] = ()
+    include_default_output_sink: bool = True
 
     def __post_init__(self) -> None:
         if self.max_tokens <= 0:
@@ -58,6 +63,7 @@ class AgentRuntimeConfig:
         if not 0 < self.reset_threshold <= 1:
             message = "reset_threshold must be between 0 and 1."
             raise ValueError(message)
+        object.__setattr__(self, "output_sinks", tuple(self.output_sinks))
 
     @property
     def reset_token_limit(self) -> int:

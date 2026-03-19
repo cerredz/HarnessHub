@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import unittest
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
 
 from harnessiq.agents import (
     AgentModelRequest,
@@ -16,6 +19,7 @@ from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESE
 from harnessiq.shared.tools import CONTROL_PAUSE_FOR_HUMAN, HEAVY_COMPACTION, RegisteredTool, ToolCall, ToolDefinition
 from harnessiq.tools import create_context_compaction_tools, create_general_purpose_tools
 from harnessiq.tools.registry import ToolRegistry
+from harnessiq.utils import LedgerEntry
 
 
 class _FakeModel:
@@ -43,7 +47,7 @@ class _InspectableAgent(BaseAgent):
             name="inspectable_agent",
             model=model,
             tool_executor=tool_executor,
-            runtime_config=runtime_config,
+            runtime_config=runtime_config or AgentRuntimeConfig(include_default_output_sink=False),
         )
 
     def build_system_prompt(self) -> str:
@@ -53,6 +57,26 @@ class _InspectableAgent(BaseAgent):
         index = min(self._parameter_index, len(self._parameter_versions) - 1)
         self._parameter_index += 1
         return [AgentParameterSection(title="State", content=self._parameter_versions[index])]
+
+    def build_ledger_outputs(self) -> dict[str, object]:
+        return {"parameter_state": self.parameter_sections[0].content}
+
+    def build_ledger_tags(self) -> list[str]:
+        return ["inspectable"]
+
+
+class _CollectingSink:
+    def __init__(self) -> None:
+        self.entries: list[LedgerEntry] = []
+
+    def on_run_complete(self, entry: LedgerEntry) -> None:
+        self.entries.append(entry)
+
+
+class _FailingSink:
+    def on_run_complete(self, entry: LedgerEntry) -> None:
+        del entry
+        raise RuntimeError("sink failed")
 
 
 def _constant_tool(tool_key: str, name: str, handler):
@@ -221,6 +245,61 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(len(model.requests), 2)
         self.assertEqual(model.requests[1].transcript, ())
         self.assertEqual(model.requests[1].parameter_sections[0].content, "initial")
+
+    def test_run_emits_ledger_entry_to_injected_sink(self) -> None:
+        registry = ToolRegistry([])
+        sink = _CollectingSink()
+        agent = _InspectableAgent(
+            model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+            tool_executor=registry,
+            runtime_config=AgentRuntimeConfig(
+                output_sinks=(sink,),
+                include_default_output_sink=False,
+            ),
+        )
+
+        result = agent.run(max_cycles=1)
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(len(sink.entries), 1)
+        self.assertEqual(sink.entries[0].agent_name, "inspectable_agent")
+        self.assertEqual(sink.entries[0].outputs["parameter_state"], "initial")
+        self.assertEqual(sink.entries[0].tags, ["inspectable"])
+
+    def test_sink_failures_are_swallowed_and_later_sinks_still_run(self) -> None:
+        registry = ToolRegistry([])
+        good_sink = _CollectingSink()
+        agent = _InspectableAgent(
+            model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+            tool_executor=registry,
+            runtime_config=AgentRuntimeConfig(
+                output_sinks=(_FailingSink(), good_sink),
+                include_default_output_sink=False,
+            ),
+        )
+
+        with self.assertLogs("harnessiq.agents.base.agent", level="WARNING") as logs:
+            result = agent.run(max_cycles=1)
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(len(good_sink.entries), 1)
+        self.assertIn("OutputSink _FailingSink failed", "\n".join(logs.output))
+
+    def test_default_jsonl_sink_writes_to_harnessiq_home(self) -> None:
+        registry = ToolRegistry([])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict("os.environ", {"HARNESSIQ_HOME": temp_dir}):
+                agent = _InspectableAgent(
+                    model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                    tool_executor=registry,
+                    runtime_config=AgentRuntimeConfig(),
+                )
+
+                agent.run(max_cycles=1)
+
+                ledger_path = Path(temp_dir, "runs.jsonl")
+                self.assertTrue(ledger_path.exists())
+                self.assertIn("inspectable_agent", ledger_path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
