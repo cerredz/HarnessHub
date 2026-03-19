@@ -21,6 +21,7 @@ Source layout:
 - `harnessiq/tools/instantly/`: MCP-style tool factory for Instantly cold email platform
 - `harnessiq/tools/outreach/`: MCP-style tool factory for Outreach sales engagement platform
 - `harnessiq/tools/lemlist/`: MCP-style tool factory for Lemlist B2B outreach platform
+- `harnessiq/tools/arxiv/`: MCP-style tool factory for arXiv academic paper search (no credentials required; exposes `search`, `search_raw`, `get_paper`, `download_paper` operations)
 - `harnessiq/tools/exa/`: MCP-style tool factory for Exa neural search engine
 - `harnessiq/tools/snovio/`: MCP-style tool factory for Snov.io email intelligence (OAuth2 auth handled transparently)
 - `harnessiq/tools/leadiq/`: MCP-style tool factory for LeadIQ contact intelligence (GraphQL API)
@@ -68,6 +69,7 @@ Source layout:
 - `harnessiq/providers/instantly/`: Instantly.ai cold email API v2 — credentials, client, and full operation catalog
 - `harnessiq/providers/outreach/`: Outreach.io sales engagement API — credentials, OAuth client, and core operation catalog
 - `harnessiq/providers/lemlist/`: Lemlist outreach API — credentials, client, and full operation catalog
+- `harnessiq/providers/arxiv/`: arXiv academic paper search API — `ArxivConfig` (transport-only, no auth), `ArxivClient` (search, search_raw, get_paper, download_paper), Atom XML parser, and operation catalog
 - `harnessiq/providers/exa/`: Exa neural search API — credentials, client, and full operation catalog
 - `harnessiq/agents/exa_outreach/`: ExaOutreach agent harness — finds prospects via Exa search, sends personalised emails via Resend, and deterministically persists leads and email records to a pluggable `StorageBackend`
 - `harnessiq/agents/exa_outreach/prompts/`: system prompt files for the ExaOutreach agent; `master_prompt.md` loaded at runtime
@@ -104,6 +106,7 @@ Tests:
 - `tests/test_instantly_provider.py`: coverage for Instantly credentials, client, V2 operation catalog, and tool factory
 - `tests/test_outreach_provider.py`: coverage for Outreach credentials (OAuth Bearer), client, core operation catalog, and tool factory
 - `tests/test_lemlist_provider.py`: coverage for Lemlist credentials (Basic Auth), client, operation catalog, and tool factory
+- `tests/test_arxiv_provider.py`: coverage for arXiv `ArxivConfig`, `ArxivClient`, Atom XML parser, operation catalog, tool factory (all four operations), and `ToolsetRegistry` integration (no-credentials enforcement fix)
 - `tests/test_exa_provider.py`: coverage for Exa credentials, client, search operation catalog, and tool factory
 - `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
 - `tests/test_reasoning_tools.py`: coverage for the three core reasoning tools (brainstorm, chain_of_thought, critique) — handler behavior, count presets, boundary validation, registry integration, and instruction output shape
