@@ -12,6 +12,7 @@ from harnessiq.shared.agents import (
     AgentModel,
     AgentParameterSection,
     AgentRuntimeConfig,
+    merge_agent_runtime_config,
 )
 from harnessiq.shared.knowt import (
     KnowtAgentConfig,
@@ -52,6 +53,7 @@ class KnowtAgent(BaseAgent):
         reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD,
         config: KnowtAgentConfig | None = None,
         tools: "Sequence[RegisteredTool] | None" = None,
+        runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         self._config = config or KnowtAgentConfig(
             memory_path=Path(memory_path),
@@ -70,15 +72,15 @@ class KnowtAgent(BaseAgent):
             ),
         )
         tool_registry = ToolRegistry(resolved_tools)
-        runtime_config = AgentRuntimeConfig(
-            max_tokens=self._config.max_tokens,
-            reset_threshold=self._config.reset_threshold,
-        )
         super().__init__(
             name="knowt_content_creator",
             model=model,
             tool_executor=tool_registry,
-            runtime_config=runtime_config,
+            runtime_config=merge_agent_runtime_config(
+                runtime_config,
+                max_tokens=self._config.max_tokens,
+                reset_threshold=self._config.reset_threshold,
+            ),
             memory_path=self._config.memory_path,
         )
 

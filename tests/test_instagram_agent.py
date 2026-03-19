@@ -6,6 +6,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from harnessiq.agents import (
     AgentModelRequest,
@@ -13,8 +14,19 @@ from harnessiq.agents import (
     InstagramKeywordDiscoveryAgent,
     InstagramMemoryStore,
 )
+from harnessiq.shared.agents import AgentRuntimeConfig
 from harnessiq.shared.instagram import InstagramLeadRecord, InstagramSearchExecution, InstagramSearchRecord
 from harnessiq.shared.tools import ToolCall
+
+_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
+
+
+def setUpModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.start()
+
+
+def tearDownModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.stop()
 
 
 class _FakeModel:
@@ -156,6 +168,22 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
         from harnessiq.agents import InstagramKeywordDiscoveryAgent as Imported
 
         self.assertIs(Imported, InstagramKeywordDiscoveryAgent)
+
+    def test_runtime_config_preserves_langsmith_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = InstagramKeywordDiscoveryAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                search_backend=_FakeSearchBackend(_build_execution()),
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators",),
+                runtime_config=AgentRuntimeConfig(
+                    langsmith_api_key="ls_test_sdk",
+                    langsmith_project="instagram-project",
+                ),
+            )
+
+            self.assertEqual(agent.runtime_config.langsmith_api_key, "ls_test_sdk")
+            self.assertEqual(agent.runtime_config.langsmith_project, "instagram-project")
 
 
 if __name__ == "__main__":

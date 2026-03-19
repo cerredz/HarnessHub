@@ -5,6 +5,7 @@ from harnessiq.shared.providers import ProviderMessage, ProviderName, RequestPay
 from .base import ProviderFormatError, normalize_messages, omit_none_values
 from .http import ProviderHTTPError, RequestExecutor, request_json
 from .langsmith import (
+    build_langsmith_client,
     trace_agent_run,
     trace_async_agent_run,
     trace_async_model_call,
@@ -21,6 +22,7 @@ __all__ = [
     "RequestExecutor",
     "RequestPayload",
     "SUPPORTED_PROVIDERS",
+    "build_langsmith_client",
     "normalize_messages",
     "omit_none_values",
     "request_json",

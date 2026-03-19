@@ -19,6 +19,7 @@ from harnessiq.shared.agents import (
     AgentParameterSection,
     AgentPauseSignal,
     AgentRuntimeConfig,
+    merge_agent_runtime_config,
 )
 from harnessiq.shared.linkedin import (
     ACTION_LOG_FILENAME,
@@ -335,6 +336,7 @@ class LinkedInJobApplierAgent(BaseAgent):
         linkedin_start_url: str = DEFAULT_LINKEDIN_START_URL,
         notify_on_pause: bool = DEFAULT_LINKEDIN_NOTIFY_ON_PAUSE,
         pause_webhook: str | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         self._config = LinkedInAgentConfig(
             memory_path=_resolve_memory_path(memory_path),
@@ -358,15 +360,16 @@ class LinkedInJobApplierAgent(BaseAgent):
                 tuple(browser_tools),
             )
         )
-        runtime_config = AgentRuntimeConfig(
-            max_tokens=self._config.max_tokens,
-            reset_threshold=self._config.reset_threshold,
-        )
         super().__init__(
             name="linkedin_job_applier",
             model=model,
             tool_executor=tool_registry,
-            runtime_config=runtime_config,
+            runtime_config=merge_agent_runtime_config(
+                runtime_config,
+                max_tokens=self._config.max_tokens,
+                reset_threshold=self._config.reset_threshold,
+            ),
+            memory_path=self._config.memory_path,
         )
 
     @property
@@ -386,6 +389,7 @@ class LinkedInJobApplierAgent(BaseAgent):
         browser_tools: Iterable[RegisteredTool] = (),
         screenshot_persistor: ScreenshotPersistor | None = None,
         runtime_overrides: Mapping[str, Any] | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
     ) -> "LinkedInJobApplierAgent":
         resolved_path = _resolve_memory_path(memory_path)
         memory_store = LinkedInMemoryStore(memory_path=resolved_path)
@@ -398,6 +402,7 @@ class LinkedInJobApplierAgent(BaseAgent):
             memory_path=resolved_path,
             browser_tools=browser_tools,
             screenshot_persistor=screenshot_persistor,
+            runtime_config=runtime_config,
             **normalize_linkedin_runtime_parameters(runtime_parameters),
         )
 

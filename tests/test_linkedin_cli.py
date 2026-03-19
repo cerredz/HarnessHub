@@ -4,13 +4,26 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse
 from harnessiq.cli.main import main
+
+_LAST_LANGSMITH_ENV: dict[str, str] = {}
+_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
+
+
+def setUpModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.start()
+
+
+def tearDownModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.stop()
 
 
 class _StaticModel:
@@ -24,6 +37,30 @@ class _StaticModel:
 
 def create_static_model() -> _StaticModel:
     return _StaticModel()
+
+
+def create_static_model_recording_langsmith_env() -> _StaticModel:
+    global _LAST_LANGSMITH_ENV
+    _LAST_LANGSMITH_ENV = {
+        "LANGSMITH_API_KEY": os.environ.get("LANGSMITH_API_KEY", ""),
+        "LANGCHAIN_API_KEY": os.environ.get("LANGCHAIN_API_KEY", ""),
+        "LANGSMITH_PROJECT": os.environ.get("LANGSMITH_PROJECT", ""),
+        "LANGCHAIN_PROJECT": os.environ.get("LANGCHAIN_PROJECT", ""),
+    }
+    return _StaticModel()
+
+
+def _extract_last_json_object(rendered: str) -> dict[str, object]:
+    lines = rendered.splitlines()
+    for index in range(len(lines) - 1, -1, -1):
+        if lines[index].strip() != "{":
+            continue
+        candidate = "\n".join(lines[index:])
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+    raise AssertionError(f"Expected a trailing JSON object in output:\n{rendered}")
 
 
 class LinkedInCLITests(unittest.TestCase):
@@ -129,9 +166,61 @@ class LinkedInCLITests(unittest.TestCase):
                 )
 
             self.assertEqual(exit_code, 0)
-            payload = json.loads(run_stdout.getvalue())
+            payload = _extract_last_json_object(run_stdout.getvalue())
             self.assertEqual(payload["result"]["status"], "completed")
             self.assertEqual(payload["result"]["cycles_completed"], 1)
+
+    def test_run_seeds_langsmith_environment_from_repo_env(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            Path(temp_dir, ".env").write_text(
+                "LANGCHAIN_API_KEY=ls_test_cli\nLANGCHAIN_PROJECT=cli-project\n",
+                encoding="utf-8",
+            )
+            with redirect_stdout(io.StringIO()):
+                main(
+                    [
+                        "linkedin",
+                        "configure",
+                        "--agent",
+                        "candidate-c",
+                        "--memory-root",
+                        temp_dir,
+                        "--job-preferences-text",
+                        "Distributed systems roles.",
+                        "--user-profile-text",
+                        "Backend engineer profile.",
+                    ]
+                )
+
+            with patch.dict(os.environ, {}, clear=True):
+                run_stdout = io.StringIO()
+                with (
+                    patch(
+                        "harnessiq.cli.linkedin.commands._load_factory",
+                        return_value=create_static_model_recording_langsmith_env,
+                    ),
+                    redirect_stdout(run_stdout),
+                ):
+                    exit_code = main(
+                        [
+                            "linkedin",
+                            "run",
+                            "--agent",
+                            "candidate-c",
+                            "--memory-root",
+                            temp_dir,
+                            "--model-factory",
+                            "mod:model",
+                            "--max-cycles",
+                            "1",
+                        ]
+                    )
+
+            self.assertEqual(exit_code, 0)
+            self.assertEqual(_LAST_LANGSMITH_ENV["LANGSMITH_API_KEY"], "ls_test_cli")
+            self.assertEqual(_LAST_LANGSMITH_ENV["LANGCHAIN_API_KEY"], "ls_test_cli")
+            self.assertEqual(_LAST_LANGSMITH_ENV["LANGSMITH_PROJECT"], "cli-project")
+            self.assertEqual(_LAST_LANGSMITH_ENV["LANGCHAIN_PROJECT"], "cli-project")
 
 
 if __name__ == "__main__":

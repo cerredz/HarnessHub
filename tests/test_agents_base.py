@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from harnessiq.agents import (
     AgentModelRequest,
@@ -16,6 +17,16 @@ from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESE
 from harnessiq.shared.tools import CONTROL_PAUSE_FOR_HUMAN, HEAVY_COMPACTION, RegisteredTool, ToolCall, ToolDefinition
 from harnessiq.tools import create_context_compaction_tools, create_general_purpose_tools
 from harnessiq.tools.registry import ToolRegistry
+
+_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
+
+
+def setUpModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.start()
+
+
+def tearDownModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.stop()
 
 
 class _FakeModel:
@@ -128,6 +139,54 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(model.requests[1].transcript[2].entry_type, "tool_result")
         self.assertIn("session.echo", model.requests[1].transcript[1].content)
         self.assertIn("hello", model.requests[1].transcript[2].content)
+
+    def test_run_wraps_agent_and_tool_execution_in_tracing_helpers(self) -> None:
+        registry = ToolRegistry(
+            [
+                _constant_tool("session.echo", "echo", _echo_handler),
+            ]
+        )
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Use the echo tool.",
+                    tool_calls=(ToolCall(tool_key="session.echo", arguments={"text": "hello"}),),
+                    should_continue=True,
+                ),
+                AgentModelResponse(
+                    assistant_message="Finished.",
+                    should_continue=False,
+                ),
+            ]
+        )
+        agent = _InspectableAgent(
+            model=model,
+            tool_executor=registry,
+            runtime_config=AgentRuntimeConfig(langsmith_api_key="ls_test_123"),
+        )
+
+        def _wrap_agent(operation, **kwargs):
+            del kwargs
+            return lambda: operation()
+
+        def _wrap_tool(operation, **kwargs):
+            del kwargs
+            return operation()
+
+        with (
+            patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=object()) as mock_client,
+            patch("harnessiq.agents.base.agent.trace_agent_run", side_effect=_wrap_agent) as mock_trace_agent,
+            patch("harnessiq.agents.base.agent.trace_tool_call", side_effect=_wrap_tool) as mock_trace_tool,
+        ):
+            result = agent.run(max_cycles=5)
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(mock_client.call_count, 2)
+        self.assertEqual(mock_trace_agent.call_count, 1)
+        self.assertEqual(mock_trace_tool.call_count, 1)
+        self.assertEqual(mock_trace_agent.call_args.kwargs["name"], "inspectable_agent.run")
+        self.assertEqual(mock_trace_tool.call_args.kwargs["tool_key"], "session.echo")
+        self.assertEqual(mock_trace_tool.call_args.kwargs["tool_name"], "echo")
 
     def test_run_pauses_when_a_tool_returns_pause_signal(self) -> None:
         registry = ToolRegistry(

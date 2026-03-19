@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar, overload
@@ -13,6 +14,12 @@ from harnessiq.shared.tools import ToolArguments, ToolDefinition
 P = ParamSpec("P")
 R = TypeVar("R")
 _SCALAR_TYPES = (str, int, float, bool, type(None))
+_TRACING_FALSE_VALUES = {"false", "0", "no", "off"}
+_LANGSMITH_API_KEY_ENV_VARS = ("LANGSMITH_API_KEY", "LANGCHAIN_API_KEY")
+_LANGSMITH_PROJECT_ENV_VARS = ("LANGSMITH_PROJECT", "LANGCHAIN_PROJECT")
+_LANGSMITH_API_URL_ENV_VARS = ("LANGSMITH_ENDPOINT", "LANGCHAIN_ENDPOINT")
+_LANGSMITH_TRACING_ENV_VARS = ("LANGSMITH_TRACING", "LANGCHAIN_TRACING_V2")
+_MISSING = object()
 
 
 def _get_langsmith_module() -> Any:
@@ -23,6 +30,30 @@ def _get_langsmith_module() -> Any:
         message = "langsmith is required for tracing helpers. Install dependencies from requirements.txt."
         raise RuntimeError(message) from exc
     return ls
+
+
+def build_langsmith_client(*, api_key: str | None = None, api_url: str | None = None) -> Any | None:
+    """Return a LangSmith client when tracing credentials are available."""
+    try:
+        ls = _get_langsmith_module()
+    except RuntimeError:
+        return None
+
+    resolved_api_key = api_key or _read_first_env_value(_LANGSMITH_API_KEY_ENV_VARS)
+    if not resolved_api_key:
+        return None
+    client_factory = getattr(ls, "Client", None)
+    if not callable(client_factory):
+        return None
+
+    client_kwargs: dict[str, Any] = {"api_key": resolved_api_key}
+    resolved_api_url = api_url or _read_first_env_value(_LANGSMITH_API_URL_ENV_VARS)
+    if resolved_api_url is not None:
+        client_kwargs["api_url"] = resolved_api_url
+    try:
+        return client_factory(**client_kwargs)
+    except Exception:
+        return None
 
 
 def _serialize_trace_value(value: Any) -> Any:
@@ -41,6 +72,62 @@ def _serialize_trace_value(value: Any) -> Any:
         return _serialize_trace_value(as_dict())
 
     return repr(value)
+
+
+def _read_first_env_value(names: Sequence[str]) -> str | None:
+    for name in names:
+        raw = os.environ.get(name)
+        if raw is None:
+            continue
+        normalized = raw.strip()
+        if normalized:
+            return normalized
+    return None
+
+
+def _is_tracing_enabled(enabled: bool | None) -> bool:
+    if enabled is False:
+        return False
+    if enabled is True:
+        return True
+    raw = _read_first_env_value(_LANGSMITH_TRACING_ENV_VARS)
+    if raw is None:
+        return True
+    return raw.lower() not in _TRACING_FALSE_VALUES
+
+
+def _resolve_project_name(project_name: str | None) -> str | None:
+    if project_name is not None and project_name.strip():
+        return project_name.strip()
+    return _read_first_env_value(_LANGSMITH_PROJECT_ENV_VARS)
+
+
+def _resolve_tracing_context(
+    *,
+    project_name: str | None,
+    client: Any | None,
+    enabled: bool | None,
+) -> tuple[Any, dict[str, Any]] | None:
+    if not _is_tracing_enabled(enabled):
+        return None
+
+    try:
+        ls = _get_langsmith_module()
+    except RuntimeError:
+        return None
+
+    resolved_client = client if client is not None else build_langsmith_client()
+    if resolved_client is None:
+        return None
+
+    context_kwargs: dict[str, Any] = {
+        "client": resolved_client,
+        "enabled": True,
+    }
+    resolved_project_name = _resolve_project_name(project_name)
+    if resolved_project_name is not None:
+        context_kwargs["project_name"] = resolved_project_name
+    return ls, context_kwargs
 
 
 def _serialize_messages(messages: Sequence[ProviderMessage]) -> list[ProviderMessage]:
@@ -120,30 +207,44 @@ def _trace_sync_operation(
     client: Any | None,
     enabled: bool | None,
 ) -> R:
-    ls = _get_langsmith_module()
-    context_kwargs: dict[str, Any] = {}
-    if project_name is not None:
-        context_kwargs["project_name"] = project_name
-    if client is not None:
-        context_kwargs["client"] = client
-    if enabled is not None:
-        context_kwargs["enabled"] = enabled
+    resolved = _resolve_tracing_context(project_name=project_name, client=client, enabled=enabled)
+    if resolved is None:
+        return operation()
 
-    with ls.tracing_context(**context_kwargs):
-        with ls.trace(
-            name,
-            run_type=run_type,
-            inputs=inputs,
-            tags=_copy_tags(tags),
-            metadata=_copy_metadata(metadata),
-        ) as run_tree:
-            try:
-                result = operation()
-            except Exception as exc:
-                run_tree.end(error=str(exc))
-                raise
-            run_tree.end(outputs={output_key: _serialize_trace_value(result)})
+    ls, context_kwargs = resolved
+    result: R | object = _MISSING
+    operation_error: Exception | None = None
+    try:
+        with ls.tracing_context(**context_kwargs):
+            with ls.trace(
+                name,
+                run_type=run_type,
+                inputs=inputs,
+                tags=_copy_tags(tags),
+                metadata=_copy_metadata(metadata),
+            ) as run_tree:
+                try:
+                    result = operation()
+                except Exception as exc:
+                    operation_error = exc
+                    if run_tree is not None:
+                        try:
+                            run_tree.end(error=str(exc))
+                        except Exception:
+                            pass
+                    raise
+                if run_tree is not None:
+                    try:
+                        run_tree.end(outputs={output_key: _serialize_trace_value(result)})
+                    except Exception:
+                        pass
+                return result
+    except Exception:
+        if operation_error is not None:
+            raise
+        if result is not _MISSING:
             return result
+        return operation()
 
 
 async def _trace_async_operation(
@@ -159,30 +260,44 @@ async def _trace_async_operation(
     client: Any | None,
     enabled: bool | None,
 ) -> R:
-    ls = _get_langsmith_module()
-    context_kwargs: dict[str, Any] = {}
-    if project_name is not None:
-        context_kwargs["project_name"] = project_name
-    if client is not None:
-        context_kwargs["client"] = client
-    if enabled is not None:
-        context_kwargs["enabled"] = enabled
+    resolved = _resolve_tracing_context(project_name=project_name, client=client, enabled=enabled)
+    if resolved is None:
+        return await operation()
 
-    with ls.tracing_context(**context_kwargs):
-        async with ls.trace(
-            name,
-            run_type=run_type,
-            inputs=inputs,
-            tags=_copy_tags(tags),
-            metadata=_copy_metadata(metadata),
-        ) as run_tree:
-            try:
-                result = await operation()
-            except Exception as exc:
-                run_tree.end(error=str(exc))
-                raise
-            run_tree.end(outputs={output_key: _serialize_trace_value(result)})
+    ls, context_kwargs = resolved
+    result: R | object = _MISSING
+    operation_error: Exception | None = None
+    try:
+        with ls.tracing_context(**context_kwargs):
+            async with ls.trace(
+                name,
+                run_type=run_type,
+                inputs=inputs,
+                tags=_copy_tags(tags),
+                metadata=_copy_metadata(metadata),
+            ) as run_tree:
+                try:
+                    result = await operation()
+                except Exception as exc:
+                    operation_error = exc
+                    if run_tree is not None:
+                        try:
+                            run_tree.end(error=str(exc))
+                        except Exception:
+                            pass
+                    raise
+                if run_tree is not None:
+                    try:
+                        run_tree.end(outputs={output_key: _serialize_trace_value(result)})
+                    except Exception:
+                        pass
+                return result
+    except Exception:
+        if operation_error is not None:
+            raise
+        if result is not _MISSING:
             return result
+        return await operation()
 
 
 @overload
@@ -452,6 +567,7 @@ async def trace_async_tool_call(
 
 
 __all__ = [
+    "build_langsmith_client",
     "trace_agent_run",
     "trace_async_agent_run",
     "trace_model_call",

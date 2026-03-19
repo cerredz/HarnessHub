@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from harnessiq.agents import LinkedInJobApplierAgent, LinkedInMemoryStore
+from harnessiq.cli._langsmith import seed_langsmith_environment
 from harnessiq.agents.linkedin import (
     SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS,
     JobApplicationRecord,
@@ -186,6 +187,7 @@ def _handle_show(args: argparse.Namespace) -> int:
 def _handle_run(args: argparse.Namespace) -> int:
     store = _load_store(args)
     store.prepare()
+    seed_langsmith_environment(Path(args.memory_root).expanduser())
 
     # Auto-use a saved browser session if it exists in the agent's memory path.
     browser_data_dir = store.memory_path / "browser-data"

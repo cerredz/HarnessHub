@@ -15,6 +15,7 @@ from harnessiq.shared.agents import (
     AgentModel,
     AgentParameterSection,
     AgentRuntimeConfig,
+    merge_agent_runtime_config,
 )
 from harnessiq.shared.exa_outreach import (
     DEFAULT_AGENT_IDENTITY,
@@ -124,6 +125,7 @@ class ExaOutreachAgent(BaseAgent):
         resend_client: Any | None = None,
         allowed_resend_operations: tuple[str, ...] | None = None,
         allowed_exa_operations: tuple[str, ...] | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         resolved_path = Path(memory_path) if memory_path is not None else _DEFAULT_MEMORY_PATH
         resolved_templates = _coerce_email_data(email_data)
@@ -162,15 +164,16 @@ class ExaOutreachAgent(BaseAgent):
                 self._build_internal_tools(),
             )
         )
-        runtime_config = AgentRuntimeConfig(
-            max_tokens=self._config.max_tokens,
-            reset_threshold=self._config.reset_threshold,
-        )
         super().__init__(
             name="exa_outreach",
             model=model,
             tool_executor=tool_registry,
-            runtime_config=runtime_config,
+            runtime_config=merge_agent_runtime_config(
+                runtime_config,
+                max_tokens=self._config.max_tokens,
+                reset_threshold=self._config.reset_threshold,
+            ),
+            memory_path=self._config.memory_path,
         )
 
     # ------------------------------------------------------------------
