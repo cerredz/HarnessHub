@@ -10,12 +10,12 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from harnessiq.cli._langsmith import seed_langsmith_environment
 from harnessiq.agents import AgentRuntimeConfig
+from harnessiq.cli._langsmith import seed_langsmith_environment
 from harnessiq.shared.exa_outreach import ExaOutreachMemoryStore
 from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
-SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS = ("max_tokens", "reset_threshold")
+SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS = ("max_tokens", "reset_threshold", "search_only")
 
 
 def register_exa_outreach_commands(
@@ -73,13 +73,17 @@ def register_exa_outreach_commands(
     )
     run_parser.add_argument(
         "--resend-credentials-factory",
-        required=True,
-        help="Import path (module:callable) that returns a ResendCredentials instance.",
+        help=(
+            "Import path (module:callable) that returns a ResendCredentials instance. "
+            "Required unless search_only=true."
+        ),
     )
     run_parser.add_argument(
         "--email-data-factory",
-        required=True,
-        help="Import path (module:callable) that returns a list[dict] of email templates.",
+        help=(
+            "Import path (module:callable) that returns a list[dict] of email templates. "
+            "Required unless search_only=true."
+        ),
     )
     run_parser.add_argument(
         "--runtime-param",
@@ -184,10 +188,6 @@ def _handle_run(args: argparse.Namespace) -> int:
         raise TypeError("Model factory must return an object that implements generate_turn(request).")
 
     exa_credentials = _load_factory(args.exa_credentials_factory)()
-    resend_credentials = _load_factory(args.resend_credentials_factory)()
-    raw_email_data = _load_factory(args.email_data_factory)()
-    if not isinstance(raw_email_data, list):
-        raise TypeError("Email data factory must return a list of dicts.")
 
     # Read persisted search query and runtime overrides
     query_config = store.read_query_config()
@@ -197,6 +197,28 @@ def _handle_run(args: argparse.Namespace) -> int:
     search_query = str(query_config.pop("search_query", ""))
     max_tokens = int(query_config.pop("max_tokens", 80_000))
     reset_threshold = float(query_config.pop("reset_threshold", 0.9))
+    search_only = _coerce_bool(query_config.pop("search_only", False))
+
+    if search_only:
+        resend_credentials = (
+            _load_factory(args.resend_credentials_factory)()
+            if args.resend_credentials_factory
+            else None
+        )
+        raw_email_data = (
+            _load_email_data_factory(args.email_data_factory)
+            if args.email_data_factory
+            else []
+        )
+    else:
+        if not args.resend_credentials_factory:
+            raise ValueError(
+                "--resend-credentials-factory is required unless search_only=true."
+            )
+        if not args.email_data_factory:
+            raise ValueError("--email-data-factory is required unless search_only=true.")
+        resend_credentials = _load_factory(args.resend_credentials_factory)()
+        raw_email_data = _load_email_data_factory(args.email_data_factory)
 
     agent = ExaOutreachAgent(
         model=model,
@@ -204,6 +226,7 @@ def _handle_run(args: argparse.Namespace) -> int:
         resend_credentials=resend_credentials,
         email_data=[EmailTemplate.from_dict(d) for d in raw_email_data],
         search_query=search_query,
+        search_only=search_only,
         memory_path=store.memory_path,
         max_tokens=max_tokens,
         reset_threshold=reset_threshold,
@@ -342,6 +365,13 @@ def _load_factory(spec: str):
     return target
 
 
+def _load_email_data_factory(spec: str) -> list[dict[str, Any]]:
+    raw_email_data = _load_factory(spec)()
+    if not isinstance(raw_email_data, list):
+        raise TypeError("Email data factory must return a list of dicts.")
+    return raw_email_data
+
+
 def _emit_json(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True))
 
@@ -384,6 +414,7 @@ def normalize_exa_outreach_runtime_parameters(parameters: dict[str, Any]) -> dic
     coercers = {
         "max_tokens": _coerce_int,
         "reset_threshold": _coerce_float,
+        "search_only": _coerce_bool,
     }
     for key, value in parameters.items():
         if key not in coercers:
@@ -413,6 +444,18 @@ def _coerce_float(value: Any) -> float:
     if isinstance(value, str) and value.strip():
         return float(value)
     raise ValueError("Runtime parameter must be a float.")
+
+
+def _coerce_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "off"}:
+            return False
+    raise ValueError("Runtime parameter must be a boolean.")
 
 
 __all__ = [
