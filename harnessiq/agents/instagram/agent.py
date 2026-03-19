@@ -13,6 +13,7 @@ from harnessiq.shared.agents import (
     AgentModel,
     AgentParameterSection,
     AgentRuntimeConfig,
+    merge_agent_runtime_config,
 )
 from harnessiq.shared.instagram import (
     DEFAULT_AGENT_IDENTITY,
@@ -48,6 +49,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         recent_search_window: int = DEFAULT_RECENT_SEARCH_WINDOW,
         recent_result_window: int = DEFAULT_RECENT_RESULT_WINDOW,
         search_result_limit: int = DEFAULT_SEARCH_RESULT_LIMIT,
+        runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         if search_backend is None:
             raise ValueError("InstagramKeywordDiscoveryAgent requires a search_backend.")
@@ -68,6 +70,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             search_result_limit=search_result_limit,
         )
 
+        tool_registry = ToolRegistry(self._build_internal_tools())
         bound_search_tool = create_instagram_tools(
             memory_store=self._memory_store,
             search_backend=self._search_backend,
@@ -90,7 +93,11 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             name="instagram_keyword_discovery",
             model=model,
             tool_executor=tool_registry,
-            runtime_config=runtime_config,
+            runtime_config=merge_agent_runtime_config(
+                runtime_config,
+                max_tokens=max_tokens,
+                reset_threshold=reset_threshold,
+            ),
             memory_path=candidate_memory_path,
         )
 
@@ -110,6 +117,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         search_backend: InstagramSearchBackend,
         memory_path: str | Path | None = None,
         runtime_overrides: Mapping[str, Any] | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
     ) -> "InstagramKeywordDiscoveryAgent":
         resolved_path = _resolve_memory_path(memory_path)
         store = InstagramMemoryStore(memory_path=resolved_path)
@@ -125,6 +133,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             search_backend=search_backend,
             memory_path=resolved_path,
             icp_descriptions=store.read_icp_profiles(),
+            runtime_config=runtime_config,
             **normalized,
         )
 

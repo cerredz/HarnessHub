@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import json
 
+from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.shared.leads import (
+    DEFAULT_LEADS_SEARCH_SUMMARY_EVERY,
+    DEFAULT_LEADS_SEARCH_TAIL_SIZE,
     FileSystemLeadsStorageBackend,
     ICPS_DIRNAME,
     LEADS_STORAGE_DIRNAME,
@@ -12,6 +15,7 @@ from harnessiq.shared.leads import (
     RUN_STATE_FILENAME,
     SAVED_LEADS_FILENAME,
     LeadICP,
+    LeadsAgentConfig,
     LeadRecord,
     LeadRunConfig,
     LeadRunState,
@@ -186,6 +190,25 @@ class TestLeadsMemoryStore:
         state = store.read_icp_state("sales")
         assert state.saved_lead_keys == ["email:alice@example.com"]
         assert store.has_saved_lead_key("sales", "email:alice@example.com") is True
+
+
+class TestLeadsAgentConfig:
+    def test_from_inputs_builds_normalized_defaults(self, tmp_path):
+        config = LeadsAgentConfig.from_inputs(
+            company_background="We sell outbound infrastructure to B2B SaaS teams.",
+            icps=("VP Sales",),
+            platforms=(" Apollo ",),
+            memory_path=tmp_path / "leads",
+        )
+
+        assert config.memory_path == tmp_path / "leads"
+        assert config.max_tokens == DEFAULT_AGENT_MAX_TOKENS
+        assert config.reset_threshold == DEFAULT_AGENT_RESET_THRESHOLD
+        assert config.run_config.icps == (LeadICP(label="VP Sales"),)
+        assert config.run_config.platforms == ("apollo",)
+        assert config.run_config.search_summary_every == DEFAULT_LEADS_SEARCH_SUMMARY_EVERY
+        assert config.run_config.search_tail_size == DEFAULT_LEADS_SEARCH_TAIL_SIZE
+        assert isinstance(config.storage_backend, FileSystemLeadsStorageBackend)
 
 
 class TestFileSystemLeadsStorageBackend:

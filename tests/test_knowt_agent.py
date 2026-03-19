@@ -9,7 +9,7 @@ from typing import Sequence
 from unittest.mock import MagicMock, patch
 
 from harnessiq.agents import KnowtAgent, KnowtMemoryStore
-from harnessiq.shared.agents import AgentModelResponse, AgentParameterSection
+from harnessiq.shared.agents import AgentModelResponse, AgentParameterSection, AgentRuntimeConfig
 from harnessiq.shared.knowt import KnowtAgentConfig
 from harnessiq.shared.tools import (
     KNOWT_CREATE_SCRIPT,
@@ -21,6 +21,16 @@ from harnessiq.shared.tools import (
     FILES_CREATE_FILE,
     FILES_EDIT_FILE,
 )
+
+_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
+
+
+def setUpModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.start()
+
+
+def tearDownModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.stop()
 
 
 def _mock_model(*, message: str = "Done.", tool_calls: tuple = (), should_continue: bool = False) -> MagicMock:
@@ -238,6 +248,18 @@ class TestKnowtAgentInjection(unittest.TestCase):
     def test_memory_path_exposed_on_base_agent(self) -> None:
         agent = KnowtAgent(model=self.model, memory_path=self.tmp)
         self.assertEqual(agent.memory_path, Path(self.tmp))
+
+    def test_runtime_config_preserves_langsmith_settings(self) -> None:
+        agent = KnowtAgent(
+            model=self.model,
+            memory_path=self.tmp,
+            runtime_config=AgentRuntimeConfig(
+                langsmith_api_key="ls_test_sdk",
+                langsmith_project="knowt-project",
+            ),
+        )
+        self.assertEqual(agent.runtime_config.langsmith_api_key, "ls_test_sdk")
+        self.assertEqual(agent.runtime_config.langsmith_project, "knowt-project")
 
 
 class TestKnowtAgentRunLoop(unittest.TestCase):

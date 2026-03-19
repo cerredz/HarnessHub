@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
+from harnessiq.providers import build_langsmith_client, trace_agent_run, trace_tool_call
 from harnessiq.providers.output_sinks import extract_model_metadata
 from harnessiq.shared.agents import (
     AgentContextEntry,
@@ -160,6 +161,9 @@ class BaseAgent(ABC):
         return len(self._transcript)
 
     def run(self, *, max_cycles: int | None = None) -> AgentRunResult:
+        return self._trace_run(lambda: self._run_loop(max_cycles=max_cycles))
+
+    def _run_loop(self, *, max_cycles: int | None = None) -> AgentRunResult:
         """Run the agent loop until it pauses, completes, or hits ``max_cycles``."""
         self.prepare()
         self._reset_count = 0
@@ -350,14 +354,58 @@ class BaseAgent(ABC):
         sinks.extend(self._runtime_config.output_sinks)
         return tuple(sinks)
 
+    def _trace_run(self, operation):
+        wrapped = trace_agent_run(
+            operation,
+            name=f"{self.name}.run",
+            project_name=self._runtime_config.langsmith_project,
+            tags=["harnessiq", "agent", self.name],
+            metadata={
+                "agent_name": self.name,
+                "memory_path": str(self._memory_path) if self._memory_path is not None else None,
+                "tool_count": len(self.available_tools()),
+            },
+            client=self._langsmith_client(),
+            enabled=self._runtime_config.langsmith_tracing_enabled,
+        )
+        return wrapped()
+
+    def _langsmith_client(self) -> Any | None:
+        return build_langsmith_client(
+            api_key=self._runtime_config.langsmith_api_key,
+            api_url=self._runtime_config.langsmith_api_url,
+        )
+
     def _execute_tool(self, tool_call: ToolCall) -> ToolResult:
         try:
-            return self._tool_executor.execute(tool_call.tool_key, tool_call.arguments)
+            tool_definition = self._resolve_tool_definition(tool_call.tool_key)
+            tool_name = tool_definition.name if tool_definition is not None else tool_call.tool_key
+            return trace_tool_call(
+                lambda: self._tool_executor.execute(tool_call.tool_key, tool_call.arguments),
+                tool_name=tool_name,
+                tool_key=tool_call.tool_key,
+                arguments=tool_call.arguments,
+                name=f"{self.name}.{tool_name}",
+                project_name=self._runtime_config.langsmith_project,
+                tags=["harnessiq", "tool", self.name],
+                metadata={
+                    "agent_name": self.name,
+                    "tool_key": tool_call.tool_key,
+                },
+                client=self._langsmith_client(),
+                enabled=self._runtime_config.langsmith_tracing_enabled,
+            )
         except Exception as exc:  # pragma: no cover - exercised via tests through public behavior
             return ToolResult(
                 tool_key=tool_call.tool_key,
                 output={"error": str(exc)},
             )
+
+    def _resolve_tool_definition(self, tool_key: str) -> ToolDefinition | None:
+        definitions = self._tool_executor.definitions([tool_key])
+        if not definitions:
+            return None
+        return definitions[0]
 
     def _record_assistant_response(self, response: AgentModelResponse) -> None:
         parts: list[str] = []

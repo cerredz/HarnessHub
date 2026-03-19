@@ -120,6 +120,12 @@ EXA_OUTREACH_CHECK_CONTACTED = "exa_outreach.check_contacted"
 EXA_OUTREACH_LOG_LEAD = "exa_outreach.log_lead"
 EXA_OUTREACH_LOG_EMAIL_SENT = "exa_outreach.log_email_sent"
 
+# Leads agent internal tool key constants
+LEADS_CHECK_SEEN = "leads.check_seen_lead"
+LEADS_COMPACT_SEARCH_HISTORY = "leads.compact_search_history"
+LEADS_LOG_SEARCH = "leads.log_search"
+LEADS_SAVE_LEADS = "leads.save_leads"
+
 # Provider tool key constants
 ARCADS_REQUEST = "arcads.request"
 ARXIV_REQUEST = "arxiv.request"
@@ -141,6 +147,7 @@ ZEROBOUNCE_REQUEST = "zerobounce.request"
 EXPANDI_REQUEST = "expandi.request"
 SMARTLEAD_REQUEST = "smartlead.request"
 LUSHA_REQUEST = "lusha.request"
+PAPERCLIP_REQUEST = "paperclip.request"
 INSTAGRAM_SEARCH_KEYWORD = "instagram.search_keyword"
 
 
@@ -318,10 +325,15 @@ __all__ = [
     "KNOWT_CREATE_SCRIPT",
     "KNOWT_CREATE_VIDEO",
     "LEADIQ_REQUEST",
+    "LEADS_CHECK_SEEN",
+    "LEADS_COMPACT_SEARCH_HISTORY",
+    "LEADS_LOG_SEARCH",
+    "LEADS_SAVE_LEADS",
     "LUSHA_REQUEST",
     "LEMLIST_REQUEST",
     "LOG_COMPACTION",
     "OUTREACH_REQUEST",
+    "PAPERCLIP_REQUEST",
     "PEOPLEDATALABS_REQUEST",
     "PHANTOMBUSTER_REQUEST",
     "PROMPT_CREATE_SYSTEM_PROMPT",

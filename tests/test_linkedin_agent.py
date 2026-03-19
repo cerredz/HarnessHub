@@ -5,6 +5,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from harnessiq.agents import (
     AgentModelRequest,
@@ -12,8 +13,19 @@ from harnessiq.agents import (
     LinkedInJobApplierAgent,
     build_linkedin_browser_tool_definitions,
 )
+from harnessiq.shared.agents import AgentRuntimeConfig
 from harnessiq.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW, LinkedInAgentConfig
 from harnessiq.shared.tools import ToolCall
+
+_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
+
+
+def setUpModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.start()
+
+
+def tearDownModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.stop()
 
 
 class _FakeModel:
@@ -201,6 +213,20 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
             self.assertEqual(result.resets, 1)
             self.assertEqual(model.requests[1].transcript, ())
             self.assertIn("Navigated to LinkedIn Jobs", model.requests[1].parameter_sections[-1].content)
+
+    def test_runtime_config_preserves_langsmith_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = LinkedInJobApplierAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                memory_path=temp_dir,
+                runtime_config=AgentRuntimeConfig(
+                    langsmith_api_key="ls_test_sdk",
+                    langsmith_project="linkedin-project",
+                ),
+            )
+
+            self.assertEqual(agent.runtime_config.langsmith_api_key, "ls_test_sdk")
+            self.assertEqual(agent.runtime_config.langsmith_project, "linkedin-project")
 
 
 if __name__ == "__main__":

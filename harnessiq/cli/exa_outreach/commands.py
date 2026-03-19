@@ -10,6 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from harnessiq.cli._langsmith import seed_langsmith_environment
 from harnessiq.agents import AgentRuntimeConfig
 from harnessiq.shared.exa_outreach import ExaOutreachMemoryStore
 from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
@@ -176,6 +177,7 @@ def _handle_run(args: argparse.Namespace) -> int:
 
     store = _load_store(args)
     store.prepare()
+    seed_langsmith_environment(Path(args.memory_root).expanduser())
 
     model = _load_factory(args.model_factory)()
     if not hasattr(model, "generate_turn"):

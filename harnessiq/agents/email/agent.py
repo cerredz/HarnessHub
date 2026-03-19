@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Iterable, Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig, BaseAgent
+from harnessiq.shared.agents import merge_agent_runtime_config
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
 from harnessiq.tools.registry import ToolRegistry
 from harnessiq.tools.resend import ResendClient, ResendCredentials, build_resend_operation_catalog, create_resend_tools, get_resend_operation
@@ -78,7 +79,11 @@ class BaseEmailAgent(BaseAgent, ABC):
             name=name,
             model=model,
             tool_executor=tool_registry,
-            runtime_config=runtime_config,
+            runtime_config=merge_agent_runtime_config(
+                runtime_config,
+                max_tokens=self._config.max_tokens,
+                reset_threshold=self._config.reset_threshold,
+            ),
         )
 
     @property

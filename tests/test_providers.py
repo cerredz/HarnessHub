@@ -97,13 +97,16 @@ class LangSmithTracingTests(unittest.TestCase):
             project_name="Support Agents",
             tags=["support", "agent"],
             metadata={"team": "support"},
+            client=object(),
         )
 
         with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
             result = wrapped("hello")
 
         self.assertEqual(result, {"reply": "HELLO"})
-        self.assertEqual(fake_langsmith.tracing_context_calls, [{"project_name": "Support Agents"}])
+        self.assertEqual(fake_langsmith.tracing_context_calls[0]["project_name"], "Support Agents")
+        self.assertTrue(fake_langsmith.tracing_context_calls[0]["enabled"])
+        self.assertIsNotNone(fake_langsmith.tracing_context_calls[0]["client"])
         self.assertEqual(fake_langsmith.trace_calls[0]["name"], "support_agent.run")
         self.assertEqual(fake_langsmith.trace_calls[0]["run_type"], "chain")
         self.assertEqual(fake_langsmith.trace_calls[0]["tags"], ["support", "agent"])
@@ -128,6 +131,7 @@ class LangSmithTracingTests(unittest.TestCase):
                 tools=self.tools,
                 request_payload=request_payload,
                 metadata={"agent": "support"},
+                client=object(),
             )
 
         self.messages[0]["content"] = "mutated"
@@ -148,7 +152,7 @@ class LangSmithTracingTests(unittest.TestCase):
     def test_trace_agent_run_supports_decorator_configuration(self) -> None:
         fake_langsmith = _FakeLangSmith()
 
-        @trace_agent_run(name="decorated_agent.run", project_name="Decorated Agents")
+        @trace_agent_run(name="decorated_agent.run", project_name="Decorated Agents", client=object())
         def run_agent(user_input: str) -> dict[str, str]:
             return {"reply": user_input}
 
@@ -158,6 +162,7 @@ class LangSmithTracingTests(unittest.TestCase):
         self.assertEqual(result, {"reply": "hello"})
         self.assertEqual(fake_langsmith.trace_calls[0]["name"], "decorated_agent.run")
         self.assertEqual(fake_langsmith.tracing_context_calls[0]["project_name"], "Decorated Agents")
+        self.assertTrue(fake_langsmith.tracing_context_calls[0]["enabled"])
 
     def test_trace_tool_call_records_tool_identity_and_result(self) -> None:
         fake_langsmith = _FakeLangSmith()
@@ -169,10 +174,12 @@ class LangSmithTracingTests(unittest.TestCase):
                 tool_key=ECHO_TEXT,
                 arguments={"text": "done"},
                 project_name="Tool Project",
+                client=object(),
             )
 
         self.assertEqual(result, {"text": "done"})
         self.assertEqual(fake_langsmith.tracing_context_calls[0]["project_name"], "Tool Project")
+        self.assertTrue(fake_langsmith.tracing_context_calls[0]["enabled"])
         self.assertEqual(fake_langsmith.trace_calls[0]["run_type"], "tool")
         self.assertEqual(
             fake_langsmith.trace_calls[0]["inputs"],
@@ -194,9 +201,24 @@ class LangSmithTracingTests(unittest.TestCase):
                     model_name="gpt-4.1",
                     system_prompt="Stay precise.",
                     messages=self.messages,
+                    client=object(),
                 )
 
         self.assertEqual(fake_langsmith.run_trees[0].end_calls[-1]["error"], "provider timed out")
+
+    def test_tracing_helpers_fail_open_without_credentials(self) -> None:
+        fake_langsmith = _FakeLangSmith()
+        with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
+            result = trace_tool_call(
+                lambda: {"status": "ok"},
+                tool_name="echo_text",
+                tool_key=ECHO_TEXT,
+                arguments={"text": "done"},
+            )
+
+        self.assertEqual(result, {"status": "ok"})
+        self.assertEqual(fake_langsmith.tracing_context_calls, [])
+        self.assertEqual(fake_langsmith.trace_calls, [])
 
 
 class AsyncLangSmithTracingTests(unittest.TestCase):
@@ -211,6 +233,7 @@ class AsyncLangSmithTracingTests(unittest.TestCase):
             project_name="Async Agents",
             tags=["async"],
             metadata={"mode": "async"},
+            client=object(),
         )
 
         with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
@@ -219,6 +242,7 @@ class AsyncLangSmithTracingTests(unittest.TestCase):
         self.assertEqual(result, {"reply": "ecart"})
         self.assertEqual(fake_langsmith.trace_calls[0]["name"], "run_agent")
         self.assertEqual(fake_langsmith.trace_calls[0]["run_type"], "chain")
+        self.assertTrue(fake_langsmith.tracing_context_calls[0]["enabled"])
         self.assertEqual(fake_langsmith.run_trees[0].end_calls[-1]["outputs"], {"output": {"reply": "ecart"}})
 
     def test_trace_async_model_and_tool_calls_support_async_operations(self) -> None:
@@ -240,6 +264,7 @@ class AsyncLangSmithTracingTests(unittest.TestCase):
                     messages=[{"role": "user", "content": "ping"}],
                     tools=[],
                     name="anthropic.chat",
+                    client=object(),
                 )
             )
             tool_result = asyncio.run(
@@ -247,6 +272,7 @@ class AsyncLangSmithTracingTests(unittest.TestCase):
                     tool_operation,
                     tool_name="echo_text",
                     arguments={"text": "ping"},
+                    client=object(),
                 )
             )
 
@@ -261,7 +287,7 @@ class AsyncLangSmithTracingTests(unittest.TestCase):
     def test_trace_async_agent_run_supports_decorator_configuration(self) -> None:
         fake_langsmith = _FakeLangSmith()
 
-        @trace_async_agent_run(name="decorated_async.run", project_name="Decorated Async Agents")
+        @trace_async_agent_run(name="decorated_async.run", project_name="Decorated Async Agents", client=object())
         async def run_agent(value: str) -> dict[str, str]:
             return {"reply": value}
 
@@ -271,6 +297,7 @@ class AsyncLangSmithTracingTests(unittest.TestCase):
         self.assertEqual(result, {"reply": "hello"})
         self.assertEqual(fake_langsmith.trace_calls[0]["name"], "decorated_async.run")
         self.assertEqual(fake_langsmith.tracing_context_calls[0]["project_name"], "Decorated Async Agents")
+        self.assertTrue(fake_langsmith.tracing_context_calls[0]["enabled"])
 
 
 if __name__ == "__main__":
