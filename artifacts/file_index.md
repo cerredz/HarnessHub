@@ -1,16 +1,31 @@
-This artifact tracks the meaningful repository layout and the current architecture of the codebase. Update it whenever a new top-level or otherwise meaningful structural folder is added.
+This artifact tracks the meaningful repository layout and the current architecture of the codebase. Keep it focused on the important folders and update it whenever the high-level package structure changes.
+
+Context:
+
+- This file is not meant to be a full inventory of every subdirectory or support artifact. Its job is to explain the architectural shape of the repository so a reader can understand where core product logic lives, where public-facing documentation lives, and where new work should usually be added.
+- The top-level folders matter because they define the boundaries of the codebase: the SDK itself lives under `harnessiq/`, supporting documentation lives outside it, and repository artifacts describe or support the package rather than becoming part of the shipped runtime.
+
+Codebase standards:
+
+- Agents in this codebase are defined as harnesses: they inherit shared runtime behavior from the main `BaseAgent` class and then specialize prompts, parameter sections, tool wiring, and domain-specific logic.
+- We define tools and toolsets as reusable building blocks for users. Users should be able to choose which tools or toolsets to inject into which agent rather than being locked into one fixed bundle.
+- Agents should interact with external capabilities through the tool layer, and third-party platforms should be reached through provider-backed tools and provider clients rather than through undocumented ad hoc calls.
+- Agents should be structured to accept an injected toolset or tool executor as part of their configuration instead of strictly defining the full tool surface internally. An agent can provide a sensible default toolset, but that default should remain overridable.
+- Autonomous agents are expected to have a durable memory folder. That memory can store any files needed across runs, including user inputs, runtime parameters, custom parameters, action logs, and deterministic state records.
+- Tools are not only optional model add-ons; they should be used wherever a deterministic check is possible. If an agent can verify state from durable memory or another authoritative source, it should do that explicitly instead of relying on model recall alone (for example, checking LinkedIn memory to confirm whether a job was already applied to).
+- These agents are being built for full autonomy, so designs must assume multiple context window resets. Durable memory and parameter sections should carry forward the state needed to resume work without losing orientation.
+- Agent behavior should be configurable through parameters. The shared runtime comes from `BaseAgent`, while concrete harnesses can expose runtime parameters and user-defined custom parameters where the workflow requires them.
 
 Top-level directories:
 
-- `artifacts/`: repository-level documentation artifacts such as this index
-- `docs/`: SDK usage examples and lightweight package documentation
-- `harnessiq/`: the production Python SDK package for Harnessiq
-- `memory/`: planning, verification, critique, and other workflow artifacts produced during repository work
-- `tests/`: unit tests for the currently merged source modules
+- `artifacts/`: repository-level architecture and maintenance artifacts. This folder explains how the repo is organized and gives contributors a shared reference point for structural decisions.
+- `docs/`: lightweight package documentation and usage guides. This folder matters because it explains how the SDK is intended to be used outside the source tree.
+- `harnessiq/`: the production Python SDK package for Harnessiq. This is the most important top-level folder because it contains the runtime, abstractions, integrations, and public package surface that actually ship to users.
 
 Source layout:
 
 - `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
+- `harnessiq/agents/base/agent.py`: shared `BaseAgent` runtime loop plus additive tool introspection helpers; agents still expose canonical `available_tools()` and now also a richer inherited inspection surface for descriptions, parameters, schemas, and backing function metadata
 - `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch
 - `harnessiq/cli/leads/`: leads-agent CLI commands for managed multi-ICP configuration and execution
 - `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
@@ -18,6 +33,7 @@ Source layout:
 - `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
 - `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior; also contains MCP-style tool factories for all registered data and service providers
 - `harnessiq/tools/apollo/`: MCP-style tool factory for Apollo.io sales intelligence and engagement APIs
+- `harnessiq/tools/registry.py`: deterministic registry for executable tools; exposes canonical `definitions()` for model-facing metadata and a richer `inspect()` surface for human/tooling introspection of parameters and handler identity
 - `harnessiq/tools/creatify/`: MCP-style tool factory for Creatify AI video creation
 - `harnessiq/tools/arcads/`: MCP-style tool factory for Arcads AI advertising video creation
 - `harnessiq/tools/instantly/`: MCP-style tool factory for Instantly cold email platform
@@ -141,4 +157,3 @@ Current memory artifacts:
 - `memory/knowt-agent/`: internalization, clarification, ticket, and verification artifacts for the reasoning tools and Knowt TikTok content creation agent work
 - `memory/add-reasoning-tools/`: internalization, tickets, quality, and critique artifacts for the 50 reasoning lens tool expansion
 - `memory/apply-pr-112-review-feedback/`: internalization, tickets, quality, and critique artifacts for the PR #112 review feedback — porting define_tool()/tool() to main and adding register_tool()/register_tools() to ToolsetRegistry
-- `memory/exa-outreach-agent/`: internalization, clarification, tickets, and verification artifacts for the ExaOutreach agent and CLI work (issues #114–#117)

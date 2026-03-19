@@ -191,6 +191,15 @@ class TestKnowtAgentAvailableTools(unittest.TestCase):
         # 3 reasoning + 5 knowt
         self.assertEqual(len(self.agent.available_tools()), 8)
 
+    def test_inspect_tools_is_inherited_from_base_agent(self) -> None:
+        payload = self.agent.inspect_tools()
+        tool_index = {tool["key"]: tool for tool in payload}
+
+        self.assertIn(REASON_BRAINSTORM, tool_index)
+        self.assertIn(KNOWT_CREATE_SCRIPT, tool_index)
+        self.assertIn("function", tool_index[REASON_BRAINSTORM])
+        self.assertIsInstance(tool_index[KNOWT_CREATE_SCRIPT]["parameters"], list)
+
 
 class TestKnowtAgentInjection(unittest.TestCase):
     """Verify injectable config and tools parameters."""
