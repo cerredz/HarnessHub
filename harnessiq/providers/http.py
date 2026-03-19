@@ -165,4 +165,6 @@ def _infer_provider_name(url: str) -> str:
         return "lemlist"
     if "exa.ai" in host:
         return "exa"
+    if "arxiv" in host:
+        return "arxiv"
     return "provider"
