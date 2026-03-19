@@ -1,126 +1,36 @@
-This artifact tracks the meaningful repository layout and the current architecture of the codebase. Update it whenever a new top-level or otherwise meaningful structural folder is added.
+This artifact tracks the meaningful repository layout and the current architecture of the codebase. Keep it focused on the important folders and update it whenever the high-level package structure changes.
+
+Context:
+
+- This file is not meant to be a full inventory of every subdirectory or support artifact. Its job is to explain the architectural shape of the repository so a reader can understand where core product logic lives, where public-facing documentation lives, and where new work should usually be added.
+- The top-level folders matter because they define the boundaries of the codebase: the SDK itself lives under `harnessiq/`, supporting documentation lives outside it, and repository artifacts describe or support the package rather than becoming part of the shipped runtime.
+
+Codebase standards:
+
+- Agents in this codebase are defined as harnesses: they inherit shared runtime behavior from the main `BaseAgent` class and then specialize prompts, parameter sections, tool wiring, and domain-specific logic.
+- We define tools and toolsets as reusable building blocks for users. Users should be able to choose which tools or toolsets to inject into which agent rather than being locked into one fixed bundle.
+- Agents should interact with external capabilities through the tool layer, and third-party platforms should be reached through provider-backed tools and provider clients rather than through undocumented ad hoc calls.
+- Agents should be structured to accept an injected toolset or tool executor as part of their configuration instead of strictly defining the full tool surface internally. An agent can provide a sensible default toolset, but that default should remain overridable.
+- Autonomous agents are expected to have a durable memory folder. That memory can store any files needed across runs, including user inputs, runtime parameters, custom parameters, action logs, and deterministic state records.
+- Tools are not only optional model add-ons; they should be used wherever a deterministic check is possible. If an agent can verify state from durable memory or another authoritative source, it should do that explicitly instead of relying on model recall alone (for example, checking LinkedIn memory to confirm whether a job was already applied to).
+- These agents are being built for full autonomy, so designs must assume multiple context window resets. Durable memory and parameter sections should carry forward the state needed to resume work without losing orientation.
+- Agent behavior should be configurable through parameters. The shared runtime comes from `BaseAgent`, while concrete harnesses can expose runtime parameters and user-defined custom parameters where the workflow requires them.
 
 Top-level directories:
 
-- `artifacts/`: repository-level documentation artifacts such as this index
-- `docs/`: SDK usage examples and lightweight package documentation
-- `harnessiq/`: the production Python SDK package for Harnessiq
-- `memory/`: planning, verification, critique, and other workflow artifacts produced during repository work
-- `tests/`: unit tests for the currently merged source modules
+- `artifacts/`: repository-level architecture and maintenance artifacts. This folder explains how the repo is organized and gives contributors a shared reference point for structural decisions.
+- `docs/`: lightweight package documentation and usage guides. This folder matters because it explains how the SDK is intended to be used outside the source tree.
+- `harnessiq/`: the production Python SDK package for Harnessiq. This is the most important top-level folder because it contains the runtime, abstractions, integrations, and public package surface that actually ship to users.
 
 Source layout:
 
 - `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
 - `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch
-- `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
-- `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
-- `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
-- `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior; also contains MCP-style tool factories for all registered data and service providers
-- `harnessiq/tools/creatify/`: MCP-style tool factory for Creatify AI video creation
-- `harnessiq/tools/arcads/`: MCP-style tool factory for Arcads AI advertising video creation
-- `harnessiq/tools/instantly/`: MCP-style tool factory for Instantly cold email platform
-- `harnessiq/tools/outreach/`: MCP-style tool factory for Outreach sales engagement platform
-- `harnessiq/tools/lemlist/`: MCP-style tool factory for Lemlist B2B outreach platform
-- `harnessiq/tools/exa/`: MCP-style tool factory for Exa neural search engine
-- `harnessiq/tools/snovio/`: MCP-style tool factory for Snov.io email intelligence (OAuth2 auth handled transparently)
-- `harnessiq/tools/leadiq/`: MCP-style tool factory for LeadIQ contact intelligence (GraphQL API)
-- `harnessiq/tools/salesforge/`: MCP-style tool factory for Salesforge cold email automation
-- `harnessiq/tools/phantombuster/`: MCP-style tool factory for PhantomBuster browser automation
-- `harnessiq/tools/zoominfo/`: MCP-style tool factory for ZoomInfo B2B intelligence (JWT auth handled transparently)
-- `harnessiq/tools/peopledatalabs/`: MCP-style tool factory for People Data Labs data enrichment
-- `harnessiq/tools/proxycurl/`: MCP-style tool factory for Proxycurl (deprecated — shut down Jan 2025)
-- `harnessiq/tools/coresignal/`: MCP-style tool factory for Coresignal professional data
-- `harnessiq/tools/reasoning/`: reasoning tool package — exposes the three core injectable tools (`brainstorm`, `chain_of_thought`, `critique`) and the 50-lens cognitive scaffolding catalog
-- `harnessiq/tools/reasoning/core.py`: three high-level injectable reasoning tools (`reason.brainstorm`, `reason.chain_of_thought`, `reason.critique`) plus `create_reasoning_tools()` factory; supports brainstorm count presets (`"small"`, `"medium"`, `"large"`); instruction outputs are natural language prose injected into the agent context window
-- `harnessiq/tools/reasoning/lenses.py`: 50 reasoning lens tools for agent cognitive scaffolding — includes step-by-step, tree-of-thoughts, first-principles, red-teaming, pre-mortem, and 45 others across 8 cognitive categories (core logical, analytical, perspective, creative, systems, temporal, evaluative, scientific)
-- `harnessiq/tools/knowt/`: Knowt-specific content creation tool factory (create_script, create_avatar_description, create_video via Creatify lipsync_v2, create_file, edit_file)
-- `harnessiq/tools/reasoning.py`: injectable reasoning tools (`reason.brainstorm`, `reason.chain_of_thought`, `reason.critique`) — inject structured reasoning instructions into the agent context window
-- `harnessiq/agents/harness_architect/`: Harness Architect meta-agent; produces complete, immediately deployable harness specifications covering all three context window zones, typed in-context memory schemas, reset protocols, tool access configuration, BaseAgent parameter blocks, and CLI invocation contracts
-- `harnessiq/agents/harness_architect/prompts/`: system prompt files for the Harness Architect agent; `master_prompt.md` loaded at runtime — encodes the three-zone architecture model, in-context memory schema design rules, reset protocol specification checklist, and annotated BaseAgent reference code
-- `harnessiq/agents/prompt_architect/`: Prompt Architect meta-agent; produces complete, immediately deployable action-oriented master prompts via a 15-phase sequential workflow covering domain reconstruction, atomic phase decomposition, persona drafting, structural review, and phase sequence stress testing
-- `harnessiq/agents/prompt_architect/prompts/`: system prompt files for the Prompt Architect agent; `master_prompt.md` loaded at runtime — encodes the full 15-phase prompt engineering workflow, checklist for phase/checklist separation and domain specificity, failure mode guardrails, and eight observable success criteria
-- `harnessiq/agents/linkedin/prompts/`: system prompt files for the LinkedIn agent; `master_prompt.md` loaded at runtime by `build_system_prompt()` with `{{AGENT_IDENTITY}}`, `{{TOOL_LIST}}`, and `{{ACTION_LOG_WINDOW}}` template substitution — covers search strategy, Easy Apply flows, form-filling rules, error recovery, and custom instructions integration
-- `harnessiq/agents/knowt/`: Knowt TikTok content creation agent harness; enforces brainstorm → script → avatar → video pipeline via deterministic file-backed memory
-- `harnessiq/agents/knowt/prompts/`: system prompt files for the Knowt agent; `master_prompt.md` loaded at runtime so it can be updated without touching Python source
-- `harnessiq/shared/knowt.py`: `KnowtMemoryStore` (file-backed), `KnowtAgentConfig`, `KnowtCreationLogEntry`, and filename constants for the Knowt agent harness
-- `harnessiq/shared/linkedin.py`: LinkedIn constants and data models — `JobSearchConfig` (structured filter params: title, location, remote_type, experience_levels, date_posted, easy_apply_only, salary range, job_type, companies, industries, description), `JobApplicationRecord`, `ActionLogEntry`, `LinkedInAgentConfig`, `LinkedInManagedFile`, filename constants
-- `harnessiq/tools/reasoning/`: 50 reasoning lens tools for agent cognitive scaffolding — includes step-by-step, tree-of-thoughts, first-principles, red-teaming, pre-mortem, and 45 others across 8 cognitive categories (core logical, analytical, perspective, creative, systems, temporal, evaluative, scientific)
-- `harnessiq/toolset/`: plug-and-play toolset SDK — `get_tool`, `get_tools`, `get_family`, `list_tools`, `define_tool`, `@tool` decorator, `register_tool`, `register_tools`; backed by `ToolsetRegistry` and a static provider catalog
-- `harnessiq/toolset/factory.py`: `define_tool()` factory and `@tool` decorator for ergonomic custom `RegisteredTool` creation; validates `tool_type` with clear planned-vs-unknown messaging
-- `harnessiq/providers/`: provider translation helpers and provider-specific request builders
-- `harnessiq/config/`: credential loader and base credential configuration types; `CredentialLoader` resolves named environment variables from a repo-local `.env` file
-- `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
-- `harnessiq/providers/`: provider-specific request builders, HTTP clients, and operation catalogs; covers both AI LLM providers and external-service API providers
-- `harnessiq/providers/anthropic/`: Anthropic request and tool-translation helpers
-- `harnessiq/providers/openai/`: OpenAI request and tool-translation helpers
-- `harnessiq/providers/grok/`: Grok request and tool-translation helpers
-- `harnessiq/providers/gemini/`: Gemini request and tool-translation helpers
-- `harnessiq/providers/snovio/`: Snov.io email-finding and outreach API client
-- `harnessiq/providers/leadiq/`: LeadIQ lead-intelligence API client (GraphQL)
-- `harnessiq/providers/salesforge/`: Salesforge AI sales-engagement API client
-- `harnessiq/providers/phantombuster/`: PhantomBuster web-automation API client
-- `harnessiq/providers/zoominfo/`: ZoomInfo B2B-intelligence API client (JWT auth)
-- `harnessiq/providers/peopledatalabs/`: People Data Labs people and company data-enrichment API client
-- `harnessiq/providers/proxycurl/`: Proxycurl LinkedIn data API client
-- `harnessiq/providers/coresignal/`: Coresignal professional network data API client
-- `harnessiq/providers/creatify/`: Creatify AI video creation API — credentials, client, and full operation catalog
-- `harnessiq/providers/arcads/`: Arcads AI video ad API — credentials, client, and operation catalog
-- `harnessiq/providers/instantly/`: Instantly.ai cold email API v2 — credentials, client, and full operation catalog
-- `harnessiq/providers/outreach/`: Outreach.io sales engagement API — credentials, OAuth client, and core operation catalog
-- `harnessiq/providers/lemlist/`: Lemlist outreach API — credentials, client, and full operation catalog
-- `harnessiq/providers/exa/`: Exa neural search API — credentials, client, and full operation catalog
-
-Tests:
-- `tests/test_agents_base.py`: coverage for the generic agent loop, transcript handling, context resets, and structured pause behavior
-- `tests/test_email_agent.py`: coverage for the abstract email-capable harness, masked Resend credentials, and Resend tool integration through the agent loop
-- `tests/test_linkedin_agent.py`: coverage for the LinkedIn-specific harness, memory files, durable state tools, JobSearchConfig structured/string parameter, context window section ordering, and custom instructions injection
-- `tests/test_tools.py`: coverage for tool definitions, registry behavior, validation, execution, and built-in key ordering
-- `tests/test_context_compaction_tools.py`: coverage for the context-window compaction tool family
-- `tests/test_general_tools.py`: coverage for the reusable text, record, and control-flow tool family
-- `tests/test_prompt_filesystem_tools.py`: coverage for system-prompt generation and non-destructive filesystem tools
-- `tests/test_resend_tools.py`: coverage for the Resend operation catalog, MCP-style request tool, and Resend-specific transport/header behavior
-- `tests/test_provider_base.py`: coverage for shared provider helpers and HTTP transport
-- `tests/test_providers.py`: coverage for provider message normalization and request translation across all supported providers
-- `tests/test_anthropic_provider.py`: coverage for Anthropic request, tool, and client helpers
-- `tests/test_grok_provider.py`: coverage for Grok request, tool, and client helpers
-- `tests/test_openai_provider.py`: coverage for OpenAI request, tool, and client helpers
-- `tests/test_gemini_provider.py`: coverage for Gemini content, tool, and client helpers
-- `tests/test_config_loader.py`: coverage for the CredentialLoader and HTTP transport hostname inference
-- `tests/test_snovio_provider.py`: coverage for Snov.io request builders, client, operation catalog, and tool factory (OAuth2 token exchange)
-- `tests/test_leadiq_provider.py`: coverage for LeadIQ operation catalog and tool factory (GraphQL dispatch)
-- `tests/test_salesforge_provider.py`: coverage for Salesforge operation catalog and tool factory
-- `tests/test_phantombuster_provider.py`: coverage for PhantomBuster operation catalog and tool factory
-- `tests/test_zoominfo_provider.py`: coverage for ZoomInfo operation catalog and tool factory (JWT auth)
-- `tests/test_peopledatalabs_provider.py`: coverage for People Data Labs operation catalog and tool factory
-- `tests/test_proxycurl_provider.py`: coverage for Proxycurl operation catalog and tool factory (deprecated provider)
-- `tests/test_coresignal_provider.py`: coverage for Coresignal operation catalog and tool factory
-- `tests/test_config_loader.py`: coverage for CredentialLoader `.env` parsing, error cases, and HTTP transport hostname mapping for all six new providers
-- `tests/test_creatify_provider.py`: coverage for Creatify credentials, client, operation catalog, and tool factory
-- `tests/test_arcads_provider.py`: coverage for Arcads credentials (Basic Auth), client, operation catalog, and tool factory
-- `tests/test_instantly_provider.py`: coverage for Instantly credentials, client, V2 operation catalog, and tool factory
-- `tests/test_outreach_provider.py`: coverage for Outreach credentials (OAuth Bearer), client, core operation catalog, and tool factory
-- `tests/test_lemlist_provider.py`: coverage for Lemlist credentials (Basic Auth), client, operation catalog, and tool factory
-- `tests/test_exa_provider.py`: coverage for Exa credentials, client, search operation catalog, and tool factory
-- `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
-- `tests/test_reasoning_tools.py`: coverage for the three core reasoning tools (brainstorm, chain_of_thought, critique) — handler behavior, count presets, boundary validation, registry integration, and instruction output shape
-- `tests/test_reasoning_tools.py`: coverage for reasoning tool implementations, boundary validation, and instruction formatting
-- `tests/test_knowt_tools.py`: coverage for Knowt tool handlers, memory guard enforcement, Creatify integration, and file-scoped create/edit operations
-- `tests/test_knowt_agent.py`: coverage for the Knowt agent harness — construction, system prompt file loading, parameter sections, tool wiring, and run loop behavior
-- `tests/test_reasoning_tools.py`: coverage for all 50 reasoning lens tool handlers, registry execution, argument validation, and prompt output shape
-- `tests/test_toolset_factory.py`: coverage for `define_tool()` factory and `@tool` decorator — construction, schema building, handler execution, `tool_type` validation, `ToolDefinition.tool_type` backwards compatibility
-- `tests/test_toolset_registry.py`: coverage for `ToolsetRegistry` — built-in/provider/custom tool lookup, `register_tool`/`register_tools`, collision detection, `list_tools`, `get_family`
-
-Current memory artifacts:
-
-- `memory/refactor-types-constants/`: planning, ticket, quality, critique, and PR-body artifacts for the shared definitions refactor
-- `memory/linkedin-agent-harness/`: internalization, tickets, and verification artifacts for the LinkedIn harness work
-- `memory/add-context-compaction-tools/`: internalization, tickets, and verification artifacts for the context-window compaction work
-- `memory/add-generalizable-tools/`: internalization, brainstorming, ticket, and verification artifacts for the general-purpose tool expansion
-- `memory/add-system-prompt-terminal-tools/`: internalization, clarification, ticket, and verification artifacts for prompt and filesystem tool expansion
-- `memory/email-agent-resend-mcp/`: internalization, ticket, quality, and critique artifacts for the Resend-backed email agent base work
-- `memory/shared-definition-consolidation/`: internalization and ticket plan artifacts for the shared-definition cleanup
-- `memory/add-data-providers/`: internalization, ticket, quality, and critique artifacts for the data-service provider expansion (Snov.io, LeadIQ, Salesforge, PhantomBuster, ZoomInfo, People Data Labs, Proxycurl, Coresignal)
-- `memory/add-service-providers/`: internalization, clarifications, and ticket artifacts for adding Creatify, Arcads, Instantly, Outreach, Lemlist, and Exa providers plus the config layer
-- `memory/knowt-agent/`: internalization, clarification, ticket, and verification artifacts for the reasoning tools and Knowt TikTok content creation agent work
-- `memory/add-reasoning-tools/`: internalization, tickets, quality, and critique artifacts for the 50 reasoning lens tool expansion
-- `memory/apply-pr-112-review-feedback/`: internalization, tickets, quality, and critique artifacts for the PR #112 review feedback — porting define_tool()/tool() to main and adding register_tool()/register_tools() to ToolsetRegistry
+- `harnessiq/config/`: repo-local credential config models, persisted agent credential bindings, and `.env` loader/store helpers
+- `harnessiq/integrations/`: adapters that bridge the core SDK to external runtime surfaces such as model implementations and browser automation
+- `harnessiq/master_prompts/`: curated, deployable system prompts for agents and direct SDK use
+- `harnessiq/providers/`: provider translation helpers, HTTP clients, and operation catalogs for both LLM providers and external-service APIs
+- `harnessiq/shared/`: shared types, configs, and constants reused across modules
+- `harnessiq/tools/`: the executable tool runtime layer, including built-in tools, prompt/filesystem helpers, reasoning tools, and provider-backed tool factories
+- `harnessiq/toolset/`: plug-and-play toolset SDK for retrieving, composing, and registering built-in, provider, and custom tools
+- `harnessiq/utils/`: agent-agnostic utility infrastructure such as run storage and other reusable support code that does not belong to a single agent, provider, or tool family
