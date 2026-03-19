@@ -86,6 +86,7 @@ Source layout:
 - `harnessiq/providers/lemlist/`: Lemlist outreach API — credentials, client, and full operation catalog
 - `harnessiq/providers/exa/`: Exa neural search API — credentials, client, and full operation catalog
 
+- `tests/test_leads_shared.py`: coverage for the leads-agent shared types, per-ICP memory store, search compaction persistence, and filesystem save-backend dedupe behavior
 Current memory artifacts:
 
 - `memory/refactor-types-constants/`: planning, ticket, quality, critique, and PR-body artifacts for the shared definitions refactor
