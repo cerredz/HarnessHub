@@ -11,11 +11,13 @@ Top-level directories:
 Source layout:
 
 - `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
+- `harnessiq/agents/base/agent.py`: shared `BaseAgent` runtime loop plus additive tool introspection helpers; agents still expose canonical `available_tools()` and now also a richer inherited inspection surface for descriptions, parameters, schemas, and backing function metadata
 - `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch
 - `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
 - `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
 - `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
 - `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior; also contains MCP-style tool factories for all registered data and service providers
+- `harnessiq/tools/registry.py`: deterministic registry for executable tools; exposes canonical `definitions()` for model-facing metadata and a richer `inspect()` surface for human/tooling introspection of parameters and handler identity
 - `harnessiq/tools/creatify/`: MCP-style tool factory for Creatify AI video creation
 - `harnessiq/tools/arcads/`: MCP-style tool factory for Arcads AI advertising video creation
 - `harnessiq/tools/instantly/`: MCP-style tool factory for Instantly cold email platform

@@ -72,6 +72,10 @@ def _constant_tool(tool_key: str, name: str, handler):
     )
 
 
+def _echo_handler(arguments: dict[str, object]) -> dict[str, object]:
+    return {"echoed": arguments["text"]}
+
+
 class BaseAgentTests(unittest.TestCase):
     def test_runtime_config_defaults_align_with_shared_constants(self) -> None:
         runtime_config = AgentRuntimeConfig()
@@ -82,7 +86,7 @@ class BaseAgentTests(unittest.TestCase):
     def test_run_records_tool_results_and_passes_transcript_to_next_turn(self) -> None:
         registry = ToolRegistry(
             [
-                _constant_tool("session.echo", "echo", lambda arguments: {"echoed": arguments["text"]}),
+                _constant_tool("session.echo", "echo", _echo_handler),
             ]
         )
         model = _FakeModel(
@@ -221,6 +225,23 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(len(model.requests), 2)
         self.assertEqual(model.requests[1].transcript, ())
         self.assertEqual(model.requests[1].parameter_sections[0].content, "initial")
+
+    def test_inspect_tools_returns_rich_metadata_for_registered_tools(self) -> None:
+        registry = ToolRegistry(
+            [
+                _constant_tool("session.echo", "echo", _echo_handler),
+            ]
+        )
+        agent = _InspectableAgent(model=_FakeModel([]), tool_executor=registry)
+
+        payload = agent.inspect_tools()
+
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["key"], "session.echo")
+        self.assertEqual(payload[0]["description"], "echo tool")
+        self.assertEqual(payload[0]["parameters"], [])
+        self.assertEqual(payload[0]["function"]["module"], __name__)
+        self.assertEqual(payload[0]["function"]["qualname"], "_echo_handler")
 
 
 if __name__ == "__main__":
