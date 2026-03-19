@@ -12,10 +12,12 @@ Source layout:
 
 - `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
 - `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch
+- `harnessiq/cli/leads/`: leads-agent CLI commands for managed multi-ICP configuration and execution
 - `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
 - `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
 - `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
 - `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior; also contains MCP-style tool factories for all registered data and service providers
+- `harnessiq/tools/apollo/`: MCP-style tool factory for Apollo.io sales intelligence and engagement APIs
 - `harnessiq/tools/creatify/`: MCP-style tool factory for Creatify AI video creation
 - `harnessiq/tools/arcads/`: MCP-style tool factory for Arcads AI advertising video creation
 - `harnessiq/tools/instantly/`: MCP-style tool factory for Instantly cold email platform
@@ -53,6 +55,7 @@ Source layout:
 - `harnessiq/config/`: credential loader and base credential configuration types; `CredentialLoader` resolves named environment variables from a repo-local `.env` file
 - `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
 - `harnessiq/providers/`: provider-specific request builders, HTTP clients, and operation catalogs; covers both AI LLM providers and external-service API providers
+- `harnessiq/providers/apollo/`: Apollo.io sales intelligence API client, request catalog, and credential model
 - `harnessiq/providers/anthropic/`: Anthropic request and tool-translation helpers
 - `harnessiq/providers/openai/`: OpenAI request and tool-translation helpers
 - `harnessiq/providers/grok/`: Grok request and tool-translation helpers
@@ -108,6 +111,7 @@ Tests:
 - `tests/test_outreach_provider.py`: coverage for Outreach credentials (OAuth Bearer), client, core operation catalog, and tool factory
 - `tests/test_lemlist_provider.py`: coverage for Lemlist credentials (Basic Auth), client, operation catalog, and tool factory
 - `tests/test_exa_provider.py`: coverage for Exa credentials, client, search operation catalog, and tool factory
+- `tests/test_apollo_provider.py`: coverage for Apollo credentials, client, operation catalog, request preparation, and tool factory
 - `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
 - `tests/test_reasoning_tools.py`: coverage for the three core reasoning tools (brainstorm, chain_of_thought, critique) — handler behavior, count presets, boundary validation, registry integration, and instruction output shape
 - `tests/test_reasoning_tools.py`: coverage for reasoning tool implementations, boundary validation, and instruction formatting
@@ -122,6 +126,7 @@ Tests:
 
 - `tests/test_leads_shared.py`: coverage for the leads-agent shared types, per-ICP memory store, search compaction persistence, and filesystem save-backend dedupe behavior
 - `tests/test_leads_agent.py`: coverage for the leads-agent harness â€” construction, prompt/parameter sections, ICP rotation, deterministic search persistence, save/dedupe behavior, and pruning tied to durable search progress
+- `tests/test_leads_cli.py`: coverage for the leads CLI â€” parser registration, configure/show state management, runtime parameter normalization, storage backend injection, and run wiring
 Current memory artifacts:
 
 - `memory/refactor-types-constants/`: planning, ticket, quality, critique, and PR-body artifacts for the shared definitions refactor
