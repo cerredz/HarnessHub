@@ -196,6 +196,13 @@ PROVIDER_ENTRIES: tuple[ToolEntry, ...] = (
         requires_credentials=True,
     ),
     ToolEntry(
+        key="paperclip.request",
+        name="paperclip_request",
+        description="Execute authenticated Paperclip control-plane API operations for companies, agents, issues, approvals, activity, and costs.",
+        family="paperclip",
+        requires_credentials=True,
+    ),
+    ToolEntry(
         key="peopledatalabs.request",
         name="peopledatalabs_request",
         description="Execute authenticated People Data Labs data enrichment API operations.",
@@ -286,6 +293,7 @@ PROVIDER_FACTORY_MAP: dict[str, tuple[str, str]] = {
     "lusha": ("harnessiq.tools.lusha", "create_lusha_tools"),
     "lemlist": ("harnessiq.tools.lemlist", "create_lemlist_tools"),
     "outreach": ("harnessiq.tools.outreach", "create_outreach_tools"),
+    "paperclip": ("harnessiq.tools.paperclip", "create_paperclip_tools"),
     "peopledatalabs": ("harnessiq.tools.peopledatalabs", "create_peopledatalabs_tools"),
     "phantombuster": ("harnessiq.tools.phantombuster", "create_phantombuster_tools"),
     "proxycurl": ("harnessiq.tools.proxycurl", "create_proxycurl_tools"),
