@@ -43,10 +43,14 @@ class _FakeSearchBackend:
     def __init__(self, execution: InstagramSearchExecution) -> None:
         self.execution = execution
         self.calls: list[tuple[str, int]] = []
+        self.close_calls = 0
 
     def search_keyword(self, *, keyword: str, max_results: int) -> InstagramSearchExecution:
         self.calls.append((keyword, max_results))
         return self.execution
+
+    def close(self) -> None:
+        self.close_calls += 1
 
 
 def _build_execution(keyword: str = "fitness coach") -> InstagramSearchExecution:
@@ -169,6 +173,39 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
 
         self.assertIs(Imported, InstagramKeywordDiscoveryAgent)
 
+    def test_run_closes_backend_after_completion(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            backend = _FakeSearchBackend(_build_execution())
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+            agent = InstagramKeywordDiscoveryAgent(
+                model=model,
+                search_backend=backend,
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators",),
+            )
+
+            agent.run(max_cycles=1)
+
+            self.assertEqual(backend.close_calls, 1)
+
+    def test_run_closes_backend_after_tool_error(self) -> None:
+        class _FailingModel:
+            def generate_turn(self, request: AgentModelRequest) -> AgentModelResponse:
+                raise RuntimeError("boom")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            backend = _FakeSearchBackend(_build_execution())
+            agent = InstagramKeywordDiscoveryAgent(
+                model=_FailingModel(),
+                search_backend=backend,
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators",),
+            )
+
+            with self.assertRaisesRegex(RuntimeError, "boom"):
+                agent.run(max_cycles=1)
+
+            self.assertEqual(backend.close_calls, 1)
     def test_runtime_config_preserves_langsmith_settings(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             agent = InstagramKeywordDiscoveryAgent(

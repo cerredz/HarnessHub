@@ -217,9 +217,6 @@ class BaseAgent(ABC):
                         total_estimated_request_tokens=total_estimated_request_tokens,
                     )
 
-                if self._should_reset_context():
-                    self.reset_context()
-
                 if not response.should_continue:
                     return self._complete_run(
                         AgentRunResult(
@@ -230,6 +227,14 @@ class BaseAgent(ABC):
                         started_at=started_at,
                         total_estimated_request_tokens=total_estimated_request_tokens,
                     )
+
+                if self._should_prune_context():
+                    self.reset_context()
+                    self._last_prune_progress = self.pruning_progress_value()
+
+                if self._should_reset_context():
+                    self.reset_context()
+                    self._last_prune_progress = self.pruning_progress_value()
         except Exception as exc:
             self._emit_ledger_entry(
                 started_at=started_at,
@@ -308,25 +313,6 @@ class BaseAgent(ABC):
                 pause_reason=pause_reason,
                 error=error,
             ),
-            if not response.should_continue:
-                return AgentRunResult(
-                    status="completed",
-                    cycles_completed=cycles_completed,
-                    resets=self._reset_count,
-                )
-
-            if self._should_prune_context():
-                self.reset_context()
-                self._last_prune_progress = self.pruning_progress_value()
-
-            if self._should_reset_context():
-                self.reset_context()
-                self._last_prune_progress = self.pruning_progress_value()
-
-        return AgentRunResult(
-            status="max_cycles_reached",
-            cycles_completed=cycles_completed,
-            resets=self._reset_count,
         )
         for sink in self._resolved_output_sinks():
             try:

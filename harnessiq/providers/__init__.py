@@ -22,6 +22,7 @@ from .output_sinks import (
     extract_model_metadata,
 )
 from .playwright import (
+    PlaywrightBrowserSession,
     chromium_context,
     get_or_create_page,
     goto_page,
@@ -45,6 +46,7 @@ __all__ = [
     "ConfluenceClient",
     "LinearClient",
     "NotionClient",
+    "PlaywrightBrowserSession",
     "extract_model_metadata",
     "chromium_context",
     "get_or_create_page",

@@ -1,6 +1,7 @@
 """Playwright runtime helpers shared across integrations."""
 
 from .browser import (
+    PlaywrightBrowserSession,
     chromium_context,
     get_or_create_page,
     goto_page,
@@ -11,6 +12,7 @@ from .browser import (
 )
 
 __all__ = [
+    "PlaywrightBrowserSession",
     "chromium_context",
     "get_or_create_page",
     "goto_page",

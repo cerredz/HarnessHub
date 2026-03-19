@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, quote_plus, urljoin, urlparse
 
 from harnessiq.providers.playwright import (
-    chromium_context,
-    get_or_create_page,
+    PlaywrightBrowserSession,
     goto_page,
-    playwright_runtime,
     read_page_text,
     safe_page_title,
     wait_for_page_ready,
@@ -31,6 +30,12 @@ from harnessiq.shared.instagram import (
     extract_emails,
 )
 
+_DEFAULT_IMPORT_ERROR_MESSAGE = (
+    "playwright is required for instagram search.\n"
+    "Install with: pip install playwright && python -m playwright install chromium"
+)
+_DEFAULT_SEARCH_INTERVAL_SECONDS = 2.0
+
 
 class PlaywrightInstagramSearchBackend:
     """Deterministic Google-to-Instagram search executor using Playwright."""
@@ -43,78 +48,122 @@ class PlaywrightInstagramSearchBackend:
         channel: str = DEFAULT_INSTAGRAM_BROWSER_CHANNEL,
         timeout_ms: int = DEFAULT_INSTAGRAM_TIMEOUT_MS,
         network_idle_timeout_ms: int = DEFAULT_INSTAGRAM_NETWORK_IDLE_TIMEOUT_MS,
+        search_interval_seconds: float = _DEFAULT_SEARCH_INTERVAL_SECONDS,
     ) -> None:
         self._session_dir = Path(session_dir) if session_dir else None
         self._headless = headless
         self._channel = channel
         self._timeout_ms = timeout_ms
         self._network_idle_timeout_ms = network_idle_timeout_ms
+        self._search_interval_seconds = max(0.0, float(search_interval_seconds))
+        self._session: PlaywrightBrowserSession | None = None
+        self._search_page: Any = None
+        self._last_search_started_at: float | None = None
 
     def search_keyword(self, *, keyword: str, max_results: int) -> InstagramSearchExecution:
         query = build_instagram_google_query(keyword)
         search_url = f"{INSTAGRAM_GOOGLE_SEARCH_URL}?q={quote_plus(query)}"
+        self._wait_for_next_search_slot()
+        self._last_search_started_at = time.monotonic()
 
-        with playwright_runtime(
-            import_error_message=(
-                "playwright is required for instagram search.\n"
-                "Install with: pip install playwright && python -m playwright install chromium"
-            )
-        ) as playwright:
-            with chromium_context(
-                playwright,
+        search_page = self._get_search_page()
+        goto_page(search_page, url=search_url, timeout_ms=self._timeout_ms)
+        wait_for_page_ready(
+            search_page,
+            timeout_ms=self._timeout_ms,
+            network_idle_timeout_ms=self._network_idle_timeout_ms,
+        )
+        self._raise_if_google_blocked(search_page, keyword=keyword)
+
+        candidate_urls = self._extract_instagram_urls(search_page, max_results=max_results)
+        visited_urls: list[str] = []
+        leads: list[InstagramLeadRecord] = []
+
+        for url in candidate_urls:
+            detail_page = self._get_session().new_page()
+            try:
+                goto_page(detail_page, url=url, timeout_ms=self._timeout_ms)
+                wait_for_page_ready(
+                    detail_page,
+                    timeout_ms=self._timeout_ms,
+                    network_idle_timeout_ms=self._network_idle_timeout_ms,
+                )
+                visited_urls.append(detail_page.url)
+                text = read_page_text(detail_page)
+                emails = extract_emails(text)
+                if not emails:
+                    continue
+                leads.append(
+                    InstagramLeadRecord(
+                        source_url=detail_page.url,
+                        source_keyword=keyword,
+                        found_at=_utcnow(),
+                        emails=tuple(emails),
+                        title=safe_page_title(detail_page),
+                        snippet=text[:500].strip(),
+                    )
+                )
+            finally:
+                detail_page.close()
+
+        email_count = sum(len(lead.emails) for lead in leads)
+        search_record = InstagramSearchRecord(
+            keyword=keyword,
+            query=query,
+            searched_at=_utcnow(),
+            visited_urls=tuple(visited_urls),
+            lead_count=len(leads),
+            email_count=email_count,
+        )
+        return InstagramSearchExecution(search_record=search_record, leads=tuple(leads))
+
+    def close(self) -> None:
+        """Close the reusable browser session held by the backend."""
+        if self._session is not None:
+            self._session.close()
+        self._session = None
+        self._search_page = None
+        self._last_search_started_at = None
+
+    def _get_session(self) -> PlaywrightBrowserSession:
+        if self._session is None:
+            session = PlaywrightBrowserSession(
                 session_dir=self._session_dir,
                 channel=self._channel,
                 headless=self._headless,
                 viewport=DEFAULT_INSTAGRAM_BROWSER_VIEWPORT,
-            ) as context:
-                search_page = get_or_create_page(context)
-                goto_page(search_page, url=search_url, timeout_ms=self._timeout_ms)
-                wait_for_page_ready(
-                    search_page,
-                    timeout_ms=self._timeout_ms,
-                    network_idle_timeout_ms=self._network_idle_timeout_ms,
-                )
-                candidate_urls = self._extract_instagram_urls(search_page, max_results=max_results)
-                visited_urls: list[str] = []
-                leads: list[InstagramLeadRecord] = []
+                import_error_message=_DEFAULT_IMPORT_ERROR_MESSAGE,
+            )
+            session.start()
+            self._session = session
+        return self._session
 
-                for url in candidate_urls:
-                    detail_page = context.new_page()
-                    try:
-                        goto_page(detail_page, url=url, timeout_ms=self._timeout_ms)
-                        wait_for_page_ready(
-                            detail_page,
-                            timeout_ms=self._timeout_ms,
-                            network_idle_timeout_ms=self._network_idle_timeout_ms,
-                        )
-                        visited_urls.append(detail_page.url)
-                        text = read_page_text(detail_page)
-                        emails = extract_emails(text)
-                        if not emails:
-                            continue
-                        leads.append(
-                            InstagramLeadRecord(
-                                source_url=detail_page.url,
-                                source_keyword=keyword,
-                                found_at=_utcnow(),
-                                emails=tuple(emails),
-                                title=safe_page_title(detail_page),
-                                snippet=text[:500].strip(),
-                            )
-                        )
-                    finally:
-                        detail_page.close()
+    def _get_search_page(self) -> Any:
+        if self._search_page is None:
+            self._search_page = self._get_session().get_or_create_page()
+        return self._search_page
 
-                email_count = sum(len(lead.emails) for lead in leads)
-                search_record = InstagramSearchRecord(
-                    keyword=keyword,
-                    query=query,
-                    searched_at=_utcnow(),
-                    visited_urls=tuple(visited_urls),
-                    lead_count=len(leads),
-                    email_count=email_count,
-                )
-                return InstagramSearchExecution(search_record=search_record, leads=tuple(leads))
+    def _wait_for_next_search_slot(self) -> None:
+        if self._last_search_started_at is None or self._search_interval_seconds <= 0:
+            return
+        elapsed = time.monotonic() - self._last_search_started_at
+        remaining = self._search_interval_seconds - elapsed
+        if remaining > 0:
+            time.sleep(remaining)
+
+    def _raise_if_google_blocked(self, page: Any, *, keyword: str) -> None:
+        current_url = str(getattr(page, "url", ""))
+        if "google.com/sorry/" in current_url:
+            raise RuntimeError(
+                f"Google blocked Instagram discovery search for keyword '{keyword}' with a "
+                f"sorry interstitial at '{current_url}'."
+            )
+        body_text = read_page_text(page).lower()
+        if "unusual traffic" in body_text and "not a robot" in body_text:
+            raise RuntimeError(
+                f"Google blocked Instagram discovery search for keyword '{keyword}' with an "
+                "anti-bot interstitial."
+            )
 
     def _extract_instagram_urls(self, page: Any, *, max_results: int) -> list[str]:
         raw_entries = page.eval_on_selector_all(
@@ -150,6 +199,10 @@ def create_search_backend() -> InstagramSearchBackend:
         session_dir=session_dir,
         channel=channel,
         headless=headless,
+        search_interval_seconds=_parse_float(
+            os.environ.get("HARNESSIQ_INSTAGRAM_SEARCH_INTERVAL_SECONDS"),
+            default=_DEFAULT_SEARCH_INTERVAL_SECONDS,
+        ),
     )
 
 
@@ -180,6 +233,15 @@ def _parse_bool(value: str | None, *, default: bool) -> bool:
     if normalized in {"0", "false", "no", "off"}:
         return False
     raise ValueError(f"Unsupported boolean value '{value}'.")
+
+
+def _parse_float(value: str | None, *, default: float) -> float:
+    if value is None:
+        return default
+    normalized = value.strip()
+    if not normalized:
+        return default
+    return float(normalized)
 
 
 def _utcnow() -> str:
