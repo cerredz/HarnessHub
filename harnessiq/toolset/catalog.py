@@ -109,6 +109,13 @@ BUILTIN_FAMILY_FACTORIES: tuple[_BuiltinFactory, ...] = (
 
 PROVIDER_ENTRIES: tuple[ToolEntry, ...] = (
     ToolEntry(
+        key="attio.request",
+        name="attio_request",
+        description="Execute authenticated Attio CRM REST API operations.",
+        family="attio",
+        requires_credentials=True,
+    ),
+    ToolEntry(
         key="apollo.request",
         name="apollo_request",
         description="Execute authenticated Apollo.io B2B sales intelligence and engagement API operations.",
@@ -165,6 +172,13 @@ PROVIDER_ENTRIES: tuple[ToolEntry, ...] = (
         name="instantly_request",
         description="Execute authenticated Instantly cold email platform API operations.",
         family="instantly",
+        requires_credentials=True,
+    ),
+    ToolEntry(
+        key="inboxapp.request",
+        name="inboxapp_request",
+        description="Execute authenticated InboxApp messaging and workflow API operations.",
+        family="inboxapp",
         requires_credentials=True,
     ),
     ToolEntry(
@@ -248,6 +262,13 @@ PROVIDER_ENTRIES: tuple[ToolEntry, ...] = (
         requires_credentials=True,
     ),
     ToolEntry(
+        key="serper.request",
+        name="serper_request",
+        description="Execute authenticated Serper Google search API operations.",
+        family="serper",
+        requires_credentials=True,
+    ),
+    ToolEntry(
         key="snovio.request",
         name="snovio_request",
         description="Execute authenticated Snov.io email intelligence API operations (OAuth2).",
@@ -281,6 +302,7 @@ PROVIDER_ENTRY_INDEX: dict[str, ToolEntry] = {e.key: e for e in PROVIDER_ENTRIES
 # HTTP clients and credentials types.
 
 PROVIDER_FACTORY_MAP: dict[str, tuple[str, str]] = {
+    "attio": ("harnessiq.tools.attio", "create_attio_tools"),
     "apollo": ("harnessiq.tools.apollo", "create_apollo_tools"),
     "arcads": ("harnessiq.tools.arcads", "create_arcads_tools"),
     "arxiv": ("harnessiq.tools.arxiv", "create_arxiv_tools"),
@@ -289,6 +311,7 @@ PROVIDER_FACTORY_MAP: dict[str, tuple[str, str]] = {
     "exa": ("harnessiq.tools.exa", "create_exa_tools"),
     "expandi": ("harnessiq.tools.expandi", "create_expandi_tools"),
     "instantly": ("harnessiq.tools.instantly", "create_instantly_tools"),
+    "inboxapp": ("harnessiq.tools.inboxapp", "create_inboxapp_tools"),
     "leadiq": ("harnessiq.tools.leadiq", "create_leadiq_tools"),
     "lusha": ("harnessiq.tools.lusha", "create_lusha_tools"),
     "lemlist": ("harnessiq.tools.lemlist", "create_lemlist_tools"),
@@ -299,6 +322,7 @@ PROVIDER_FACTORY_MAP: dict[str, tuple[str, str]] = {
     "proxycurl": ("harnessiq.tools.proxycurl", "create_proxycurl_tools"),
     "resend": ("harnessiq.tools.resend", "create_resend_tools"),
     "salesforge": ("harnessiq.tools.salesforge", "create_salesforge_tools"),
+    "serper": ("harnessiq.tools.serper", "create_serper_tools"),
     "smartlead": ("harnessiq.tools.smartlead", "create_smartlead_tools"),
     "snovio": ("harnessiq.tools.snovio", "create_snovio_tools"),
     "zerobounce": ("harnessiq.tools.zerobounce", "create_zerobounce_tools"),

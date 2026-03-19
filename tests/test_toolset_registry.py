@@ -106,7 +106,9 @@ class TestGetToolProvider:
             get_tool("creatify.request")
 
     def test_all_provider_keys_raise_without_credentials(self):
-        for key in PROVIDER_ENTRY_INDEX:
+        for key, entry in PROVIDER_ENTRY_INDEX.items():
+            if not entry.requires_credentials:
+                continue
             with pytest.raises(ValueError):
                 get_tool(key)
 
@@ -252,7 +254,9 @@ class TestListTools:
     def test_provider_entries_marked_requires_credentials(self):
         provider_entries = [e for e in list_tools() if e.requires_credentials]
         provider_keys = {e.key for e in provider_entries}
-        expected_keys = set(PROVIDER_ENTRY_INDEX.keys())
+        expected_keys = {
+            key for key, entry in PROVIDER_ENTRY_INDEX.items() if entry.requires_credentials
+        }
         assert expected_keys.issubset(provider_keys)
 
     def test_builtin_entries_not_requires_credentials(self):

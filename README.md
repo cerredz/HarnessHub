@@ -1,6 +1,6 @@
 # Harnessiq
 
-Harnessiq is a Python SDK for building production-grade tool-using agents. It ships a complete agent runtime, a large library of injectable tools, MCP-style factories for 15+ external service APIs, five concrete agent harnesses, and a scriptable CLI — all composable without framework lock-in.
+Harnessiq is a Python SDK for building production-grade tool-using agents. It ships a complete agent runtime, a large library of injectable tools, MCP-style factories for 18+ external service APIs, five concrete agent harnesses, and a scriptable CLI — all composable without framework lock-in.
 
 ---
 
@@ -554,6 +554,7 @@ tools = create_exa_tools(
 |----------|-------------------|---------|-----------|----------------|
 | **Apollo.io** | `APOLLO_REQUEST` | `create_apollo_tools()` | 25 | API key (`X-Api-Key` header) |
 | **Exa** | `EXA_REQUEST` | `create_exa_tools()` | 15 | API key (`x-api-key` header) |
+| **Serper** | `SERPER_REQUEST` | `create_serper_tools()` | 10 | API key (`X-API-KEY` header) |
 | **Snov.io** | `SNOVIO_REQUEST` | `create_snovio_tools()` | 23 | OAuth2 — client ID + secret, token exchange is transparent |
 | **LeadIQ** | `LEADIQ_REQUEST` | `create_leadiq_tools()` | 12 | API key (GraphQL `Authorization: Bearer`) |
 | **ZoomInfo** | `ZOOMINFO_REQUEST` | `create_zoominfo_tools()` | 12 | JWT — username + password, token exchange is transparent |
@@ -570,6 +571,8 @@ Import constants: `from harnessiq.shared.tools import APOLLO_REQUEST, EXA_REQUES
 | Provider | Tool key constant | Factory | Operations | Auth mechanism |
 |----------|-------------------|---------|-----------|----------------|
 | **Instantly** | `INSTANTLY_REQUEST` | `create_instantly_tools()` | 75 | API key |
+| **Attio** | `ATTIO_REQUEST` | `create_attio_tools()` | 7 | Bearer token |
+| **InboxApp** | `INBOXAPP_REQUEST` | `create_inboxapp_tools()` | 9 | Bearer token |
 | **Outreach** | `OUTREACH_REQUEST` | `create_outreach_tools()` | 65 | OAuth Bearer token |
 | **Lemlist** | `LEMLIST_REQUEST` | `create_lemlist_tools()` | 34 | Basic Auth (API key as username, empty password) |
 | **Salesforge** | `SALESFORGE_REQUEST` | `create_salesforge_tools()` | 22 | API key |
@@ -834,6 +837,7 @@ creds = loader.load_all(["EXA_API_KEY", "RESEND_API_KEY"])
 # Search and intelligence
 APOLLO_API_KEY=...
 EXA_API_KEY=your_exa_key
+SERPER_API_KEY=...
 SNOVIO_CLIENT_ID=...
 SNOVIO_CLIENT_SECRET=...
 LEADIQ_API_KEY=...
@@ -844,6 +848,8 @@ CORESIGNAL_API_KEY=...
 
 # Sales engagement
 INSTANTLY_API_KEY=...
+ATTIO_API_KEY=...
+INBOXAPP_API_KEY=...
 OUTREACH_ACCESS_TOKEN=...
 LEMLIST_API_KEY=...
 SALESFORGE_API_KEY=...
