@@ -449,6 +449,10 @@ def _coerce_float(value: Any) -> float:
 def _coerce_bool(value: Any) -> bool:
     if isinstance(value, bool):
         return value
+    if isinstance(value, int):
+        if value in (0, 1):
+            return bool(value)
+        raise ValueError("Runtime parameter must be a boolean.")
     if isinstance(value, str):
         normalized = value.strip().lower()
         if normalized in {"true", "1", "yes", "on"}:

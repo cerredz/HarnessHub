@@ -316,6 +316,10 @@ class TestNormalizeRuntimeParameters:
         result = normalize_exa_outreach_runtime_parameters({"search_only": "false"})
         assert result["search_only"] is False
 
+    def test_search_only_integer_one_coerced_to_bool(self):
+        result = normalize_exa_outreach_runtime_parameters({"search_only": 1})
+        assert result["search_only"] is True
+
     def test_boolean_max_tokens_raises(self):
         with pytest.raises(ValueError):
             normalize_exa_outreach_runtime_parameters({"max_tokens": True})
