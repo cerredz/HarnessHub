@@ -20,16 +20,27 @@ Codebase standards:
 - These agents are being built for full autonomy, so designs must assume multiple context window resets. Durable memory and parameter sections should carry forward the state needed to resume work without losing orientation.
 - Agent behavior should be configurable through parameters. The shared runtime comes from `BaseAgent`, while concrete harnesses can expose runtime parameters and user-defined custom parameters where the workflow requires them.
 - Update this file whenever a meaningful architectural folder is added or when the intended boundary between `agents/`, `shared/`, `tools/`, and `toolset/` changes.
+- The shared runtime now also owns a framework-level audit ledger. Every terminal run emits a universal `LedgerEntry` envelope after execution, and output sinks are injected at the runtime-config layer rather than at the harness layer.
+- Output sinks are a post-run export concern, not an in-context agent capability. They must never participate in the execution loop, modify the transcript, or change the returned `AgentRunResult`.
 
 Top-level directories:
 
 - `artifacts/`: repository-level architecture and maintenance artifacts. This folder explains how the repo is organized and gives contributors a shared reference point for structural decisions.
-- `docs/`: lightweight package documentation and usage guides. This folder matters because it explains how the SDK is intended to be used outside the source tree.
+- `docs/`: lightweight package documentation and usage guides. This folder matters because it explains how the SDK is intended to be used outside the source tree, including framework features such as the output-sink and audit-ledger layer.
 - `harnessiq/`: the production Python SDK package for Harnessiq. This is the most important top-level folder because it contains the runtime, abstractions, integrations, and public package surface that actually ship to users.
 
 Source layout:
 
 - `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
+- `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch, including sink connection management plus ledger log/export/report commands
+- `harnessiq/config/`: repo-local credential config models, persisted agent credential bindings, and `.env` loader/store helpers
+- `harnessiq/integrations/`: adapters that bridge the core SDK to external runtime surfaces such as model implementations and browser automation
+- `harnessiq/master_prompts/`: curated, deployable system prompts for agents and direct SDK use
+- `harnessiq/providers/`: provider translation helpers, HTTP clients, and operation catalogs for both LLM providers and external-service APIs, including provider-backed output-sink transports for destinations like Notion, Confluence, Supabase, Linear, Slack, and Discord
+- `harnessiq/shared/`: shared types, configs, and constants reused across modules
+- `harnessiq/tools/`: the executable tool runtime layer, including built-in tools, prompt/filesystem helpers, reasoning tools, and provider-backed tool factories
+- `harnessiq/toolset/`: plug-and-play toolset SDK for retrieving, composing, and registering built-in, provider, and custom tools
+- `harnessiq/utils/`: agent-agnostic utility infrastructure such as run storage and other reusable support code that does not belong to a single agent, provider, or tool family, including the framework-level audit ledger and output-sink implementation used by all agents
 - `harnessiq/agents/base/agent.py`: shared `BaseAgent` runtime loop plus additive tool introspection helpers; agents still expose canonical `available_tools()` and now also a richer inherited inspection surface for descriptions, parameters, schemas, and backing function metadata
 - `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch
 - `harnessiq/cli/leads/`: leads-agent CLI commands for managed multi-ICP configuration and execution
@@ -97,6 +108,14 @@ Source layout:
 - `harnessiq/providers/lemlist/`: Lemlist outreach API - credentials, client, and full operation catalog
 - `harnessiq/providers/exa/`: Exa neural search API - credentials, client, and full operation catalog
 - `harnessiq/agents/exa_outreach/`: ExaOutreach agent harness - finds prospects via Exa search, sends personalised emails via Resend, and deterministically persists leads and email records to a pluggable `StorageBackend`
+- `harnessiq/providers/arxiv/`: public arXiv API client with Atom feed parsing and PDF download helpers
+- `harnessiq/providers/creatify/`: Creatify AI video creation API — credentials, client, and full operation catalog
+- `harnessiq/providers/arcads/`: Arcads AI video ad API — credentials, client, and operation catalog
+- `harnessiq/providers/instantly/`: Instantly.ai cold email API v2 — credentials, client, and full operation catalog
+- `harnessiq/providers/outreach/`: Outreach.io sales engagement API — credentials, OAuth client, and core operation catalog
+- `harnessiq/providers/lemlist/`: Lemlist outreach API — credentials, client, and full operation catalog
+- `harnessiq/providers/exa/`: Exa neural search API — credentials, client, and full operation catalog
+- `harnessiq/agents/exa_outreach/`: ExaOutreach agent harness — finds prospects via Exa search, sends personalised emails via Resend, and deterministically persists leads and email records to a pluggable `StorageBackend`
 - `harnessiq/agents/exa_outreach/prompts/`: system prompt files for the ExaOutreach agent; `master_prompt.md` loaded at runtime
 - `harnessiq/shared/exa_outreach.py`: `EmailTemplate`, `LeadRecord`, `EmailSentRecord`, `OutreachRunLog`, `StorageBackend` protocol, `FileSystemStorageBackend` (per-run JSON files under `runs/`), and `ExaOutreachMemoryStore`
 - `harnessiq/shared/leads.py`: leads-agent shared domain models and config including `LeadsAgentConfig`, `LeadRunConfig`, `LeadRunState`, `LeadICP`, `LeadICPState`, `LeadSearchRecord`, `LeadSearchSummary`, `LeadRecord`, `LeadsMemoryStore`, and `FileSystemLeadsStorageBackend` for per-ICP durable search state plus cross-run lead dedupe/persistence
@@ -133,7 +152,7 @@ Tests:
 - `tests/test_outreach_provider.py`: coverage for Outreach credentials (OAuth Bearer), client, core operation catalog, and tool factory
 - `tests/test_lemlist_provider.py`: coverage for Lemlist credentials (Basic Auth), client, operation catalog, and tool factory
 - `tests/test_exa_provider.py`: coverage for Exa credentials, client, search operation catalog, and tool factory
-- `tests/test_apollo_provider.py`: coverage for Apollo credentials, client, operation catalog, request preparation, and tool factory
+- `tests/test_arxiv_provider.py`: coverage for arXiv transport config, Atom feed parsing, URL builders, client/download behavior, and operation catalog
 - `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
 - `tests/test_reasoning_tools.py`: coverage for the three core reasoning tools (brainstorm, chain_of_thought, critique) - handler behavior, count presets, boundary validation, registry integration, and instruction output shape
 - `tests/test_reasoning_tools.py`: coverage for reasoning tool implementations, boundary validation, and instruction formatting

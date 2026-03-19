@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import unittest
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
 
 from harnessiq.agents import (
     AgentModelRequest,
@@ -16,6 +19,17 @@ from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESE
 from harnessiq.shared.tools import CONTROL_PAUSE_FOR_HUMAN, HEAVY_COMPACTION, RegisteredTool, ToolCall, ToolDefinition
 from harnessiq.tools import create_context_compaction_tools, create_general_purpose_tools
 from harnessiq.tools.registry import ToolRegistry
+from harnessiq.utils import LedgerEntry
+
+_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
+
+
+def setUpModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.start()
+
+
+def tearDownModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.stop()
 
 
 class _FakeModel:
@@ -46,7 +60,7 @@ class _InspectableAgent(BaseAgent):
             name="inspectable_agent",
             model=model,
             tool_executor=tool_executor,
-            runtime_config=runtime_config,
+            runtime_config=runtime_config or AgentRuntimeConfig(include_default_output_sink=False),
         )
 
     def build_system_prompt(self) -> str:
@@ -57,6 +71,25 @@ class _InspectableAgent(BaseAgent):
         self._parameter_index += 1
         return [AgentParameterSection(title="State", content=self._parameter_versions[index])]
 
+    def build_ledger_outputs(self) -> dict[str, object]:
+        return {"parameter_state": self.parameter_sections[0].content}
+
+    def build_ledger_tags(self) -> list[str]:
+        return ["inspectable"]
+
+
+class _CollectingSink:
+    def __init__(self) -> None:
+        self.entries: list[LedgerEntry] = []
+
+    def on_run_complete(self, entry: LedgerEntry) -> None:
+        self.entries.append(entry)
+
+
+class _FailingSink:
+    def on_run_complete(self, entry: LedgerEntry) -> None:
+        del entry
+        raise RuntimeError("sink failed")
     def pruning_progress_value(self) -> int:
         if self._progress_step is None:
             return super().pruning_progress_value()
@@ -128,6 +161,54 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(model.requests[1].transcript[2].entry_type, "tool_result")
         self.assertIn("session.echo", model.requests[1].transcript[1].content)
         self.assertIn("hello", model.requests[1].transcript[2].content)
+
+    def test_run_wraps_agent_and_tool_execution_in_tracing_helpers(self) -> None:
+        registry = ToolRegistry(
+            [
+                _constant_tool("session.echo", "echo", _echo_handler),
+            ]
+        )
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Use the echo tool.",
+                    tool_calls=(ToolCall(tool_key="session.echo", arguments={"text": "hello"}),),
+                    should_continue=True,
+                ),
+                AgentModelResponse(
+                    assistant_message="Finished.",
+                    should_continue=False,
+                ),
+            ]
+        )
+        agent = _InspectableAgent(
+            model=model,
+            tool_executor=registry,
+            runtime_config=AgentRuntimeConfig(langsmith_api_key="ls_test_123"),
+        )
+
+        def _wrap_agent(operation, **kwargs):
+            del kwargs
+            return lambda: operation()
+
+        def _wrap_tool(operation, **kwargs):
+            del kwargs
+            return operation()
+
+        with (
+            patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=object()) as mock_client,
+            patch("harnessiq.agents.base.agent.trace_agent_run", side_effect=_wrap_agent) as mock_trace_agent,
+            patch("harnessiq.agents.base.agent.trace_tool_call", side_effect=_wrap_tool) as mock_trace_tool,
+        ):
+            result = agent.run(max_cycles=5)
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(mock_client.call_count, 2)
+        self.assertEqual(mock_trace_agent.call_count, 1)
+        self.assertEqual(mock_trace_tool.call_count, 1)
+        self.assertEqual(mock_trace_agent.call_args.kwargs["name"], "inspectable_agent.run")
+        self.assertEqual(mock_trace_tool.call_args.kwargs["tool_key"], "session.echo")
+        self.assertEqual(mock_trace_tool.call_args.kwargs["tool_name"], "echo")
 
     def test_run_pauses_when_a_tool_returns_pause_signal(self) -> None:
         registry = ToolRegistry(
@@ -293,6 +374,60 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(model.requests[1].transcript, ())
         self.assertEqual(model.requests[1].parameter_sections[0].content, "initial")
 
+    def test_run_emits_ledger_entry_to_injected_sink(self) -> None:
+        registry = ToolRegistry([])
+        sink = _CollectingSink()
+        agent = _InspectableAgent(
+            model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+            tool_executor=registry,
+            runtime_config=AgentRuntimeConfig(
+                output_sinks=(sink,),
+                include_default_output_sink=False,
+            ),
+        )
+
+        result = agent.run(max_cycles=1)
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(len(sink.entries), 1)
+        self.assertEqual(sink.entries[0].agent_name, "inspectable_agent")
+        self.assertEqual(sink.entries[0].outputs["parameter_state"], "initial")
+        self.assertEqual(sink.entries[0].tags, ["inspectable"])
+
+    def test_sink_failures_are_swallowed_and_later_sinks_still_run(self) -> None:
+        registry = ToolRegistry([])
+        good_sink = _CollectingSink()
+        agent = _InspectableAgent(
+            model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+            tool_executor=registry,
+            runtime_config=AgentRuntimeConfig(
+                output_sinks=(_FailingSink(), good_sink),
+                include_default_output_sink=False,
+            ),
+        )
+
+        with self.assertLogs("harnessiq.agents.base.agent", level="WARNING") as logs:
+            result = agent.run(max_cycles=1)
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(len(good_sink.entries), 1)
+        self.assertIn("OutputSink _FailingSink failed", "\n".join(logs.output))
+
+    def test_default_jsonl_sink_writes_to_harnessiq_home(self) -> None:
+        registry = ToolRegistry([])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict("os.environ", {"HARNESSIQ_HOME": temp_dir}):
+                agent = _InspectableAgent(
+                    model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                    tool_executor=registry,
+                    runtime_config=AgentRuntimeConfig(),
+                )
+
+                agent.run(max_cycles=1)
+
+                ledger_path = Path(temp_dir, "runs.jsonl")
+                self.assertTrue(ledger_path.exists())
+                self.assertIn("inspectable_agent", ledger_path.read_text(encoding="utf-8"))
     def test_runtime_config_rejects_invalid_prune_values(self) -> None:
         with self.assertRaises(ValueError):
             AgentRuntimeConfig(prune_progress_interval=0)

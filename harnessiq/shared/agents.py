@@ -4,14 +4,19 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, Sequence, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, Protocol, Sequence, TypedDict
 
 from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
+
+if TYPE_CHECKING:
+    from harnessiq.utils.ledger import OutputSink
 
 DEFAULT_AGENT_MAX_TOKENS = 80_000
 DEFAULT_AGENT_RESET_THRESHOLD = 0.9
 DEFAULT_AGENT_PRUNE_PROGRESS_INTERVAL: int | None = None
 DEFAULT_AGENT_PRUNE_TOKEN_LIMIT: int | None = None
+DEFAULT_AGENT_LANGSMITH_TRACING_ENABLED = True
+_UNSET = object()
 
 AgentContextEntryKind = Literal["parameter", "message", "tool_call", "tool_result", "summary"]
 AgentMessageRole = Literal["system", "user", "assistant"]
@@ -52,8 +57,14 @@ class AgentRuntimeConfig:
 
     max_tokens: int = DEFAULT_AGENT_MAX_TOKENS
     reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD
+    output_sinks: tuple["OutputSink", ...] = ()
+    include_default_output_sink: bool = True
     prune_progress_interval: int | None = DEFAULT_AGENT_PRUNE_PROGRESS_INTERVAL
     prune_token_limit: int | None = DEFAULT_AGENT_PRUNE_TOKEN_LIMIT
+    langsmith_tracing_enabled: bool = DEFAULT_AGENT_LANGSMITH_TRACING_ENABLED
+    langsmith_api_key: str | None = None
+    langsmith_project: str | None = None
+    langsmith_api_url: str | None = None
 
     def __post_init__(self) -> None:
         if self.max_tokens <= 0:
@@ -62,17 +73,71 @@ class AgentRuntimeConfig:
         if not 0 < self.reset_threshold <= 1:
             message = "reset_threshold must be between 0 and 1."
             raise ValueError(message)
+        object.__setattr__(self, "output_sinks", tuple(self.output_sinks))
         if self.prune_progress_interval is not None and self.prune_progress_interval <= 0:
             message = "prune_progress_interval must be greater than zero when provided."
             raise ValueError(message)
         if self.prune_token_limit is not None and self.prune_token_limit <= 0:
             message = "prune_token_limit must be greater than zero when provided."
             raise ValueError(message)
+        if self.langsmith_api_key is not None:
+            normalized_api_key = self.langsmith_api_key.strip()
+            object.__setattr__(self, "langsmith_api_key", normalized_api_key or None)
+        if self.langsmith_project is not None:
+            normalized_project = self.langsmith_project.strip()
+            object.__setattr__(self, "langsmith_project", normalized_project or None)
+        if self.langsmith_api_url is not None:
+            normalized_api_url = self.langsmith_api_url.strip()
+            object.__setattr__(self, "langsmith_api_url", normalized_api_url or None)
 
     @property
     def reset_token_limit(self) -> int:
         """Return the token estimate that should trigger a transcript reset."""
         return max(1, int(self.max_tokens * self.reset_threshold))
+
+
+def merge_agent_runtime_config(
+    runtime_config: AgentRuntimeConfig | None,
+    *,
+    max_tokens: int,
+    reset_threshold: float,
+    prune_progress_interval: int | None | object = _UNSET,
+    prune_token_limit: int | None | object = _UNSET,
+) -> AgentRuntimeConfig:
+    """Return a runtime config with shared settings preserved and scalar limits overridden."""
+    if runtime_config is None:
+        return AgentRuntimeConfig(
+            max_tokens=max_tokens,
+            reset_threshold=reset_threshold,
+            prune_progress_interval=(
+                DEFAULT_AGENT_PRUNE_PROGRESS_INTERVAL
+                if prune_progress_interval is _UNSET
+                else prune_progress_interval
+            ),
+            prune_token_limit=(
+                DEFAULT_AGENT_PRUNE_TOKEN_LIMIT
+                if prune_token_limit is _UNSET
+                else prune_token_limit
+            ),
+        )
+    return AgentRuntimeConfig(
+        max_tokens=max_tokens,
+        reset_threshold=reset_threshold,
+        prune_progress_interval=(
+            runtime_config.prune_progress_interval
+            if prune_progress_interval is _UNSET
+            else prune_progress_interval
+        ),
+        prune_token_limit=(
+            runtime_config.prune_token_limit
+            if prune_token_limit is _UNSET
+            else prune_token_limit
+        ),
+        langsmith_tracing_enabled=runtime_config.langsmith_tracing_enabled,
+        langsmith_api_key=runtime_config.langsmith_api_key,
+        langsmith_project=runtime_config.langsmith_project,
+        langsmith_api_url=runtime_config.langsmith_api_url,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,8 +261,10 @@ __all__ = [
     "AgentTranscriptEntry",
     "AgentTranscriptEntryType",
     "DEFAULT_AGENT_MAX_TOKENS",
+    "DEFAULT_AGENT_LANGSMITH_TRACING_ENABLED",
     "DEFAULT_AGENT_PRUNE_PROGRESS_INTERVAL",
     "DEFAULT_AGENT_PRUNE_TOKEN_LIMIT",
     "DEFAULT_AGENT_RESET_THRESHOLD",
+    "merge_agent_runtime_config",
     "estimate_text_tokens",
 ]

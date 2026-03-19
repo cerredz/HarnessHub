@@ -16,6 +16,7 @@ from harnessiq.shared.agents import (
     AgentPauseSignal,
     AgentRunResult,
     AgentRuntimeConfig,
+    merge_agent_runtime_config,
 )
 from harnessiq.shared.leads import (
     DEFAULT_LEADS_SEARCH_SUMMARY_EVERY,
@@ -67,6 +68,7 @@ class LeadsAgent(BaseAgent):
         provider_clients: Mapping[str, Any] | None = None,
         allowed_provider_operations: Mapping[str, Sequence[str] | None] | None = None,
         tools: Sequence[RegisteredTool] | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         self._config = LeadsAgentConfig.from_inputs(
             company_background=company_background,
@@ -105,11 +107,18 @@ class LeadsAgent(BaseAgent):
             prune_progress_interval=self._config.prune_search_interval,
             prune_token_limit=self._config.prune_token_limit,
         )
+        tool_registry = ToolRegistry(_merge_tools(external_tools, self._build_internal_tools()))
         super().__init__(
             name="leads_agent",
             model=model,
             tool_executor=tool_registry,
-            runtime_config=runtime_config,
+            runtime_config=merge_agent_runtime_config(
+                runtime_config,
+                max_tokens=self._config.max_tokens,
+                reset_threshold=self._config.reset_threshold,
+                prune_progress_interval=self._config.prune_search_interval,
+                prune_token_limit=self._config.prune_token_limit,
+            ),
             memory_path=self._config.memory_path,
         )
 

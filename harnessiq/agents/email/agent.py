@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Iterable, Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig, BaseAgent
+from harnessiq.shared.agents import merge_agent_runtime_config
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
 from harnessiq.tools.registry import ToolRegistry
 from harnessiq.tools.resend import ResendClient, ResendCredentials, build_resend_operation_catalog, create_resend_tools, get_resend_operation
@@ -49,6 +50,7 @@ class BaseEmailAgent(BaseAgent, ABC):
         config: EmailAgentConfig,
         email_tools: Iterable[RegisteredTool] = (),
         resend_client: ResendClient | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         if resend_client is not None and resend_client.credentials != config.resend_credentials:
             raise ValueError("resend_client credentials must match EmailAgentConfig.resend_credentials.")
@@ -68,12 +70,20 @@ class BaseEmailAgent(BaseAgent, ABC):
         runtime_config = AgentRuntimeConfig(
             max_tokens=self._config.max_tokens,
             reset_threshold=self._config.reset_threshold,
+            output_sinks=runtime_config.output_sinks if runtime_config is not None else (),
+            include_default_output_sink=(
+                runtime_config.include_default_output_sink if runtime_config is not None else True
+            ),
         )
         super().__init__(
             name=name,
             model=model,
             tool_executor=tool_registry,
-            runtime_config=runtime_config,
+            runtime_config=merge_agent_runtime_config(
+                runtime_config,
+                max_tokens=self._config.max_tokens,
+                reset_threshold=self._config.reset_threshold,
+            ),
         )
 
     @property
@@ -139,6 +149,14 @@ class BaseEmailAgent(BaseAgent, ABC):
     def additional_email_instructions(self) -> str | None:
         """Return optional free-form instructions appended to the system prompt."""
         return None
+
+    def build_ledger_tags(self) -> list[str]:
+        return ["email"]
+
+    def build_ledger_metadata(self) -> dict[str, object]:
+        return {
+            "allowed_resend_operations": list(self._config.allowed_resend_operations or ()),
+        }
 
 
 def _render_resend_credentials(config: EmailAgentConfig) -> str:

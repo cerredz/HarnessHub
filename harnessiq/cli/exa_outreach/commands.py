@@ -10,7 +10,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from harnessiq.cli._langsmith import seed_langsmith_environment
+from harnessiq.agents import AgentRuntimeConfig
 from harnessiq.shared.exa_outreach import ExaOutreachMemoryStore
+from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
 SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS = ("max_tokens", "reset_threshold")
 
@@ -84,6 +87,13 @@ def register_exa_outreach_commands(
         default=[],
         metavar="KEY=VALUE",
         help="Override a persisted runtime parameter for this run only.",
+    )
+    run_parser.add_argument(
+        "--sink",
+        action="append",
+        default=[],
+        metavar="SPEC",
+        help="Add a per-run output sink override using kind:value or kind:key=value,key=value.",
     )
     run_parser.add_argument(
         "--max-cycles", type=int, help="Optional max cycle count passed to agent.run()."
@@ -167,6 +177,7 @@ def _handle_run(args: argparse.Namespace) -> int:
 
     store = _load_store(args)
     store.prepare()
+    seed_langsmith_environment(Path(args.memory_root).expanduser())
 
     model = _load_factory(args.model_factory)()
     if not hasattr(model, "generate_turn"):
@@ -196,6 +207,7 @@ def _handle_run(args: argparse.Namespace) -> int:
         memory_path=store.memory_path,
         max_tokens=max_tokens,
         reset_threshold=reset_threshold,
+        runtime_config=_build_runtime_config(args.sink),
     )
     result = agent.run(max_cycles=args.max_cycles)
 
@@ -206,6 +218,7 @@ def _handle_run(args: argparse.Namespace) -> int:
     _emit_json(
         {
             "agent": args.agent,
+            "ledger_run_id": agent.last_run_id,
             "memory_path": str(store.memory_path.resolve()),
             "run_id": run_id,
             "result": {
@@ -356,6 +369,13 @@ def _print_run_summary(store: ExaOutreachMemoryStore, run_id: str) -> None:
     print(f"  Run files saved to: {store.runs_dir.resolve()}")
     print("=" * 64)
     print()
+
+
+def _build_runtime_config(sink_specs: Sequence[str]) -> AgentRuntimeConfig:
+    connections = ConnectionsConfigStore().load().enabled_connections()
+    return AgentRuntimeConfig(
+        output_sinks=build_output_sinks(connections=connections, sink_specs=sink_specs),
+    )
 
 
 def normalize_exa_outreach_runtime_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
