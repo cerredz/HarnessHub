@@ -15,16 +15,27 @@ Codebase standards:
 - Tools are not only optional model add-ons; they should be used wherever a deterministic check is possible. If an agent can verify state from durable memory or another authoritative source, it should do that explicitly instead of relying on model recall alone (for example, checking LinkedIn memory to confirm whether a job was already applied to).
 - These agents are being built for full autonomy, so designs must assume multiple context window resets. Durable memory and parameter sections should carry forward the state needed to resume work without losing orientation.
 - Agent behavior should be configurable through parameters. The shared runtime comes from `BaseAgent`, while concrete harnesses can expose runtime parameters and user-defined custom parameters where the workflow requires them.
+- The shared runtime now also owns a framework-level audit ledger. Every terminal run emits a universal `LedgerEntry` envelope after execution, and output sinks are injected at the runtime-config layer rather than at the harness layer.
+- Output sinks are a post-run export concern, not an in-context agent capability. They must never participate in the execution loop, modify the transcript, or change the returned `AgentRunResult`.
 
 Top-level directories:
 
 - `artifacts/`: repository-level architecture and maintenance artifacts. This folder explains how the repo is organized and gives contributors a shared reference point for structural decisions.
-- `docs/`: lightweight package documentation and usage guides. This folder matters because it explains how the SDK is intended to be used outside the source tree.
+- `docs/`: lightweight package documentation and usage guides. This folder matters because it explains how the SDK is intended to be used outside the source tree, including framework features such as the output-sink and audit-ledger layer.
 - `harnessiq/`: the production Python SDK package for Harnessiq. This is the most important top-level folder because it contains the runtime, abstractions, integrations, and public package surface that actually ship to users.
 
 Source layout:
 
 - `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
+- `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch, including sink connection management plus ledger log/export/report commands
+- `harnessiq/config/`: repo-local credential config models, persisted agent credential bindings, and `.env` loader/store helpers
+- `harnessiq/integrations/`: adapters that bridge the core SDK to external runtime surfaces such as model implementations and browser automation
+- `harnessiq/master_prompts/`: curated, deployable system prompts for agents and direct SDK use
+- `harnessiq/providers/`: provider translation helpers, HTTP clients, and operation catalogs for both LLM providers and external-service APIs, including provider-backed output-sink transports for destinations like Notion, Confluence, Supabase, Linear, Slack, and Discord
+- `harnessiq/shared/`: shared types, configs, and constants reused across modules
+- `harnessiq/tools/`: the executable tool runtime layer, including built-in tools, prompt/filesystem helpers, reasoning tools, and provider-backed tool factories
+- `harnessiq/toolset/`: plug-and-play toolset SDK for retrieving, composing, and registering built-in, provider, and custom tools
+- `harnessiq/utils/`: agent-agnostic utility infrastructure such as run storage and other reusable support code that does not belong to a single agent, provider, or tool family, including the framework-level audit ledger and output-sink implementation used by all agents
 - `harnessiq/agents/base/agent.py`: shared `BaseAgent` runtime loop plus additive tool introspection helpers; agents still expose canonical `available_tools()` and now also a richer inherited inspection surface for descriptions, parameters, schemas, and backing function metadata
 - `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch
 - `harnessiq/cli/leads/`: leads-agent CLI commands for managed multi-ICP configuration and execution

@@ -164,6 +164,14 @@ class ExaOutreachAgent(BaseAgent):
                 self._build_internal_tools(),
             )
         )
+        runtime_config = AgentRuntimeConfig(
+            max_tokens=self._config.max_tokens,
+            reset_threshold=self._config.reset_threshold,
+            output_sinks=runtime_config.output_sinks if runtime_config is not None else (),
+            include_default_output_sink=(
+                runtime_config.include_default_output_sink if runtime_config is not None else True
+            ),
+        )
         super().__init__(
             name="exa_outreach",
             model=model,
@@ -174,6 +182,8 @@ class ExaOutreachAgent(BaseAgent):
                 reset_threshold=self._config.reset_threshold,
             ),
             memory_path=self._config.memory_path,
+            runtime_config=runtime_config,
+            memory_path=resolved_path,
         )
 
     # ------------------------------------------------------------------
@@ -239,6 +249,25 @@ class ExaOutreachAgent(BaseAgent):
             AgentParameterSection(title="Search Query", content=query_content),
             AgentParameterSection(title="Current Run", content=run_content),
         )
+
+    def build_ledger_outputs(self) -> dict[str, Any]:
+        run_log = self._read_current_run_log()
+        if run_log is None:
+            return {}
+        return {
+            "search_query": run_log.query,
+            "leads_found": [record.as_dict() for record in run_log.leads_found],
+            "emails_sent": [record.as_dict() for record in run_log.emails_sent],
+        }
+
+    def build_ledger_tags(self) -> list[str]:
+        return ["outreach", "sales", "email"]
+
+    def build_ledger_metadata(self) -> dict[str, Any]:
+        return {
+            "current_run_id": self._current_run_id,
+            "template_count": len(self._config.email_data),
+        }
 
     # ------------------------------------------------------------------
     # Internal tool construction
@@ -428,6 +457,19 @@ class ExaOutreachAgent(BaseAgent):
         # Deterministic write — called regardless of agent behaviour.
         self._config.storage_backend.log_email_sent(run_id, record)
         return record.as_dict()
+
+    def _read_current_run_log(self):
+        run_id = self._current_run_id
+        if run_id is None:
+            return None
+        self._config.storage_backend.finish_run(
+            run_id,
+            datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        )
+        try:
+            return self._memory_store.read_run(run_id)
+        except FileNotFoundError:
+            return None
 
 
 # ---------------------------------------------------------------------------

@@ -360,6 +360,14 @@ class LinkedInJobApplierAgent(BaseAgent):
                 tuple(browser_tools),
             )
         )
+        runtime_config = AgentRuntimeConfig(
+            max_tokens=self._config.max_tokens,
+            reset_threshold=self._config.reset_threshold,
+            output_sinks=runtime_config.output_sinks if runtime_config is not None else (),
+            include_default_output_sink=(
+                runtime_config.include_default_output_sink if runtime_config is not None else True
+            ),
+        )
         super().__init__(
             name="linkedin_job_applier",
             model=model,
@@ -369,6 +377,7 @@ class LinkedInJobApplierAgent(BaseAgent):
                 max_tokens=self._config.max_tokens,
                 reset_threshold=self._config.reset_threshold,
             ),
+            runtime_config=runtime_config,
             memory_path=self._config.memory_path,
         )
 
@@ -454,6 +463,22 @@ class LinkedInJobApplierAgent(BaseAgent):
         if managed_files:
             sections.append(AgentParameterSection(title="Managed Files", content=_json_block(managed_files)))
         return tuple(sections)
+
+    def build_ledger_outputs(self) -> dict[str, Any]:
+        return {
+            "jobs_applied": [record.as_dict() for record in self._memory_store.read_applied_jobs()],
+            "managed_files": [record.as_dict() for record in self._memory_store.read_managed_files()],
+            "recent_actions": [record.as_dict() for record in self._memory_store.read_recent_actions()],
+        }
+
+    def build_ledger_tags(self) -> list[str]:
+        return ["linkedin", "jobs"]
+
+    def build_ledger_metadata(self) -> dict[str, Any]:
+        return {
+            "linkedin_start_url": self._config.linkedin_start_url,
+            "notify_on_pause": self._config.notify_on_pause,
+        }
 
     def _build_internal_tools(self) -> tuple[RegisteredTool, ...]:
         return (

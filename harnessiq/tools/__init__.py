@@ -124,6 +124,7 @@ from .general_purpose import (
     truncate_text,
     unique_records,
 )
+from .instagram import create_instagram_tools
 from .prompting import create_prompt_tools, create_system_prompt
 from .reasoning import (
     brainstorm,
@@ -257,6 +258,7 @@ __all__ = [
     "create_context_compaction_tools",
     "create_filesystem_tools",
     "create_general_purpose_tools",
+    "create_instagram_tools",
     "brainstorm",
     "chain_of_thought",
     "create_injectable_reasoning_tools",

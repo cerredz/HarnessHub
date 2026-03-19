@@ -7,7 +7,7 @@ import json
 import os
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -149,7 +149,8 @@ class LinkedInCLITests(unittest.TestCase):
                 )
 
             run_stdout = io.StringIO()
-            with redirect_stdout(run_stdout):
+            run_stderr = io.StringIO()
+            with redirect_stdout(run_stdout), redirect_stderr(run_stderr):
                 exit_code = main(
                     [
                         "linkedin",
@@ -167,8 +168,11 @@ class LinkedInCLITests(unittest.TestCase):
 
             self.assertEqual(exit_code, 0)
             payload = _extract_last_json_object(run_stdout.getvalue())
+            payload = json.loads(run_stdout.getvalue())
+            self.assertTrue(payload["ledger_run_id"])
             self.assertEqual(payload["result"]["status"], "completed")
             self.assertEqual(payload["result"]["cycles_completed"], 1)
+            self.assertIn("DURABLE LINKEDIN APPLICATION RECORDS", run_stderr.getvalue())
 
     def test_run_seeds_langsmith_environment_from_repo_env(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
