@@ -12,6 +12,15 @@ from .langsmith import (
     trace_model_call,
     trace_tool_call,
 )
+from .playwright import (
+    chromium_context,
+    get_or_create_page,
+    goto_page,
+    playwright_runtime,
+    read_page_text,
+    safe_page_title,
+    wait_for_page_ready,
+)
 
 __all__ = [
     "ProviderFormatError",
@@ -21,13 +30,20 @@ __all__ = [
     "RequestExecutor",
     "RequestPayload",
     "SUPPORTED_PROVIDERS",
+    "chromium_context",
+    "get_or_create_page",
+    "goto_page",
     "normalize_messages",
     "omit_none_values",
+    "playwright_runtime",
+    "read_page_text",
     "request_json",
+    "safe_page_title",
     "trace_agent_run",
     "trace_async_agent_run",
     "trace_model_call",
     "trace_async_model_call",
     "trace_tool_call",
     "trace_async_tool_call",
+    "wait_for_page_ready",
 ]

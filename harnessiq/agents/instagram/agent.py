@@ -22,15 +22,15 @@ from harnessiq.shared.instagram import (
     InstagramKeywordAgentConfig,
     InstagramMemoryStore,
     InstagramSearchBackend,
-    build_instagram_google_query,
 )
-from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition, ToolResult
+from harnessiq.shared.tools import INSTAGRAM_SEARCH_KEYWORD, RegisteredTool, ToolCall, ToolResult
+from harnessiq.toolset import get_tool
+from harnessiq.tools.instagram import create_instagram_tools
 from harnessiq.tools.registry import ToolRegistry
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
 _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
-_SEARCH_TOOL_KEY = "instagram.search_keyword"
 
 
 class InstagramKeywordDiscoveryAgent(BaseAgent):
@@ -53,12 +53,14 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             raise ValueError("InstagramKeywordDiscoveryAgent requires a search_backend.")
 
         candidate_memory_path = Path(memory_path) if memory_path is not None else None
+        resolved_memory_path = candidate_memory_path or _DEFAULT_MEMORY_PATH
         normalized_icps = _normalize_icp_descriptions(icp_descriptions)
 
         self._search_backend = search_backend
         self._initial_icp_descriptions = normalized_icps
+        self._memory_store = InstagramMemoryStore(memory_path=resolved_memory_path)
         self._config = InstagramKeywordAgentConfig(
-            memory_path=Path("."),
+            memory_path=resolved_memory_path,
             max_tokens=max_tokens,
             reset_threshold=reset_threshold,
             recent_search_window=recent_search_window,
@@ -66,7 +68,20 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             search_result_limit=search_result_limit,
         )
 
-        tool_registry = ToolRegistry(self._build_internal_tools())
+        bound_search_tool = create_instagram_tools(
+            memory_store=self._memory_store,
+            search_backend=self._search_backend,
+            search_result_limit=search_result_limit,
+        )[0]
+        search_tool_definition = get_tool(INSTAGRAM_SEARCH_KEYWORD).definition
+        tool_registry = ToolRegistry(
+            (
+                RegisteredTool(
+                    definition=search_tool_definition,
+                    handler=bound_search_tool.handler,
+                ),
+            )
+        )
         runtime_config = AgentRuntimeConfig(
             max_tokens=max_tokens,
             reset_threshold=reset_threshold,
@@ -77,16 +92,6 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             tool_executor=tool_registry,
             runtime_config=runtime_config,
             memory_path=candidate_memory_path,
-        )
-        resolved_memory_path = self.memory_path or _DEFAULT_MEMORY_PATH
-        self._memory_store = InstagramMemoryStore(memory_path=resolved_memory_path)
-        self._config = InstagramKeywordAgentConfig(
-            memory_path=resolved_memory_path,
-            max_tokens=max_tokens,
-            reset_threshold=reset_threshold,
-            recent_search_window=recent_search_window,
-            recent_result_window=recent_result_window,
-            search_result_limit=search_result_limit,
         )
 
     @property
@@ -179,64 +184,9 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
     def get_search_history(self):
         return tuple(self._memory_store.read_search_history())
 
-    def _build_internal_tools(self) -> tuple[RegisteredTool, ...]:
-        return (
-            RegisteredTool(
-                definition=_tool_definition(
-                    key=_SEARCH_TOOL_KEY,
-                    name="search_keyword",
-                    description=(
-                        "Run a deterministic Google site:instagram.com search for one keyword, load the search page "
-                        "and opened result tabs fully, extract public emails from visited pages, and persist all "
-                        "new leads/emails to durable memory."
-                    ),
-                    properties={
-                        "keyword": {
-                            "type": "string",
-                            "description": "The concise Instagram creator niche keyword to search.",
-                        },
-                        "max_results": {
-                            "type": "integer",
-                            "description": "Maximum number of Instagram result URLs to open for this keyword.",
-                        },
-                    },
-                    required=("keyword",),
-                ),
-                handler=self._handle_search_keyword,
-            ),
-        )
-
-    def _handle_search_keyword(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        keyword = str(arguments["keyword"]).strip()
-        if not keyword:
-            raise ValueError("keyword must not be blank.")
-        if self._memory_store.has_searched(keyword):
-            return {
-                "keyword": keyword,
-                "message": "Keyword already exists in durable search history.",
-                "query": build_instagram_google_query(keyword),
-                "status": "already_searched",
-            }
-        max_results = int(arguments.get("max_results", self._config.search_result_limit))
-        if max_results <= 0:
-            raise ValueError("max_results must be positive.")
-
-        execution = self._search_backend.search_keyword(keyword=keyword, max_results=max_results)
-        self._memory_store.append_search(execution.search_record)
-        merge_summary = self._memory_store.merge_leads(execution.leads)
-        return {
-            "email_count": execution.search_record.email_count,
-            "keyword": execution.search_record.keyword,
-            "lead_count": execution.search_record.lead_count,
-            "merge_summary": merge_summary.as_dict(),
-            "query": execution.search_record.query,
-            "status": "searched",
-            "visited_urls": list(execution.search_record.visited_urls),
-        }
-
     def _execute_tool(self, tool_call: ToolCall) -> ToolResult:
         result = super()._execute_tool(tool_call)
-        if tool_call.tool_key == _SEARCH_TOOL_KEY:
+        if tool_call.tool_key == INSTAGRAM_SEARCH_KEYWORD:
             self.refresh_parameters()
         return result
 
@@ -254,33 +204,6 @@ def _normalize_icp_descriptions(icp_descriptions: Iterable[str]) -> tuple[str, .
         if cleaned:
             normalized.append(cleaned)
     return tuple(normalized)
-
-
-def _tool_definition(
-    *,
-    key: str,
-    name: str,
-    description: str,
-    properties: dict[str, Any],
-    required: Sequence[str] = (),
-) -> ToolDefinition:
-    return ToolDefinition(
-        key=key,
-        name=name,
-        description=description,
-        input_schema={
-            "type": "object",
-            "properties": properties,
-            "required": list(required),
-            "additionalProperties": False,
-        },
-    )
-
-
-def _read_optional_text(path: Path) -> str:
-    if not path.exists():
-        return ""
-    return path.read_text(encoding="utf-8").strip()
 
 
 def _json_block(payload: Any) -> str:

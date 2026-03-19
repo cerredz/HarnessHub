@@ -78,6 +78,10 @@ class TestGetToolBuiltin:
         tool = get_tool("prompt.create_system_prompt")
         assert tool.key == "prompt.create_system_prompt"
 
+    def test_instagram_tool(self):
+        tool = get_tool("instagram.search_keyword")
+        assert tool.key == "instagram.search_keyword"
+
     def test_unknown_key_raises_key_error(self):
         with pytest.raises(KeyError, match="'no.such.tool'"):
             get_tool("no.such.tool")
@@ -163,6 +167,10 @@ class TestGetFamily:
     def test_filesystem_family_has_eight_tools(self):
         tools = get_family("filesystem")
         assert len(tools) == 8
+
+    def test_instagram_family_has_search_tool(self):
+        tools = get_family("instagram")
+        assert [tool.key for tool in tools] == ["instagram.search_keyword"]
 
     def test_count_limits_results(self):
         tools = get_family("reasoning", count=4)

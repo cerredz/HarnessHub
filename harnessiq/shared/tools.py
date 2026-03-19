@@ -141,6 +141,7 @@ ZEROBOUNCE_REQUEST = "zerobounce.request"
 EXPANDI_REQUEST = "expandi.request"
 SMARTLEAD_REQUEST = "smartlead.request"
 LUSHA_REQUEST = "lusha.request"
+INSTAGRAM_SEARCH_KEYWORD = "instagram.search_keyword"
 
 
 @dataclass(frozen=True, slots=True)
@@ -309,6 +310,7 @@ __all__ = [
     "FILESYSTEM_WRITE_TEXT_FILE",
     "HEAVY_COMPACTION",
     "INSTANTLY_REQUEST",
+    "INSTAGRAM_SEARCH_KEYWORD",
     "JsonObject",
     "FILES_CREATE_FILE",
     "FILES_EDIT_FILE",
