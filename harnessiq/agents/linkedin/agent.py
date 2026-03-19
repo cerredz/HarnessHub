@@ -19,29 +19,16 @@ from harnessiq.shared.agents import (
     AgentRuntimeConfig,
 )
 from harnessiq.shared.linkedin import (
-    ACTION_LOG_FILENAME,
-    AGENT_IDENTITY_FILENAME,
-    APPLIED_JOBS_FILENAME,
-    ADDITIONAL_PROMPT_FILENAME,
     DEFAULT_AGENT_IDENTITY,
-    DEFAULT_JOB_PREFERENCES,
     DEFAULT_LINKEDIN_ACTION_LOG_WINDOW,
     DEFAULT_LINKEDIN_NOTIFY_ON_PAUSE,
     DEFAULT_LINKEDIN_START_URL,
-    DEFAULT_USER_PROFILE,
-    CUSTOM_PARAMETERS_FILENAME,
-    JOB_PREFERENCES_FILENAME,
     LinkedInMemoryStore,
-    MANAGED_FILES_DIRNAME,
-    MANAGED_FILES_INDEX_FILENAME,
-    SCREENSHOT_DIRNAME,
     SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS,
-    USER_PROFILE_FILENAME,
     ActionLogEntry,
     JobApplicationRecord,
     LinkedInAgentConfig,
     LinkedInManagedFile,
-    RUNTIME_PARAMETERS_FILENAME,
     ScreenshotPersistor,
     normalize_linkedin_runtime_parameters,
 )
@@ -584,21 +571,8 @@ def _sanitize_label(label: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", label).strip("-")
     return cleaned or "screenshot"
 
-
-def _sanitize_filename(filename: str) -> str:
-    candidate = Path(filename).name
-    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", candidate).strip("-")
-    if not cleaned:
-        raise ValueError("Managed filenames must contain at least one alphanumeric character.")
-    return cleaned
-
-
 def _json_block(payload: Any) -> str:
     return json.dumps(payload, indent=2, sort_keys=True)
-
-
-def _relative_path_text(path: Path, root: Path) -> str:
-    return path.resolve().relative_to(root.resolve()).as_posix()
 
 
 def _utcnow() -> str:
