@@ -1,4 +1,4 @@
-"""Apollo.io API endpoint constants and authentication helpers."""
+"""Apollo API endpoint constants and authentication helpers."""
 
 from __future__ import annotations
 
@@ -14,16 +14,34 @@ def build_headers(
     *,
     extra_headers: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
-    """Build request headers for Apollo.io API key authentication."""
+    """Build Apollo authentication headers.
+
+    Apollo's tutorial documentation uses ``X-Api-Key``. The reference UI also
+    presents API-key auth as a bearer-style credential, so both headers are
+    included for compatibility.
+    """
     headers: dict[str, str] = {
+        "Authorization": f"Bearer {api_key}",
+        "Cache-Control": "no-cache",
         "X-Api-Key": api_key,
-        "Content-Type": "application/json",
     }
     if extra_headers:
         headers.update(extra_headers)
     return headers
 
 
-def url(base_url: str, path: str) -> str:
-    """Return a fully qualified Apollo.io API URL."""
-    return join_url(base_url, path)
+def url(
+    base_url: str,
+    path: str,
+    *,
+    query: Mapping[str, str | int | float | bool] | None = None,
+) -> str:
+    """Return a fully qualified Apollo API URL."""
+    return join_url(base_url, path, query=query)
+
+
+__all__ = [
+    "DEFAULT_BASE_URL",
+    "build_headers",
+    "url",
+]
