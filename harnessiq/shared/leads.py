@@ -6,9 +6,10 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol, Sequence, runtime_checkable
+from typing import Any, Iterable, Protocol, Sequence, runtime_checkable
 from urllib.parse import urlsplit, urlunsplit
 
+from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.utils.run_storage import FileSystemStorageBackend
 
 ICPS_DIRNAME = "icps"
@@ -16,6 +17,8 @@ LEADS_STORAGE_DIRNAME = "lead_storage"
 RUN_CONFIG_FILENAME = "run_config.json"
 RUN_STATE_FILENAME = "run_state.json"
 SAVED_LEADS_FILENAME = "saved_leads.json"
+DEFAULT_LEADS_SEARCH_SUMMARY_EVERY = 500
+DEFAULT_LEADS_SEARCH_TAIL_SIZE = 20
 
 _ICP_STATUS_VALUES = frozenset({"pending", "active", "completed"})
 _RUN_STATUS_VALUES = frozenset({"pending", "running", "completed"})
@@ -97,9 +100,61 @@ class LeadRunConfig:
             company_background=str(data["company_background"]),
             icps=tuple(LeadICP.from_dict(item) for item in data.get("icps", [])),
             platforms=tuple(str(item) for item in data.get("platforms", [])),
-            search_summary_every=int(data.get("search_summary_every", 500)),
-            search_tail_size=int(data.get("search_tail_size", 20)),
+            search_summary_every=int(data.get("search_summary_every", DEFAULT_LEADS_SEARCH_SUMMARY_EVERY)),
+            search_tail_size=int(data.get("search_tail_size", DEFAULT_LEADS_SEARCH_TAIL_SIZE)),
             max_leads_per_icp=int(data["max_leads_per_icp"]) if data.get("max_leads_per_icp") is not None else None,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class LeadsAgentConfig:
+    """Runtime configuration for the leads harness."""
+
+    run_config: LeadRunConfig
+    memory_path: Path
+    storage_backend: "LeadsStorageBackend"
+    max_tokens: int = DEFAULT_AGENT_MAX_TOKENS
+    reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD
+    prune_search_interval: int | None = None
+    prune_token_limit: int | None = None
+
+    @classmethod
+    def from_inputs(
+        cls,
+        *,
+        company_background: str,
+        icps: Iterable[LeadICP | dict[str, Any] | str],
+        platforms: Sequence[str],
+        memory_path: str | Path,
+        storage_backend: "LeadsStorageBackend | None" = None,
+        max_tokens: int = DEFAULT_AGENT_MAX_TOKENS,
+        reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD,
+        prune_search_interval: int | None = None,
+        prune_token_limit: int | None = None,
+        search_summary_every: int = DEFAULT_LEADS_SEARCH_SUMMARY_EVERY,
+        search_tail_size: int = DEFAULT_LEADS_SEARCH_TAIL_SIZE,
+        max_leads_per_icp: int | None = None,
+    ) -> "LeadsAgentConfig":
+        """Build a normalized harness config from user-facing constructor inputs."""
+        resolved_memory_path = Path(memory_path)
+        resolved_icps = coerce_lead_icps(icps)
+        run_config = LeadRunConfig(
+            company_background=company_background,
+            icps=resolved_icps,
+            platforms=tuple(normalize_leads_platform_name(platform) for platform in platforms),
+            search_summary_every=search_summary_every,
+            search_tail_size=search_tail_size,
+            max_leads_per_icp=max_leads_per_icp,
+        )
+        resolved_storage = storage_backend or FileSystemLeadsStorageBackend(resolved_memory_path)
+        return cls(
+            run_config=run_config,
+            memory_path=resolved_memory_path,
+            storage_backend=resolved_storage,
+            max_tokens=max_tokens,
+            reset_threshold=reset_threshold,
+            prune_search_interval=prune_search_interval,
+            prune_token_limit=prune_token_limit,
         )
 
 
@@ -663,6 +718,26 @@ class LeadsMemoryStore:
         return self.icps_dir / f"{icp_key}.json"
 
 
+def coerce_lead_icps(values: Iterable[LeadICP | dict[str, Any] | str]) -> tuple[LeadICP, ...]:
+    """Normalize raw ICP inputs into :class:`LeadICP` objects."""
+    resolved: list[LeadICP] = []
+    for value in values:
+        if isinstance(value, LeadICP):
+            resolved.append(value)
+        elif isinstance(value, dict):
+            resolved.append(LeadICP.from_dict(value))
+        elif isinstance(value, str):
+            resolved.append(LeadICP(label=value))
+        else:
+            raise TypeError(f"Unsupported ICP value {value!r}.")
+    return tuple(resolved)
+
+
+def normalize_leads_platform_name(value: str) -> str:
+    """Normalize a provider family name used by the leads harness."""
+    return value.strip().lower()
+
+
 def _slugify(value: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return normalized
@@ -706,9 +781,12 @@ def _read_json_file(path: Path, *, expected_type: type) -> Any:
 
 
 __all__ = [
+    "DEFAULT_LEADS_SEARCH_SUMMARY_EVERY",
+    "DEFAULT_LEADS_SEARCH_TAIL_SIZE",
     "FileSystemLeadsStorageBackend",
     "ICPS_DIRNAME",
     "LEADS_STORAGE_DIRNAME",
+    "LeadsAgentConfig",
     "LeadICP",
     "LeadICPState",
     "LeadRecord",
@@ -722,4 +800,6 @@ __all__ = [
     "RUN_CONFIG_FILENAME",
     "RUN_STATE_FILENAME",
     "SAVED_LEADS_FILENAME",
+    "coerce_lead_icps",
+    "normalize_leads_platform_name",
 ]

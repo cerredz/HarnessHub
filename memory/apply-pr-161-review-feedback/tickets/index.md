@@ -1,0 +1,2 @@
+- Ticket 1: Move leads shared definitions and tool construction out of the agent module
+  - Refactors the leads harness to consume `shared/` and `tools/` layers and documents the standard in `artifacts/file_index.md`.
