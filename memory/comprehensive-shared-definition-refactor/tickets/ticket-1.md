@@ -1,4 +1,5 @@
 ﻿Issue URL: https://github.com/cerredz/HarnessHub/issues/177
+PR URL: https://github.com/cerredz/HarnessHub/pull/186
 
 Title: Centralize remaining agent-side shared definitions and provider-adjacent constants
 
@@ -62,4 +63,5 @@ Dependencies:
 
 Drift Guard:
 This ticket must not redesign agent behavior, prompt assembly, output-sink delivery semantics, or provider HTTP execution. It is strictly a definition-ownership cleanup that moves shared constants/types/configs without changing operational behavior.
+
 
