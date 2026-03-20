@@ -1,10 +1,10 @@
-"""Snov.io endpoint and authentication helpers."""
+﻿"""Snov.io endpoint and authentication helpers."""
 
 from __future__ import annotations
 
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://api.snov.io"
+from harnessiq.shared.providers import SNOVIO_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def access_token_url(base_url: str = DEFAULT_BASE_URL) -> str:
@@ -125,3 +125,4 @@ def pause_campaign_url(base_url: str = DEFAULT_BASE_URL) -> str:
 def user_info_url(base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the user info URL (v2)."""
     return join_url(base_url, "/v2/me")
+

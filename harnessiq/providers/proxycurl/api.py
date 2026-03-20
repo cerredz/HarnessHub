@@ -1,4 +1,4 @@
-"""Proxycurl endpoint constants and authentication helpers.
+﻿"""Proxycurl endpoint constants and authentication helpers.
 
 NOTE: Proxycurl shut down in January 2025 following a LinkedIn lawsuit.
 This module documents the last-known public API specification and is
@@ -12,7 +12,7 @@ from typing import Any, Mapping
 
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://nubela.co/proxycurl/api"
+from harnessiq.shared.providers import PROXYCURL_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -30,7 +30,7 @@ def build_headers(
     return headers
 
 
-# ── LinkedIn person endpoints ─────────────────────────────────────────────────
+# â”€â”€ LinkedIn person endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def scrape_linkedin_person_url(
@@ -60,7 +60,7 @@ def lookup_person_by_email_url(
     return join_url(base_url, "/v2/linkedin/person/lookup", query=query)
 
 
-# ── LinkedIn company endpoints ────────────────────────────────────────────────
+# â”€â”€ LinkedIn company endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def scrape_linkedin_company_url(
@@ -90,7 +90,7 @@ def list_company_employees_url(
     return join_url(base_url, "/linkedin/company/employees", query=query)
 
 
-# ── Job endpoints ─────────────────────────────────────────────────────────────
+# â”€â”€ Job endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def list_company_jobs_url(
@@ -111,7 +111,7 @@ def search_jobs_url(
     return join_url(base_url, "/linkedin/jobs/search", query=query)
 
 
-# ── Contact / email endpoints ─────────────────────────────────────────────────
+# â”€â”€ Contact / email endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def resolve_email_to_profile_url(
@@ -139,3 +139,4 @@ def get_personal_contacts_url(
 ) -> str:
     """Return the personal phone numbers URL (GET /contact-api/personal-contact)."""
     return join_url(base_url, "/contact-api/personal-contact", query=query)
+

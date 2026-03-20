@@ -1,4 +1,4 @@
-"""Apollo API endpoint constants and authentication helpers."""
+﻿"""Apollo API endpoint constants and authentication helpers."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Mapping
 
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://api.apollo.io/api/v1"
+from harnessiq.shared.providers import APOLLO_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -45,3 +45,4 @@ __all__ = [
     "build_headers",
     "url",
 ]
+

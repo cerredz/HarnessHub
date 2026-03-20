@@ -1,4 +1,4 @@
-"""People Data Labs endpoint and authentication helpers."""
+﻿"""People Data Labs endpoint and authentication helpers."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Mapping
 
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://api.peopledatalabs.com/v5"
+from harnessiq.shared.providers import PEOPLEDATALABS_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -24,7 +24,7 @@ def build_headers(
     return headers
 
 
-# ── Person endpoints ────────────────────────────────────────────────────────
+# â”€â”€ Person endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def person_enrich_url(base_url: str = DEFAULT_BASE_URL) -> str:
@@ -47,7 +47,7 @@ def person_bulk_url(base_url: str = DEFAULT_BASE_URL) -> str:
     return join_url(base_url, "/person/bulk")
 
 
-# ── Company endpoints ────────────────────────────────────────────────────────
+# â”€â”€ Company endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def company_enrich_url(base_url: str = DEFAULT_BASE_URL) -> str:
@@ -65,7 +65,7 @@ def company_bulk_url(base_url: str = DEFAULT_BASE_URL) -> str:
     return join_url(base_url, "/company/bulk")
 
 
-# ── School endpoints ─────────────────────────────────────────────────────────
+# â”€â”€ School endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def school_enrich_url(base_url: str = DEFAULT_BASE_URL) -> str:
@@ -73,7 +73,7 @@ def school_enrich_url(base_url: str = DEFAULT_BASE_URL) -> str:
     return join_url(base_url, "/school/enrich")
 
 
-# ── Location endpoints ────────────────────────────────────────────────────────
+# â”€â”€ Location endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def location_clean_url(base_url: str = DEFAULT_BASE_URL) -> str:
@@ -81,7 +81,7 @@ def location_clean_url(base_url: str = DEFAULT_BASE_URL) -> str:
     return join_url(base_url, "/location/clean")
 
 
-# ── Autocomplete endpoint ─────────────────────────────────────────────────────
+# â”€â”€ Autocomplete endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def autocomplete_url(base_url: str = DEFAULT_BASE_URL) -> str:
@@ -89,9 +89,10 @@ def autocomplete_url(base_url: str = DEFAULT_BASE_URL) -> str:
     return join_url(base_url, "/autocomplete")
 
 
-# ── Job title endpoint ────────────────────────────────────────────────────────
+# â”€â”€ Job title endpoint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def job_title_enrich_url(base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the job title enrichment URL."""
     return join_url(base_url, "/job_title/enrich")
+

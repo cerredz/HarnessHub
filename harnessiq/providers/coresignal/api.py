@@ -1,4 +1,4 @@
-"""Coresignal endpoint constants and authentication helpers."""
+﻿"""Coresignal endpoint constants and authentication helpers."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Mapping
 
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://api.coresignal.com/cdapi/v2"
+from harnessiq.shared.providers import CORESIGNAL_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -16,7 +16,7 @@ def build_headers(
 ) -> dict[str, str]:
     """Build request headers for the Coresignal API.
 
-    Coresignal uses ``apikey`` (lowercase) as the authentication header name —
+    Coresignal uses ``apikey`` (lowercase) as the authentication header name â€”
     not ``Authorization`` and not ``X-Api-Key``.
     """
     headers: dict[str, str] = {"apikey": api_key}
@@ -25,7 +25,7 @@ def build_headers(
     return headers
 
 
-# ── Employee endpoints ────────────────────────────────────────────────────────
+# â”€â”€ Employee endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def employee_filter_search_url(base_url: str = DEFAULT_BASE_URL) -> str:
@@ -43,7 +43,7 @@ def employee_es_dsl_url(base_url: str = DEFAULT_BASE_URL) -> str:
     return join_url(base_url, "/employee_base/search/es_dsl")
 
 
-# ── Company endpoints ─────────────────────────────────────────────────────────
+# â”€â”€ Company endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def company_filter_search_url(base_url: str = DEFAULT_BASE_URL) -> str:
@@ -61,7 +61,7 @@ def company_es_dsl_url(base_url: str = DEFAULT_BASE_URL) -> str:
     return join_url(base_url, "/company_base/search/es_dsl")
 
 
-# ── Job endpoints ─────────────────────────────────────────────────────────────
+# â”€â”€ Job endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def job_filter_search_url(base_url: str = DEFAULT_BASE_URL) -> str:
@@ -77,3 +77,4 @@ def job_collect_url(base_url: str = DEFAULT_BASE_URL, job_id: str | int = "") ->
 def job_es_dsl_url(base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the job Elasticsearch DSL search URL (POST /job_base/search/es_dsl)."""
     return join_url(base_url, "/job_base/search/es_dsl")
+

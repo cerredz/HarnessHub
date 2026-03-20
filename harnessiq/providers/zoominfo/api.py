@@ -1,4 +1,4 @@
-"""ZoomInfo endpoint and authentication helpers."""
+﻿"""ZoomInfo endpoint and authentication helpers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Mapping
 from harnessiq.providers.base import omit_none_values
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://api.zoominfo.com"
+from harnessiq.shared.providers import ZOOMINFO_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_auth_headers(
@@ -96,3 +96,4 @@ def lookup_outputfields_url(base_url: str = DEFAULT_BASE_URL) -> str:
 def usage_url(base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the API usage stats URL."""
     return join_url(base_url, "/usage")
+

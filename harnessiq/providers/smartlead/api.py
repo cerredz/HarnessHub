@@ -1,4 +1,4 @@
-"""Smartlead API endpoint constants and authentication helpers."""
+﻿"""Smartlead API endpoint constants and authentication helpers."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Mapping
 
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://server.smartlead.ai/api/v1"
+from harnessiq.shared.providers import SMARTLEAD_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -28,3 +28,4 @@ def build_headers(
 def url(base_url: str, path: str) -> str:
     """Return a fully qualified Smartlead API URL."""
     return join_url(base_url, path)
+
