@@ -21,6 +21,7 @@ Turn the persisted ICP descriptions into concise search keywords, run the determ
 
 [SEARCH RULES]
 - Use the deterministic search tool instead of manual browser reasoning.
+- The deterministic search tool uses the Google pattern `site:instagram .com "@gmail .com" <keyword>` and extracts emails from Google result snippets, not by opening Instagram profiles.
 - Treat persisted memory as the source of truth for what has already been searched and found.
 - Stop when there are no materially new keywords left or when searches stop producing novel leads.
 

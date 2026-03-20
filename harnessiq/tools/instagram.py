@@ -41,9 +41,9 @@ def _search_keyword_definition() -> ToolDefinition:
         key=INSTAGRAM_SEARCH_KEYWORD,
         name="search_keyword",
         description=(
-            "Run a deterministic Google site:instagram.com search for one keyword, load the search page "
-            "and opened result tabs fully, extract public emails from visited pages, and persist all "
-            "new leads/emails to durable memory."
+            "Run a deterministic Google site:instagram search for one keyword, inspect the Google "
+            "results page using the spaced query pattern, extract public emails from result snippets "
+            "without opening Instagram pages, and persist all new leads/emails to durable memory."
         ),
         input_schema={
             "type": "object",
@@ -54,7 +54,7 @@ def _search_keyword_definition() -> ToolDefinition:
                 },
                 "max_results": {
                     "type": "integer",
-                    "description": "Maximum number of Instagram result URLs to open for this keyword.",
+                    "description": "Maximum number of Google result rows to inspect for this keyword.",
                 },
             },
             "required": ["keyword"],
