@@ -1,4 +1,4 @@
-"""Salesforge endpoint and authentication helpers."""
+﻿"""Salesforge endpoint and authentication helpers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Mapping
 from harnessiq.providers.base import omit_none_values
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://api.salesforge.ai"
+from harnessiq.shared.providers import SALESFORGE_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 _PREFIX = "/public/api/v1"
 
@@ -103,3 +103,4 @@ def mailbox_url(mailbox_id: str | int, base_url: str = DEFAULT_BASE_URL) -> str:
 def unsubscribe_url(base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the unsubscribe list URL."""
     return join_url(base_url, f"{_PREFIX}/unsubscribe")
+

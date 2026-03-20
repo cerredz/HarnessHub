@@ -1,4 +1,4 @@
-"""arXiv API endpoint constants, URL builders, and Atom feed parser."""
+﻿"""arXiv API endpoint constants, URL builders, and Atom feed parser."""
 
 from __future__ import annotations
 
@@ -7,14 +7,14 @@ import xml.etree.ElementTree as ET
 from typing import Any
 from urllib import parse
 
-DEFAULT_BASE_URL = "https://export.arxiv.org"
+from harnessiq.shared.providers import ARXIV_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 _PDF_BASE_URL = "https://arxiv.org"
 
 # Atom 1.0 and arXiv-extension namespaces used in feed responses.
 _ATOM_NS = "http://www.w3.org/2005/Atom"
 _ARXIV_NS = "http://arxiv.org/schemas/atom"
 
-# Clark-notation tag shortcuts — avoids repetitive f-string construction.
+# Clark-notation tag shortcuts â€” avoids repetitive f-string construction.
 _ENTRY = f"{{{_ATOM_NS}}}entry"
 _ID = f"{{{_ATOM_NS}}}id"
 _TITLE = f"{{{_ATOM_NS}}}title"
@@ -152,8 +152,8 @@ def _extract_arxiv_id(raw_id: str) -> str:
 
     Examples::
 
-        "http://arxiv.org/abs/2301.12345v1"  →  "2301.12345"
-        "http://arxiv.org/abs/hep-ph/9901257v2"  →  "hep-ph/9901257"
+        "http://arxiv.org/abs/2301.12345v1"  â†’  "2301.12345"
+        "http://arxiv.org/abs/hep-ph/9901257v2"  â†’  "hep-ph/9901257"
     """
     if "/abs/" in raw_id:
         arxiv_id = raw_id.split("/abs/", 1)[1]
@@ -169,3 +169,4 @@ def _primary_category(entry: ET.Element) -> str:
         first_cat = entry.find(_CATEGORY)
         return first_cat.get("term", "") if first_cat is not None else ""
     return pc.get("term", "")
+

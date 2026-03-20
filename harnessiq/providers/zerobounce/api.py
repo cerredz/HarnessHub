@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import Mapping
 
 from harnessiq.providers.http import join_url
-
-DEFAULT_BASE_URL = "https://api.zerobounce.net"
-DEFAULT_BULK_BASE_URL = "https://bulkapi.zerobounce.net"
+from harnessiq.shared.providers import (
+    ZEROBOUNCE_DEFAULT_BASE_URL as DEFAULT_BASE_URL,
+    ZEROBOUNCE_DEFAULT_BULK_BASE_URL as DEFAULT_BULK_BASE_URL,
+)
 
 
 def build_headers(

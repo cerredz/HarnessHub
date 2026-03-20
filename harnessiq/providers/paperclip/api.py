@@ -1,4 +1,4 @@
-"""Paperclip API endpoint and authentication helpers."""
+﻿"""Paperclip API endpoint and authentication helpers."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Mapping
 
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "http://localhost:3100/api"
+from harnessiq.shared.providers import PAPERCLIP_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -36,3 +36,4 @@ __all__ = [
     "build_headers",
     "url",
 ]
+

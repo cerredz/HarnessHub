@@ -1,4 +1,4 @@
-"""OpenAI endpoint and authentication helpers."""
+﻿"""OpenAI endpoint and authentication helpers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Mapping
 from harnessiq.providers.base import omit_none_values
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://api.openai.com"
+from harnessiq.shared.providers import OPENAI_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -48,3 +48,4 @@ def embeddings_url(base_url: str = DEFAULT_BASE_URL) -> str:
 def models_url(base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the Models API URL."""
     return join_url(base_url, "/v1/models")
+

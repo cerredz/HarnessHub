@@ -8,37 +8,13 @@ from typing import Any
 from urllib import error, request
 
 from harnessiq.providers.arxiv.api import (
-    DEFAULT_BASE_URL,
     get_paper_url,
     parse_arxiv_feed,
     pdf_url,
     search_url,
 )
 from harnessiq.providers.http import ProviderHTTPError, RequestExecutor, request_json
-
-
-@dataclass(frozen=True, slots=True)
-class ArxivConfig:
-    """Transport configuration for the arXiv API.
-
-    arXiv search requires no authentication — this config holds only
-    transport parameters.
-
-    ``delay_seconds`` defaults to ``0.0``.  Set it to ``3.0`` to comply
-    with arXiv's Terms of Use (≤ 1 request per 3 seconds).
-    """
-
-    base_url: str = DEFAULT_BASE_URL
-    timeout_seconds: float = 30.0
-    delay_seconds: float = 0.0
-
-    def __post_init__(self) -> None:
-        if not self.base_url.strip():
-            raise ValueError("ArxivConfig.base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("ArxivConfig.timeout_seconds must be greater than zero.")
-        if self.delay_seconds < 0:
-            raise ValueError("ArxivConfig.delay_seconds must be zero or greater.")
+from harnessiq.shared.provider_configs import ArxivConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,7 +22,7 @@ class ArxivClient:
     """Minimal arXiv HTTP client for tool execution and tests.
 
     All search and retrieval operations use the public arXiv export API
-    (no API key required).  ``download_paper`` fetches PDF bytes via a
+    (no API key required). ``download_paper`` fetches PDF bytes via a
     separate binary HTTP request that bypasses ``request_executor``.
 
     Inject a custom ``request_executor`` in tests to avoid real network I/O.
@@ -68,7 +44,7 @@ class ArxivClient:
 
         ``query`` supports arXiv field prefixes: ``ti:`` (title), ``au:``
         (author), ``abs:`` (abstract), ``cat:`` (category), ``all:`` (all
-        fields).  Boolean operators: ``AND``, ``OR``, ``ANDNOT``.
+        fields). Boolean operators: ``AND``, ``OR``, ``ANDNOT``.
         """
         url = search_url(
             self.config.base_url,
@@ -115,7 +91,7 @@ class ArxivClient:
     def download_paper(self, paper_id: str, save_path: str) -> str:
         """Download the PDF for *paper_id* and write it to *save_path*.
 
-        Returns *save_path* on success.  Uses ``urllib.request`` directly
+        Returns *save_path* on success. Uses ``urllib.request`` directly
         because the PDF response is binary, not JSON or XML.
         """
         if self.config.delay_seconds > 0:
@@ -145,16 +121,8 @@ class ArxivClient:
             fh.write(pdf_bytes)
         return save_path
 
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
-
     def _fetch_xml(self, url: str) -> str:
-        """Apply optional rate-limit delay then execute the request.
-
-        ``request_json`` falls back to returning the raw text string when
-        the response body is not valid JSON — which Atom XML is not.
-        """
+        """Apply optional rate-limit delay then execute the request."""
         if self.config.delay_seconds > 0:
             time.sleep(self.config.delay_seconds)
 

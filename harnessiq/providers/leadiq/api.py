@@ -1,4 +1,4 @@
-"""LeadIQ endpoint and authentication helpers."""
+﻿"""LeadIQ endpoint and authentication helpers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Mapping
 
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://api.leadiq.com"
+from harnessiq.shared.providers import LEADIQ_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -30,3 +30,4 @@ def build_headers(
 def graphql_url(base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the GraphQL endpoint URL."""
     return join_url(base_url, "/graphql")
+

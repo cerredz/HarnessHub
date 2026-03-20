@@ -1,4 +1,4 @@
-"""Instantly API endpoint constants and authentication helpers."""
+﻿"""Instantly API endpoint constants and authentication helpers."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Mapping
 
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://api.instantly.ai/api/v2"
+from harnessiq.shared.providers import INSTANTLY_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -24,3 +24,4 @@ def build_headers(
 def url(base_url: str, path: str) -> str:
     """Return a fully qualified Instantly API URL."""
     return join_url(base_url, path)
+

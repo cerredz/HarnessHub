@@ -1,4 +1,4 @@
-"""Creatify API endpoint constants and authentication helpers."""
+﻿"""Creatify API endpoint constants and authentication helpers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Mapping
 from harnessiq.providers.base import omit_none_values
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://api.creatify.ai"
+from harnessiq.shared.providers import CREATIFY_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -33,3 +33,4 @@ def build_headers(
 def url(base_url: str, path: str) -> str:
     """Return a fully qualified Creatify API URL."""
     return join_url(base_url, path)
+

@@ -6,9 +6,10 @@ from typing import Mapping, Sequence
 
 from harnessiq.providers.base import omit_none_values
 from harnessiq.providers.http import join_url
-
-DEFAULT_BASE_URL = "https://api.anthropic.com"
-DEFAULT_API_VERSION = "2023-06-01"
+from harnessiq.shared.providers import (
+    ANTHROPIC_DEFAULT_API_VERSION as DEFAULT_API_VERSION,
+    ANTHROPIC_DEFAULT_BASE_URL as DEFAULT_BASE_URL,
+)
 
 
 def build_headers(

@@ -1,4 +1,4 @@
-"""InboxApp API endpoint constants and authentication helpers."""
+﻿"""InboxApp API endpoint constants and authentication helpers."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Mapping
 
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://inboxapp.com/api/v1"
+from harnessiq.shared.providers import INBOXAPP_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -27,3 +27,4 @@ def url(base_url: str, path: str) -> str:
 
 
 __all__ = ["DEFAULT_BASE_URL", "build_headers", "url"]
+

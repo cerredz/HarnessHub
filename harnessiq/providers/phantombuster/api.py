@@ -1,4 +1,4 @@
-"""PhantomBuster endpoint and authentication helpers."""
+﻿"""PhantomBuster endpoint and authentication helpers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Mapping
 from harnessiq.providers.base import omit_none_values
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://api.phantombuster.com"
+from harnessiq.shared.providers import PHANTOMBUSTER_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -126,3 +126,4 @@ def scripts_fetch_all_url(base_url: str = DEFAULT_BASE_URL) -> str:
 def script_fetch_url(script_id: str | int, base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the URL to fetch a single script."""
     return join_url(base_url, "/api/v2/scripts/fetch", query={"id": str(script_id)})
+
