@@ -1,6 +1,5 @@
 Title: Restore ExaOutreach run storage and CLI compatibility on main
 Issue URL: https://github.com/cerredz/HarnessHub/issues/199
-PR URL: https://github.com/cerredz/HarnessHub/pull/201
 
 Intent:
 Fix the broken ExaOutreach execution path on refreshed `main` so the outreach harness can persist lead/email activity deterministically again, search-only mode records the expected run metadata, and the CLI `outreach run` command emits JSON robustly in both real runs and mocked test scenarios.
@@ -43,3 +42,57 @@ Dependencies:
 
 Drift Guard:
 This ticket must not import the entire dirty feature-branch outreach refactor into `main`. It is limited to restoring the outreach harness, its shared storage contract, and the narrow CLI JSON payload behavior required for the observed failures. It must not redesign BaseAgent error handling, alter unrelated agents, or attempt to solve upstream provider authorization failures.
+
+
+## Quality Pipeline Results
+Stage 1 - Static Analysis
+
+- No project linter or standalone static-analysis tool is configured in `pyproject.toml`.
+- Manually reviewed the changed files for import hygiene, unused helpers, and local consistency with existing module style.
+- Result: pass.
+
+Stage 2 - Type Checking
+
+- No project type checker is configured in `pyproject.toml`.
+- Verified the fix preserves existing typing patterns and does not introduce untyped new interfaces.
+- Result: pass.
+
+Stage 3 - Unit Tests
+
+- Ran `C:\\Users\\Michael Cerreto\\HarnessHub\\.venv\\Scripts\\python.exe -m pytest tests/test_exa_outreach_agent.py tests/test_exa_outreach_cli.py -q`
+- Observed: `63 passed in 1.32s`
+- Result: pass.
+
+Stage 4 - Integration & Contract Tests
+
+- Ran `C:\\Users\\Michael Cerreto\\HarnessHub\\.venv\\Scripts\\python.exe -m pytest tests/test_exa_outreach_shared.py -q`
+- Observed: `38 passed in 0.31s`
+- This validates the outreach shared memory contract and run reconstruction behavior adjacent to the modified runtime path.
+- Result: pass.
+
+Stage 5 - Smoke & Manual Verification
+
+- Ran an inline smoke script that:
+  - constructed `ExaOutreachAgent(search_only=True)` with a temporary memory path,
+  - executed one model turn with `exa_outreach.check_contacted` and `exa_outreach.log_lead`,
+  - loaded `runs/run_1.json` from disk,
+  - asserted the run finished with `status="completed"`,
+  - confirmed `metadata` contained `{"query": "B2B SaaS founders in New York", "search_only": true}`,
+  - confirmed the event log contained one `lead` event for `https://example.com/prospect/alice`.
+- Result: pass.
+
+
+## Post-Critique Changes
+Self-critique findings:
+
+- The first implementation fixed behavior but left the shared outreach module description stale. After the backport, the module no longer defines its own storage backend implementation; it re-exports the generic run-storage backend. I updated the module docstring to make that contract explicit and reduce future drift.
+- The first CLI change normalized `ledger_run_id` for JSON safety but still passed raw `_current_run_id` through to the human-readable summary path. I normalized `run_id` as well so the CLI is consistent if tests or callers inject a non-string mock value.
+
+Post-critique changes made:
+
+- Updated `harnessiq/shared/exa_outreach.py` module documentation to describe the re-exported generic storage backend.
+- Normalized `run_id` to `str` in `harnessiq/cli/exa_outreach/commands.py` before summary rendering.
+- Re-ran the targeted outreach test suites to confirm no regressions:
+  - `63 passed` in `tests/test_exa_outreach_agent.py tests/test_exa_outreach_cli.py`
+  - `38 passed` in `tests/test_exa_outreach_shared.py`
+
