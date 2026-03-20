@@ -66,8 +66,6 @@ class TestParserRegistration:
             "--agent", "test",
             "--model-factory", "mod:fn",
             "--exa-credentials-factory", "mod:fn",
-            "--resend-credentials-factory", "mod:fn",
-            "--email-data-factory", "mod:fn",
         ])
         assert args.outreach_command == "run"
 
@@ -193,6 +191,19 @@ class TestConfigureCommand:
         out = json.loads(capsys.readouterr().out)
         assert out["query_config"]["reset_threshold"] == pytest.approx(0.75)
 
+    def test_configure_runtime_param_search_only(self, tmp_path, capsys):
+        _run(["outreach", "prepare", "--agent", "a", "--memory-root", str(tmp_path)])
+        capsys.readouterr()
+
+        _run([
+            "outreach", "configure",
+            "--agent", "a",
+            "--memory-root", str(tmp_path),
+            "--runtime-param", "search_only=true",
+        ])
+        out = json.loads(capsys.readouterr().out)
+        assert out["query_config"]["search_only"] is True
+
     def test_configure_query_from_file(self, tmp_path, capsys):
         query_file = tmp_path / "query.txt"
         query_file.write_text("CTOs at seed-stage startups", encoding="utf-8")
@@ -297,6 +308,18 @@ class TestNormalizeRuntimeParameters:
         assert result["max_tokens"] == 50000
         assert result["reset_threshold"] == pytest.approx(0.85)
 
+    def test_search_only_coerced_to_bool(self):
+        result = normalize_exa_outreach_runtime_parameters({"search_only": "true"})
+        assert result["search_only"] is True
+
+    def test_search_only_false_coerced_to_bool(self):
+        result = normalize_exa_outreach_runtime_parameters({"search_only": "false"})
+        assert result["search_only"] is False
+
+    def test_search_only_integer_one_coerced_to_bool(self):
+        result = normalize_exa_outreach_runtime_parameters({"search_only": 1})
+        assert result["search_only"] is True
+
     def test_boolean_max_tokens_raises(self):
         with pytest.raises(ValueError):
             normalize_exa_outreach_runtime_parameters({"max_tokens": True})
@@ -317,6 +340,9 @@ class TestSupportedParameters:
 
     def test_contains_reset_threshold(self):
         assert "reset_threshold" in SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS
+
+    def test_contains_search_only(self):
+        assert "search_only" in SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS
 
 
 # ---------------------------------------------------------------------------
@@ -346,6 +372,7 @@ class TestRunCommand:
         mock_result.status = "completed"
         mock_agent.run.return_value = mock_result
         mock_agent._current_run_id = "run_1"
+        mock_agent.last_run_id = "ledger_1"
 
         mock_model = MagicMock()
         mock_exa_creds = MagicMock()
@@ -388,6 +415,77 @@ class TestRunCommand:
         out = json.loads(stdout[json_start:])
         assert out["run_id"] == "run_1"
         assert out["result"]["cycles_completed"] == 1
+
+    def test_run_search_only_invokes_agent_without_email_factories(self, tmp_path, capsys):
+        _run(["outreach", "prepare", "--agent", "a", "--memory-root", str(tmp_path)])
+        _run([
+            "outreach", "configure",
+            "--agent", "a",
+            "--memory-root", str(tmp_path),
+            "--query-text", "VPs of Engineering",
+            "--runtime-param", "search_only=true",
+        ])
+        capsys.readouterr()
+
+        mock_agent = MagicMock()
+        mock_result = MagicMock()
+        mock_result.cycles_completed = 1
+        mock_result.pause_reason = None
+        mock_result.resets = 0
+        mock_result.status = "completed"
+        mock_agent.run.return_value = mock_result
+        mock_agent._current_run_id = "run_1"
+        mock_agent.last_run_id = "ledger_1"
+        mock_agent.last_run_id = "ledger_1"
+        mock_agent.last_run_id = "ledger_1"
+
+        with (
+            patch(
+                "harnessiq.cli.exa_outreach.commands._load_factory",
+                side_effect=[
+                    lambda: MagicMock(),
+                    lambda: MagicMock(),
+                ],
+            ) as load_factory,
+            patch(
+                "harnessiq.agents.exa_outreach.ExaOutreachAgent",
+                return_value=mock_agent,
+            ) as agent_type,
+            patch(
+                "harnessiq.cli.exa_outreach.commands.seed_langsmith_environment",
+            ),
+        ):
+            result = _run([
+                "outreach", "run",
+                "--agent", "a",
+                "--memory-root", str(tmp_path),
+                "--model-factory", "mod:model",
+                "--exa-credentials-factory", "mod:exa",
+            ])
+
+        assert result == 0
+        assert load_factory.call_count == 2
+        call_kwargs = agent_type.call_args.kwargs
+        assert call_kwargs["search_only"] is True
+        assert call_kwargs["email_data"] == []
+        assert call_kwargs["resend_credentials"] is None
+
+    def test_run_requires_email_factories_in_normal_mode(self, tmp_path, capsys):
+        _run(["outreach", "prepare", "--agent", "a", "--memory-root", str(tmp_path)])
+        capsys.readouterr()
+
+        with patch(
+            "harnessiq.cli.exa_outreach.commands._load_factory",
+            side_effect=[lambda: MagicMock(), lambda: MagicMock()],
+        ):
+            with pytest.raises(ValueError, match="resend-credentials-factory"):
+                _run([
+                    "outreach", "run",
+                    "--agent", "a",
+                    "--memory-root", str(tmp_path),
+                    "--model-factory", "mod:model",
+                    "--exa-credentials-factory", "mod:exa",
+                ])
 
     def test_run_bad_model_factory_raises(self, tmp_path, capsys):
         _run(["outreach", "prepare", "--agent", "a", "--memory-root", str(tmp_path)])

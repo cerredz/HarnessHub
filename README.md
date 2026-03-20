@@ -216,7 +216,7 @@ result = agent.run(max_cycles=20)
 
 ### ExaOutreachAgent
 
-A loop agent for automated prospect discovery and cold email outreach. Uses Exa neural search to find and enrich leads, selects email templates from the injected `email_data`, deduplicates against prior runs, sends via Resend, and deterministically logs every lead found and email sent into a per-run JSON file.
+A loop agent for automated prospect discovery with an optional cold email phase. In the default mode it uses Exa neural search to find and enrich leads, selects email templates from the injected `email_data`, sends via Resend, and deterministically logs every lead found and email sent into a per-run JSON file. When `search_only=True`, the agent becomes a lead-discovery harness: email templates and Resend are optional, email tools are removed from the runtime surface, and the agent only deduplicates plus logs leads.
 
 ```python
 from harnessiq.agents.exa_outreach import ExaOutreachAgent
@@ -246,6 +246,18 @@ agent = ExaOutreachAgent(
     memory_path=Path("./memory/outreach/campaign-a"),
 )
 result = agent.run(max_cycles=50)
+```
+
+```python
+search_agent = ExaOutreachAgent(
+    model=model,
+    exa_credentials=ExaCredentials(api_key="..."),
+    email_data=[],
+    search_only=True,
+    search_query="VP of Engineering at Series B SaaS startups in New York",
+    memory_path=Path("./memory/outreach/campaign-a"),
+)
+result = search_agent.run(max_cycles=50)
 ```
 
 **EmailTemplate fields:**
@@ -280,19 +292,18 @@ result = agent.run(max_cycles=50)
 }
 ```
 
-**Internal tools:** `exa_outreach.list_templates`, `exa_outreach.get_template`, `exa_outreach.check_contacted`, `exa_outreach.log_lead`, `exa_outreach.log_email_sent`.
+**Internal tools:** normal mode exposes `exa_outreach.list_templates`, `exa_outreach.get_template`, `exa_outreach.check_contacted`, `exa_outreach.log_lead`, and `exa_outreach.log_email_sent`. Search-only mode exposes only `exa_outreach.check_contacted` and `exa_outreach.log_lead` alongside the Exa provider tool.
 
 **Pluggable storage via `StorageBackend` protocol.** The default is `FileSystemStorageBackend`. Implement the protocol to route results to any backend:
 
 ```python
-from harnessiq.shared.exa_outreach import StorageBackend, LeadRecord, EmailSentRecord
+from harnessiq.shared.exa_outreach import StorageBackend
 
 class MyDatabaseBackend:
-    def start_run(self, run_id: str, query: str) -> None: ...
+    def start_run(self, run_id: str, metadata: dict) -> None: ...
     def finish_run(self, run_id: str, completed_at: str) -> None: ...
-    def log_lead(self, run_id: str, lead: LeadRecord) -> None: ...
-    def log_email_sent(self, run_id: str, record: EmailSentRecord) -> None: ...
-    def is_contacted(self, url: str) -> bool: ...
+    def log_event(self, run_id: str, event_type: str, data: dict) -> None: ...
+    def has_seen(self, key: str, value: str, *, event_type: str | None = None) -> bool: ...
     def current_run_id(self) -> str | None: ...
 
 agent = ExaOutreachAgent(..., storage_backend=MyDatabaseBackend())
@@ -812,9 +823,23 @@ harnessiq outreach run \
   --max-cycles 50
 ```
 
+Lead-discovery-only mode uses the same command family and persists the mode through the existing runtime-parameter surface:
+
+```bash
+harnessiq outreach configure \
+  --agent campaign-a \
+  --runtime-param search_only=true
+
+harnessiq outreach run \
+  --agent campaign-a \
+  --model-factory my_module:create_model \
+  --exa-credentials-factory my_module:create_exa_credentials \
+  --max-cycles 50
+```
+
 Each `--X-factory` flag accepts a `module:callable` import path.
 
-`--email-data-factory` must return a `list[dict]`, where each dict has at minimum: `id`, `title`, `subject`, `description`, `actual_email`. Each run writes a `run_N.json` file under `memory_path/runs/`. Leads and sent emails are logged deterministically inside tool handlers.
+`--email-data-factory` must return a `list[dict]`, where each dict has at minimum: `id`, `title`, `subject`, `description`, `actual_email`. It is required in the default outreach mode and optional when `search_only=true`. `--resend-credentials-factory` follows the same rule. Each run writes a `run_N.json` file under `memory_path/runs/`. Leads and sent emails are logged deterministically inside tool handlers, and search-only runs simply leave `emails_sent` empty.
 
 ---
 

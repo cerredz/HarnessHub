@@ -8,3 +8,4 @@
 2. Ticket 2: Expose search-only mode through the outreach CLI and public docs
    - Extend CLI runtime-parameter handling and run construction for search-only mode, then update README coverage for the new SDK/CLI behavior.
    - Issue: `#185` — `https://github.com/cerredz/HarnessHub/issues/185`
+   - Implemented: `PR #188` — `https://github.com/cerredz/HarnessHub/pull/188` (stacked on `PR #187`)
