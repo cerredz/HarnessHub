@@ -20,12 +20,14 @@ from harnessiq.shared.prospecting import (
     DEFAULT_AGENT_IDENTITY,
     DEFAULT_COMPANY_DESCRIPTION,
     DEFAULT_EVAL_SYSTEM_PROMPT,
+    DEFAULT_GOOGLE_MAPS_SEARCH_BASE_URL,
     DEFAULT_MAX_LISTINGS_PER_SEARCH,
     DEFAULT_MAX_SEARCHES_PER_RUN,
     DEFAULT_QUALIFICATION_THRESHOLD,
     DEFAULT_SINK_RECORD_TYPE,
     DEFAULT_SUMMARIZE_AT_X,
     DEFAULT_WEBSITE_INSPECT_ENABLED,
+    NEXT_QUERY_SYSTEM_PROMPT,
     ProspectingAgentConfig,
     ProspectingMemoryStore,
     ProspectingState,
@@ -33,6 +35,7 @@ from harnessiq.shared.prospecting import (
     RUN_STATUS_COMPLETE,
     RUN_STATUS_ERROR,
     RUN_STATUS_IN_PROGRESS,
+    SEARCH_SUMMARY_SYSTEM_PROMPT,
     SearchRecord,
     normalize_prospecting_custom_parameters,
     normalize_prospecting_runtime_parameters,
@@ -49,19 +52,6 @@ from harnessiq.tools.registry import ToolRegistry
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
 _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
-_GOOGLE_MAPS_SEARCH_BASE_URL = "https://www.google.com/maps/search/"
-
-_SEARCH_SUMMARY_SYSTEM_PROMPT = """You summarize completed Google Maps searches for a prospecting run.
-Return ONLY JSON with the schema {"summary": "<compact summary>", "insights": ["..."]}.
-Keep the summary compact, mention industries and locations already searched, and highlight patterns that should steer future search expansion."""
-
-_NEXT_QUERY_SYSTEM_PROMPT = """You generate the next Google Maps search pair for a prospecting run.
-Rules:
-- Stay anchored to the company description.
-- Never repeat an already-searched (query, location) pair.
-- Diversify geography before repeating the exact same city.
-- Return ONLY JSON with the schema {"query": "...", "location": "..."}.
-- If no sensible next search remains, return {"query": "", "location": ""}."""
 
 JsonSubcallRunner = Callable[[str, Sequence[AgentParameterSection], str], dict[str, Any]]
 
@@ -239,7 +229,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
             "{{max_searches_per_run}}": str(self._config.max_searches_per_run),
             "{{max_listings_per_search}}": str(self._config.max_listings_per_search),
             "{{website_inspect_enabled}}": str(self._config.website_inspect_enabled).lower(),
-            "{{google_maps_search_base_url}}": _GOOGLE_MAPS_SEARCH_BASE_URL,
+            "{{google_maps_search_base_url}}": DEFAULT_GOOGLE_MAPS_SEARCH_BASE_URL,
             "{{tool_lines}}": tool_lines,
         }
         for placeholder, value in replacements.items():
@@ -456,7 +446,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
         action = "continued"
         if unsummarized and len(unsummarized) >= int(arguments["summarize_at_x"]):
             summary_payload = self._run_json_subcall(
-                system_prompt=_SEARCH_SUMMARY_SYSTEM_PROMPT,
+                system_prompt=SEARCH_SUMMARY_SYSTEM_PROMPT,
                 sections=(
                     AgentParameterSection(
                         title="Company Description",
@@ -495,7 +485,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
             action = "summarized_and_continued"
 
         next_query_payload = self._run_json_subcall(
-            system_prompt=_NEXT_QUERY_SYSTEM_PROMPT,
+            system_prompt=NEXT_QUERY_SYSTEM_PROMPT,
             sections=(
                 AgentParameterSection(
                     title="Company Description",
