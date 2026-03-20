@@ -1,4 +1,5 @@
-﻿Issue URL: https://github.com/cerredz/HarnessHub/issues/180
+Issue URL: https://github.com/cerredz/HarnessHub/issues/180
+PR URL: https://github.com/cerredz/HarnessHub/pull/191
 
 Title: Normalize package exports, shared-module coverage, and architectural documentation after the shared-definition refactor
 
@@ -25,7 +26,7 @@ Relevant Files:
 - `tests/test_toolset_registry.py`: update or expand coverage if provider definition ownership affects registry expectations.
 
 Approach:
-Treat this as the integration-and-hardening ticket. The earlier tickets move definition ownership; this ticket ensures the repositoryâ€™s public surfaces, architectural docs, and regression tests accurately reflect the new shared-first layout. Where possible, favor compatibility re-exports instead of breaking import paths.
+Treat this as the integration-and-hardening ticket. The earlier tickets move definition ownership; this ticket ensures the repository's public surfaces, architectural docs, and regression tests accurately reflect the new shared-first layout. Where possible, favor compatibility re-exports instead of breaking import paths.
 
 Assumptions:
 - The earlier tickets may introduce new shared modules that need to be reflected in docs and package-surface tests.
@@ -49,4 +50,3 @@ Dependencies:
 
 Drift Guard:
 This ticket must not add new capabilities or widen the architectural scope beyond stabilization of the shared-definition refactor. It exists to harden and document the refactor, not to bundle unrelated cleanup.
-

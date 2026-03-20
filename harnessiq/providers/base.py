@@ -5,12 +5,14 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any, Mapping
 
-from harnessiq.shared.providers import ALLOWED_MESSAGE_ROLES, GEMINI_ROLE_MAP, ProviderMessage, RequestPayload
+from harnessiq.shared.providers import (
+    ALLOWED_MESSAGE_ROLES,
+    GEMINI_ROLE_MAP,
+    ProviderFormatError,
+    ProviderMessage,
+    RequestPayload,
+)
 from harnessiq.shared.tools import ToolDefinition
-
-
-class ProviderFormatError(ValueError):
-    """Raised when a request cannot be translated into provider format."""
 
 
 def normalize_messages(

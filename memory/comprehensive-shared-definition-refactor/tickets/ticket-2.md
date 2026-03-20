@@ -1,7 +1,6 @@
 ﻿Issue URL: https://github.com/cerredz/HarnessHub/issues/178
 
 PR URL: https://github.com/cerredz/HarnessHub/pull/189
-
 Title: Centralize provider endpoint constants and provider credential/config definitions under shared
 
 Intent:

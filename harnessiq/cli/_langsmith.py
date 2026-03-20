@@ -6,13 +6,7 @@ import os
 from pathlib import Path
 
 from harnessiq.config import DotEnvFileNotFoundError, parse_dotenv_file
-
-_ENV_ALIAS_GROUPS = (
-    ("LANGSMITH_API_KEY", "LANGCHAIN_API_KEY"),
-    ("LANGSMITH_PROJECT", "LANGCHAIN_PROJECT"),
-    ("LANGSMITH_ENDPOINT", "LANGCHAIN_ENDPOINT"),
-    ("LANGSMITH_TRACING", "LANGCHAIN_TRACING_V2"),
-)
+from harnessiq.shared.langsmith import LANGSMITH_ENV_ALIAS_GROUPS
 
 
 def seed_langsmith_environment(repo_root: str | Path = ".") -> dict[str, str]:
@@ -26,7 +20,7 @@ def seed_langsmith_environment(repo_root: str | Path = ".") -> dict[str, str]:
         return {}
 
     applied: dict[str, str] = {}
-    for canonical_name, legacy_name in _ENV_ALIAS_GROUPS:
+    for canonical_name, legacy_name in LANGSMITH_ENV_ALIAS_GROUPS:
         resolved_value = parsed.get(canonical_name) or parsed.get(legacy_name)
         if resolved_value is None:
             continue
