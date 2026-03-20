@@ -6,8 +6,11 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from harnessiq.providers.http import RequestExecutor, request_json
-
-DEFAULT_NOTION_VERSION = "2022-06-28"
+from harnessiq.shared.output_sinks import (
+    DEFAULT_NOTION_VERSION,
+    LINEAR_DEFAULT_BASE_URL,
+    NOTION_DEFAULT_BASE_URL,
+)
 
 
 def extract_model_metadata(model: Any) -> dict[str, Any]:
@@ -69,7 +72,7 @@ class NotionClient:
     api_token: str
     notion_version: str = DEFAULT_NOTION_VERSION
     request_executor: RequestExecutor = request_json
-    base_url: str = "https://api.notion.com/v1"
+    base_url: str = NOTION_DEFAULT_BASE_URL
 
     def create_page(
         self,
@@ -167,7 +170,7 @@ class LinearClient:
 
     api_key: str
     request_executor: RequestExecutor = request_json
-    base_url: str = "https://api.linear.app/graphql"
+    base_url: str = LINEAR_DEFAULT_BASE_URL
 
     def create_issue(
         self,

@@ -17,12 +17,14 @@ from harnessiq.shared.linkedin import (
     ActionLogEntry,
     JobApplicationRecord,
     LinkedInAgentConfig,
+    LinkedInMemoryStore,
     ScreenshotPersistor,
 )
 
 from .base import BaseAgent
-from .email import BaseEmailAgent, DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
+from .email import BaseEmailAgent
 from harnessiq.shared.knowt import KnowtMemoryStore
+from harnessiq.shared.email import DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
 
 from .exa_outreach import ExaOutreachAgent
 from harnessiq.shared.exa_outreach import ExaOutreachMemoryStore
@@ -32,7 +34,6 @@ from .knowt import KnowtAgent
 from .leads import LeadsAgent
 from .linkedin import (
     LinkedInJobApplierAgent,
-    LinkedInMemoryStore,
     build_linkedin_browser_tool_definitions,
     create_linkedin_browser_stub_tools,
 )

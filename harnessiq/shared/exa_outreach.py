@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.utils.run_storage import (
     RUNS_DIRNAME,
     FileSystemStorageBackend,
@@ -24,13 +26,30 @@ AGENT_IDENTITY_FILENAME = "agent_identity.txt"
 ADDITIONAL_PROMPT_FILENAME = "additional_prompt.txt"
 
 DEFAULT_AGENT_IDENTITY = (
-    "A disciplined outreach specialist who finds relevant prospects via Exa neural "
-    "search, selects the most appropriate email template for each lead, personalizes "
-    "the message with specific details from their profile, and sends concise, "
-    "value-first cold emails."
+    "A disciplined Exa prospecting specialist who finds relevant prospects via Exa "
+    "neural search, logs new leads deterministically, and, when email tools are "
+    "available, can progress qualified leads into personalized outreach."
 )
 
 DEFAULT_SEARCH_QUERY = "(search query not configured)"
+
+
+@dataclass(frozen=True, slots=True)
+class ExaOutreachAgentConfig:
+    """Runtime configuration for the ExaOutreach harness."""
+
+    email_data: tuple["EmailTemplate", ...]
+    memory_path: Path
+    storage_backend: StorageBackend
+    search_query: str = DEFAULT_SEARCH_QUERY
+    max_tokens: int = DEFAULT_AGENT_MAX_TOKENS
+    reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD
+    allowed_resend_operations: tuple[str, ...] | None = None
+    allowed_exa_operations: tuple[str, ...] | None = None
+
+    def __post_init__(self) -> None:
+        if not self.email_data:
+            raise ValueError("ExaOutreachAgentConfig.email_data must not be empty.")
 
 # ---------------------------------------------------------------------------
 # EmailTemplate
@@ -345,6 +364,10 @@ def _run_file_sort_key(path: Path) -> int:
     return int(match.group(1)) if match else 0
 
 
+def _utcnow() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 __all__ = [
     "ADDITIONAL_PROMPT_FILENAME",
     "AGENT_IDENTITY_FILENAME",
@@ -352,6 +375,7 @@ __all__ = [
     "DEFAULT_SEARCH_QUERY",
     "EmailSentRecord",
     "EmailTemplate",
+    "ExaOutreachAgentConfig",
     "ExaOutreachMemoryStore",
     "FileSystemStorageBackend",
     "LeadRecord",
