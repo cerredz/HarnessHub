@@ -16,7 +16,8 @@ Codebase standards:
 - Agents should interact with external capabilities through the tool layer, and third-party platforms should be reached through provider-backed tools and provider clients rather than through undocumented ad hoc calls.
 - Agents should be structured to accept an injected toolset or tool executor as part of their configuration instead of strictly defining the full tool surface internally. An agent can provide a sensible default toolset, but that default should remain overridable.
 - Autonomous agents are expected to have a durable memory folder. That memory can store any files needed across runs, including user inputs, runtime parameters, custom parameters, action logs, and deterministic state records.
-- Tools are not only optional model add-ons; they should be used wherever a deterministic check is possible. If an agent can verify state from durable memory or another authoritative source, it should do that explicitly instead of relying on model recall alone.
+- The shared runtime also maintains an SDK-level agent instance registry so each resolved agent run has a stable name/id pair plus a persisted payload snapshot and memory-path binding.
+- Tools are not only optional model add-ons; they should be used wherever a deterministic check is possible. If an agent can verify state from durable memory or another authoritative source, it should do that explicitly instead of relying on model recall alone (for example, checking LinkedIn memory to confirm whether a job was already applied to).
 - These agents are being built for full autonomy, so designs must assume multiple context window resets. Durable memory and parameter sections should carry forward the state needed to resume work without losing orientation.
 - Agent behavior should be configurable through parameters. The shared runtime comes from `BaseAgent`, while concrete harnesses can expose runtime parameters and user-defined custom parameters where the workflow requires them.
 - Update this file whenever a meaningful architectural folder is added or when the intended boundary between `agents/`, `shared/`, `tools/`, and `toolset/` changes.
@@ -31,10 +32,10 @@ Top-level directories:
 
 Source layout:
 
-- `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses
-- `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch, including sink connection management plus ledger log/export/report commands
+- `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses, including domain-specific packages such as `agents/prospecting/` for long-running Google Maps lead discovery with durable memory and reset-safe resume logic
+- `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch, including sink connection management plus ledger log/export/report commands and agent-specific workflows such as `cli/prospecting/` for preparing, configuring, and running the Google Maps prospecting harness
 - `harnessiq/config/`: repo-local credential config models, persisted agent credential bindings, and `.env` loader/store helpers
-- `harnessiq/integrations/`: adapters that bridge the core SDK to external runtime surfaces such as model implementations and browser automation
+- `harnessiq/integrations/`: adapters that bridge the core SDK to external runtime surfaces such as model implementations and browser automation, including narrow Playwright-backed browser executors for concrete agents like LinkedIn, Instagram discovery, and Google Maps prospecting
 - `harnessiq/master_prompts/`: curated, deployable system prompts for agents and direct SDK use
 - `harnessiq/providers/`: provider translation helpers, HTTP clients, and operation catalogs for both LLM providers and external-service APIs, including provider-backed output-sink transports for destinations like Notion, Confluence, Supabase, Linear, Slack, and Discord
 - `harnessiq/shared/`: shared types, configs, and constants reused across modules
