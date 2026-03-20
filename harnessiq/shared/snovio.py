@@ -1,4 +1,4 @@
-"""Snov.io operation catalog."""
+"""Snov.io shared operation metadata."""
 
 from __future__ import annotations
 

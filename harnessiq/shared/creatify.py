@@ -1,4 +1,4 @@
-"""Creatify API operation catalog and request preparation primitives."""
+"""Creatify shared operation metadata."""
 
 from __future__ import annotations
 from collections import OrderedDict

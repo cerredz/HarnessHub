@@ -1,4 +1,4 @@
-"""arXiv operation catalog."""
+"""arXiv shared operation metadata."""
 
 from __future__ import annotations
 

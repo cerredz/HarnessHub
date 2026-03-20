@@ -1,4 +1,4 @@
-"""Lemlist operation catalog, tool definition, and MCP-style tool factory."""
+"""Lemlist shared operation metadata."""
 
 from __future__ import annotations
 from collections import OrderedDict

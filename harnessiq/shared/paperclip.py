@@ -1,4 +1,4 @@
-"""Paperclip operation catalog and prepared-request helpers."""
+"""Paperclip shared operation metadata."""
 
 from __future__ import annotations
 from collections import OrderedDict

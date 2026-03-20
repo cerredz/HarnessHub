@@ -1,8 +1,4 @@
-"""Proxycurl operation catalog.
-
-NOTE: Proxycurl shut down in January 2025 following a LinkedIn lawsuit.
-This module is preserved for reference only and will not produce live responses.
-"""
+"""Proxycurl shared operation metadata."""
 
 from __future__ import annotations
 

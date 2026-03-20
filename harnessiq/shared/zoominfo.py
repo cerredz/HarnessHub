@@ -1,4 +1,4 @@
-"""ZoomInfo operation catalog."""
+"""ZoomInfo shared operation metadata."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Apollo operation catalog, tool definition, and request preparation."""
+"""Apollo shared operation metadata."""
 
 from __future__ import annotations
 from collections import OrderedDict

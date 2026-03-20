@@ -1,4 +1,4 @@
-"""Resend-backed tooling primitives for outbound email workflows."""
+"""Resend shared tooling metadata."""
 
 from __future__ import annotations
 

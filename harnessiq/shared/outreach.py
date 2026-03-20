@@ -1,4 +1,4 @@
-"""Outreach operation catalog, tool definition, and MCP-style tool factory."""
+"""Outreach shared operation metadata."""
 
 from __future__ import annotations
 from collections import OrderedDict

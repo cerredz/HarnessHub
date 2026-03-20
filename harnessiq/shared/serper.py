@@ -1,4 +1,4 @@
-"""Serper operation catalog, tool definition, and MCP-style tool factory."""
+"""Serper shared operation metadata."""
 
 from __future__ import annotations
 from collections import OrderedDict

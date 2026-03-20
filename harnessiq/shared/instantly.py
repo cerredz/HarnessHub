@@ -1,4 +1,4 @@
-"""Instantly operation catalog, tool definition, and MCP-style tool factory."""
+"""Instantly shared operation metadata."""
 
 from __future__ import annotations
 from collections import OrderedDict

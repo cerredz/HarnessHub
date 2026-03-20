@@ -1,4 +1,4 @@
-"""InboxApp operation catalog, tool definition, and MCP-style tool factory."""
+"""InboxApp shared operation metadata."""
 
 from __future__ import annotations
 from collections import OrderedDict

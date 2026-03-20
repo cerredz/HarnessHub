@@ -1,4 +1,4 @@
-"""Expandi operation catalog, tool definition, and MCP-style tool factory."""
+"""Expandi shared operation metadata."""
 
 from __future__ import annotations
 from collections import OrderedDict

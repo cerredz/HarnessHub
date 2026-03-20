@@ -1,4 +1,4 @@
-"""Arcads operation catalog, tool definition, and MCP-style tool factory."""
+"""Arcads shared operation metadata."""
 
 from __future__ import annotations
 from collections import OrderedDict

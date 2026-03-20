@@ -1,4 +1,4 @@
-"""People Data Labs operation catalog."""
+"""People Data Labs shared operation metadata."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""ZeroBounce operation catalog, tool definition, and MCP-style tool factory."""
+"""ZeroBounce shared operation metadata."""
 
 from __future__ import annotations
 from collections import OrderedDict

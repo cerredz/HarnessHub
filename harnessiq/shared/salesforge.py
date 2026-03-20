@@ -1,4 +1,4 @@
-"""Salesforge operation catalog."""
+"""Salesforge shared operation metadata."""
 
 from __future__ import annotations
 

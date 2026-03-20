@@ -1,4 +1,4 @@
-"""Lusha operation catalog, tool definition, and MCP-style tool factory."""
+"""Lusha shared operation metadata."""
 
 from __future__ import annotations
 from collections import OrderedDict
