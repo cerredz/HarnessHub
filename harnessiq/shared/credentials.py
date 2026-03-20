@@ -1,4 +1,4 @@
-"""Shared credential TypedDicts for all data providers."""
+"""Shared provider credential and transport-auth definitions."""
 
 from __future__ import annotations
 
