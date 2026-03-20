@@ -232,6 +232,8 @@ class LangSmithTracingTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.provider, "grok")
         self.assertEqual(raised.exception.status_code, 403)
+        self.assertEqual(raised.exception.url, "https://api.x.ai/v1/chat/completions")
+        self.assertEqual(raised.exception.body, {"error": {"message": "Forbidden"}})
         self.assertEqual(str(raised.exception), "grok request failed (403): Forbidden")
         self.assertEqual(fake_langsmith.run_trees[0].end_calls[-1]["error"], "grok request failed (403): Forbidden")
 

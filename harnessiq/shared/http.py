@@ -23,6 +23,12 @@ class RequestExecutor(Protocol):
 class ProviderHTTPError(RuntimeError):
     """Raised when a provider HTTP request fails."""
 
+    provider: str
+    message: str
+    status_code: int | None
+    url: str | None
+    body: Any | None
+
     def __init__(
         self,
         *,
