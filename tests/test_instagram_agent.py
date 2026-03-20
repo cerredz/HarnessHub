@@ -64,7 +64,7 @@ def _build_execution(keyword: str = "fitness coach") -> InstagramSearchExecution
     )
     search_record = InstagramSearchRecord(
         keyword=keyword,
-        query='site:instagram.com "@gmail.com" "fitness coach"',
+        query='site:instagram .com "@gmail .com" fitness coach',
         searched_at="2026-03-19T00:00:00Z",
         visited_urls=("https://www.instagram.com/creator-a/",),
         lead_count=1,

@@ -70,7 +70,6 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             search_result_limit=search_result_limit,
         )
 
-        tool_registry = ToolRegistry(self._build_internal_tools())
         bound_search_tool = create_instagram_tools(
             memory_store=self._memory_store,
             search_backend=self._search_backend,
@@ -85,7 +84,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
                 ),
             )
         )
-        runtime_config = AgentRuntimeConfig(
+        base_runtime_config = AgentRuntimeConfig(
             max_tokens=max_tokens,
             reset_threshold=reset_threshold,
         )
@@ -94,7 +93,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             model=model,
             tool_executor=tool_registry,
             runtime_config=merge_agent_runtime_config(
-                runtime_config,
+                runtime_config or base_runtime_config,
                 max_tokens=max_tokens,
                 reset_threshold=reset_threshold,
             ),

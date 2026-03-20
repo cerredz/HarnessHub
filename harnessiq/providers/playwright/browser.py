@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -19,12 +19,16 @@ class PlaywrightBrowserSession:
         headless: bool,
         viewport: Mapping[str, int],
         import_error_message: str,
+        launch_args: Sequence[str] = (),
+        init_scripts: Sequence[str] = (),
     ) -> None:
         self._session_dir = Path(session_dir) if session_dir is not None else None
         self._channel = channel
         self._headless = headless
         self._viewport = dict(viewport)
         self._import_error_message = import_error_message
+        self._launch_args = tuple(str(value) for value in launch_args)
+        self._init_scripts = tuple(str(value) for value in init_scripts if str(value).strip())
         self._playwright: Any = None
         self._browser: Any = None
         self._context: Any = None
@@ -52,14 +56,18 @@ class PlaywrightBrowserSession:
                 channel=self._channel,
                 headless=self._headless,
                 viewport=dict(self._viewport),
+                args=list(self._launch_args),
             )
             self._browser = None
+            self._apply_init_scripts()
             return
         self._browser = self._playwright.chromium.launch(
             channel=self._channel,
             headless=self._headless,
+            args=list(self._launch_args),
         )
         self._context = self._browser.new_context(viewport=dict(self._viewport))
+        self._apply_init_scripts()
 
     def get_or_create_page(self) -> Any:
         """Return the first existing page in the live context or create one."""
@@ -84,6 +92,12 @@ class PlaywrightBrowserSession:
         self._playwright = None
         self._browser = None
         self._context = None
+
+    def _apply_init_scripts(self) -> None:
+        if self._context is None:
+            return
+        for script in self._init_scripts:
+            self._context.add_init_script(script)
 
 
 @contextmanager
