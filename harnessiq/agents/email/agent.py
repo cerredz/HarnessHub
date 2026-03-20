@@ -4,39 +4,14 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Iterable, Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig, BaseAgent
 from harnessiq.shared.agents import merge_agent_runtime_config
+from harnessiq.shared.email import DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
 from harnessiq.tools.registry import ToolRegistry
-from harnessiq.tools.resend import ResendClient, ResendCredentials, build_resend_operation_catalog, create_resend_tools, get_resend_operation
-
-DEFAULT_EMAIL_AGENT_IDENTITY = (
-    "A disciplined email operations agent that drafts, reviews, schedules, and sends email only "
-    "through verified tool calls."
-)
-
-
-@dataclass(frozen=True, slots=True)
-class EmailAgentConfig:
-    """Runtime configuration for reusable email-capable harnesses."""
-
-    resend_credentials: ResendCredentials
-    allowed_resend_operations: tuple[str, ...] | None = None
-    max_tokens: int = 80_000
-    reset_threshold: float = 0.9
-
-    def __post_init__(self) -> None:
-        if self.allowed_resend_operations is None:
-            return
-        normalized = tuple(self.allowed_resend_operations)
-        if not normalized:
-            raise ValueError("allowed_resend_operations must not be empty when provided.")
-        for operation_name in normalized:
-            get_resend_operation(operation_name)
-        object.__setattr__(self, "allowed_resend_operations", normalized)
+from harnessiq.tools.resend import ResendClient, ResendCredentials, build_resend_operation_catalog, create_resend_tools
 
 
 class BaseEmailAgent(BaseAgent, ABC):
