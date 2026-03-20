@@ -14,6 +14,7 @@ from harnessiq.providers.langsmith import (
     trace_model_call,
     trace_tool_call,
 )
+from harnessiq.shared.http import ProviderHTTPError
 from harnessiq.shared.tools import ECHO_TEXT
 from harnessiq.tools import create_builtin_registry
 
@@ -205,6 +206,42 @@ class LangSmithTracingTests(unittest.TestCase):
                 )
 
         self.assertEqual(fake_langsmith.run_trees[0].end_calls[-1]["error"], "provider timed out")
+
+    def test_provider_http_error_accepts_traceback_assignment(self) -> None:
+        exc = ProviderHTTPError(provider="exa", message="Forbidden", status_code=403)
+
+        exc.__traceback__ = None
+
+        self.assertEqual(str(exc), "exa request failed (403): Forbidden")
+
+    def test_trace_model_call_reraises_provider_http_error_without_masking_it(self) -> None:
+        fake_langsmith = _FakeLangSmith()
+        provider_error = ProviderHTTPError(
+            provider="grok",
+            message="Forbidden",
+            status_code=403,
+            url="https://api.x.ai/v1/chat/completions",
+        )
+
+        def boom() -> dict[str, str]:
+            raise provider_error
+
+        with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
+            with self.assertRaises(ProviderHTTPError) as raised:
+                trace_model_call(
+                    boom,
+                    provider="grok",
+                    model_name="grok-4-1-fast",
+                    system_prompt="Stay precise.",
+                    messages=self.messages,
+                    client=object(),
+                )
+
+        self.assertIs(raised.exception, provider_error)
+        self.assertEqual(raised.exception.provider, "grok")
+        self.assertEqual(raised.exception.status_code, 403)
+        self.assertEqual(str(raised.exception), "grok request failed (403): Forbidden")
+        self.assertEqual(fake_langsmith.run_trees[0].end_calls[-1]["error"], "grok request failed (403): Forbidden")
 
     def test_tracing_helpers_fail_open_without_credentials(self) -> None:
         fake_langsmith = _FakeLangSmith()
