@@ -1,5 +1,7 @@
 ﻿Issue URL: https://github.com/cerredz/HarnessHub/issues/179
 
+PR URL: https://github.com/cerredz/HarnessHub/pull/190
+
 Title: Centralize provider operation metadata and prepared-request types for provider-backed tool surfaces
 
 Intent:

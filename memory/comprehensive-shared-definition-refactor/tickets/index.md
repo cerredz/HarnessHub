@@ -7,6 +7,7 @@
   Move provider endpoint defaults and standalone provider config dataclasses into `harnessiq/shared/`.
 - Ticket 3 (#179): Centralize provider operation metadata and prepared-request types for provider-backed tool surfaces
   Issue URL: https://github.com/cerredz/HarnessHub/issues/179
+  PR URL: https://github.com/cerredz/HarnessHub/pull/190
   Move provider operation metadata catalogs and immutable request-definition types into provider-specific shared modules.
 - Ticket 4 (#180): Normalize package exports, shared-module coverage, and architectural documentation after the shared-definition refactor
   Issue URL: https://github.com/cerredz/HarnessHub/issues/180
