@@ -12,6 +12,7 @@
   Move provider operation metadata catalogs and immutable request-definition types into provider-specific shared modules.
 - Ticket 4 (#180): Normalize package exports, shared-module coverage, and architectural documentation after the shared-definition refactor
   Issue URL: https://github.com/cerredz/HarnessHub/issues/180
+  PR URL: https://github.com/cerredz/HarnessHub/pull/191
   Reconcile exports, docs, and verification after the shared-definition moves.
 
 Dependency order:
