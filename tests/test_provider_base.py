@@ -142,6 +142,15 @@ class ProviderBaseTests(unittest.TestCase):
         self.assertEqual(raised.exception.provider, "resend")
         self.assertIn("resend down", str(raised.exception))
 
+    def test_provider_http_error_allows_traceback_assignment(self) -> None:
+        try:
+            raise ProviderHTTPError(provider="grok", message="Forbidden", status_code=403)
+        except ProviderHTTPError as exc:
+            exc.__traceback__ = exc.__traceback__
+            self.assertEqual(exc.provider, "grok")
+            self.assertEqual(exc.status_code, 403)
+            self.assertEqual(str(exc), "grok request failed (403): Forbidden")
+
 
 if __name__ == "__main__":
     unittest.main()
