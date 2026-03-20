@@ -8,7 +8,8 @@ Scope:
 This ticket updates the shared provider error/tracing path and adds regression coverage for the exception propagation behavior. It does not make unauthorized credentials succeed, alter provider request payloads, or change business logic in any specific agent.
 
 Relevant Files:
-- `harnessiq/providers/http.py`: adjust `ProviderHTTPError` so it behaves correctly as an exception during re-raise and traceback handling.
+- `harnessiq/shared/http.py`: adjust `ProviderHTTPError` so it behaves correctly as an exception during re-raise and traceback handling.
+- `harnessiq/providers/http.py`: confirm the shared exception import path continues to work after the fix.
 - `harnessiq/providers/langsmith.py`: validate whether any defensive normalization is needed around traced exception paths after the exception-class fix.
 - `tests/test_providers.py`: add or update regression coverage proving traced provider failures preserve the original provider exception type and details.
 
