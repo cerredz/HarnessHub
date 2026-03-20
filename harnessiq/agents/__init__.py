@@ -36,6 +36,17 @@ from .linkedin import (
     LinkedInJobApplierAgent,
     build_linkedin_browser_tool_definitions,
     create_linkedin_browser_stub_tools,
+    normalize_linkedin_runtime_parameters,
+)
+from .prospecting import (
+    GoogleMapsProspectingAgent,
+    ProspectingAgentConfig,
+    ProspectingMemoryStore,
+    QualifiedLeadRecord,
+    SUPPORTED_PROSPECTING_CUSTOM_PARAMETERS,
+    SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS,
+    normalize_prospecting_custom_parameters,
+    normalize_prospecting_runtime_parameters,
 )
 
 __all__ = [
@@ -61,6 +72,8 @@ __all__ = [
     "KnowtMemoryStore",
     "LeadsAgent",
     "EmailAgentConfig",
+    "InstagramKeywordDiscoveryAgent",
+    "InstagramMemoryStore",
     "JobApplicationRecord",
     "LinkedInAgentConfig",
     "LinkedInJobApplierAgent",
@@ -69,4 +82,13 @@ __all__ = [
     "build_linkedin_browser_tool_definitions",
     "create_linkedin_browser_stub_tools",
     "estimate_text_tokens",
+    "normalize_linkedin_runtime_parameters",
+    "GoogleMapsProspectingAgent",
+    "ProspectingAgentConfig",
+    "ProspectingMemoryStore",
+    "QualifiedLeadRecord",
+    "SUPPORTED_PROSPECTING_CUSTOM_PARAMETERS",
+    "SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS",
+    "normalize_prospecting_custom_parameters",
+    "normalize_prospecting_runtime_parameters",
 ]
