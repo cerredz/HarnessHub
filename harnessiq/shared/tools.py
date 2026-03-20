@@ -34,6 +34,23 @@ FILESYSTEM_WRITE_TEXT_FILE = "filesystem.write_text_file"
 FILESYSTEM_APPEND_TEXT_FILE = "filesystem.append_text_file"
 FILESYSTEM_MAKE_DIRECTORY = "filesystem.make_directory"
 FILESYSTEM_COPY_PATH = "filesystem.copy_path"
+BROWSER_NAVIGATE = "browser.navigate"
+BROWSER_CLICK = "browser.click"
+BROWSER_TYPE = "browser.type"
+BROWSER_SELECT_OPTION = "browser.select_option"
+BROWSER_HOVER = "browser.hover"
+BROWSER_UPLOAD_FILE = "browser.upload_file"
+BROWSER_PRESS_KEY = "browser.press_key"
+BROWSER_SCROLL = "browser.scroll"
+BROWSER_WAIT_FOR_ELEMENT = "browser.wait_for_element"
+BROWSER_SCREENSHOT = "browser.screenshot"
+BROWSER_VIEW_HTML = "browser.view_html"
+BROWSER_GET_TEXT = "browser.get_text"
+BROWSER_FIND_ELEMENT = "browser.find_element"
+BROWSER_GET_CURRENT_URL = "browser.get_current_url"
+BROWSER_EXTRACT_CONTENT = "browser.extract_content"
+EVALUATE_COMPANY = "eval.evaluate_company"
+SEARCH_OR_SUMMARIZE = "search.search_or_summarize"
 
 # Reasoning tool key constants
 REASON_BRAINSTORM = "reason.brainstorm"
@@ -121,10 +138,12 @@ EXA_OUTREACH_LOG_LEAD = "exa_outreach.log_lead"
 EXA_OUTREACH_LOG_EMAIL_SENT = "exa_outreach.log_email_sent"
 
 # Provider tool key constants
+ATTIO_REQUEST = "attio.request"
 ARCADS_REQUEST = "arcads.request"
 CREATIFY_REQUEST = "creatify.request"
 EXA_REQUEST = "exa.request"
 INSTANTLY_REQUEST = "instantly.request"
+INBOXAPP_REQUEST = "inboxapp.request"
 LEMLIST_REQUEST = "lemlist.request"
 OUTREACH_REQUEST = "outreach.request"
 SNOVIO_REQUEST = "snovio.request"
@@ -135,6 +154,9 @@ ZOOMINFO_REQUEST = "zoominfo.request"
 PEOPLEDATALABS_REQUEST = "peopledatalabs.request"
 PROXYCURL_REQUEST = "proxycurl.request"
 CORESIGNAL_REQUEST = "coresignal.request"
+GOOGLE_DRIVE_REQUEST = "google_drive.request"
+PAPERCLIP_REQUEST = "paperclip.request"
+SERPER_REQUEST = "serper.request"
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,6 +176,52 @@ class ToolDefinition:
             "description": self.description,
             "input_schema": deepcopy(self.input_schema),
         }
+
+    def inspect(self) -> JsonObject:
+        """Return a richer inspection payload for humans and tooling."""
+        properties = self.input_schema.get("properties", {})
+        if not isinstance(properties, dict):
+            properties = {}
+        required_parameters = self.input_schema.get("required", ())
+        if not isinstance(required_parameters, list):
+            required_parameters = list(required_parameters)
+        required_parameter_names = [str(parameter) for parameter in required_parameters]
+        required_lookup = set(required_parameter_names)
+        property_names: set[str] = set()
+
+        parameters: list[JsonObject] = []
+        for parameter_name, parameter_schema in properties.items():
+            normalized_name = str(parameter_name)
+            property_names.add(normalized_name)
+            normalized_schema = deepcopy(parameter_schema) if isinstance(parameter_schema, dict) else {}
+            parameters.append(
+                {
+                    "name": normalized_name,
+                    "required": normalized_name in required_lookup,
+                    "type": normalized_schema.get("type"),
+                    "description": normalized_schema.get("description"),
+                    "schema": normalized_schema,
+                }
+            )
+
+        for parameter_name in required_parameter_names:
+            if parameter_name in property_names:
+                continue
+            parameters.append(
+                {
+                    "name": parameter_name,
+                    "required": True,
+                    "type": None,
+                    "description": None,
+                    "schema": {},
+                }
+            )
+
+        payload = self.as_dict()
+        payload["parameters"] = parameters
+        payload["required_parameters"] = required_parameter_names
+        payload["additional_properties"] = deepcopy(self.input_schema.get("additionalProperties", True))
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,14 +262,49 @@ class RegisteredTool:
         """Run the tool handler and normalize its output."""
         return ToolResult(tool_key=self.key, output=self.handler(arguments))
 
+    def inspect(self) -> JsonObject:
+        """Return serialized tool metadata including handler identity."""
+        payload = self.definition.inspect()
+        payload["function"] = _describe_handler(self.handler)
+        return payload
+
+
+def _describe_handler(handler: ToolHandler) -> JsonObject:
+    handler_type = type(handler)
+    module = getattr(handler, "__module__", handler_type.__module__)
+    qualname = getattr(handler, "__qualname__", handler_type.__qualname__)
+    name = getattr(handler, "__name__", qualname.split(".")[-1])
+    return {
+        "module": str(module),
+        "qualname": str(qualname),
+        "name": str(name),
+    }
+
 
 __all__ = [
     "ADD_NUMBERS",
+    "ATTIO_REQUEST",
     "ARCADS_REQUEST",
+    "BROWSER_CLICK",
+    "BROWSER_EXTRACT_CONTENT",
+    "BROWSER_FIND_ELEMENT",
+    "BROWSER_GET_CURRENT_URL",
+    "BROWSER_GET_TEXT",
+    "BROWSER_HOVER",
+    "BROWSER_NAVIGATE",
+    "BROWSER_PRESS_KEY",
+    "BROWSER_SCREENSHOT",
+    "BROWSER_SCROLL",
+    "BROWSER_SELECT_OPTION",
+    "BROWSER_TYPE",
+    "BROWSER_UPLOAD_FILE",
+    "BROWSER_VIEW_HTML",
+    "BROWSER_WAIT_FOR_ELEMENT",
     "CONTROL_PAUSE_FOR_HUMAN",
     "CORESIGNAL_REQUEST",
     "CREATIFY_REQUEST",
     "ECHO_TEXT",
+    "EVALUATE_COMPANY",
     "EXA_OUTREACH_CHECK_CONTACTED",
     "EXA_OUTREACH_GET_TEMPLATE",
     "EXA_OUTREACH_LIST_TEMPLATES",
@@ -218,9 +321,12 @@ __all__ = [
     "FILESYSTEM_WRITE_TEXT_FILE",
     "HEAVY_COMPACTION",
     "INSTANTLY_REQUEST",
+    "INBOXAPP_REQUEST",
     "JsonObject",
     "FILES_CREATE_FILE",
     "FILES_EDIT_FILE",
+    "GOOGLE_DRIVE_REQUEST",
+    "PAPERCLIP_REQUEST",
     "KNOWT_CREATE_AVATAR_DESCRIPTION",
     "KNOWT_CREATE_SCRIPT",
     "KNOWT_CREATE_VIDEO",
@@ -302,6 +408,8 @@ __all__ = [
     "REMOVE_TOOLS",
     "RegisteredTool",
     "SALESFORGE_REQUEST",
+    "SEARCH_OR_SUMMARIZE",
+    "SERPER_REQUEST",
     "SNOVIO_REQUEST",
     "TEXT_NORMALIZE_WHITESPACE",
     "TEXT_REGEX_EXTRACT",
