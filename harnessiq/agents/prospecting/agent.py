@@ -89,19 +89,6 @@ class GoogleMapsProspectingAgent(BaseAgent):
         json_subcall_runner: JsonSubcallRunner | None = None,
     ) -> None:
         candidate_memory_path = Path(memory_path) if memory_path is not None else None
-        instance_payload = _build_instance_payload(
-            memory_path=candidate_memory_path,
-            company_description=company_description,
-            max_tokens=max_tokens,
-            reset_threshold=reset_threshold,
-            qualification_threshold=qualification_threshold,
-            summarize_at_x=summarize_at_x,
-            max_searches_per_run=max_searches_per_run,
-            max_listings_per_search=max_listings_per_search,
-            website_inspect_enabled=website_inspect_enabled,
-            sink_record_type=sink_record_type,
-            eval_system_prompt=eval_system_prompt,
-        )
         self._config = ProspectingAgentConfig(
             memory_path=Path("."),
             max_tokens=max_tokens,
@@ -139,8 +126,6 @@ class GoogleMapsProspectingAgent(BaseAgent):
             tool_executor=tool_registry,
             runtime_config=runtime_config,
             memory_path=candidate_memory_path,
-            instance_payload=instance_payload,
-            repo_root=_find_repo_root(candidate_memory_path),
         )
         resolved_memory_path = self.memory_path or _DEFAULT_MEMORY_PATH
         self._memory_store = ProspectingMemoryStore(memory_path=resolved_memory_path)
@@ -736,62 +721,6 @@ def _parse_json_object(raw_text: str) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("Expected JSON object response.")
     return payload
-
-
-def _build_instance_payload(
-    *,
-    memory_path: Path | None,
-    company_description: str | None,
-    max_tokens: int,
-    reset_threshold: float,
-    qualification_threshold: int,
-    summarize_at_x: int,
-    max_searches_per_run: int,
-    max_listings_per_search: int,
-    website_inspect_enabled: bool,
-    sink_record_type: str,
-    eval_system_prompt: str,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "company_description": company_description or "",
-        "runtime": {
-            "max_tokens": max_tokens,
-            "reset_threshold": reset_threshold,
-        },
-        "custom": {
-            "qualification_threshold": qualification_threshold,
-            "summarize_at_x": summarize_at_x,
-            "max_searches_per_run": max_searches_per_run,
-            "max_listings_per_search": max_listings_per_search,
-            "website_inspect_enabled": website_inspect_enabled,
-            "sink_record_type": sink_record_type,
-            "eval_system_prompt": eval_system_prompt,
-        },
-    }
-    if memory_path is not None:
-        payload["memory_path"] = str(memory_path)
-    if memory_path is None or not memory_path.exists():
-        return payload
-    store = ProspectingMemoryStore(memory_path=memory_path)
-    store.prepare()
-    payload["company_description"] = store.read_company_description()
-    payload["agent_identity"] = store.read_agent_identity()
-    payload["additional_prompt"] = store.read_additional_prompt()
-    payload["runtime"] = store.read_runtime_parameters() or payload["runtime"]
-    payload["custom"] = store.read_custom_parameters() or payload["custom"]
-    return payload
-
-
-def _find_repo_root(path: Path | None) -> Path:
-    if path is None:
-        return Path.cwd()
-    resolved = path.resolve()
-    for candidate in (resolved, *resolved.parents):
-        if (candidate / ".git").exists():
-            return candidate
-    if resolved.parent.name == "prospecting" and resolved.parent.parent.name == "memory":
-        return resolved.parent.parent.parent
-    return Path.cwd()
 
 
 __all__ = [

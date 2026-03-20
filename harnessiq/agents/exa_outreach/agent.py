@@ -176,12 +176,6 @@ class ExaOutreachAgent(BaseAgent):
             name="exa_outreach",
             model=model,
             tool_executor=tool_registry,
-            runtime_config=merge_agent_runtime_config(
-                runtime_config,
-                max_tokens=self._config.max_tokens,
-                reset_threshold=self._config.reset_threshold,
-            ),
-            memory_path=self._config.memory_path,
             runtime_config=runtime_config,
             memory_path=resolved_path,
         )

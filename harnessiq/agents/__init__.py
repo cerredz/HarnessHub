@@ -19,14 +19,6 @@ from harnessiq.shared.linkedin import (
     LinkedInAgentConfig,
     ScreenshotPersistor,
 )
-from harnessiq.utils import (
-    AgentInstanceCatalog,
-    AgentInstanceRecord,
-    AgentInstanceStore,
-    build_agent_instance_id,
-    build_default_instance_name,
-    fingerprint_agent_payload,
-)
 
 from .base import BaseAgent
 from .email import BaseEmailAgent, DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
@@ -43,10 +35,7 @@ from .linkedin import (
     LinkedInMemoryStore,
     build_linkedin_browser_tool_definitions,
     create_linkedin_browser_stub_tools,
-    linkedin_google_drive_binding_name,
-    load_linkedin_google_drive_credentials,
     normalize_linkedin_runtime_parameters,
-    save_linkedin_google_drive_credentials,
 )
 from .prospecting import (
     GoogleMapsProspectingAgent,
@@ -61,9 +50,6 @@ from .prospecting import (
 
 __all__ = [
     "ActionLogEntry",
-    "AgentInstanceCatalog",
-    "AgentInstanceRecord",
-    "AgentInstanceStore",
     "AgentModel",
     "AgentModelRequest",
     "AgentModelResponse",
@@ -93,15 +79,9 @@ __all__ = [
     "LinkedInMemoryStore",
     "ScreenshotPersistor",
     "build_linkedin_browser_tool_definitions",
-    "build_agent_instance_id",
-    "build_default_instance_name",
     "create_linkedin_browser_stub_tools",
     "estimate_text_tokens",
-    "fingerprint_agent_payload",
-    "linkedin_google_drive_binding_name",
-    "load_linkedin_google_drive_credentials",
     "normalize_linkedin_runtime_parameters",
-    "save_linkedin_google_drive_credentials",
     "GoogleMapsProspectingAgent",
     "ProspectingAgentConfig",
     "ProspectingMemoryStore",

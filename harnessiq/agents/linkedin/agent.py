@@ -372,11 +372,6 @@ class LinkedInJobApplierAgent(BaseAgent):
             name="linkedin_job_applier",
             model=model,
             tool_executor=tool_registry,
-            runtime_config=merge_agent_runtime_config(
-                runtime_config,
-                max_tokens=self._config.max_tokens,
-                reset_threshold=self._config.reset_threshold,
-            ),
             runtime_config=runtime_config,
             memory_path=self._config.memory_path,
         )
