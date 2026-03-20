@@ -5,14 +5,15 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Any
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.utils.run_storage import (
     RUNS_DIRNAME,
+    FileSystemStorageBackend,
     RunRecord,
+    StorageBackend,
 )
 
 # ---------------------------------------------------------------------------
@@ -232,89 +233,6 @@ class OutreachRunLog:
 
 
 # ---------------------------------------------------------------------------
-# Storage backend
-# ---------------------------------------------------------------------------
-
-
-@runtime_checkable
-class StorageBackend(Protocol):
-    """ExaOutreach-specific run persistence contract."""
-
-    def start_run(self, run_id: str, query: str) -> None:
-        ...
-
-    def finish_run(self, run_id: str, completed_at: str) -> None:
-        ...
-
-    def log_lead(self, run_id: str, lead: LeadRecord) -> None:
-        ...
-
-    def log_email_sent(self, run_id: str, record: EmailSentRecord) -> None:
-        ...
-
-    def is_contacted(self, url: str) -> bool:
-        ...
-
-    def current_run_id(self) -> str | None:
-        ...
-
-
-class FileSystemStorageBackend:
-    """Persist ExaOutreach runs as one JSON file per run."""
-
-    def __init__(self, memory_path: Path) -> None:
-        self._memory_path = Path(memory_path)
-        self._runs_dir = self._memory_path / RUNS_DIRNAME
-        self._current_run_id: str | None = None
-
-    def start_run(self, run_id: str, query: str) -> None:
-        self._runs_dir.mkdir(parents=True, exist_ok=True)
-        self._current_run_id = run_id
-        run_log = OutreachRunLog(run_id=run_id, started_at=_utcnow(), query=str(query))
-        _write_json(self._run_path(run_id), run_log.as_dict())
-
-    def finish_run(self, run_id: str, completed_at: str) -> None:
-        run_log = self._read_run(run_id)
-        run_log.completed_at = completed_at
-        _write_json(self._run_path(run_id), run_log.as_dict())
-
-    def log_lead(self, run_id: str, lead: LeadRecord) -> None:
-        run_log = self._read_run(run_id)
-        run_log.leads_found.append(lead)
-        _write_json(self._run_path(run_id), run_log.as_dict())
-
-    def log_email_sent(self, run_id: str, record: EmailSentRecord) -> None:
-        run_log = self._read_run(run_id)
-        run_log.emails_sent.append(record)
-        _write_json(self._run_path(run_id), run_log.as_dict())
-
-    def is_contacted(self, url: str) -> bool:
-        for run_path in self._list_run_paths():
-            run_log = _load_outreach_run(run_path)
-            if any(lead.url == url for lead in run_log.leads_found):
-                return True
-        return False
-
-    def current_run_id(self) -> str | None:
-        return self._current_run_id
-
-    def _run_path(self, run_id: str) -> Path:
-        return self._runs_dir / f"{run_id}.json"
-
-    def _read_run(self, run_id: str) -> OutreachRunLog:
-        path = self._run_path(run_id)
-        if not path.exists():
-            raise FileNotFoundError(f"Run file for '{run_id}' not found at '{path}'.")
-        return _load_outreach_run(path)
-
-    def _list_run_paths(self) -> list[Path]:
-        if not self._runs_dir.exists():
-            return []
-        paths = list(self._runs_dir.glob("run_*.json"))
-        return sorted(paths, key=_run_file_sort_key)
-
-
-# ---------------------------------------------------------------------------
 # ExaOutreachMemoryStore
 # ---------------------------------------------------------------------------
 
@@ -461,10 +379,6 @@ def _run_file_sort_key(path: Path) -> int:
     """Extract the run number from ``run_N.json`` for deterministic sorting."""
     match = re.search(r"run_(\d+)\.json$", path.name)
     return int(match.group(1)) if match else 0
-
-
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 __all__ = [
