@@ -34,6 +34,23 @@ FILESYSTEM_WRITE_TEXT_FILE = "filesystem.write_text_file"
 FILESYSTEM_APPEND_TEXT_FILE = "filesystem.append_text_file"
 FILESYSTEM_MAKE_DIRECTORY = "filesystem.make_directory"
 FILESYSTEM_COPY_PATH = "filesystem.copy_path"
+BROWSER_NAVIGATE = "browser.navigate"
+BROWSER_CLICK = "browser.click"
+BROWSER_TYPE = "browser.type"
+BROWSER_SELECT_OPTION = "browser.select_option"
+BROWSER_HOVER = "browser.hover"
+BROWSER_UPLOAD_FILE = "browser.upload_file"
+BROWSER_PRESS_KEY = "browser.press_key"
+BROWSER_SCROLL = "browser.scroll"
+BROWSER_WAIT_FOR_ELEMENT = "browser.wait_for_element"
+BROWSER_SCREENSHOT = "browser.screenshot"
+BROWSER_VIEW_HTML = "browser.view_html"
+BROWSER_GET_TEXT = "browser.get_text"
+BROWSER_FIND_ELEMENT = "browser.find_element"
+BROWSER_GET_CURRENT_URL = "browser.get_current_url"
+BROWSER_EXTRACT_CONTENT = "browser.extract_content"
+EVALUATE_COMPANY = "eval.evaluate_company"
+SEARCH_OR_SUMMARIZE = "search.search_or_summarize"
 
 # Reasoning tool key constants
 REASON_BRAINSTORM = "reason.brainstorm"
@@ -149,6 +166,7 @@ ZEROBOUNCE_REQUEST = "zerobounce.request"
 EXPANDI_REQUEST = "expandi.request"
 SMARTLEAD_REQUEST = "smartlead.request"
 LUSHA_REQUEST = "lusha.request"
+GOOGLE_DRIVE_REQUEST = "google_drive.request"
 PAPERCLIP_REQUEST = "paperclip.request"
 SERPER_REQUEST = "serper.request"
 INSTAGRAM_SEARCH_KEYWORD = "instagram.search_keyword"
@@ -300,10 +318,26 @@ __all__ = [
     "APOLLO_REQUEST",
     "ARCADS_REQUEST",
     "ARXIV_REQUEST",
+    "BROWSER_CLICK",
+    "BROWSER_EXTRACT_CONTENT",
+    "BROWSER_FIND_ELEMENT",
+    "BROWSER_GET_CURRENT_URL",
+    "BROWSER_GET_TEXT",
+    "BROWSER_HOVER",
+    "BROWSER_NAVIGATE",
+    "BROWSER_PRESS_KEY",
+    "BROWSER_SCREENSHOT",
+    "BROWSER_SCROLL",
+    "BROWSER_SELECT_OPTION",
+    "BROWSER_TYPE",
+    "BROWSER_UPLOAD_FILE",
+    "BROWSER_VIEW_HTML",
+    "BROWSER_WAIT_FOR_ELEMENT",
     "CONTROL_PAUSE_FOR_HUMAN",
     "CORESIGNAL_REQUEST",
     "CREATIFY_REQUEST",
     "ECHO_TEXT",
+    "EVALUATE_COMPANY",
     "EXA_OUTREACH_CHECK_CONTACTED",
     "EXA_OUTREACH_GET_TEMPLATE",
     "EXPANDI_REQUEST",
@@ -320,12 +354,14 @@ __all__ = [
     "FILESYSTEM_READ_TEXT_FILE",
     "FILESYSTEM_WRITE_TEXT_FILE",
     "HEAVY_COMPACTION",
-    "INBOXAPP_REQUEST",
     "INSTANTLY_REQUEST",
+    "INBOXAPP_REQUEST",
     "INSTAGRAM_SEARCH_KEYWORD",
     "JsonObject",
     "FILES_CREATE_FILE",
     "FILES_EDIT_FILE",
+    "GOOGLE_DRIVE_REQUEST",
+    "PAPERCLIP_REQUEST",
     "KNOWT_CREATE_AVATAR_DESCRIPTION",
     "KNOWT_CREATE_SCRIPT",
     "KNOWT_CREATE_VIDEO",
@@ -413,6 +449,7 @@ __all__ = [
     "REMOVE_TOOLS",
     "RegisteredTool",
     "SALESFORGE_REQUEST",
+    "SEARCH_OR_SUMMARIZE",
     "SERPER_REQUEST",
     "SMARTLEAD_REQUEST",
     "SNOVIO_REQUEST",
