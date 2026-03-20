@@ -55,6 +55,8 @@ class HarnessiqPackageTests(unittest.TestCase):
                         "from harnessiq.cli.main import main as cli_main; "
                         "assert harnessiq.__version__ == '0.1.0'; "
                         "assert hasattr(harnessiq.agents, 'LinkedInJobApplierAgent'); "
+                        "assert hasattr(harnessiq.agents, 'InstagramKeywordDiscoveryAgent'); "
+                        "assert hasattr(harnessiq.agents, 'GoogleMapsProspectingAgent'); "
                         "assert callable(cli_main); "
                         "assert hasattr(harnessiq.config, 'CredentialsConfigStore'); "
                         "assert hasattr(harnessiq.tools, 'create_builtin_registry')"
@@ -80,6 +82,8 @@ class HarnessiqPackageTests(unittest.TestCase):
         )
 
         self.assertIn("linkedin", help_run.stdout)
+        self.assertIn("instagram", help_run.stdout)
+        self.assertIn("prospecting", help_run.stdout)
         self.assertEqual(help_run.returncode, 0)
 
 
