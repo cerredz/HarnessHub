@@ -2,6 +2,8 @@ Title: Stabilize refreshed main and restore a clean pytest baseline
 
 Issue URL: https://github.com/cerredz/HarnessHub/issues/203
 
+PR URL: https://github.com/cerredz/HarnessHub/pull/204
+
 Intent:
 Repair all reproducible regressions currently failing on refreshed `main`, then land one reviewable PR that returns the repository to a green test baseline without changing intended product behavior.
 
