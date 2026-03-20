@@ -1,0 +1,1 @@
+- Ticket 1 (#203): Stabilize refreshed main and restore a clean pytest baseline
