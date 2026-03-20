@@ -21,9 +21,13 @@ class RequestExecutor(Protocol):
         """Execute an HTTP request and return the decoded JSON payload."""
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class ProviderHTTPError(RuntimeError):
-    """Raised when a provider HTTP request fails."""
+    """Raised when a provider HTTP request fails.
+
+    Exceptions must remain mutable enough for Python's runtime to attach
+    traceback state during propagation, so this dataclass must not be frozen.
+    """
 
     provider: str
     message: str
