@@ -8,18 +8,20 @@ from functools import wraps
 from typing import Any, ParamSpec, TypeVar, overload
 
 from harnessiq.providers.base import normalize_messages
+from harnessiq.shared.langsmith import (
+    LANGSMITH_API_KEY_ENV_VARS,
+    LANGSMITH_API_URL_ENV_VARS,
+    LANGSMITH_MISSING,
+    LANGSMITH_PROJECT_ENV_VARS,
+    LANGSMITH_TRACE_SCALAR_TYPES,
+    LANGSMITH_TRACING_ENV_VARS,
+    LANGSMITH_TRACING_FALSE_VALUES,
+)
 from harnessiq.shared.providers import ProviderMessage, ProviderName, RequestPayload
 from harnessiq.shared.tools import ToolArguments, ToolDefinition
 
 P = ParamSpec("P")
 R = TypeVar("R")
-_SCALAR_TYPES = (str, int, float, bool, type(None))
-_TRACING_FALSE_VALUES = {"false", "0", "no", "off"}
-_LANGSMITH_API_KEY_ENV_VARS = ("LANGSMITH_API_KEY", "LANGCHAIN_API_KEY")
-_LANGSMITH_PROJECT_ENV_VARS = ("LANGSMITH_PROJECT", "LANGCHAIN_PROJECT")
-_LANGSMITH_API_URL_ENV_VARS = ("LANGSMITH_ENDPOINT", "LANGCHAIN_ENDPOINT")
-_LANGSMITH_TRACING_ENV_VARS = ("LANGSMITH_TRACING", "LANGCHAIN_TRACING_V2")
-_MISSING = object()
 
 
 def _get_langsmith_module() -> Any:
@@ -39,7 +41,7 @@ def build_langsmith_client(*, api_key: str | None = None, api_url: str | None = 
     except RuntimeError:
         return None
 
-    resolved_api_key = api_key or _read_first_env_value(_LANGSMITH_API_KEY_ENV_VARS)
+    resolved_api_key = api_key or _read_first_env_value(LANGSMITH_API_KEY_ENV_VARS)
     if not resolved_api_key:
         return None
     client_factory = getattr(ls, "Client", None)
@@ -47,7 +49,7 @@ def build_langsmith_client(*, api_key: str | None = None, api_url: str | None = 
         return None
 
     client_kwargs: dict[str, Any] = {"api_key": resolved_api_key}
-    resolved_api_url = api_url or _read_first_env_value(_LANGSMITH_API_URL_ENV_VARS)
+    resolved_api_url = api_url or _read_first_env_value(LANGSMITH_API_URL_ENV_VARS)
     if resolved_api_url is not None:
         client_kwargs["api_url"] = resolved_api_url
     try:
@@ -60,7 +62,7 @@ def _serialize_trace_value(value: Any) -> Any:
     """Convert values into a JSON-safe structure for trace inputs and outputs."""
     if isinstance(value, ToolDefinition):
         return value.as_dict()
-    if isinstance(value, _SCALAR_TYPES):
+    if isinstance(value, LANGSMITH_TRACE_SCALAR_TYPES):
         return value
     if isinstance(value, Mapping):
         return {str(key): _serialize_trace_value(item) for key, item in value.items()}
@@ -90,16 +92,16 @@ def _is_tracing_enabled(enabled: bool | None) -> bool:
         return False
     if enabled is True:
         return True
-    raw = _read_first_env_value(_LANGSMITH_TRACING_ENV_VARS)
+    raw = _read_first_env_value(LANGSMITH_TRACING_ENV_VARS)
     if raw is None:
         return True
-    return raw.lower() not in _TRACING_FALSE_VALUES
+    return raw.lower() not in LANGSMITH_TRACING_FALSE_VALUES
 
 
 def _resolve_project_name(project_name: str | None) -> str | None:
     if project_name is not None and project_name.strip():
         return project_name.strip()
-    return _read_first_env_value(_LANGSMITH_PROJECT_ENV_VARS)
+    return _read_first_env_value(LANGSMITH_PROJECT_ENV_VARS)
 
 
 def _resolve_tracing_context(
@@ -212,7 +214,7 @@ def _trace_sync_operation(
         return operation()
 
     ls, context_kwargs = resolved
-    result: R | object = _MISSING
+    result: R | object = LANGSMITH_MISSING
     operation_error: Exception | None = None
     try:
         with ls.tracing_context(**context_kwargs):
@@ -242,7 +244,7 @@ def _trace_sync_operation(
     except Exception:
         if operation_error is not None:
             raise
-        if result is not _MISSING:
+        if result is not LANGSMITH_MISSING:
             return result
         return operation()
 
@@ -265,7 +267,7 @@ async def _trace_async_operation(
         return await operation()
 
     ls, context_kwargs = resolved
-    result: R | object = _MISSING
+    result: R | object = LANGSMITH_MISSING
     operation_error: Exception | None = None
     try:
         with ls.tracing_context(**context_kwargs):
@@ -295,7 +297,7 @@ async def _trace_async_operation(
     except Exception:
         if operation_error is not None:
             raise
-        if result is not _MISSING:
+        if result is not LANGSMITH_MISSING:
             return result
         return await operation()
 

@@ -37,7 +37,7 @@ Source layout:
 - `harnessiq/integrations/`: adapters that bridge the core SDK to external runtime surfaces such as model implementations and browser automation
 - `harnessiq/master_prompts/`: curated, deployable system prompts for agents and direct SDK use
 - `harnessiq/providers/`: provider translation helpers, HTTP clients, and operation catalogs for both LLM providers and external-service APIs, including provider-backed output-sink transports for destinations like Notion, Confluence, Supabase, Linear, Slack, and Discord
-- `harnessiq/shared/`: shared types, configs, and constants reused across modules
+- `harnessiq/shared/`: shared types, configs, constants, provider operation metadata, and prepared-request models reused across agents, providers, and tools
 - `harnessiq/tools/`: the executable tool runtime layer, including built-in tools, prompt/filesystem helpers, reasoning tools, and provider-backed tool factories
 - `harnessiq/toolset/`: plug-and-play toolset SDK for retrieving, composing, and registering built-in, provider, and custom tools
 - `harnessiq/utils/`: agent-agnostic utility infrastructure such as run storage and other reusable support code that does not belong to a single agent, provider, or tool family, including the framework-level audit ledger and output-sink implementation used by all agents

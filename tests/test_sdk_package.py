@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import io
 import logging
 import subprocess
@@ -15,6 +16,9 @@ from setuptools.build_meta import build_sdist, build_wheel
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+AGENT_ALLOWED_LOCAL_CONSTANTS = {"_PROMPTS_DIR", "_MASTER_PROMPT_PATH", "_DEFAULT_MEMORY_PATH"}
+PROVIDER_ALLOWED_LOCAL_CONSTANTS = {"P", "R"}
+SHARED_CLASS_SUFFIXES = ("Config", "Credentials", "Operation", "PreparedRequest", "Error")
 
 
 class HarnessiqPackageTests(unittest.TestCase):
@@ -83,6 +87,58 @@ class HarnessiqPackageTests(unittest.TestCase):
         self.assertIn("linkedin", help_run.stdout)
         self.assertIn("instagram", help_run.stdout)
         self.assertEqual(help_run.returncode, 0)
+
+    def test_shared_definition_exports_originate_from_shared_modules(self) -> None:
+        from harnessiq.agents import EmailAgentConfig
+        from harnessiq.providers import ProviderFormatError, ProviderHTTPError
+        from harnessiq.providers.arxiv import ArxivConfig
+        from harnessiq.providers.arcads import ArcadsOperation
+        from harnessiq.tools import ResendCredentials
+
+        self.assertEqual(EmailAgentConfig.__module__, "harnessiq.shared.email")
+        self.assertEqual(ProviderFormatError.__module__, "harnessiq.shared.providers")
+        self.assertEqual(ProviderHTTPError.__module__, "harnessiq.shared.http")
+        self.assertEqual(ArxivConfig.__module__, "harnessiq.shared.provider_configs")
+        self.assertEqual(ArcadsOperation.__module__, "harnessiq.shared.arcads")
+        self.assertEqual(ResendCredentials.__module__, "harnessiq.shared.resend")
+
+    def test_agents_and_providers_keep_shared_definitions_out_of_local_modules(self) -> None:
+        violations: list[str] = []
+        for root_name, root_path in (
+            ("agents", REPO_ROOT / "harnessiq" / "agents"),
+            ("providers", REPO_ROOT / "harnessiq" / "providers"),
+        ):
+            for path in root_path.rglob("*.py"):
+                tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+                for statement in tree.body:
+                    if isinstance(statement, ast.ClassDef) and statement.name.endswith(SHARED_CLASS_SUFFIXES):
+                        violations.append(f"{path.relative_to(REPO_ROOT)} defines class {statement.name}")
+                    for name in _assigned_names(statement):
+                        if not _looks_like_constant(name):
+                            continue
+                        if root_name == "agents" and name in AGENT_ALLOWED_LOCAL_CONSTANTS:
+                            continue
+                        if root_name == "providers" and name in PROVIDER_ALLOWED_LOCAL_CONSTANTS:
+                            continue
+                        violations.append(f"{path.relative_to(REPO_ROOT)} defines constant {name}")
+
+        self.assertEqual(violations, [])
+
+
+def _assigned_names(statement: ast.stmt) -> list[str]:
+    if isinstance(statement, ast.Assign):
+        return [target.id for target in statement.targets if isinstance(target, ast.Name)]
+    if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
+        return [statement.target.id]
+    return []
+
+
+def _looks_like_constant(name: str) -> bool:
+    if name == "__all__":
+        return False
+    if name.isupper():
+        return True
+    return name.startswith("_") and name[1:].isupper()
 
 
 if __name__ == "__main__":

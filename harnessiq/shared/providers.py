@@ -9,6 +9,10 @@ ProviderMessageRole = Literal["system", "user", "assistant"]
 RequestPayload = dict[str, Any]
 
 
+class ProviderFormatError(ValueError):
+    """Raised when a request cannot be translated into provider format."""
+
+
 class ProviderMessage(TypedDict):
     """Provider-agnostic chat message shape."""
 
@@ -84,6 +88,7 @@ __all__ = [
     "PHANTOMBUSTER_DEFAULT_BASE_URL",
     "ProviderMessage",
     "ProviderMessageRole",
+    "ProviderFormatError",
     "ProviderName",
     "PROXYCURL_DEFAULT_BASE_URL",
     "RequestPayload",

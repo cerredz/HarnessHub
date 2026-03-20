@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import OrderedDict
 from dataclasses import dataclass
 
+SALESFORGE_API_PREFIX = "/public/api/v1"
+
 
 @dataclass(frozen=True, slots=True)
 class SalesforgeOperation:
@@ -220,6 +222,7 @@ def get_salesforge_operation(name: str) -> SalesforgeOperation:
 
 
 __all__ = [
+    "SALESFORGE_API_PREFIX",
     "SalesforgeOperation",
     "build_salesforge_operation_catalog",
     "get_salesforge_operation",

@@ -1,1 +1,1 @@
-"""Shared constants and data-model definitions for Harnessiq."""
+"""Shared constants, configs, and reusable data-model definitions for Harnessiq."""

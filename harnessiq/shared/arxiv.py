@@ -4,6 +4,23 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from dataclasses import dataclass
+import re
+
+ARXIV_PDF_BASE_URL = "https://arxiv.org"
+ARXIV_ATOM_NS = "http://www.w3.org/2005/Atom"
+ARXIV_EXTENSION_NS = "http://arxiv.org/schemas/atom"
+ARXIV_ENTRY_TAG = f"{{{ARXIV_ATOM_NS}}}entry"
+ARXIV_ID_TAG = f"{{{ARXIV_ATOM_NS}}}id"
+ARXIV_TITLE_TAG = f"{{{ARXIV_ATOM_NS}}}title"
+ARXIV_SUMMARY_TAG = f"{{{ARXIV_ATOM_NS}}}summary"
+ARXIV_PUBLISHED_TAG = f"{{{ARXIV_ATOM_NS}}}published"
+ARXIV_UPDATED_TAG = f"{{{ARXIV_ATOM_NS}}}updated"
+ARXIV_AUTHOR_TAG = f"{{{ARXIV_ATOM_NS}}}author"
+ARXIV_AUTHOR_NAME_TAG = f"{{{ARXIV_ATOM_NS}}}name"
+ARXIV_CATEGORY_TAG = f"{{{ARXIV_ATOM_NS}}}category"
+ARXIV_LINK_TAG = f"{{{ARXIV_ATOM_NS}}}link"
+ARXIV_PRIMARY_CATEGORY_TAG = f"{{{ARXIV_EXTENSION_NS}}}primary_category"
+ARXIV_VERSION_SUFFIX_RE = re.compile(r"v\d+$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,3 +102,25 @@ def get_arxiv_operation(name: str) -> ArxivOperation:
         raise ValueError(
             f"Unknown arXiv operation '{name}'. Known operations: {known}."
         ) from None
+
+
+__all__ = [
+    "ARXIV_ATOM_NS",
+    "ARXIV_AUTHOR_NAME_TAG",
+    "ARXIV_AUTHOR_TAG",
+    "ARXIV_CATEGORY_TAG",
+    "ARXIV_ENTRY_TAG",
+    "ARXIV_EXTENSION_NS",
+    "ARXIV_ID_TAG",
+    "ARXIV_LINK_TAG",
+    "ARXIV_PDF_BASE_URL",
+    "ARXIV_PRIMARY_CATEGORY_TAG",
+    "ARXIV_PUBLISHED_TAG",
+    "ARXIV_SUMMARY_TAG",
+    "ARXIV_TITLE_TAG",
+    "ARXIV_UPDATED_TAG",
+    "ARXIV_VERSION_SUFFIX_RE",
+    "ArxivOperation",
+    "build_arxiv_operation_catalog",
+    "get_arxiv_operation",
+]

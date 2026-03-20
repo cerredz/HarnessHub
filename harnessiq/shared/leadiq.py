@@ -5,6 +5,163 @@ from __future__ import annotations
 from collections import OrderedDict
 from dataclasses import dataclass
 
+LEADIQ_SEARCH_CONTACTS_QUERY = """
+query SearchContacts($filter: ContactFilter, $page: Int, $perPage: Int) {
+  searchContacts(filter: $filter, page: $page, perPage: $perPage) {
+    totalCount
+    items {
+      id
+      firstName
+      lastName
+      title
+      emails { email }
+      phones { number }
+      company { name domain }
+      linkedinUrl
+    }
+  }
+}
+""".strip()
+
+LEADIQ_SEARCH_COMPANIES_QUERY = """
+query SearchCompanies($filter: CompanyFilter, $page: Int, $perPage: Int) {
+  searchCompanies(filter: $filter, page: $page, perPage: $perPage) {
+    totalCount
+    items {
+      id
+      name
+      domain
+      industry
+      employeeCount
+      linkedinUrl
+    }
+  }
+}
+""".strip()
+
+LEADIQ_FIND_PERSON_BY_LINKEDIN_QUERY = """
+query FindPersonByLinkedIn($linkedinUrl: String!) {
+  findPersonByLinkedIn(linkedinUrl: $linkedinUrl) {
+    id
+    firstName
+    lastName
+    title
+    emails { email }
+    phones { number }
+    company { name domain }
+  }
+}
+""".strip()
+
+LEADIQ_ENRICH_CONTACT_MUTATION = """
+mutation EnrichContact($contactId: ID!) {
+  enrichContact(contactId: $contactId) {
+    id
+    emails { email status }
+    phones { number type }
+  }
+}
+""".strip()
+
+LEADIQ_CAPTURE_LEADS_MUTATION = """
+mutation CaptureLeads($contacts: [ContactInput!]!) {
+  captureLeads(contacts: $contacts) {
+    id
+    status
+    contact {
+      id
+      firstName
+      lastName
+    }
+  }
+}
+""".strip()
+
+LEADIQ_GET_CAPTURES_QUERY = """
+query GetCaptures($page: Int, $perPage: Int) {
+  getCaptures(page: $page, perPage: $perPage) {
+    totalCount
+    items {
+      id
+      status
+      createdAt
+      contact { id firstName lastName }
+    }
+  }
+}
+""".strip()
+
+LEADIQ_GET_CONTACT_DETAILS_QUERY = """
+query GetContactDetails($contactId: ID!) {
+  getContactDetails(contactId: $contactId) {
+    id
+    firstName
+    lastName
+    title
+    emails { email status }
+    phones { number type }
+    company { name domain industry }
+    linkedinUrl
+    location
+  }
+}
+""".strip()
+
+LEADIQ_GET_CAPTURE_STATUS_QUERY = """
+query GetCaptureStatus($captureId: ID!) {
+  getCaptureStatus(captureId: $captureId) {
+    id
+    status
+    completedAt
+    contact { id firstName lastName }
+  }
+}
+""".strip()
+
+LEADIQ_GET_TEAM_ACTIVITY_QUERY = """
+query GetTeamActivity($page: Int, $perPage: Int) {
+  getTeamActivity(page: $page, perPage: $perPage) {
+    totalCount
+    items {
+      id
+      action
+      createdAt
+      user { id name }
+      contact { id firstName lastName }
+    }
+  }
+}
+""".strip()
+
+LEADIQ_GET_TAGS_QUERY = """
+query GetTags {
+  getTags {
+    id
+    name
+    color
+    contactCount
+  }
+}
+""".strip()
+
+LEADIQ_ADD_TAG_TO_CONTACT_MUTATION = """
+mutation AddTagToContact($contactId: ID!, $tagId: ID!) {
+  addTagToContact(contactId: $contactId, tagId: $tagId) {
+    id
+    tags { id name }
+  }
+}
+""".strip()
+
+LEADIQ_REMOVE_TAG_FROM_CONTACT_MUTATION = """
+mutation RemoveTagFromContact($contactId: ID!, $tagId: ID!) {
+  removeTagFromContact(contactId: $contactId, tagId: $tagId) {
+    id
+    tags { id name }
+  }
+}
+""".strip()
+
 
 @dataclass(frozen=True, slots=True)
 class LeadIQOperation:
@@ -140,6 +297,18 @@ def get_leadiq_operation(name: str) -> LeadIQOperation:
 
 
 __all__ = [
+    "LEADIQ_ADD_TAG_TO_CONTACT_MUTATION",
+    "LEADIQ_CAPTURE_LEADS_MUTATION",
+    "LEADIQ_ENRICH_CONTACT_MUTATION",
+    "LEADIQ_FIND_PERSON_BY_LINKEDIN_QUERY",
+    "LEADIQ_GET_CAPTURES_QUERY",
+    "LEADIQ_GET_CAPTURE_STATUS_QUERY",
+    "LEADIQ_GET_CONTACT_DETAILS_QUERY",
+    "LEADIQ_GET_TAGS_QUERY",
+    "LEADIQ_GET_TEAM_ACTIVITY_QUERY",
+    "LEADIQ_REMOVE_TAG_FROM_CONTACT_MUTATION",
+    "LEADIQ_SEARCH_COMPANIES_QUERY",
+    "LEADIQ_SEARCH_CONTACTS_QUERY",
     "LeadIQOperation",
     "build_leadiq_operation_catalog",
     "get_leadiq_operation",

@@ -7,14 +7,12 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.utils.run_storage import (
     RUNS_DIRNAME,
-    FileSystemStorageBackend,
     RunRecord,
-    StorageBackend,
 )
 
 # ---------------------------------------------------------------------------
@@ -222,6 +220,100 @@ class OutreachRunLog:
             "emails_sent": [r.as_dict() for r in self.emails_sent],
         }
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "OutreachRunLog":
+        return cls(
+            run_id=str(data["run_id"]),
+            started_at=str(data["started_at"]),
+            query=str(data.get("query", "")),
+            leads_found=[LeadRecord.from_dict(item) for item in data.get("leads_found", [])],
+            emails_sent=[EmailSentRecord.from_dict(item) for item in data.get("emails_sent", [])],
+            completed_at=str(data["completed_at"]) if data.get("completed_at") else None,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Storage backend
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class StorageBackend(Protocol):
+    """ExaOutreach-specific run persistence contract."""
+
+    def start_run(self, run_id: str, query: str) -> None:
+        ...
+
+    def finish_run(self, run_id: str, completed_at: str) -> None:
+        ...
+
+    def log_lead(self, run_id: str, lead: LeadRecord) -> None:
+        ...
+
+    def log_email_sent(self, run_id: str, record: EmailSentRecord) -> None:
+        ...
+
+    def is_contacted(self, url: str) -> bool:
+        ...
+
+    def current_run_id(self) -> str | None:
+        ...
+
+
+class FileSystemStorageBackend:
+    """Persist ExaOutreach runs as one JSON file per run."""
+
+    def __init__(self, memory_path: Path) -> None:
+        self._memory_path = Path(memory_path)
+        self._runs_dir = self._memory_path / RUNS_DIRNAME
+        self._current_run_id: str | None = None
+
+    def start_run(self, run_id: str, query: str) -> None:
+        self._runs_dir.mkdir(parents=True, exist_ok=True)
+        self._current_run_id = run_id
+        run_log = OutreachRunLog(run_id=run_id, started_at=_utcnow(), query=str(query))
+        _write_json(self._run_path(run_id), run_log.as_dict())
+
+    def finish_run(self, run_id: str, completed_at: str) -> None:
+        run_log = self._read_run(run_id)
+        run_log.completed_at = completed_at
+        _write_json(self._run_path(run_id), run_log.as_dict())
+
+    def log_lead(self, run_id: str, lead: LeadRecord) -> None:
+        run_log = self._read_run(run_id)
+        run_log.leads_found.append(lead)
+        _write_json(self._run_path(run_id), run_log.as_dict())
+
+    def log_email_sent(self, run_id: str, record: EmailSentRecord) -> None:
+        run_log = self._read_run(run_id)
+        run_log.emails_sent.append(record)
+        _write_json(self._run_path(run_id), run_log.as_dict())
+
+    def is_contacted(self, url: str) -> bool:
+        for run_path in self._list_run_paths():
+            run_log = _load_outreach_run(run_path)
+            if any(lead.url == url for lead in run_log.leads_found):
+                return True
+        return False
+
+    def current_run_id(self) -> str | None:
+        return self._current_run_id
+
+    def _run_path(self, run_id: str) -> Path:
+        return self._runs_dir / f"{run_id}.json"
+
+    def _read_run(self, run_id: str) -> OutreachRunLog:
+        path = self._run_path(run_id)
+        if not path.exists():
+            raise FileNotFoundError(f"Run file for '{run_id}' not found at '{path}'.")
+        return _load_outreach_run(path)
+
+    def _list_run_paths(self) -> list[Path]:
+        if not self._runs_dir.exists():
+            return []
+        paths = list(self._runs_dir.glob("run_*.json"))
+        return sorted(paths, key=_run_file_sort_key)
+
 
 # ---------------------------------------------------------------------------
 # ExaOutreachMemoryStore
@@ -283,26 +375,7 @@ class ExaOutreachMemoryStore:
         path = self.runs_dir / f"{run_id}.json"
         if not path.exists():
             raise FileNotFoundError(f"Run file for '{run_id}' not found at '{path}'.")
-        data = json.loads(path.read_text(encoding="utf-8"))
-        record = RunRecord.from_dict(data)
-        leads_found = [
-            LeadRecord.from_dict(e["data"])
-            for e in record.events
-            if e.get("type") == "lead"
-        ]
-        emails_sent = [
-            EmailSentRecord.from_dict(e["data"])
-            for e in record.events
-            if e.get("type") == "email_sent"
-        ]
-        return OutreachRunLog(
-            run_id=record.run_id,
-            started_at=record.started_at,
-            query=str(record.metadata.get("query", "")),
-            leads_found=leads_found,
-            emails_sent=emails_sent,
-            completed_at=record.completed_at,
-        )
+        return _load_outreach_run(path)
 
     def read_query_config(self) -> dict[str, Any]:
         return _read_json_file(self.query_config_path, expected_type=dict)
@@ -357,6 +430,32 @@ def _read_json_file(path: Path, *, expected_type: type) -> Any:
     if not isinstance(payload, expected_type):
         raise ValueError(f"Expected JSON {expected_type.__name__} in '{path.name}'.")
     return payload
+
+
+def _load_outreach_run(path: Path) -> OutreachRunLog:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if "leads_found" in data or "emails_sent" in data or "query" in data:
+        return OutreachRunLog.from_dict(data)
+
+    record = RunRecord.from_dict(data)
+    leads_found = [
+        LeadRecord.from_dict(event["data"])
+        for event in record.events
+        if event.get("type") == "lead"
+    ]
+    emails_sent = [
+        EmailSentRecord.from_dict(event["data"])
+        for event in record.events
+        if event.get("type") == "email_sent"
+    ]
+    return OutreachRunLog(
+        run_id=record.run_id,
+        started_at=record.started_at,
+        query=str(record.metadata.get("query", "")),
+        leads_found=leads_found,
+        emails_sent=emails_sent,
+        completed_at=record.completed_at,
+    )
 
 
 def _run_file_sort_key(path: Path) -> int:
