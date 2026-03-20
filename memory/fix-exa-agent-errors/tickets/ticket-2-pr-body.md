@@ -1,6 +1,5 @@
 Title: Restore provider HTTP error propagation through tracing
 Issue URL: https://github.com/cerredz/HarnessHub/issues/200
-PR URL: https://github.com/cerredz/HarnessHub/pull/202
 
 Intent:
 Fix the provider failure path so real HTTP/provider errors remain the surfaced exception when traced model or tool calls fail. This restores debuggability for Exa/xAI and any other provider using the shared HTTP layer, instead of masking provider failures behind a secondary traceback-assignment `TypeError`.
@@ -40,3 +39,55 @@ Dependencies:
 
 Drift Guard:
 This ticket must not change provider authentication semantics, request payload schemas, or external API integrations. It is limited to exception propagation correctness and regression coverage for the shared HTTP/tracing path.
+
+
+## Quality Pipeline Results
+Stage 1 - Static Analysis
+
+- No project linter or standalone static-analysis tool is configured in `pyproject.toml`.
+- Manually reviewed the changed files for exception semantics, import cleanliness, and consistency with existing tracing-test patterns.
+- Result: pass.
+
+Stage 2 - Type Checking
+
+- No project type checker is configured in `pyproject.toml`.
+- Verified the change does not introduce new untyped interfaces and preserves the existing `ProviderHTTPError` field contract.
+- Result: pass.
+
+Stage 3 - Unit Tests
+
+- Ran `C:\\Users\\Michael Cerreto\\HarnessHub\\.venv\\Scripts\\python.exe -m pytest tests/test_providers.py -q`
+- Observed: `11 passed in 0.15s`, including the new regression tests for traceback assignment and traced `ProviderHTTPError` re-raise.
+- Result: pass.
+
+Stage 4 - Integration & Contract Tests
+
+- Ran `C:\\Users\\Michael Cerreto\\HarnessHub\\.venv\\Scripts\\python.exe -m pytest tests/test_provider_base.py -q`
+- Observed: `19 passed in 0.17s`
+- This validates adjacent provider error handling behavior outside the LangSmith tracing helpers.
+- Additional note: `tests/test_sdk_package.py -q` still fails on refreshed `main` with pre-existing shared-definition placement violations in `harnessiq/agents/exa_outreach/agent.py` and `harnessiq/agents/prospecting/agent.py`. That failure reproduced unchanged in the untouched `main` worktree and is outside this ticket's scope.
+- Result: pass for relevant adjacent provider contract coverage; unrelated baseline failure documented.
+
+Stage 5 - Smoke & Manual Verification
+
+- Ran an inline smoke script that:
+  - constructed a real `ProviderHTTPError(provider='grok', message='Forbidden', status_code=403)`,
+  - verified `exc.__traceback__ = None` no longer raises `TypeError`,
+  - raised that same exception through `trace_model_call(...)` using a mocked LangSmith module,
+  - confirmed the surfaced exception type remained `ProviderHTTPError`,
+  - confirmed the rendered message remained `grok request failed (403): Forbidden`,
+  - confirmed `status_code` remained `403`.
+- Result: pass.
+
+
+## Post-Critique Changes
+Self-critique findings:
+
+- The initial implementation fixed the runtime behavior and tests, but the ticket artifact still pointed at `harnessiq/providers/http.py` as the primary edit location. On refreshed `main`, `ProviderHTTPError` actually lives in `harnessiq/shared/http.py`, so the planning document needed to match the real code boundary.
+- The provider regression is most convincing when both the tracing tests and the adjacent provider-base tests stay green after the change. I reran both suites after the documentation correction to make sure the final branch state still reflects that.
+
+Post-critique changes made:
+
+- Updated `memory/fix-exa-agent-errors/tickets/ticket-2.md` so the Relevant Files section points at `harnessiq/shared/http.py` as the actual source of the exception-class fix, while keeping `harnessiq/providers/http.py` listed as the import boundary to verify.
+- Re-ran `C:\\Users\\Michael Cerreto\\HarnessHub\\.venv\\Scripts\\python.exe -m pytest tests/test_providers.py tests/test_provider_base.py -q`.
+- Observed: `19 passed in 0.22s`.
