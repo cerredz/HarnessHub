@@ -4,6 +4,33 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+_KNOWN_MODEL_PROVIDER_NAMES = (
+    "openai",
+    "anthropic",
+    "grok",
+    "gemini",
+    "exa",
+    "resend",
+    "notion",
+    "confluence",
+    "supabase",
+    "linear",
+    "slack",
+    "discord",
+)
+_KNOWN_CLIENT_PROVIDER_NAMES = (
+    "openai",
+    "anthropic",
+    "grok",
+    "gemini",
+    "exa",
+    "resend",
+    "notion",
+    "confluence",
+    "supabase",
+    "linear",
+)
+
 
 def extract_model_metadata(model: Any) -> dict[str, Any]:
     """Return best-effort provider/model metadata for an injected AgentModel."""
@@ -41,20 +68,7 @@ def _extract_provider_name(model: Any) -> str | None:
             return candidate
 
     module = type(model).__module__.lower()
-    for name in (
-        "openai",
-        "anthropic",
-        "grok",
-        "gemini",
-        "exa",
-        "resend",
-        "notion",
-        "confluence",
-        "supabase",
-        "linear",
-        "slack",
-        "discord",
-    ):
+    for name in _KNOWN_MODEL_PROVIDER_NAMES:
         if name in module:
             return name
 
@@ -62,18 +76,7 @@ def _extract_provider_name(model: Any) -> str | None:
     if client is None:
         return None
     client_module = type(client).__module__.lower()
-    for name in (
-        "openai",
-        "anthropic",
-        "grok",
-        "gemini",
-        "exa",
-        "resend",
-        "notion",
-        "confluence",
-        "supabase",
-        "linear",
-    ):
+    for name in _KNOWN_CLIENT_PROVIDER_NAMES:
         if name in client_module:
             return name
     return None
