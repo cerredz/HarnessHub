@@ -1,10 +1,9 @@
-Title: Centralize shared CLI agent-command helpers and JSON rendering
+﻿Title: Centralize shared CLI agent-command helpers and JSON rendering
 
 Intent:
 Reduce repeated helper logic across the agent-oriented CLI modules so command behavior is easier to reason about, update, and test. This directly improves readability and lowers the risk of command drift when new agent CLIs are added.
 
 Issue URL: https://github.com/cerredz/HarnessHub/issues/205
-PR URL: https://github.com/cerredz/HarnessHub/pull/208
 
 Scope:
 
@@ -69,3 +68,63 @@ Dependencies:
 Drift Guard:
 
 This ticket must stay focused on deduplicating helper logic and stabilizing CLI implementation structure. It must not redesign command semantics, rename subcommands, change memory-store formats, or expand runtime capabilities unrelated to the helper extraction.
+
+
+## Quality Pipeline Results
+Stage 1 - Static Analysis
+
+- `python -m compileall harnessiq tests`
+- Result: passed.
+
+Stage 2 - Type Checking
+
+- No project type checker is configured in `pyproject.toml`.
+- Validation approach: kept all new shared helper functions explicitly annotated and confirmed the refactor compiled cleanly.
+
+Stage 3 - Unit Tests
+
+- `..\..\.venv\Scripts\pytest.exe -q tests/test_cli_common.py tests/test_linkedin_cli.py tests/test_instagram_cli.py tests/test_prospecting_cli.py tests/test_exa_outreach_cli.py tests/test_ledger_cli.py tests/test_leads_cli.py`
+- Result: 70 passed, 2 failed.
+- Baseline failures observed on `origin/main` and left out of this ticket scope:
+  - `tests/test_linkedin_cli.py::LinkedInCLITests::test_run_seeds_langsmith_environment_from_repo_env`
+    - fails because `ConnectionsConfigStore()` reaches `Path.home()` after `patch.dict(os.environ, {}, clear=True)` and the environment no longer exposes a resolvable home directory.
+  - `tests/test_leads_cli.py::TestRunCommand::test_run_uses_provider_tools_and_storage_backend_factories`
+    - fails because `harnessiq/agents/leads/agent.py` references undefined `_merge_tools` / `external_tools` names from a pre-existing merge artifact.
+- Focused refactor verification excluding those known unrelated failures:
+  - `..\..\.venv\Scripts\pytest.exe -q tests/test_cli_common.py tests/test_linkedin_cli.py tests/test_instagram_cli.py tests/test_prospecting_cli.py tests/test_exa_outreach_cli.py tests/test_ledger_cli.py tests/test_leads_cli.py -k "not test_run_seeds_langsmith_environment_from_repo_env and not test_run_uses_provider_tools_and_storage_backend_factories"`
+  - Result: 69 passed, 3 deselected.
+
+Stage 4 - Integration & Contract Tests
+
+- `..\..\.venv\Scripts\pytest.exe -q tests/test_sdk_package.py`
+- Result: 4 passed, 1 failed.
+- Baseline failure left out of scope:
+  - `HarnessiqPackageTests.test_agents_and_providers_keep_shared_definitions_out_of_local_modules`
+  - failure reports pre-existing shared-definition violations in agent modules on `origin/main`.
+
+Stage 5 - Smoke & Manual Verification
+
+- `..\..\.venv\Scripts\python.exe -m harnessiq.cli --help`
+- Result: passed. The CLI renders all expected top-level command groups, including `linkedin`, `leads`, `outreach`, `instagram`, and `prospecting`.
+- Manual JSON smoke:
+  - ran an inline Python snippet that executed `instagram configure` and `instagram show` through `harnessiq.cli.main`.
+  - Result: the command emitted deterministic JSON with the expected memory path, ICP list, and empty lead/email counts.
+
+
+## Post-Critique Changes
+Post-critique findings:
+
+- The original ticket artifact did not account for `harnessiq/cli/leads/commands.py`, which exists on `origin/main` and follows the same duplicated helper pattern. Leaving it out would make the PR look like it had drifted beyond its own spec.
+- The shared JSON helper needed explicit coverage for fallback stringification of non-JSON leaf values so mocked CLI tests would not silently re-break later.
+
+Improvements applied:
+
+- Updated `memory/repo-tech-debt-sweep/tickets/ticket-1.md` inside the worktree to include the `leads` CLI module and its corresponding CLI test coverage in the scoped work.
+- Added direct unit coverage in `tests/test_cli_common.py` for fallback JSON stringification.
+
+Post-critique verification:
+
+- `python -m compileall harnessiq tests`
+- `..\..\.venv\Scripts\pytest.exe -q tests/test_cli_common.py tests/test_linkedin_cli.py tests/test_instagram_cli.py tests/test_prospecting_cli.py tests/test_exa_outreach_cli.py tests/test_ledger_cli.py tests/test_leads_cli.py -k "not test_run_seeds_langsmith_environment_from_repo_env and not test_run_uses_provider_tools_and_storage_backend_factories"`
+- Result: passed (`69 passed, 3 deselected`).
+
