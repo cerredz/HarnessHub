@@ -20,11 +20,14 @@ Relevant Files:
 - `harnessiq/cli/instagram/commands.py`: replace duplicated helper implementations with imports from the shared helper layer.
 - `harnessiq/cli/prospecting/commands.py`: replace duplicated helper implementations with imports from the shared helper layer.
 - `harnessiq/cli/exa_outreach/commands.py`: replace duplicated helper implementations with imports from the shared helper layer.
+- `harnessiq/cli/leads/commands.py`: replace duplicated helper implementations with imports from the shared helper layer discovered on `origin/main`.
 - `harnessiq/cli/ledger/commands.py`: reuse the shared JSON emission helper.
+- `tests/test_cli_common.py`: direct unit coverage for the new helper module.
 - `tests/test_linkedin_cli.py`: confirm behavior is unchanged after helper extraction.
 - `tests/test_instagram_cli.py`: confirm behavior is unchanged after helper extraction.
 - `tests/test_prospecting_cli.py`: confirm behavior is unchanged after helper extraction.
 - `tests/test_exa_outreach_cli.py`: confirm behavior is unchanged after helper extraction.
+- `tests/test_leads_cli.py`: confirm behavior is unchanged after helper extraction where the current `origin/main` baseline allows it.
 - `tests/test_ledger_cli.py`: confirm ledger CLI JSON emission still works through the shared helper.
 
 Approach:
@@ -32,6 +35,7 @@ Approach:
 - Create a small, dependency-light helper module under `harnessiq/cli/`.
 - Keep the abstractions narrow and concrete: pure helpers rather than new OO command wrappers.
 - Provide a JSON rendering helper that uses deterministic formatting and tolerates common Path-like values safely.
+- Apply the same extraction to every agent-style CLI module that exists on `origin/main`, including `leads`, so the duplication is reduced consistently rather than only partially.
 - Provide a generic assignment parser that returns scalar JSON-decoded values; each CLI module will continue to run its own command-specific normalization after parsing.
 - Refactor incrementally and keep command output payloads byte-for-byte compatible where reasonable.
 
