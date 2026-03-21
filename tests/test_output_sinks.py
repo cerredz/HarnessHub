@@ -9,6 +9,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock
 
+from harnessiq.providers import LinearClient as ProviderLinearClient
+from harnessiq.providers import WebhookDeliveryClient as ProviderWebhookDeliveryClient
+from harnessiq.providers import extract_model_metadata as provider_extract_model_metadata
+from harnessiq.providers.output_sinks import (
+    LinearClient,
+    WebhookDeliveryClient,
+    extract_model_metadata,
+)
 from harnessiq.utils import (
     ConfluenceSink,
     DiscordSink,
@@ -40,6 +48,14 @@ def _entry() -> LedgerEntry:
 
 
 class OutputSinkTests(unittest.TestCase):
+    def test_provider_output_sink_facades_preserve_public_imports(self) -> None:
+        self.assertIs(LinearClient, ProviderLinearClient)
+        self.assertIs(WebhookDeliveryClient, ProviderWebhookDeliveryClient)
+        self.assertIs(extract_model_metadata, provider_extract_model_metadata)
+        self.assertEqual(LinearClient.__module__, "harnessiq.providers.output_sinks")
+        self.assertEqual(WebhookDeliveryClient.__module__, "harnessiq.providers.output_sinks")
+        self.assertEqual(extract_model_metadata.__module__, "harnessiq.providers.output_sinks")
+
     def test_jsonl_sink_appends_and_entries_round_trip(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir, "runs.jsonl")
