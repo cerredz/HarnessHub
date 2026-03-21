@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 from harnessiq.shared.tools import RegisteredTool
 
-BuiltinFactory = Callable[[], tuple[RegisteredTool, ...]]
+_BuiltinFactory = Callable[[], tuple[RegisteredTool, ...]]
 
 
 def _builtin_core() -> tuple[RegisteredTool, ...]:
@@ -61,7 +61,7 @@ def _builtin_reasoning() -> tuple[RegisteredTool, ...]:
     return create_reasoning_tools()
 
 
-BUILTIN_FAMILY_FACTORIES: tuple[BuiltinFactory, ...] = (
+BUILTIN_FAMILY_FACTORIES: tuple[_BuiltinFactory, ...] = (
     _builtin_core,
     _builtin_context,
     _builtin_general_purpose,
@@ -73,4 +73,4 @@ BUILTIN_FAMILY_FACTORIES: tuple[BuiltinFactory, ...] = (
 )
 
 
-__all__ = ["BUILTIN_FAMILY_FACTORIES", "BuiltinFactory"]
+__all__ = ["BUILTIN_FAMILY_FACTORIES"]
