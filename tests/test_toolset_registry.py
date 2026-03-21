@@ -16,7 +16,12 @@ from harnessiq.toolset import (
     register_tool,
     register_tools,
 )
-from harnessiq.toolset.catalog import PROVIDER_ENTRY_INDEX, PROVIDER_FACTORY_MAP
+from harnessiq.toolset.catalog import (
+    BUILTIN_FAMILY_FACTORIES,
+    PROVIDER_ENTRIES,
+    PROVIDER_ENTRY_INDEX,
+    PROVIDER_FACTORY_MAP,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -285,6 +290,12 @@ class TestListTools:
         entries = list_tools()
         keys = [e.key for e in entries]
         assert len(keys) == len(set(keys))
+
+    def test_catalog_facade_preserves_public_symbols(self):
+        assert ToolEntry.__module__ == "harnessiq.toolset.catalog"
+        assert len(BUILTIN_FAMILY_FACTORIES) == 8
+        assert len(PROVIDER_ENTRIES) == len(PROVIDER_ENTRY_INDEX)
+        assert PROVIDER_ENTRY_INDEX["arxiv.request"].family == "arxiv"
 
 
 # ---------------------------------------------------------------------------
