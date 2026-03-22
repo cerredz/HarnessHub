@@ -135,6 +135,25 @@ class BaseOutreachAgentTests(unittest.TestCase):
                 ["list_prospects", "get_prospect"],
             )
 
+    def test_outreach_agent_rejects_client_with_mismatched_credentials(self) -> None:
+        with TemporaryDirectory() as temp_repo_root:
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+            config_credentials = OutreachCredentials(access_token="outreach-secret-token")
+            mismatched_client = OutreachClient(
+                credentials=OutreachCredentials(access_token="different-secret-token"),
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "outreach_client credentials must match OutreachAgentConfig.outreach_credentials.",
+            ):
+                _TestOutreachAgent(
+                    model=model,
+                    outreach_credentials=config_credentials,
+                    outreach_client=mismatched_client,
+                    repo_root=temp_repo_root,
+                )
+
 
 def _make_custom_tool() -> RegisteredTool:
     return RegisteredTool(

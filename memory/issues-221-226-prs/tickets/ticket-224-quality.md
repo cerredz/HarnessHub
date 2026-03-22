@@ -16,6 +16,7 @@
   - Passed.
 - `python -m unittest tests.test_outreach_agent tests.test_outreach_provider`
   - Passed.
+  - Post-critique rerun passed with 30 tests after adding the injected-client credential mismatch regression case.
 
 ### Stage 4: Integration and Contract Tests
 
@@ -31,7 +32,8 @@
     - `tests.test_linkedin_cli` fails when `Path.home()` cannot be determined in the test environment.
     - `tests.test_providers` references an undefined `provider_error` symbol.
     - `tests.test_sdk_package` reports pre-existing package-surface violations in `harnessiq/providers/output_sink_metadata.py` and `harnessiq/providers/google_drive/`.
+  - Post-critique rerun produced the same failure set.
 - Manual prompt verification passed with a temporary test agent:
   - The first parameter section title is `Outreach Credentials`.
   - The credentials section includes a masked access token without exposing the raw token.
-  - The rendered system prompt explicitly instructs the harness to use `outreach_request` for prospect, account, sequence, task, template, and webhook operations.
+  - The rendered system prompt explicitly instructs the harness to use `outreach_request` for prospect, account, sequence, task, template, user, and webhook operations.
