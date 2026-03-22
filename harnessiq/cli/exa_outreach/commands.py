@@ -213,12 +213,17 @@ def _handle_run(args: argparse.Namespace) -> int:
 
     # Print a run summary to stdout.
     run_id = agent._current_run_id or "unknown"
+    if not isinstance(run_id, str):
+        run_id = str(run_id)
     _print_run_summary(store, run_id)
+    ledger_run_id = agent.last_run_id
+    if ledger_run_id is not None and not isinstance(ledger_run_id, str):
+        ledger_run_id = str(ledger_run_id)
 
     _emit_json(
         {
             "agent": args.agent,
-            "ledger_run_id": agent.last_run_id,
+            "ledger_run_id": ledger_run_id,
             "memory_path": str(store.memory_path.resolve()),
             "run_id": run_id,
             "result": {
