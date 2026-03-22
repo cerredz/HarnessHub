@@ -33,7 +33,7 @@ Top-level directories:
 
 Source layout:
 
-- `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses, including domain-specific packages such as `agents/prospecting/` for long-running Google Maps lead discovery with durable memory and reset-safe resume logic
+- `harnessiq/agents/`: provider-agnostic agent runtime primitives plus reusable provider-backed base harness packages (`provider_base/`, `apollo/`, `exa/`, `instantly/`, `outreach/`) and concrete agent harnesses such as `agents/prospecting/` for long-running Google Maps lead discovery with durable memory and reset-safe resume logic
 - `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch, including sink connection management plus ledger log/export/report commands and agent-specific workflows such as `cli/prospecting/` for preparing, configuring, and running the Google Maps prospecting harness
 - `harnessiq/config/`: repo-local credential config models, persisted agent credential bindings, and `.env` loader/store helpers
 - `harnessiq/integrations/`: adapters that bridge the core SDK to external runtime surfaces such as model implementations and browser automation, including narrow Playwright-backed browser executors for concrete agents like LinkedIn, Instagram discovery, and Google Maps prospecting
@@ -44,6 +44,8 @@ Source layout:
 - `harnessiq/toolset/`: plug-and-play toolset SDK for retrieving, composing, and registering built-in, provider, and custom tools
 - `harnessiq/utils/`: agent-agnostic utility infrastructure such as run storage, agent instance ids/registry helpers, and the framework-level audit ledger/output-sink implementation used by all agents
 - `harnessiq/agents/base/agent.py`: shared `BaseAgent` runtime loop plus additive tool introspection helpers; agents still expose canonical `available_tools()` and now also a richer inherited inspection surface for descriptions, parameters, schemas, and backing function metadata
+- `harnessiq/agents/provider_base/`: reusable provider-backed harness scaffold; centralizes provider tool registration, prompt assembly, credential parameter sections, and provider-facing behavioral rules
+- `harnessiq/agents/apollo/`, `harnessiq/agents/exa/`, `harnessiq/agents/instantly/`, `harnessiq/agents/outreach/`: provider-specific reusable base harness packages built on `BaseProviderToolAgent`; each exports a config type and a thin provider adapter for future service-specific harnesses
 - `harnessiq/cli/leads/`: leads-agent CLI commands for managed multi-ICP configuration and execution
 - `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
 - `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
@@ -112,6 +114,8 @@ Source layout:
 Tests:
 - `tests/test_agents_base.py`: coverage for the generic agent loop, transcript handling, context resets, and structured pause behavior
 - `tests/test_email_agent.py`: coverage for the abstract email-capable harness, masked Resend credentials, and Resend tool integration through the agent loop
+- `tests/test_provider_base_agents.py`: coverage for the shared provider-backed harness scaffold, including merged provider/custom tools, prompt construction, and credential parameter sections
+- `tests/test_apollo_agent.py`, `tests/test_exa_agent.py`, `tests/test_instantly_agent.py`, `tests/test_outreach_agent.py`: coverage for the reusable provider-specific base harnesses, including masked credentials, allowed-operation filtering, and representative provider execution through the agent loop
 - `tests/test_linkedin_agent.py`: coverage for the LinkedIn-specific harness, memory files, durable state tools, JobSearchConfig structured/string parameter, context window section ordering, and custom instructions injection
 - `tests/test_tools.py`: coverage for tool definitions, registry behavior, validation, execution, and built-in key ordering
 - `tests/test_context_compaction_tools.py`: coverage for the context-window compaction tool family

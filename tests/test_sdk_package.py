@@ -58,6 +58,15 @@ class HarnessiqPackageTests(unittest.TestCase):
                         "import harnessiq, harnessiq.agents, harnessiq.config, harnessiq.tools; "
                         "from harnessiq.cli.main import main as cli_main; "
                         "assert harnessiq.__version__ == '0.1.0'; "
+                        "assert hasattr(harnessiq.agents, 'BaseProviderToolAgent'); "
+                        "assert hasattr(harnessiq.agents, 'BaseApolloAgent'); "
+                        "assert hasattr(harnessiq.agents, 'BaseExaAgent'); "
+                        "assert hasattr(harnessiq.agents, 'BaseInstantlyAgent'); "
+                        "assert hasattr(harnessiq.agents, 'BaseOutreachAgent'); "
+                        "assert hasattr(harnessiq.agents, 'ApolloAgentConfig'); "
+                        "assert hasattr(harnessiq.agents, 'ExaAgentConfig'); "
+                        "assert hasattr(harnessiq.agents, 'InstantlyAgentConfig'); "
+                        "assert hasattr(harnessiq.agents, 'OutreachAgentConfig'); "
                         "assert hasattr(harnessiq.agents, 'LinkedInJobApplierAgent'); "
                         "assert hasattr(harnessiq.agents, 'InstagramKeywordDiscoveryAgent'); "
                         "assert hasattr(harnessiq.agents, 'GoogleMapsProspectingAgent'); "
@@ -91,18 +100,43 @@ class HarnessiqPackageTests(unittest.TestCase):
         self.assertEqual(help_run.returncode, 0)
 
     def test_shared_definition_exports_originate_from_shared_modules(self) -> None:
-        from harnessiq.agents import EmailAgentConfig
+        from harnessiq.agents import (
+            ApolloAgentConfig,
+            EmailAgentConfig,
+            ExaAgentConfig,
+            InstantlyAgentConfig,
+            OutreachAgentConfig,
+        )
         from harnessiq.providers import ProviderFormatError, ProviderHTTPError
         from harnessiq.providers.arxiv import ArxivConfig
         from harnessiq.providers.arcads import ArcadsOperation
         from harnessiq.tools import ResendCredentials
 
+        self.assertEqual(ApolloAgentConfig.__module__, "harnessiq.shared.apollo_agent")
         self.assertEqual(EmailAgentConfig.__module__, "harnessiq.shared.email")
+        self.assertEqual(ExaAgentConfig.__module__, "harnessiq.shared.exa_agent")
+        self.assertEqual(InstantlyAgentConfig.__module__, "harnessiq.shared.instantly_agent")
+        self.assertEqual(OutreachAgentConfig.__module__, "harnessiq.shared.outreach_agent")
         self.assertEqual(ProviderFormatError.__module__, "harnessiq.shared.providers")
         self.assertEqual(ProviderHTTPError.__module__, "harnessiq.shared.http")
         self.assertEqual(ArxivConfig.__module__, "harnessiq.shared.provider_configs")
         self.assertEqual(ArcadsOperation.__module__, "harnessiq.shared.arcads")
         self.assertEqual(ResendCredentials.__module__, "harnessiq.shared.resend")
+
+    def test_provider_base_exports_resolve_from_documented_modules(self) -> None:
+        from harnessiq.agents import (
+            BaseApolloAgent,
+            BaseExaAgent,
+            BaseInstantlyAgent,
+            BaseOutreachAgent,
+            BaseProviderToolAgent,
+        )
+
+        self.assertEqual(BaseProviderToolAgent.__module__, "harnessiq.agents.provider_base.agent")
+        self.assertEqual(BaseApolloAgent.__module__, "harnessiq.agents.apollo.agent")
+        self.assertEqual(BaseExaAgent.__module__, "harnessiq.agents.exa.agent")
+        self.assertEqual(BaseInstantlyAgent.__module__, "harnessiq.agents.instantly.agent")
+        self.assertEqual(BaseOutreachAgent.__module__, "harnessiq.agents.outreach.agent")
 
     def test_agents_and_providers_keep_shared_definitions_out_of_local_modules(self) -> None:
         violations: list[str] = []

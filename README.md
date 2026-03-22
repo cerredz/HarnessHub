@@ -11,6 +11,7 @@ Harnessiq is a Python SDK for building production-grade tool-using agents. It sh
 - [Agent Runtime](#agent-runtime)
   - [BaseAgent](#baseagent)
   - [BaseEmailAgent](#baseemailagent)
+  - [Provider Base Harnesses](#provider-base-harnesses)
 - [Concrete Agents](#concrete-agents)
   - [LinkedInJobApplierAgent](#linkedinjobapplieragent)
   - [KnowtAgent](#knowtagent)
@@ -144,6 +145,40 @@ config = EmailAgentConfig(
     allowed_resend_operations=("send_email",),
 )
 agent = MyEmailAgent(name="mailer", model=model, config=config)
+```
+
+### Provider Base Harnesses
+
+`harnessiq.agents.BaseProviderToolAgent` is the reusable scaffold for provider-backed harnesses. It standardizes system-prompt structure, provider credential parameter sections, default tool registration, and allowed-operation filtering so provider-specific bases can stay thin.
+
+The initial provider-backed SDK bases are exported directly from `harnessiq.agents`:
+
+- `BaseApolloAgent` with `ApolloAgentConfig`
+- `BaseExaAgent` with `ExaAgentConfig`
+- `BaseInstantlyAgent` with `InstantlyAgentConfig`
+- `BaseOutreachAgent` with `OutreachAgentConfig`
+
+Each provider base wires its tool factory automatically, renders redacted provider credentials in the parameter sections, and lets downstream harnesses narrow the exposed provider operations through the corresponding `allowed_<provider>_operations` config field.
+
+```python
+from harnessiq.agents import BaseApolloAgent, ApolloAgentConfig
+from harnessiq.providers.apollo import ApolloCredentials
+
+class ApolloProspector(BaseApolloAgent):
+    def apollo_objective(self) -> str:
+        return "Find qualified VP Sales prospects."
+
+    def load_apollo_parameter_sections(self):
+        return []
+
+agent = ApolloProspector(
+    name="apollo-prospector",
+    model=model,
+    config=ApolloAgentConfig(
+        apollo_credentials=ApolloCredentials(api_key="apollo_..."),
+        allowed_apollo_operations=("search_people", "get_person"),
+    ),
+)
 ```
 
 ---
