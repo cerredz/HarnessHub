@@ -29,6 +29,8 @@ class HarnessParameterSpec:
             raise ValueError("HarnessParameterSpec.description must not be blank.")
         object.__setattr__(self, "key", normalized_key)
         object.__setattr__(self, "choices", tuple(self.choices))
+        if self.default is not None:
+            self.coerce(self.default)
 
     def coerce(self, value: Any) -> Any:
         """Normalize one parameter value using the declared type contract."""
@@ -81,6 +83,8 @@ class HarnessManifest:
     module_path: str
     class_name: str
     cli_command: str | None = None
+    cli_adapter_path: str | None = None
+    default_memory_root: str | None = None
     prompt_path: str | None = None
     runtime_parameters: tuple[HarnessParameterSpec, ...] = ()
     custom_parameters: tuple[HarnessParameterSpec, ...] = ()
@@ -96,6 +100,8 @@ class HarnessManifest:
         display_name = self.display_name.strip()
         module_path = self.module_path.strip()
         class_name = self.class_name.strip()
+        cli_adapter_path = self.cli_adapter_path.strip() if self.cli_adapter_path is not None else None
+        default_memory_root = self.default_memory_root.strip() if self.default_memory_root is not None else None
         if not manifest_id:
             raise ValueError("HarnessManifest.manifest_id must not be blank.")
         if not agent_name:
@@ -111,6 +117,8 @@ class HarnessManifest:
         object.__setattr__(self, "display_name", display_name)
         object.__setattr__(self, "module_path", module_path)
         object.__setattr__(self, "class_name", class_name)
+        object.__setattr__(self, "cli_adapter_path", cli_adapter_path or None)
+        object.__setattr__(self, "default_memory_root", default_memory_root or None)
         object.__setattr__(self, "runtime_parameters", tuple(self.runtime_parameters))
         object.__setattr__(self, "custom_parameters", tuple(self.custom_parameters))
         object.__setattr__(self, "memory_files", tuple(self.memory_files))
@@ -118,6 +126,10 @@ class HarnessManifest:
         _validate_unique_keys(self.runtime_parameters, label="runtime parameter")
         _validate_unique_keys(self.custom_parameters, label="custom parameter")
         _validate_unique_keys(self.memory_files, label="memory file")
+        duplicate_keys = set(self.runtime_parameter_names).intersection(self.custom_parameter_names)
+        if duplicate_keys:
+            rendered = ", ".join(sorted(duplicate_keys))
+            raise ValueError(f"Runtime and custom parameter keys must be unique across scopes: {rendered}.")
 
     @property
     def import_path(self) -> str:
@@ -130,6 +142,13 @@ class HarnessManifest:
     @property
     def custom_parameter_names(self) -> tuple[str, ...]:
         return tuple(spec.key for spec in self.custom_parameters)
+
+    @property
+    def resolved_default_memory_root(self) -> str:
+        if self.default_memory_root is not None:
+            return self.default_memory_root
+        suffix = self.cli_command or self.manifest_id
+        return f"memory/{suffix}"
 
     def get_memory_file(self, key: str) -> HarnessMemoryFileSpec | None:
         normalized_key = key.strip()
@@ -153,6 +172,30 @@ class HarnessManifest:
             open_ended=self.custom_parameters_open_ended,
             label=f"{self.display_name} custom",
         )
+
+    def default_runtime_parameters(self) -> dict[str, Any]:
+        return {
+            spec.key: spec.default
+            for spec in self.runtime_parameters
+            if spec.default is not None
+        }
+
+    def default_custom_parameters(self) -> dict[str, Any]:
+        return {
+            spec.key: spec.default
+            for spec in self.custom_parameters
+            if spec.default is not None
+        }
+
+    def resolve_runtime_parameters(self, parameters: Mapping[str, Any]) -> dict[str, Any]:
+        resolved = self.default_runtime_parameters()
+        resolved.update(self.coerce_runtime_parameters(parameters))
+        return resolved
+
+    def resolve_custom_parameters(self, parameters: Mapping[str, Any]) -> dict[str, Any]:
+        resolved = self.default_custom_parameters()
+        resolved.update(self.coerce_custom_parameters(parameters))
+        return resolved
 
 
 def _coerce_parameters(
@@ -191,7 +234,10 @@ def _validate_unique_keys(items: tuple[Any, ...], *, label: str) -> None:
 def _is_empty_nullable(value: Any) -> bool:
     if value is None:
         return True
-    return isinstance(value, str) and not value.strip()
+    if not isinstance(value, str):
+        return False
+    normalized = value.strip().lower()
+    return not normalized or normalized in {"null", "none"}
 
 
 def _coerce_integer(value: Any) -> int:

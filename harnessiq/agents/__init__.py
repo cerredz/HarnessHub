@@ -19,6 +19,8 @@ from harnessiq.shared.harness_manifests import (
     HARNESS_MANIFESTS,
     get_harness_manifest,
     list_harness_manifests,
+    register_harness_manifest,
+    register_harness_manifests,
 )
 from harnessiq.shared.linkedin import (
     ActionLogEntry,
@@ -107,6 +109,8 @@ __all__ = [
     "get_harness_manifest",
     "json_parameter_section",
     "list_harness_manifests",
+    "register_harness_manifest",
+    "register_harness_manifests",
     "normalize_linkedin_runtime_parameters",
     "render_json_parameter_content",
     "GoogleMapsProspectingAgent",

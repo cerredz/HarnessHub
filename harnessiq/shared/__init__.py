@@ -20,6 +20,8 @@ from .harness_manifests import (
     PROSPECTING_HARNESS_MANIFEST,
     get_harness_manifest,
     list_harness_manifests,
+    register_harness_manifest,
+    register_harness_manifests,
 )
 
 __all__ = [
@@ -40,4 +42,6 @@ __all__ = [
     "PROSPECTING_HARNESS_MANIFEST",
     "get_harness_manifest",
     "list_harness_manifests",
+    "register_harness_manifest",
+    "register_harness_manifests",
 ]

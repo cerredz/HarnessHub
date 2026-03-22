@@ -229,10 +229,12 @@ KNOWT_HARNESS_MANIFEST = HarnessManifest(
     module_path="harnessiq.agents.knowt",
     class_name="KnowtAgent",
     cli_command=None,
+    cli_adapter_path="harnessiq.cli.platform_adapters:KnowtHarnessCliAdapter",
+    default_memory_root="memory/knowt",
     prompt_path="harnessiq/agents/knowt/prompts/master_prompt.md",
     runtime_parameters=(
-        HarnessParameterSpec("max_tokens", "integer", "Maximum model context budget for the harness."),
-        HarnessParameterSpec("reset_threshold", "number", "Fraction of max_tokens that triggers a reset."),
+        HarnessParameterSpec("max_tokens", "integer", "Maximum model context budget for the harness.", default=DEFAULT_AGENT_MAX_TOKENS),
+        HarnessParameterSpec("reset_threshold", "number", "Fraction of max_tokens that triggers a reset.", default=DEFAULT_AGENT_RESET_THRESHOLD),
     ),
     memory_files=(
         HarnessMemoryFileSpec("current_script", CURRENT_SCRIPT_FILENAME, "Current generated script.", format="markdown"),

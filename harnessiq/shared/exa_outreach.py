@@ -405,10 +405,12 @@ EXA_OUTREACH_HARNESS_MANIFEST = HarnessManifest(
     module_path="harnessiq.agents.exa_outreach",
     class_name="ExaOutreachAgent",
     cli_command="outreach",
+    cli_adapter_path="harnessiq.cli.platform_adapters:ExaOutreachHarnessCliAdapter",
+    default_memory_root="memory/outreach",
     prompt_path="harnessiq/agents/exa_outreach/prompts/master_prompt.md",
     runtime_parameters=(
-        HarnessParameterSpec("max_tokens", "integer", "Maximum model context budget for the harness."),
-        HarnessParameterSpec("reset_threshold", "number", "Fraction of max_tokens that triggers a reset."),
+        HarnessParameterSpec("max_tokens", "integer", "Maximum model context budget for the harness.", default=DEFAULT_AGENT_MAX_TOKENS),
+        HarnessParameterSpec("reset_threshold", "number", "Fraction of max_tokens that triggers a reset.", default=DEFAULT_AGENT_RESET_THRESHOLD),
     ),
     memory_files=(
         HarnessMemoryFileSpec("query_config", QUERY_CONFIG_FILENAME, "Persisted query configuration and runtime overrides.", format="json"),
