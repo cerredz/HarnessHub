@@ -15,7 +15,7 @@ def build_headers(
     extra_headers: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """Build the x-api-key header for Exa API key auth."""
-    headers: dict[str, str] = {"x-api-key": api_key}
+    headers: dict[str, str] = {"x-api-key": api_key, "User-Agent": "Mozilla/5.0"}
     if extra_headers:
         headers.update(extra_headers)
     return headers

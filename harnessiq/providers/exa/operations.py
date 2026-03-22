@@ -46,7 +46,12 @@ def build_exa_request_tool_definition(
                 },
                 "payload": {
                     "type": "object",
-                    "description": "JSON body for search/contents/findSimilar/answer/webset operations.",
+                    "description": (
+                        "JSON body for the operation. Use camelCase field names as required by the Exa API. "
+                        "For search/search_and_contents: {\"query\": \"...\", \"numResults\": 10, \"type\": \"neural\", "
+                        "\"contents\": {\"text\": {\"maxCharacters\": 2000}}}. "
+                        "For get_contents: {\"ids\": [\"url1\", \"url2\"], \"contents\": {\"text\": {\"maxCharacters\": 2000}}}."
+                    ),
                 },
             },
             "required": ["operation"],

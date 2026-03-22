@@ -77,8 +77,8 @@ _EXA_CATALOG: OrderedDict[str, ExaOperation] = OrderedDict(
         _op("find_similar", "Find Similar", "POST", "/findSimilar", payload_kind="object", payload_required=True),
         # Answer
         _op("get_answer", "Answer", "POST", "/answer", payload_kind="object", payload_required=True),
-        # Research (search + contents combined)
-        _op("search_and_contents", "Research", "POST", "/searchAndContents", payload_kind="object", payload_required=True),
+        # Research (search + contents combined — pass {"contents": {...}} in payload)
+        _op("search_and_contents", "Research", "POST", "/search", payload_kind="object", payload_required=True),
         # Websets (saved search collections)
         _op("list_websets", "Webset", "GET", "/websets", allow_query=True),
         _op("get_webset", "Webset", "GET", "/websets/{webset_id}", required_path_params=("webset_id",)),

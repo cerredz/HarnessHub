@@ -99,13 +99,19 @@ def register_exa_outreach_commands(
     )
     run_parser.add_argument(
         "--resend-credentials-factory",
-        required=True,
-        help="Import path (module:callable) that returns a ResendCredentials instance.",
+        default=None,
+        help="Import path (module:callable) that returns a ResendCredentials instance. Required unless --search-only.",
     )
     run_parser.add_argument(
         "--email-data-factory",
-        required=True,
-        help="Import path (module:callable) that returns a list[dict] of email templates.",
+        default=None,
+        help="Import path (module:callable) that returns a list[dict] of email templates. Required unless --search-only.",
+    )
+    run_parser.add_argument(
+        "--search-only",
+        action="store_true",
+        default=False,
+        help="Discover and log leads only — skip template selection and email sending.",
     )
     run_parser.add_argument(
         "--runtime-param",
@@ -205,15 +211,27 @@ def _handle_run(args: argparse.Namespace) -> int:
     store.prepare()
     seed_langsmith_environment(Path(args.memory_root).expanduser())
 
+    search_only: bool = getattr(args, "search_only", False)
+
+    if not search_only:
+        if not args.resend_credentials_factory:
+            raise ValueError("--resend-credentials-factory is required unless --search-only is set.")
+        if not args.email_data_factory:
+            raise ValueError("--email-data-factory is required unless --search-only is set.")
+
     model = _load_factory(args.model_factory)()
     if not hasattr(model, "generate_turn"):
         raise TypeError("Model factory must return an object that implements generate_turn(request).")
 
     exa_credentials = _load_factory(args.exa_credentials_factory)()
-    resend_credentials = _load_factory(args.resend_credentials_factory)()
-    raw_email_data = _load_factory(args.email_data_factory)()
-    if not isinstance(raw_email_data, list):
-        raise TypeError("Email data factory must return a list of dicts.")
+    resend_credentials = _load_factory(args.resend_credentials_factory)() if not search_only else None
+    if not search_only:
+        raw_email_data = _load_factory(args.email_data_factory)()
+        if not isinstance(raw_email_data, list):
+            raise TypeError("Email data factory must return a list of dicts.")
+        email_data = [EmailTemplate.from_dict(d) for d in raw_email_data]
+    else:
+        email_data = []
 
     # Read persisted search query and runtime overrides
     query_config = store.read_query_config()
@@ -228,7 +246,8 @@ def _handle_run(args: argparse.Namespace) -> int:
         model=model,
         exa_credentials=exa_credentials,
         resend_credentials=resend_credentials,
-        email_data=[EmailTemplate.from_dict(d) for d in raw_email_data],
+        email_data=email_data,
+        search_only=search_only,
         search_query=search_query,
         memory_path=store.memory_path,
         max_tokens=max_tokens,
