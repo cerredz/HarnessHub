@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
@@ -24,6 +23,7 @@ from harnessiq.shared.exa_outreach import (
     ExaOutreachAgentConfig,
     ExaOutreachMemoryStore,
     FileSystemStorageBackend,
+    LEGACY_DEFAULT_AGENT_IDENTITIES,
     LeadRecord,
     StorageBackend,
 )
@@ -41,35 +41,6 @@ from harnessiq.tools.registry import ToolRegistry
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
 _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
-_LEGACY_DEFAULT_AGENT_IDENTITIES = frozenset(
-    {
-        "A disciplined outreach specialist who finds relevant prospects via Exa neural "
-        "search, selects the most appropriate email template for each lead, personalizes "
-        "the message with specific details from their profile, and sends concise, "
-        "value-first cold emails."
-    }
-)
-
-
-@dataclass(frozen=True, slots=True)
-class ExaOutreachAgentConfig:
-    """Runtime configuration for :class:`ExaOutreachAgent`."""
-
-    email_data: tuple[EmailTemplate, ...]
-    memory_path: Path
-    storage_backend: StorageBackend
-    search_query: str = DEFAULT_SEARCH_QUERY
-    search_only: bool = False
-    max_tokens: int = DEFAULT_AGENT_MAX_TOKENS
-    reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD
-    allowed_resend_operations: tuple[str, ...] | None = None
-    allowed_exa_operations: tuple[str, ...] | None = None
-
-    def __post_init__(self) -> None:
-        if not self.search_only and not self.email_data:
-            raise ValueError(
-                "ExaOutreachAgentConfig.email_data must not be empty when search_only is False."
-            )
 
 
 class ExaOutreachAgent(BaseAgent):
@@ -200,7 +171,7 @@ class ExaOutreachAgent(BaseAgent):
             else DEFAULT_AGENT_IDENTITY
         )
         prompt = _MASTER_PROMPT_PATH.read_text(encoding="utf-8")
-        if identity and identity not in {DEFAULT_AGENT_IDENTITY, *_LEGACY_DEFAULT_AGENT_IDENTITIES}:
+        if identity and identity not in {DEFAULT_AGENT_IDENTITY, *LEGACY_DEFAULT_AGENT_IDENTITIES}:
             prompt = prompt.replace(
                 "[IDENTITY]\nYou are ExaOutreachAgent.",
                 f"[IDENTITY]\n{identity}\n\n(You are ExaOutreachAgent.)",
