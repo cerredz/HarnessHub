@@ -8,9 +8,10 @@ import shutil
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Mapping, Protocol
+from typing import Any, Mapping, Protocol
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
+from harnessiq.shared.harness_manifest import HarnessManifest, HarnessMemoryFileSpec, HarnessParameterSpec
 
 DEFAULT_AGENT_IDENTITY = (
     "You are a meticulous, high-throughput LinkedIn job application specialist with deep familiarity with "
@@ -437,31 +438,53 @@ class ScreenshotPersistor(Protocol):
         """Persist the current screenshot to ``output_path``."""
 
 
-SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS = (
-    "max_tokens",
-    "reset_threshold",
-    "action_log_window",
-    "linkedin_start_url",
-    "notify_on_pause",
-    "pause_webhook",
+LINKEDIN_HARNESS_MANIFEST = HarnessManifest(
+    manifest_id="linkedin",
+    agent_name="linkedin_job_applier",
+    display_name="LinkedIn Job Applier",
+    module_path="harnessiq.agents.linkedin",
+    class_name="LinkedInJobApplierAgent",
+    cli_command="linkedin",
+    prompt_path="harnessiq/agents/linkedin/prompts/master_prompt.md",
+    runtime_parameters=(
+        HarnessParameterSpec("max_tokens", "integer", "Maximum model context budget for the harness."),
+        HarnessParameterSpec("reset_threshold", "number", "Fraction of max_tokens that triggers a reset."),
+        HarnessParameterSpec("action_log_window", "integer", "Number of recent actions injected into context."),
+        HarnessParameterSpec("linkedin_start_url", "string", "Initial LinkedIn jobs URL used by the harness."),
+        HarnessParameterSpec("notify_on_pause", "boolean", "Whether pause events should emit notifications."),
+        HarnessParameterSpec("pause_webhook", "string", "Optional webhook URL for pause notifications.", nullable=True),
+    ),
+    custom_parameters_open_ended=True,
+    memory_files=(
+        HarnessMemoryFileSpec("job_preferences", JOB_PREFERENCES_FILENAME, "Durable job preference prompt block.", format="markdown"),
+        HarnessMemoryFileSpec("user_profile", USER_PROFILE_FILENAME, "Durable user profile prompt block.", format="markdown"),
+        HarnessMemoryFileSpec("agent_identity", AGENT_IDENTITY_FILENAME, "Override for the LinkedIn system identity.", format="markdown"),
+        HarnessMemoryFileSpec("runtime_parameters", RUNTIME_PARAMETERS_FILENAME, "Persisted typed runtime overrides.", format="json"),
+        HarnessMemoryFileSpec("custom_parameters", CUSTOM_PARAMETERS_FILENAME, "Open-ended user custom parameter payload.", format="json"),
+        HarnessMemoryFileSpec("additional_prompt", ADDITIONAL_PROMPT_FILENAME, "Additional free-form prompt data.", format="markdown"),
+        HarnessMemoryFileSpec("applied_jobs", APPLIED_JOBS_FILENAME, "Append-only job application records.", format="jsonl"),
+        HarnessMemoryFileSpec("action_log", ACTION_LOG_FILENAME, "Append-only semantic action log.", format="jsonl"),
+        HarnessMemoryFileSpec("managed_files_index", MANAGED_FILES_INDEX_FILENAME, "Index of CLI-managed memory files.", format="json"),
+        HarnessMemoryFileSpec("managed_files", MANAGED_FILES_DIRNAME, "Durable imported or inline-managed files.", kind="directory", format="directory"),
+        HarnessMemoryFileSpec("screenshots", SCREENSHOT_DIRNAME, "Persisted screenshots captured during browser runs.", kind="directory", format="directory"),
+    ),
+    provider_families=("playwright",),
+    output_schema={
+        "type": "object",
+        "properties": {
+            "jobs_applied": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+            "managed_files": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+            "recent_actions": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+        },
+        "additionalProperties": False,
+    },
 )
+
+SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS = LINKEDIN_HARNESS_MANIFEST.runtime_parameter_names
 
 
 def normalize_linkedin_runtime_parameters(parameters: Mapping[str, Any]) -> dict[str, Any]:
-    normalized: dict[str, Any] = {}
-    coercers: dict[str, Callable[[Any], Any]] = {
-        "max_tokens": _coerce_int,
-        "reset_threshold": _coerce_float,
-        "action_log_window": _coerce_int,
-        "linkedin_start_url": _coerce_string,
-        "notify_on_pause": _coerce_bool,
-        "pause_webhook": _coerce_optional_string,
-    }
-    for key, value in parameters.items():
-        if key not in coercers:
-            raise ValueError(f"Unsupported LinkedIn runtime parameter '{key}'.")
-        normalized[key] = coercers[key](value)
-    return normalized
+    return LINKEDIN_HARNESS_MANIFEST.coerce_runtime_parameters(parameters)
 
 
 def _ensure_text_file(path: Path, default_content: str) -> None:
@@ -554,6 +577,7 @@ __all__ = [
     "DEFAULT_USER_PROFILE",
     "JOB_PREFERENCES_FILENAME",
     "JobApplicationRecord",
+    "LINKEDIN_HARNESS_MANIFEST",
     "LinkedInAgentConfig",
     "LinkedInManagedFile",
     "LinkedInMemoryStore",

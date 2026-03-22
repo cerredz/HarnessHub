@@ -61,3 +61,15 @@ runtime = AgentRuntimeConfig(
 Concrete agents can override `pruning_progress_value()` to tie pruning to durable work instead of raw transcript size. The leads agent uses this to prune after a configurable number of persisted searches while preserving the durable search summaries in parameter sections.
 
 For custom agents, `json_parameter_section()` is the SDK helper for durable JSON-backed memory blocks, and `build_context_window()` / `inspect_tools()` expose the assembled runtime state for debugging and orchestration.
+
+Harnessiq also exposes declarative harness manifests for the built-in agents. These manifests live under `harnessiq.shared` and capture stable metadata such as prompt paths, runtime/custom parameter specs, durable memory files, provider families, and structured output contracts.
+
+```python
+from harnessiq.agents import get_harness_manifest
+
+manifest = get_harness_manifest("linkedin")
+print(manifest.prompt_path)
+print(manifest.runtime_parameter_names)
+```
+
+CLI command modules now use the same manifest-backed parameter specs for runtime validation, so custom harness integrations can import one shared source of truth instead of duplicating supported-key lists and coercion rules.

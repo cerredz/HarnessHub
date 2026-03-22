@@ -7,10 +7,11 @@ import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Mapping
 from uuid import uuid4
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
+from harnessiq.shared.harness_manifest import HarnessManifest, HarnessMemoryFileSpec, HarnessParameterSpec
 
 COMPANY_DESCRIPTION_FILENAME = "company_description.md"
 AGENT_IDENTITY_FILENAME = "agent_identity.md"
@@ -444,57 +445,62 @@ class ProspectingMemoryStore:
         return next_state
 
 
-SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS = (
-    "max_tokens",
-    "reset_threshold",
+PROSPECTING_HARNESS_MANIFEST = HarnessManifest(
+    manifest_id="prospecting",
+    agent_name="google_maps_prospecting",
+    display_name="Google Maps Prospecting",
+    module_path="harnessiq.agents.prospecting",
+    class_name="GoogleMapsProspectingAgent",
+    cli_command="prospecting",
+    prompt_path="harnessiq/agents/prospecting/prompts/master_prompt.md",
+    runtime_parameters=(
+        HarnessParameterSpec("max_tokens", "integer", "Maximum model context budget for the harness."),
+        HarnessParameterSpec("reset_threshold", "number", "Fraction of max_tokens that triggers a reset."),
+    ),
+    custom_parameters=(
+        HarnessParameterSpec("qualification_threshold", "integer", "Minimum score required to qualify a lead."),
+        HarnessParameterSpec("summarize_at_x", "integer", "Search count cadence for search-history summarization."),
+        HarnessParameterSpec("max_searches_per_run", "integer", "Maximum Google Maps searches per run."),
+        HarnessParameterSpec("max_listings_per_search", "integer", "Maximum listings evaluated per search."),
+        HarnessParameterSpec("website_inspect_enabled", "boolean", "Whether website inspection is enabled."),
+        HarnessParameterSpec("sink_record_type", "string", "Record type emitted to output sinks."),
+        HarnessParameterSpec("eval_system_prompt", "string", "System prompt used for deterministic company evaluation."),
+    ),
+    memory_files=(
+        HarnessMemoryFileSpec("company_description", COMPANY_DESCRIPTION_FILENAME, "Durable company targeting description.", format="markdown"),
+        HarnessMemoryFileSpec("agent_identity", AGENT_IDENTITY_FILENAME, "Override for the prospecting system identity.", format="markdown"),
+        HarnessMemoryFileSpec("additional_prompt", ADDITIONAL_PROMPT_FILENAME, "Additional free-form prompt data.", format="markdown"),
+        HarnessMemoryFileSpec("runtime_parameters", RUNTIME_PARAMETERS_FILENAME, "Persisted typed runtime overrides.", format="json"),
+        HarnessMemoryFileSpec("custom_parameters", CUSTOM_PARAMETERS_FILENAME, "Persisted typed custom parameters.", format="json"),
+        HarnessMemoryFileSpec("state", STATE_FILENAME, "Durable run state for search progress and resets.", format="json"),
+        HarnessMemoryFileSpec("qualified_leads", QUALIFIED_LEADS_FILENAME, "Append-only qualified lead records.", format="jsonl"),
+        HarnessMemoryFileSpec("browser_data", BROWSER_DATA_DIRNAME, "Persistent browser session directory.", kind="directory", format="directory"),
+    ),
+    provider_families=("playwright",),
+    output_schema={
+        "type": "object",
+        "properties": {
+            "company_description": {"type": "string"},
+            "qualified_leads": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+            "searches_completed": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+            "summary": {"type": ["string", "null"]},
+            "counts": {"type": "object", "additionalProperties": True},
+        },
+        "additionalProperties": False,
+    },
 )
 
-SUPPORTED_PROSPECTING_CUSTOM_PARAMETERS = (
-    "qualification_threshold",
-    "summarize_at_x",
-    "max_searches_per_run",
-    "max_listings_per_search",
-    "website_inspect_enabled",
-    "sink_record_type",
-    "eval_system_prompt",
-)
+SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS = PROSPECTING_HARNESS_MANIFEST.runtime_parameter_names
+
+SUPPORTED_PROSPECTING_CUSTOM_PARAMETERS = PROSPECTING_HARNESS_MANIFEST.custom_parameter_names
 
 
 def normalize_prospecting_runtime_parameters(parameters: Mapping[str, Any]) -> dict[str, Any]:
-    normalized: dict[str, Any] = {}
-    coercers: dict[str, Callable[[Any], Any]] = {
-        "max_tokens": _coerce_int,
-        "reset_threshold": _coerce_float,
-    }
-    for key, value in parameters.items():
-        if key not in coercers:
-            raise ValueError(
-                f"Unsupported prospecting runtime parameter '{key}'. "
-                f"Supported: {', '.join(sorted(coercers))}."
-            )
-        normalized[key] = coercers[key](value)
-    return normalized
+    return PROSPECTING_HARNESS_MANIFEST.coerce_runtime_parameters(parameters)
 
 
 def normalize_prospecting_custom_parameters(parameters: Mapping[str, Any]) -> dict[str, Any]:
-    normalized: dict[str, Any] = {}
-    coercers: dict[str, Callable[[Any], Any]] = {
-        "qualification_threshold": _coerce_int,
-        "summarize_at_x": _coerce_int,
-        "max_searches_per_run": _coerce_int,
-        "max_listings_per_search": _coerce_int,
-        "website_inspect_enabled": _coerce_bool,
-        "sink_record_type": _coerce_string,
-        "eval_system_prompt": _coerce_string,
-    }
-    for key, value in parameters.items():
-        if key not in coercers:
-            raise ValueError(
-                f"Unsupported prospecting custom parameter '{key}'. "
-                f"Supported: {', '.join(sorted(coercers))}."
-            )
-        normalized[key] = coercers[key](value)
-    return normalized
+    return PROSPECTING_HARNESS_MANIFEST.coerce_custom_parameters(parameters)
 
 
 def new_run_id() -> str:
@@ -602,6 +608,7 @@ __all__ = [
     "DEFAULT_WEBSITE_INSPECT_ENABLED",
     "NEXT_QUERY_SYSTEM_PROMPT",
     "ProspectingAgentConfig",
+    "PROSPECTING_HARNESS_MANIFEST",
     "ProspectingMemoryStore",
     "ProspectingState",
     "QUALIFIED_LEADS_FILENAME",

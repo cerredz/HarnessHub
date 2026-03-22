@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
+from harnessiq.shared.harness_manifest import HarnessManifest, HarnessMemoryFileSpec, HarnessParameterSpec
 from harnessiq.utils.run_storage import (
     RUNS_DIRNAME,
     FileSystemStorageBackend,
@@ -397,6 +398,37 @@ def _run_file_sort_key(path: Path) -> int:
     return int(match.group(1)) if match else 0
 
 
+EXA_OUTREACH_HARNESS_MANIFEST = HarnessManifest(
+    manifest_id="exa_outreach",
+    agent_name="exa_outreach",
+    display_name="Exa Outreach",
+    module_path="harnessiq.agents.exa_outreach",
+    class_name="ExaOutreachAgent",
+    cli_command="outreach",
+    prompt_path="harnessiq/agents/exa_outreach/prompts/master_prompt.md",
+    runtime_parameters=(
+        HarnessParameterSpec("max_tokens", "integer", "Maximum model context budget for the harness."),
+        HarnessParameterSpec("reset_threshold", "number", "Fraction of max_tokens that triggers a reset."),
+    ),
+    memory_files=(
+        HarnessMemoryFileSpec("query_config", QUERY_CONFIG_FILENAME, "Persisted query configuration and runtime overrides.", format="json"),
+        HarnessMemoryFileSpec("agent_identity", AGENT_IDENTITY_FILENAME, "Override for the outreach system identity.", format="text"),
+        HarnessMemoryFileSpec("additional_prompt", ADDITIONAL_PROMPT_FILENAME, "Additional free-form prompt data.", format="text"),
+        HarnessMemoryFileSpec("runs", RUNS_DIRNAME, "Per-run outreach logs.", kind="directory", format="directory"),
+    ),
+    provider_families=("exa", "resend"),
+    output_schema={
+        "type": "object",
+        "properties": {
+            "search_query": {"type": "string"},
+            "leads_found": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+            "emails_sent": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+        },
+        "additionalProperties": False,
+    },
+)
+
+
 __all__ = [
     "ADDITIONAL_PROMPT_FILENAME",
     "AGENT_IDENTITY_FILENAME",
@@ -404,6 +436,7 @@ __all__ = [
     "DEFAULT_SEARCH_QUERY",
     "EmailSentRecord",
     "EmailTemplate",
+    "EXA_OUTREACH_HARNESS_MANIFEST",
     "ExaOutreachAgentConfig",
     "ExaOutreachMemoryStore",
     "FileSystemStorageBackend",

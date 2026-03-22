@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Protocol, Sequence, runtime_checkable
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
+from harnessiq.shared.harness_manifest import HarnessManifest, HarnessMemoryFileSpec, HarnessParameterSpec
 
 ICP_PROFILES_FILENAME = "icp_profiles.json"
 SEARCH_HISTORY_FILENAME = "search_history.json"
@@ -377,22 +378,43 @@ def extract_emails(text: str) -> list[str]:
 
 def normalize_instagram_runtime_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
     """Validate and type-coerce runtime parameters for the Instagram agent."""
-    normalized: dict[str, Any] = {}
-    coercers = {
-        "max_tokens": _coerce_int,
-        "recent_result_window": _coerce_int,
-        "recent_search_window": _coerce_int,
-        "reset_threshold": _coerce_float,
-        "search_result_limit": _coerce_int,
-    }
-    for key, value in parameters.items():
-        if key not in coercers:
-            supported = ", ".join(sorted(coercers))
-            raise ValueError(
-                f"Unsupported instagram runtime parameter '{key}'. Supported: {supported}."
-            )
-        normalized[key] = coercers[key](value)
-    return normalized
+    return INSTAGRAM_HARNESS_MANIFEST.coerce_runtime_parameters(parameters)
+
+
+INSTAGRAM_HARNESS_MANIFEST = HarnessManifest(
+    manifest_id="instagram",
+    agent_name="instagram_keyword_discovery",
+    display_name="Instagram Keyword Discovery",
+    module_path="harnessiq.agents.instagram",
+    class_name="InstagramKeywordDiscoveryAgent",
+    cli_command="instagram",
+    prompt_path="harnessiq/agents/instagram/prompts/master_prompt.md",
+    runtime_parameters=(
+        HarnessParameterSpec("max_tokens", "integer", "Maximum model context budget for the harness."),
+        HarnessParameterSpec("recent_result_window", "integer", "Number of recent leads kept in prompt context."),
+        HarnessParameterSpec("recent_search_window", "integer", "Number of recent searches kept in prompt context."),
+        HarnessParameterSpec("reset_threshold", "number", "Fraction of max_tokens that triggers a reset."),
+        HarnessParameterSpec("search_result_limit", "integer", "Maximum results requested from the search backend."),
+    ),
+    memory_files=(
+        HarnessMemoryFileSpec("icp_profiles", ICP_PROFILES_FILENAME, "Persisted ICP descriptions.", format="json"),
+        HarnessMemoryFileSpec("search_history", SEARCH_HISTORY_FILENAME, "Durable Instagram search history.", format="json"),
+        HarnessMemoryFileSpec("lead_database", LEAD_DATABASE_FILENAME, "Persisted deduplicated leads and emails.", format="json"),
+        HarnessMemoryFileSpec("runtime_parameters", RUNTIME_PARAMETERS_FILENAME, "Persisted typed runtime overrides.", format="json"),
+        HarnessMemoryFileSpec("agent_identity", AGENT_IDENTITY_FILENAME, "Override for the Instagram system identity.", format="text"),
+        HarnessMemoryFileSpec("additional_prompt", ADDITIONAL_PROMPT_FILENAME, "Additional free-form prompt data.", format="text"),
+    ),
+    provider_families=("playwright",),
+    output_schema={
+        "type": "object",
+        "properties": {
+            "emails": {"type": "array", "items": {"type": "string"}},
+            "leads": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+            "search_history": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+        },
+        "additionalProperties": False,
+    },
+)
 
 
 def _coerce_int(value: Any) -> int:
@@ -489,6 +511,7 @@ __all__ = [
     "DEFAULT_RECENT_SEARCH_WINDOW",
     "DEFAULT_SEARCH_RESULT_LIMIT",
     "ICP_PROFILES_FILENAME",
+    "INSTAGRAM_HARNESS_MANIFEST",
     "INSTAGRAM_GOOGLE_SEARCH_URL",
     "InstagramKeywordAgentConfig",
     "InstagramLeadDatabase",

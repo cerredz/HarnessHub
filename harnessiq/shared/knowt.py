@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
+from harnessiq.shared.harness_manifest import HarnessManifest, HarnessMemoryFileSpec, HarnessParameterSpec
 
 # ---------------------------------------------------------------------------
 # Filename constants
@@ -221,10 +222,41 @@ def _utcnow() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+KNOWT_HARNESS_MANIFEST = HarnessManifest(
+    manifest_id="knowt",
+    agent_name="knowt_content_creator",
+    display_name="Knowt Content Creator",
+    module_path="harnessiq.agents.knowt",
+    class_name="KnowtAgent",
+    cli_command=None,
+    prompt_path="harnessiq/agents/knowt/prompts/master_prompt.md",
+    runtime_parameters=(
+        HarnessParameterSpec("max_tokens", "integer", "Maximum model context budget for the harness."),
+        HarnessParameterSpec("reset_threshold", "number", "Fraction of max_tokens that triggers a reset."),
+    ),
+    memory_files=(
+        HarnessMemoryFileSpec("current_script", CURRENT_SCRIPT_FILENAME, "Current generated script.", format="markdown"),
+        HarnessMemoryFileSpec("current_avatar_description", CURRENT_AVATAR_DESCRIPTION_FILENAME, "Current generated avatar description.", format="markdown"),
+        HarnessMemoryFileSpec("creation_log", CREATION_LOG_FILENAME, "Append-only creation pipeline log.", format="jsonl"),
+    ),
+    provider_families=("creatify",),
+    output_schema={
+        "type": "object",
+        "properties": {
+            "script": {"type": ["string", "null"]},
+            "avatar_description": {"type": ["string", "null"]},
+            "creation_log": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+        },
+        "additionalProperties": False,
+    },
+)
+
+
 __all__ = [
     "CREATION_LOG_FILENAME",
     "CURRENT_AVATAR_DESCRIPTION_FILENAME",
     "CURRENT_SCRIPT_FILENAME",
+    "KNOWT_HARNESS_MANIFEST",
     "KnowtAgentConfig",
     "KnowtCreationLogEntry",
     "KnowtMemoryStore",
