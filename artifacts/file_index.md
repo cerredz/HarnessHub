@@ -16,7 +16,8 @@ Codebase standards:
 - Agents should interact with external capabilities through the tool layer, and third-party platforms should be reached through provider-backed tools and provider clients rather than through undocumented ad hoc calls.
 - Agents should be structured to accept an injected toolset or tool executor as part of their configuration instead of strictly defining the full tool surface internally. An agent can provide a sensible default toolset, but that default should remain overridable.
 - Autonomous agents are expected to have a durable memory folder. That memory can store any files needed across runs, including user inputs, runtime parameters, custom parameters, action logs, and deterministic state records.
-- The shared runtime also maintains an SDK-level agent instance registry so each resolved agent run has a stable name/id pair plus a persisted payload snapshot and memory-path binding.
+- The shared runtime also maintains an SDK-level agent instance registry so each resolved agent run has a stable name/id pair plus a persisted payload snapshot and memory-path binding in `memory/agent_instances.json`.
+- Default SDK-managed agent memory is organized per logical harness and per resolved instance under `memory/agents/<agent_name>/<instance_id>/`. Explicit CLI or SDK memory paths remain supported, but those paths are still recorded in the shared instance registry.
 - Tools are not only optional model add-ons; they should be used wherever a deterministic check is possible. If an agent can verify state from durable memory or another authoritative source, it should do that explicitly instead of relying on model recall alone (for example, checking LinkedIn memory to confirm whether a job was already applied to).
 - These agents are being built for full autonomy, so designs must assume multiple context window resets. Durable memory and parameter sections should carry forward the state needed to resume work without losing orientation.
 - Agent behavior should be configurable through parameters. The shared runtime comes from `BaseAgent`, while concrete harnesses can expose runtime parameters and user-defined custom parameters where the workflow requires them.
@@ -37,20 +38,37 @@ Source layout:
 - `harnessiq/config/`: repo-local credential config models, persisted agent credential bindings, and `.env` loader/store helpers
 - `harnessiq/integrations/`: adapters that bridge the core SDK to external runtime surfaces such as model implementations and browser automation, including narrow Playwright-backed browser executors for concrete agents like LinkedIn, Instagram discovery, and Google Maps prospecting
 - `harnessiq/master_prompts/`: curated, deployable system prompts for agents and direct SDK use
-- `harnessiq/providers/`: provider translation helpers, HTTP clients, and operation catalogs for both LLM providers and external-service APIs, including provider-backed output-sink transports for destinations like Notion, Confluence, Supabase, Linear, Slack, and Discord
-- `harnessiq/shared/`: shared types, configs, constants, provider operation metadata, and prepared-request models reused across agents, providers, and tools
-- `harnessiq/tools/`: the executable tool runtime layer, including built-in tools, prompt/filesystem helpers, reasoning tools, and provider-backed tool factories
+- `harnessiq/providers/`: provider translation helpers, HTTP clients, and operation catalogs for both LLM providers and external-service APIs, including service-specific folders such as `google_drive/` for deterministic folder and file persistence plus provider-backed output-sink transports for destinations like Notion, Confluence, Supabase, Linear, Slack, and Discord
+- `harnessiq/shared/`: shared types, configs, and constants reused across modules, including per-agent durable-memory schemas such as `shared/prospecting.py`
+- `harnessiq/tools/`: the executable tool runtime layer, including built-in tools, prompt/filesystem helpers, reasoning tools, provider-backed tool factories such as `tools/google_drive/`, and reusable public browser/prospecting tools such as the browser interaction family plus `EVALUATE_COMPANY` and `SEARCH_OR_SUMMARIZE`
 - `harnessiq/toolset/`: plug-and-play toolset SDK for retrieving, composing, and registering built-in, provider, and custom tools
-- `harnessiq/utils/`: agent-agnostic utility infrastructure such as run storage and other reusable support code that does not belong to a single agent, provider, or tool family, including the framework-level audit ledger and output-sink implementation used by all agents
+- `harnessiq/utils/`: agent-agnostic utility infrastructure such as run storage, agent instance ids/registry helpers, and the framework-level audit ledger/output-sink implementation used by all agents
 - `harnessiq/agents/base/agent.py`: shared `BaseAgent` runtime loop plus additive tool introspection helpers; agents still expose canonical `available_tools()` and now also a richer inherited inspection surface for descriptions, parameters, schemas, and backing function metadata
-- `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch
 - `harnessiq/cli/leads/`: leads-agent CLI commands for managed multi-ICP configuration and execution
 - `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
-- `harnessiq/config/`: repo-local credential config models and `.env` loader/store helpers
-- `harnessiq/shared/`: shared types, configs, and constants; definitions that need to be reused across modules should live here in domain-specific files
-- `harnessiq/tools/`: the tool runtime layer, including built-in tool handlers, reusable transformation/control tools, prompt generation, filesystem access helpers, external service integrations such as Resend, and registry/execution behavior; also contains MCP-style tool factories for all registered data and service providers
+- `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
 - `harnessiq/tools/leads/`: leads-agent tool factory and provider-tool composition helpers; the leads harness imports this module instead of defining its tool registry inline
 - `harnessiq/tools/apollo/`: MCP-style tool factory for Apollo.io sales intelligence and engagement APIs
+- `harnessiq/providers/anthropic/`: Anthropic request and tool-translation helpers
+- `harnessiq/providers/openai/`: OpenAI request and tool-translation helpers
+- `harnessiq/providers/grok/`: Grok request and tool-translation helpers
+- `harnessiq/providers/gemini/`: Gemini request and tool-translation helpers
+- `harnessiq/providers/snovio/`: Snov.io email-finding and outreach API client
+- `harnessiq/providers/leadiq/`: LeadIQ lead-intelligence API client (GraphQL)
+- `harnessiq/providers/salesforge/`: Salesforge AI sales-engagement API client
+- `harnessiq/providers/phantombuster/`: PhantomBuster web-automation API client
+- `harnessiq/providers/zoominfo/`: ZoomInfo B2B-intelligence API client (JWT auth)
+- `harnessiq/providers/peopledatalabs/`: People Data Labs people and company data-enrichment API client
+- `harnessiq/providers/proxycurl/`: Proxycurl LinkedIn data API client
+- `harnessiq/providers/coresignal/`: Coresignal professional network data API client
+- `harnessiq/providers/creatify/`: Creatify AI video creation API - credentials, client, and full operation catalog
+- `harnessiq/providers/arcads/`: Arcads AI video ad API - credentials, client, and operation catalog
+- `harnessiq/providers/instantly/`: Instantly.ai cold email API v2 - credentials, client, and full operation catalog
+- `harnessiq/providers/outreach/`: Outreach.io sales engagement API - credentials, OAuth client, and core operation catalog
+- `harnessiq/providers/lemlist/`: Lemlist outreach API - credentials, client, and full operation catalog
+- `harnessiq/providers/exa/`: Exa neural search API - credentials, client, and full operation catalog
+- `harnessiq/agents/exa_outreach/`: ExaOutreach agent harness - finds prospects via Exa search, sends personalised emails via Resend, and deterministically persists leads and email records to a pluggable `StorageBackend`
+- `harnessiq/providers/arxiv/`: public arXiv API client with Atom feed parsing and PDF download helpers
 - `harnessiq/tools/registry.py`: deterministic registry for executable tools; exposes canonical `definitions()` for model-facing metadata and a richer `inspect()` surface for human/tooling introspection of parameters and handler identity
 - `harnessiq/tools/creatify/`: MCP-style tool factory for Creatify AI video creation
 - `harnessiq/tools/arcads/`: MCP-style tool factory for Arcads AI advertising video creation
@@ -82,41 +100,10 @@ Source layout:
 - `harnessiq/agents/leads/prompts/`: system prompt files for the leads agent; `master_prompt.md` loaded at runtime with `{{PLATFORMS}}`, `{{SEARCH_SUMMARY_EVERY}}`, `{{SEARCH_TAIL_SIZE}}`, and `{{TOOL_LIST}}` template substitution
 - `harnessiq/shared/knowt.py`: `KnowtMemoryStore` (file-backed), `KnowtAgentConfig`, `KnowtCreationLogEntry`, and filename constants for the Knowt agent harness
 - `harnessiq/shared/linkedin.py`: LinkedIn constants and data models - `JobSearchConfig` (structured filter params: title, location, remote_type, experience_levels, date_posted, easy_apply_only, salary range, job_type, companies, industries, description), `JobApplicationRecord`, `ActionLogEntry`, `LinkedInAgentConfig`, `LinkedInManagedFile`, filename constants
-- `harnessiq/tools/reasoning/`: 50 reasoning lens tools for agent cognitive scaffolding - includes step-by-step, tree-of-thoughts, first-principles, red-teaming, pre-mortem, and 45 others across 8 cognitive categories (core logical, analytical, perspective, creative, systems, temporal, evaluative, scientific)
 - `harnessiq/toolset/`: plug-and-play toolset SDK - `get_tool`, `get_tools`, `get_family`, `list_tools`, `define_tool`, `@tool` decorator, `register_tool`, `register_tools`; backed by `ToolsetRegistry` and a static provider catalog
 - `harnessiq/toolset/factory.py`: `define_tool()` factory and `@tool` decorator for ergonomic custom `RegisteredTool` creation; validates `tool_type` with clear planned-vs-unknown messaging
-- `harnessiq/providers/`: provider translation helpers and provider-specific request builders
 - `harnessiq/config/`: credential loader and base credential configuration types; `CredentialLoader` resolves named environment variables from a repo-local `.env` file
-- `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
-- `harnessiq/providers/`: provider-specific request builders, HTTP clients, and operation catalogs; covers both AI LLM providers and external-service API providers
 - `harnessiq/providers/apollo/`: Apollo.io sales intelligence API client, request catalog, and credential model
-- `harnessiq/providers/anthropic/`: Anthropic request and tool-translation helpers
-- `harnessiq/providers/openai/`: OpenAI request and tool-translation helpers
-- `harnessiq/providers/grok/`: Grok request and tool-translation helpers
-- `harnessiq/providers/gemini/`: Gemini request and tool-translation helpers
-- `harnessiq/providers/snovio/`: Snov.io email-finding and outreach API client
-- `harnessiq/providers/leadiq/`: LeadIQ lead-intelligence API client (GraphQL)
-- `harnessiq/providers/salesforge/`: Salesforge AI sales-engagement API client
-- `harnessiq/providers/phantombuster/`: PhantomBuster web-automation API client
-- `harnessiq/providers/zoominfo/`: ZoomInfo B2B-intelligence API client (JWT auth)
-- `harnessiq/providers/peopledatalabs/`: People Data Labs people and company data-enrichment API client
-- `harnessiq/providers/proxycurl/`: Proxycurl LinkedIn data API client
-- `harnessiq/providers/coresignal/`: Coresignal professional network data API client
-- `harnessiq/providers/creatify/`: Creatify AI video creation API - credentials, client, and full operation catalog
-- `harnessiq/providers/arcads/`: Arcads AI video ad API - credentials, client, and operation catalog
-- `harnessiq/providers/instantly/`: Instantly.ai cold email API v2 - credentials, client, and full operation catalog
-- `harnessiq/providers/outreach/`: Outreach.io sales engagement API - credentials, OAuth client, and core operation catalog
-- `harnessiq/providers/lemlist/`: Lemlist outreach API - credentials, client, and full operation catalog
-- `harnessiq/providers/exa/`: Exa neural search API - credentials, client, and full operation catalog
-- `harnessiq/agents/exa_outreach/`: ExaOutreach agent harness - finds prospects via Exa search, sends personalised emails via Resend, and deterministically persists leads and email records to a pluggable `StorageBackend`
-- `harnessiq/providers/arxiv/`: public arXiv API client with Atom feed parsing and PDF download helpers
-- `harnessiq/providers/creatify/`: Creatify AI video creation API — credentials, client, and full operation catalog
-- `harnessiq/providers/arcads/`: Arcads AI video ad API — credentials, client, and operation catalog
-- `harnessiq/providers/instantly/`: Instantly.ai cold email API v2 — credentials, client, and full operation catalog
-- `harnessiq/providers/outreach/`: Outreach.io sales engagement API — credentials, OAuth client, and core operation catalog
-- `harnessiq/providers/lemlist/`: Lemlist outreach API — credentials, client, and full operation catalog
-- `harnessiq/providers/exa/`: Exa neural search API — credentials, client, and full operation catalog
-- `harnessiq/agents/exa_outreach/`: ExaOutreach agent harness — finds prospects via Exa search, sends personalised emails via Resend, and deterministically persists leads and email records to a pluggable `StorageBackend`
 - `harnessiq/agents/exa_outreach/prompts/`: system prompt files for the ExaOutreach agent; `master_prompt.md` loaded at runtime
 - `harnessiq/shared/exa_outreach.py`: `EmailTemplate`, `LeadRecord`, `EmailSentRecord`, `OutreachRunLog`, `StorageBackend` protocol, `FileSystemStorageBackend` (per-run JSON files under `runs/`), and `ExaOutreachMemoryStore`
 - `harnessiq/shared/leads.py`: leads-agent shared domain models and config including `LeadsAgentConfig`, `LeadRunConfig`, `LeadRunState`, `LeadICP`, `LeadICPState`, `LeadSearchRecord`, `LeadSearchSummary`, `LeadRecord`, `LeadsMemoryStore`, and `FileSystemLeadsStorageBackend` for per-ICP durable search state plus cross-run lead dedupe/persistence
@@ -156,19 +143,17 @@ Tests:
 - `tests/test_arxiv_provider.py`: coverage for arXiv transport config, Atom feed parsing, URL builders, client/download behavior, and operation catalog
 - `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
 - `tests/test_reasoning_tools.py`: coverage for the three core reasoning tools (brainstorm, chain_of_thought, critique) - handler behavior, count presets, boundary validation, registry integration, and instruction output shape
-- `tests/test_reasoning_tools.py`: coverage for reasoning tool implementations, boundary validation, and instruction formatting
 - `tests/test_knowt_tools.py`: coverage for Knowt tool handlers, memory guard enforcement, Creatify integration, and file-scoped create/edit operations
 - `tests/test_knowt_agent.py`: coverage for the Knowt agent harness - construction, system prompt file loading, parameter sections, tool wiring, and run loop behavior
-- `tests/test_reasoning_tools.py`: coverage for all 50 reasoning lens tool handlers, registry execution, argument validation, and prompt output shape
 - `tests/test_toolset_factory.py`: coverage for `define_tool()` factory and `@tool` decorator - construction, schema building, handler execution, `tool_type` validation, `ToolDefinition.tool_type` backwards compatibility
 - `tests/test_toolset_registry.py`: coverage for `ToolsetRegistry` - built-in/provider/custom tool lookup, `register_tool`/`register_tools`, collision detection, `list_tools`, `get_family`
 - `tests/test_exa_outreach_shared.py`: coverage for `EmailTemplate`, `LeadRecord`, `EmailSentRecord`, `OutreachRunLog`, `FileSystemStorageBackend`, `ExaOutreachMemoryStore`, and tool key constants
 - `tests/test_exa_outreach_agent.py`: coverage for `ExaOutreachAgent` construction, available tools, system prompt building, parameter section ordering, all five internal tool handlers, prepare/run lifecycle, and SDK exports
 - `tests/test_exa_outreach_cli.py`: coverage for the ExaOutreach CLI - parser registration, `prepare`/`configure`/`show`/`run` handlers, `normalize_exa_outreach_runtime_parameters`, and `SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS`
-
 - `tests/test_leads_shared.py`: coverage for the leads-agent shared types, per-ICP memory store, search compaction persistence, and filesystem save-backend dedupe behavior
 - `tests/test_leads_agent.py`: coverage for the leads-agent harness - construction, prompt/parameter sections, ICP rotation, deterministic search persistence, save/dedupe behavior, and pruning tied to durable search progress
 - `tests/test_leads_cli.py`: coverage for the leads CLI - parser registration, configure/show state management, runtime parameter normalization, storage backend injection, and run wiring
+
 Current memory artifacts:
 
 - `memory/refactor-types-constants/`: planning, ticket, quality, critique, and PR-body artifacts for the shared definitions refactor

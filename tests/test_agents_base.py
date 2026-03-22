@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import unittest
 import tempfile
+import unittest
 from pathlib import Path
 from unittest.mock import patch
 
@@ -51,9 +51,12 @@ class _InspectableAgent(BaseAgent):
         parameter_versions: list[str] | None = None,
         progress_step: int | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
+        payload: dict | None = None,
+        repo_root: str | Path | None = None,
     ) -> None:
         self._parameter_versions = parameter_versions or ["initial"]
         self._parameter_index = 0
+        self._payload = payload or {}
         self._progress_step = progress_step
         self._progress_value = 0
         super().__init__(
@@ -61,7 +64,11 @@ class _InspectableAgent(BaseAgent):
             model=model,
             tool_executor=tool_executor,
             runtime_config=runtime_config or AgentRuntimeConfig(include_default_output_sink=False),
+            repo_root=repo_root,
         )
+
+    def build_instance_payload(self) -> dict:
+        return self._payload
 
     def build_system_prompt(self) -> str:
         return "System prompt"
@@ -162,6 +169,33 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(model.requests[1].transcript[2].entry_type, "tool_result")
         self.assertIn("session.echo", model.requests[1].transcript[1].content)
         self.assertIn("hello", model.requests[1].transcript[2].content)
+
+    def test_base_agent_resolves_stable_instance_metadata(self) -> None:
+        registry = ToolRegistry([])
+        model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+        payload = {"segment": "platform", "max_tokens": 1024}
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            first = _InspectableAgent(
+                model=model,
+                tool_executor=registry,
+                payload=payload,
+                repo_root=temp_dir,
+            )
+            second = _InspectableAgent(
+                model=model,
+                tool_executor=registry,
+                payload=dict(payload),
+                repo_root=temp_dir,
+            )
+
+            self.assertEqual(first.instance_id, second.instance_id)
+            self.assertEqual(first.instance_name, second.instance_name)
+            self.assertEqual(first.instance_record.memory_path, second.instance_record.memory_path)
+            self.assertEqual(
+                first.memory_path.resolve(),
+                (Path(temp_dir) / "memory" / "agents" / "inspectable_agent" / first.instance_id).resolve(),
+            )
 
     def test_run_wraps_agent_and_tool_execution_in_tracing_helpers(self) -> None:
         registry = ToolRegistry(

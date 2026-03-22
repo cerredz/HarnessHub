@@ -1,9 +1,8 @@
 """Knowt TikTok content creation agent harness."""
 
 from __future__ import annotations
-
 from pathlib import Path
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 from harnessiq.agents.base import BaseAgent
 from harnessiq.shared.agents import (
@@ -55,11 +54,13 @@ class KnowtAgent(BaseAgent):
         tools: "Sequence[RegisteredTool] | None" = None,
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
-        self._config = config or KnowtAgentConfig(
+        # Store all params needed by build_instance_payload() before calling super().__init__().
+        initial_config = config or KnowtAgentConfig(
             memory_path=Path(memory_path),
             max_tokens=max_tokens,
             reset_threshold=reset_threshold,
         )
+        self._config = initial_config
         self._memory_store = KnowtMemoryStore(memory_path=self._config.memory_path)
         self._memory_store.prepare()
 
@@ -82,6 +83,22 @@ class KnowtAgent(BaseAgent):
                 reset_threshold=self._config.reset_threshold,
             ),
             memory_path=self._config.memory_path,
+            repo_root=_find_repo_root(Path(self._config.memory_path)),
+        )
+        resolved_memory_path = self.memory_path
+        self._config = KnowtAgentConfig(
+            memory_path=resolved_memory_path,
+            max_tokens=initial_config.max_tokens,
+            reset_threshold=initial_config.reset_threshold,
+        )
+        self._memory_store = KnowtMemoryStore(memory_path=resolved_memory_path)
+        self._memory_store.prepare()
+
+    def build_instance_payload(self) -> dict[str, Any]:
+        return _build_knowt_instance_payload(
+            memory_path=Path(self._config.memory_path),
+            max_tokens=self._config.max_tokens,
+            reset_threshold=self._config.reset_threshold,
         )
 
     @property
@@ -135,3 +152,40 @@ class KnowtAgent(BaseAgent):
 
 
 __all__ = ["KnowtAgent"]
+
+
+def _build_knowt_instance_payload(
+    *,
+    memory_path: Path,
+    max_tokens: int,
+    reset_threshold: float,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "memory_path": str(memory_path),
+        "runtime": {
+            "max_tokens": max_tokens,
+            "reset_threshold": reset_threshold,
+        },
+    }
+    store = KnowtMemoryStore(memory_path=memory_path)
+    payload["files"] = {
+        "current_avatar_description": _read_optional_text(store.current_avatar_description_path),
+        "current_script": _read_optional_text(store.current_script_path),
+    }
+    return payload
+
+
+def _read_optional_text(path: Path) -> str:
+    if not path.exists():
+        return ""
+    return path.read_text(encoding="utf-8").strip()
+
+
+def _find_repo_root(path: Path) -> Path:
+    resolved = path.resolve()
+    for candidate in (resolved, *resolved.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    if resolved.parent.name == "knowt" and resolved.parent.parent.name == "memory":
+        return resolved.parent.parent.parent
+    return Path.cwd()

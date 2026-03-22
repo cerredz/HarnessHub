@@ -3,3 +3,27 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+
+# Environment and secrets
+.env
+*.env
+
+# Virtual environments
+.venv/
+venv/
+Lib/
+Scripts/
+
+# Tool and runtime directories
+.claude/
+.playwright-mcp/
+.skill-staging/
+.harnessiq/
+.worktrees/
+
+# Credentials
+harnessiq/agents/linkedin/credentials.py
+
+# Generated artifacts
+artifacts/commands.md
+harnessiq/providers/apollo/credentials.py

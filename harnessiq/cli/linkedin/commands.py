@@ -250,6 +250,8 @@ def _handle_run(args: argparse.Namespace) -> int:
     emit_json(
         {
             "agent": args.agent,
+            "instance_id": _optional_string(getattr(agent, "instance_id", None)),
+            "instance_name": _optional_string(getattr(agent, "instance_name", None)),
             "ledger_run_id": agent.last_run_id,
             "memory_path": str(store.memory_path.resolve()),
             "applied_jobs_file": str(store.applied_jobs_path.resolve()),
@@ -311,6 +313,10 @@ def _parse_runtime_assignments(assignments: Sequence[str]) -> dict[str, Any]:
     return normalize_linkedin_runtime_parameters(parse_generic_assignments(assignments))
 
 
+def _optional_string(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
 def _build_summary(store: LinkedInMemoryStore) -> dict[str, Any]:
     return {
         "additional_prompt": store.read_additional_prompt(),
@@ -342,28 +348,6 @@ def _load_factory(spec: str):
     if not callable(target):
         raise TypeError(f"Imported object '{spec}' is not callable.")
     return target
-
-
-def _print_applied_jobs_summary(jobs: list[JobApplicationRecord], applied_jobs_path: Path) -> None:
-    """Print a human-readable summary of job applications to stdout."""
-    print()
-    print("=" * 64)
-    if not jobs:
-        print("  NO JOBS APPLIED TO IN THIS RUN")
-    else:
-        print(f"  JOBS APPLIED TO ({len(jobs)} total)")
-        print("  " + "─" * 60)
-        for job in jobs:
-            status_label = job.status.upper() if job.status else "?"
-            print(f"  [{status_label}] {job.title} @ {job.company}")
-            print(f"           {job.url}")
-            if job.notes:
-                print(f"           Note: {job.notes}")
-    print()
-    print(f"  Full records saved to:")
-    print(f"  {applied_jobs_path.resolve()}")
-    print("=" * 64)
-    print()
 
 
 def _print_applied_jobs_summary(jobs: list[JobApplicationRecord], applied_jobs_path: Path) -> None:

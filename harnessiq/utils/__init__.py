@@ -1,5 +1,26 @@
 """Agent-agnostic utilities shared across the harnessiq package."""
 
+from harnessiq.utils.agent_ids import (
+    build_agent_instance_id,
+    build_default_instance_name,
+    fingerprint_agent_payload,
+    normalize_agent_name,
+    normalize_agent_payload,
+)
+from harnessiq.utils.agent_instances import (
+    AgentInstanceCatalog,
+    AgentInstanceRecord,
+    AgentInstanceStore,
+    DEFAULT_AGENT_INSTANCE_MEMORY_DIRNAME,
+    DEFAULT_AGENT_INSTANCE_REGISTRY_FILENAME,
+    DEFAULT_MEMORY_ROOT_DIRNAME,
+)
+from harnessiq.utils.run_storage import (
+    FileSystemStorageBackend,
+    RUNS_DIRNAME,
+    RunRecord,
+    StorageBackend,
+)
 from harnessiq.utils.ledger import (
     ConfluenceSink,
     ConnectionsConfig,
@@ -30,18 +51,30 @@ from harnessiq.utils.ledger import (
 )
 
 __all__ = [
+    "AgentInstanceCatalog",
+    "AgentInstanceRecord",
+    "AgentInstanceStore",
     "ConfluenceSink",
     "ConnectionsConfig",
     "ConnectionsConfigStore",
+    "DEFAULT_AGENT_INSTANCE_MEMORY_DIRNAME",
+    "DEFAULT_AGENT_INSTANCE_REGISTRY_FILENAME",
+    "DEFAULT_MEMORY_ROOT_DIRNAME",
     "DiscordSink",
+    "FileSystemStorageBackend",
     "JSONLLedgerSink",
     "LedgerEntry",
     "LinearSink",
     "NotionSink",
     "ObsidianSink",
+    "RUNS_DIRNAME",
+    "RunRecord",
     "SinkConnection",
     "SlackSink",
+    "StorageBackend",
     "SupabaseSink",
+    "build_agent_instance_id",
+    "build_default_instance_name",
     "build_ledger_report",
     "build_output_sinks",
     "build_sink_from_connection",
@@ -49,10 +82,13 @@ __all__ = [
     "default_ledger_path",
     "export_ledger_entries",
     "filter_ledger_entries",
+    "fingerprint_agent_payload",
     "follow_ledger",
     "harnessiq_home_dir",
     "load_ledger_entries",
     "new_run_id",
+    "normalize_agent_name",
+    "normalize_agent_payload",
     "parse_relative_duration",
     "parse_sink_spec",
     "render_ledger_report",

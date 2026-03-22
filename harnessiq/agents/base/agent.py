@@ -28,6 +28,7 @@ from harnessiq.shared.agents import (
 )
 from harnessiq.shared.tools import HEAVY_COMPACTION, LOG_COMPACTION, REMOVE_TOOL_RESULTS, REMOVE_TOOLS
 from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
+from harnessiq.utils.agent_instances import AgentInstanceRecord, AgentInstanceStore
 from harnessiq.utils.ledger import JSONLLedgerSink, LedgerEntry, new_run_id
 
 logger = logging.getLogger(__name__)
@@ -53,12 +54,22 @@ class BaseAgent(ABC):
         tool_executor: AgentToolExecutor,
         runtime_config: AgentRuntimeConfig | None = None,
         memory_path: Path | None = None,
+        repo_root: str | Path | None = None,
+        instance_name: str | None = None,
     ) -> None:
         self._name = name
         self._model = model
         self._tool_executor = tool_executor
         self._runtime_config = runtime_config or AgentRuntimeConfig()
-        self._memory_path = memory_path
+        self._repo_root = _resolve_repo_root(repo_root, memory_path)
+        self._instance_store = AgentInstanceStore(repo_root=self._repo_root)
+        self._instance_record = self._instance_store.resolve(
+            agent_name=name,
+            payload=self.build_instance_payload(),
+            instance_name=instance_name,
+            memory_path=memory_path,
+        )
+        self._memory_path = self._instance_record.memory_path
         self._parameter_sections: tuple[AgentParameterSection, ...] = ()
         self._transcript: list[AgentTranscriptEntry] = []
         self._reset_count = 0
@@ -90,8 +101,28 @@ class BaseAgent(ABC):
         return self._reset_count
 
     @property
-    def memory_path(self) -> Path | None:
+    def memory_path(self) -> Path:
         return self._memory_path
+
+    @property
+    def repo_root(self) -> Path:
+        return self._repo_root
+
+    @property
+    def instance_store(self) -> AgentInstanceStore:
+        return self._instance_store
+
+    @property
+    def instance_record(self) -> AgentInstanceRecord:
+        return self._instance_record
+
+    @property
+    def instance_id(self) -> str:
+        return self._instance_record.instance_id
+
+    @property
+    def instance_name(self) -> str:
+        return self._instance_record.instance_name
 
     @property
     def last_run_id(self) -> str | None:
@@ -108,6 +139,10 @@ class BaseAgent(ABC):
         for entry in self._transcript:
             context_window.append(self._transcript_entry_to_context_entry(entry))
         return context_window
+
+    @abstractmethod
+    def build_instance_payload(self) -> dict[str, Any]:
+        """Build the agent instance payload persisted to the instance registry."""
 
     @abstractmethod
     def build_system_prompt(self) -> str:
@@ -507,7 +542,7 @@ class BaseAgent(ABC):
             return AgentTranscriptEntry(entry_type="summary", content=content)
         raise ValueError(f"Unsupported context entry kind '{kind}'.")
 
-    def _transcript_entry_to_context_entry(self, entry: AgentTranscriptEntry) -> AgentContextEntry:
+def _transcript_entry_to_context_entry(self, entry: AgentTranscriptEntry) -> AgentContextEntry:
         if entry.entry_type == "assistant":
             return {"kind": "message", "role": "assistant", "content": entry.content}
         if entry.entry_type == "tool_call":
@@ -515,6 +550,17 @@ class BaseAgent(ABC):
         if entry.entry_type == "summary":
             return {"kind": "summary", "content": entry.content}
         return {"kind": "tool_result", "content": entry.content}
+
+
+def _resolve_repo_root(repo_root: str | Path | None, memory_path: Path | None) -> Path:
+    if repo_root is not None:
+        return Path(repo_root).expanduser().resolve()
+    if memory_path is not None:
+        resolved_memory_path = Path(memory_path).expanduser().resolve()
+        for candidate in (resolved_memory_path, *resolved_memory_path.parents):
+            if (candidate / ".git").exists():
+                return candidate
+    return Path.cwd().resolve()
 
 
 def _utcnow() -> datetime:

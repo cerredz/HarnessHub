@@ -268,6 +268,8 @@ def _handle_run(args: argparse.Namespace) -> int:
     emit_json(
         {
             "agent": args.agent,
+            "instance_id": _optional_string(getattr(agent, "instance_id", None)),
+            "instance_name": _optional_string(getattr(agent, "instance_name", None)),
             "ledger_run_id": ledger_run_id,
             "memory_path": str(store.memory_path.resolve()),
             "run_id": run_id,
@@ -293,6 +295,10 @@ def _load_store(args: argparse.Namespace) -> ExaOutreachMemoryStore:
 
 def _parse_runtime_assignments(assignments: Sequence[str]) -> dict[str, Any]:
     return normalize_exa_outreach_runtime_parameters(parse_generic_assignments(assignments))
+
+
+def _optional_string(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
 
 
 def _build_summary(store: ExaOutreachMemoryStore) -> dict[str, Any]:

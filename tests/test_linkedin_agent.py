@@ -214,6 +214,15 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
             self.assertEqual(model.requests[1].transcript, ())
             self.assertIn("Navigated to LinkedIn Jobs", model.requests[1].parameter_sections[-1].content)
 
+    def test_agent_exposes_instance_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+            agent = LinkedInJobApplierAgent(model=model, memory_path=temp_dir)
+
+            self.assertTrue(agent.instance_id.startswith("linkedin_job_applier::"))
+            self.assertEqual(agent.instance_record.memory_path, Path(temp_dir))
+            self.assertEqual(agent.memory_path, Path(temp_dir))
+
     def test_runtime_config_preserves_langsmith_settings(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             agent = LinkedInJobApplierAgent(

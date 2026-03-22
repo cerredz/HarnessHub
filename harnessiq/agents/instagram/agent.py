@@ -54,12 +54,19 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         if search_backend is None:
             raise ValueError("InstagramKeywordDiscoveryAgent requires a search_backend.")
 
-        candidate_memory_path = Path(memory_path) if memory_path is not None else None
-        resolved_memory_path = candidate_memory_path or _DEFAULT_MEMORY_PATH
+        # Store all params needed by build_instance_payload() before calling super().__init__().
+        self._candidate_memory_path = Path(memory_path) if memory_path is not None else None
         normalized_icps = _normalize_icp_descriptions(icp_descriptions)
-
         self._search_backend = search_backend
         self._initial_icp_descriptions = normalized_icps
+        self._payload_max_tokens = max_tokens
+        self._payload_reset_threshold = reset_threshold
+        self._payload_recent_search_window = recent_search_window
+        self._payload_recent_result_window = recent_result_window
+        self._payload_search_result_limit = search_result_limit
+
+        candidate_memory_path = self._candidate_memory_path
+        resolved_memory_path = candidate_memory_path or _DEFAULT_MEMORY_PATH
         self._memory_store = InstagramMemoryStore(memory_path=resolved_memory_path)
         self._config = InstagramKeywordAgentConfig(
             memory_path=resolved_memory_path,
@@ -98,6 +105,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
                 reset_threshold=reset_threshold,
             ),
             memory_path=candidate_memory_path,
+            repo_root=_find_repo_root(candidate_memory_path),
         )
 
     @property
@@ -185,6 +193,17 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             AgentParameterSection(title="Recent Searches", content=recent_searches),
         )
 
+    def build_instance_payload(self) -> dict[str, Any]:
+        return _build_instagram_instance_payload(
+            memory_path=self._candidate_memory_path,
+            icp_descriptions=self._initial_icp_descriptions,
+            max_tokens=self._payload_max_tokens,
+            reset_threshold=self._payload_reset_threshold,
+            recent_search_window=self._payload_recent_search_window,
+            recent_result_window=self._payload_recent_result_window,
+            search_result_limit=self._payload_search_result_limit,
+        )
+
     def get_emails(self) -> tuple[str, ...]:
         return tuple(self._memory_store.get_emails())
 
@@ -219,6 +238,56 @@ def _normalize_icp_descriptions(icp_descriptions: Iterable[str]) -> tuple[str, .
         if cleaned:
             normalized.append(cleaned)
     return tuple(normalized)
+
+
+def _build_instagram_instance_payload(
+    *,
+    memory_path: Path | None,
+    icp_descriptions: tuple[str, ...],
+    max_tokens: int,
+    reset_threshold: float,
+    recent_search_window: int,
+    recent_result_window: int,
+    search_result_limit: int,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "icp_descriptions": list(icp_descriptions),
+        "runtime": {
+            "max_tokens": max_tokens,
+            "recent_result_window": recent_result_window,
+            "recent_search_window": recent_search_window,
+            "reset_threshold": reset_threshold,
+            "search_result_limit": search_result_limit,
+        },
+    }
+    if memory_path is not None:
+        payload["memory_path"] = str(memory_path)
+    if memory_path is None or not memory_path.exists():
+        return payload
+
+    store = InstagramMemoryStore(memory_path=memory_path)
+    payload["icp_descriptions"] = store.read_icp_profiles()
+    payload["agent_identity"] = _read_optional_text(store.agent_identity_path)
+    payload["additional_prompt"] = _read_optional_text(store.additional_prompt_path)
+    return payload
+
+
+def _read_optional_text(path: Path) -> str:
+    if not path.exists():
+        return ""
+    return path.read_text(encoding="utf-8").strip()
+
+
+def _find_repo_root(path: Path | None) -> Path:
+    if path is None:
+        return Path.cwd()
+    resolved = path.resolve()
+    for candidate in (resolved, *resolved.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    if resolved.parent.name == "instagram" and resolved.parent.parent.name == "memory":
+        return resolved.parent.parent.parent
+    return Path.cwd()
 
 
 def _json_block(payload: Any) -> str:

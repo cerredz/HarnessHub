@@ -61,6 +61,9 @@ class BaseEmailAgent(BaseAgent, ABC):
             ),
         )
 
+    def build_instance_payload(self) -> dict:
+        return {}
+
     @property
     def config(self) -> EmailAgentConfig:
         return self._config

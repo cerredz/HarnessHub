@@ -65,26 +65,21 @@ class ExaOutreachAgent(BaseAgent):
         allowed_exa_operations: tuple[str, ...] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
-        resolved_path = Path(memory_path) if memory_path is not None else _DEFAULT_MEMORY_PATH
+        # Store all params needed by build_instance_payload() before calling super().__init__().
+        self._candidate_memory_path = Path(memory_path) if memory_path is not None else None
         resolved_templates = _coerce_email_data(email_data)
         if not search_only and not resolved_templates:
             raise ValueError(
                 "ExaOutreachAgent requires at least one email template unless search_only is True."
             )
+        self._payload_email_data = resolved_templates
+        self._payload_search_query = search_query
+        self._payload_max_tokens = max_tokens
+        self._payload_reset_threshold = reset_threshold
+        self._payload_allowed_resend_operations = allowed_resend_operations
+        self._payload_allowed_exa_operations = allowed_exa_operations
 
-        self._memory_store = ExaOutreachMemoryStore(memory_path=resolved_path)
-        resolved_backend = storage_backend or FileSystemStorageBackend(resolved_path)
-        self._config = ExaOutreachAgentConfig(
-            email_data=resolved_templates,
-            memory_path=resolved_path,
-            storage_backend=resolved_backend,
-            search_query=search_query,
-            search_only=search_only,
-            max_tokens=max_tokens,
-            reset_threshold=reset_threshold,
-            allowed_resend_operations=allowed_resend_operations,
-            allowed_exa_operations=allowed_exa_operations,
-        )
+        # Current run ID - assigned in prepare() before the loop starts.
         self._current_run_id: str | None = None
 
         tool_registry = ToolRegistry(
@@ -104,8 +99,8 @@ class ExaOutreachAgent(BaseAgent):
             )
         )
         runtime_config = AgentRuntimeConfig(
-            max_tokens=self._config.max_tokens,
-            reset_threshold=self._config.reset_threshold,
+            max_tokens=max_tokens,
+            reset_threshold=reset_threshold,
             output_sinks=runtime_config.output_sinks if runtime_config is not None else (),
             include_default_output_sink=(
                 runtime_config.include_default_output_sink if runtime_config is not None else True
@@ -134,7 +129,22 @@ class ExaOutreachAgent(BaseAgent):
             model=model,
             tool_executor=tool_registry,
             runtime_config=runtime_config,
-            memory_path=resolved_path,
+            memory_path=self._candidate_memory_path,
+            repo_root=_find_repo_root(self._candidate_memory_path),
+        )
+        resolved_memory_path = self.memory_path
+        self._memory_store = ExaOutreachMemoryStore(memory_path=resolved_memory_path)
+        resolved_backend = storage_backend or FileSystemStorageBackend(resolved_memory_path)
+        self._config = ExaOutreachAgentConfig(
+            email_data=resolved_templates,
+            search_query=search_query,
+            search_only=search_only,
+            memory_path=resolved_memory_path,
+            storage_backend=resolved_backend,
+            max_tokens=max_tokens,
+            reset_threshold=reset_threshold,
+            allowed_resend_operations=allowed_resend_operations,
+            allowed_exa_operations=allowed_exa_operations,
         )
 
     @property
@@ -144,6 +154,21 @@ class ExaOutreachAgent(BaseAgent):
     @property
     def memory_store(self) -> ExaOutreachMemoryStore:
         return self._memory_store
+
+    # ------------------------------------------------------------------
+    # BaseAgent overrides
+    # ------------------------------------------------------------------
+
+    def build_instance_payload(self) -> dict[str, Any]:
+        return _build_exa_outreach_instance_payload(
+            memory_path=self._candidate_memory_path,
+            email_data=self._payload_email_data,
+            search_query=self._payload_search_query,
+            max_tokens=self._payload_max_tokens,
+            reset_threshold=self._payload_reset_threshold,
+            allowed_resend_operations=self._payload_allowed_resend_operations,
+            allowed_exa_operations=self._payload_allowed_exa_operations,
+        )
 
     def prepare(self) -> None:
         """Initialise memory directory and start a new run in the storage backend."""
@@ -486,6 +511,38 @@ def _coerce_email_data(
     return tuple(templates)
 
 
+def _build_exa_outreach_instance_payload(
+    *,
+    memory_path: Path | None,
+    email_data: tuple[EmailTemplate, ...],
+    search_query: str,
+    max_tokens: int,
+    reset_threshold: float,
+    allowed_resend_operations: tuple[str, ...] | None,
+    allowed_exa_operations: tuple[str, ...] | None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "allowed_exa_operations": list(allowed_exa_operations) if allowed_exa_operations is not None else None,
+        "allowed_resend_operations": list(allowed_resend_operations) if allowed_resend_operations is not None else None,
+        "email_data": [item.as_dict() for item in email_data],
+        "max_tokens": max_tokens,
+        "reset_threshold": reset_threshold,
+        "search_query": search_query,
+    }
+    if memory_path is not None:
+        payload["memory_path"] = str(memory_path)
+    if memory_path is None or not memory_path.exists():
+        return payload
+
+    store = ExaOutreachMemoryStore(memory_path=memory_path)
+    payload["agent_identity"] = _read_optional_text(store.agent_identity_path)
+    payload["additional_prompt"] = _read_optional_text(store.additional_prompt_path)
+    query_config = store.read_query_config() if store.query_config_path.exists() else {}
+    if query_config:
+        payload["query_config"] = query_config
+    return payload
+
+
 def _create_exa_tools(
     *,
     credentials: Any | None,
@@ -508,6 +565,24 @@ def _create_resend_tools(
     from harnessiq.tools.resend import create_resend_tools
 
     return create_resend_tools(credentials=credentials, client=client, allowed_operations=allowed_operations)
+
+
+def _read_optional_text(path: Path) -> str:
+    if not path.exists():
+        return ""
+    return path.read_text(encoding="utf-8").strip()
+
+
+def _find_repo_root(path: Path | None) -> Path:
+    if path is None:
+        return Path.cwd()
+    resolved = path.resolve()
+    for candidate in (resolved, *resolved.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    if resolved.parent.name == "outreach" and resolved.parent.parent.name == "memory":
+        return resolved.parent.parent.parent
+    return Path.cwd()
 
 
 def _utcnow() -> str:

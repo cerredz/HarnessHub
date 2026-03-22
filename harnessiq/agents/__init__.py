@@ -20,6 +20,14 @@ from harnessiq.shared.linkedin import (
     LinkedInMemoryStore,
     ScreenshotPersistor,
 )
+from harnessiq.utils import (
+    AgentInstanceCatalog,
+    AgentInstanceRecord,
+    AgentInstanceStore,
+    build_agent_instance_id,
+    build_default_instance_name,
+    fingerprint_agent_payload,
+)
 
 from .base import BaseAgent
 from .email import BaseEmailAgent
@@ -51,6 +59,9 @@ from .prospecting import (
 
 __all__ = [
     "ActionLogEntry",
+    "AgentInstanceCatalog",
+    "AgentInstanceRecord",
+    "AgentInstanceStore",
     "AgentModel",
     "AgentModelRequest",
     "AgentModelResponse",
@@ -80,8 +91,11 @@ __all__ = [
     "LinkedInMemoryStore",
     "ScreenshotPersistor",
     "build_linkedin_browser_tool_definitions",
+    "build_agent_instance_id",
+    "build_default_instance_name",
     "create_linkedin_browser_stub_tools",
     "estimate_text_tokens",
+    "fingerprint_agent_payload",
     "normalize_linkedin_runtime_parameters",
     "GoogleMapsProspectingAgent",
     "ProspectingAgentConfig",
@@ -92,3 +106,22 @@ __all__ = [
     "normalize_prospecting_custom_parameters",
     "normalize_prospecting_runtime_parameters",
 ]
+
+try:
+    from .linkedin import (
+        linkedin_google_drive_binding_name,
+        load_linkedin_google_drive_credentials,
+        save_linkedin_google_drive_credentials,
+    )
+except ImportError:  # pragma: no cover - optional provider surface may be unavailable
+    linkedin_google_drive_binding_name = None
+    load_linkedin_google_drive_credentials = None
+    save_linkedin_google_drive_credentials = None
+else:
+    __all__.extend(
+        [
+            "linkedin_google_drive_binding_name",
+            "load_linkedin_google_drive_credentials",
+            "save_linkedin_google_drive_credentials",
+        ]
+    )
