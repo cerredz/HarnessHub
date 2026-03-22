@@ -99,6 +99,7 @@ class ProviderBaseTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.provider, "openai")
         self.assertEqual(raised.exception.status_code, 400)
+        self.assertEqual(raised.exception.url, "https://api.openai.com/v1/responses")
         self.assertEqual(raised.exception.body, {"error": {"message": "bad request"}})
         self.assertIn("bad request", str(raised.exception))
 
@@ -120,6 +121,7 @@ class ProviderBaseTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.provider, "openai")
         self.assertIsNone(raised.exception.status_code)
+        self.assertEqual(raised.exception.url, "https://api.openai.com/v1/models")
         self.assertIn("network down", str(raised.exception))
 
     def test_request_json_labels_resend_failures_with_resend_provider_name(self) -> None:
@@ -141,6 +143,15 @@ class ProviderBaseTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.provider, "resend")
         self.assertIn("resend down", str(raised.exception))
+
+    def test_provider_http_error_allows_traceback_assignment(self) -> None:
+        try:
+            raise ProviderHTTPError(provider="grok", message="Forbidden", status_code=403)
+        except ProviderHTTPError as exc:
+            exc.__traceback__ = exc.__traceback__
+            self.assertEqual(exc.provider, "grok")
+            self.assertEqual(exc.status_code, 403)
+            self.assertEqual(str(exc), "grok request failed (403): Forbidden")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
 
 
@@ -21,15 +20,30 @@ class RequestExecutor(Protocol):
         """Execute an HTTP request and return the decoded JSON payload."""
 
 
-@dataclass(frozen=True, slots=True)
 class ProviderHTTPError(RuntimeError):
     """Raised when a provider HTTP request fails."""
 
     provider: str
     message: str
-    status_code: int | None = None
-    url: str | None = None
-    body: Any | None = None
+    status_code: int | None
+    url: str | None
+    body: Any | None
+
+    def __init__(
+        self,
+        *,
+        provider: str,
+        message: str,
+        status_code: int | None = None,
+        url: str | None = None,
+        body: Any | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.provider = provider
+        self.message = message
+        self.status_code = status_code
+        self.url = url
+        self.body = body
 
     def __str__(self) -> str:
         prefix = f"{self.provider} request failed"
