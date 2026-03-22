@@ -207,6 +207,24 @@ class LangSmithTracingTests(unittest.TestCase):
 
         self.assertEqual(fake_langsmith.run_trees[0].end_calls[-1]["error"], "provider timed out")
 
+    def test_provider_http_error_accepts_traceback_assignment(self) -> None:
+        exc = ProviderHTTPError(provider="exa", message="Forbidden", status_code=403)
+
+        exc.__traceback__ = None
+
+        self.assertEqual(str(exc), "exa request failed (403): Forbidden")
+
+    def test_trace_model_call_reraises_provider_http_error_without_masking_it(self) -> None:
+        fake_langsmith = _FakeLangSmith()
+        provider_error = ProviderHTTPError(
+            provider="grok",
+            message="Forbidden",
+            status_code=403,
+            url="https://api.x.ai/v1/chat/completions",
+        )
+
+        def boom() -> dict[str, str]:
+            raise provider_error
     def test_trace_model_call_preserves_provider_http_error(self) -> None:
         fake_langsmith = _FakeLangSmith()
 
@@ -230,6 +248,9 @@ class LangSmithTracingTests(unittest.TestCase):
                     client=object(),
                 )
 
+        self.assertIs(raised.exception, provider_error)
+        self.assertEqual(raised.exception.provider, "grok")
+        self.assertEqual(raised.exception.status_code, 403)
         self.assertEqual(raised.exception.provider, "grok")
         self.assertEqual(raised.exception.status_code, 403)
         self.assertEqual(raised.exception.url, "https://api.x.ai/v1/chat/completions")
