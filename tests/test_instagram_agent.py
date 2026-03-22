@@ -131,12 +131,47 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
             )
             agent.prepare()
 
-            agent.tool_executor.execute("instagram.search_keyword", {"keyword": "fitness coach"})
+            first_result = agent.tool_executor.execute("instagram.search_keyword", {"keyword": "fitness coach"})
             duplicate_result = agent.tool_executor.execute("instagram.search_keyword", {"keyword": "fitness coach"})
 
             self.assertEqual(agent.get_emails(), ("creator@example.com",))
+            self.assertEqual(first_result.output["status"], "searched")
+            self.assertIn("merge_summary", first_result.output)
+            self.assertNotIn("query", first_result.output)
+            self.assertNotIn("visited_urls", first_result.output)
             self.assertEqual(duplicate_result.output["status"], "already_searched")
             self.assertNotIn("query", duplicate_result.output)
+
+    def test_recent_searches_are_rendered_as_comma_separated_keywords(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = InstagramMemoryStore(memory_path=temp_dir)
+            store.prepare()
+            store.write_icp_profiles(["fitness creators"])
+            store.append_search(
+                InstagramSearchRecord(
+                    keyword="fitness coach",
+                    query='site:instagram.com "@gmail.com" "fitness coach"',
+                    searched_at="2026-03-19T00:00:00Z",
+                )
+            )
+            store.append_search(
+                InstagramSearchRecord(
+                    keyword="skincare creator",
+                    query='site:instagram.com "@gmail.com" "skincare creator"',
+                    searched_at="2026-03-19T01:00:00Z",
+                )
+            )
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+            agent = InstagramKeywordDiscoveryAgent(
+                model=model,
+                search_backend=_FakeSearchBackend(_build_execution()),
+                memory_path=temp_dir,
+            )
+
+            sections = agent.load_parameter_sections()
+
+            self.assertEqual([section.title for section in sections], ["ICP Profiles", "Recent Searches"])
+            self.assertEqual(sections[1].content, "fitness coach, skincare creator")
 
     def test_from_memory_loads_runtime_parameters(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
