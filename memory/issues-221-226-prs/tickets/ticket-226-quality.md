@@ -18,6 +18,7 @@
   - Passed with `json-ok 4`.
 - `python -m unittest tests.test_master_prompts`
   - Passed.
+  - Post-critique rerun passed with 27 tests after adding explicit module-level retrieval coverage for every expected prompt key.
 - `python -c "from harnessiq.master_prompts import list_prompts; print([p.key for p in list_prompts()])"`
   - Passed and returned `['create_master_prompts', 'create_tickets', 'phased_code_review', 'surgical_bugfix']`.
 
@@ -35,6 +36,7 @@
     - `tests.test_linkedin_cli` fails when `Path.home()` cannot be determined in the test environment.
     - `tests.test_providers` references an undefined `provider_error` symbol.
     - `tests.test_sdk_package` reports pre-existing shared-definition violations in `harnessiq/providers/output_sink_metadata.py` and `harnessiq/providers/google_drive/`.
+  - Post-critique rerun produced the same failure set.
 - Manual prompt-bundle verification passed:
   - All four bundled prompt JSON files load successfully.
   - The registry exposes the new keys in sorted order.

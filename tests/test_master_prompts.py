@@ -184,6 +184,15 @@ class ModuleLevelAPITests(unittest.TestCase):
 
         self.assertEqual({prompt.key for prompt in prompts}, EXPECTED_PROMPT_KEYS)
 
+    def test_every_expected_prompt_key_is_retrievable_via_public_api(self) -> None:
+        for prompt_key in EXPECTED_PROMPT_KEYS:
+            with self.subTest(prompt=prompt_key):
+                prompt = get_prompt(prompt_key)
+                prompt_text = get_prompt_text(prompt_key)
+
+                self.assertEqual(prompt.key, prompt_key)
+                self.assertEqual(prompt_text, prompt.prompt)
+
     def test_module_level_api_uses_shared_registry(self) -> None:
         # Both calls should return equal objects (same underlying data).
         p1 = get_prompt("create_master_prompts")
