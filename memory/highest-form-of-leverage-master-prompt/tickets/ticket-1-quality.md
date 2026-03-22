@@ -13,14 +13,14 @@
 ## Stage 3 - Unit Tests
 
 - Command: `python -m pytest tests/test_master_prompts.py`
-- Result: `29 passed in 0.11s`
+- Result: `30 passed in 0.11s`
 - Follow-up: Added `[tool.pytest.ini_options] asyncio_default_fixture_loop_scope = "function"` in `pyproject.toml` to remove the branch's existing `pytest-asyncio` deprecation warning from the verification run.
 
 ## Stage 4 - Integration & Contract Tests
 
 - Command: `python -c "from harnessiq.master_prompts import list_prompts, get_prompt_text; keys=[prompt.key for prompt in list_prompts()]; assert 'highest_form_of_leverage' in keys; print(len(get_prompt_text('highest_form_of_leverage'))); print(keys)"`
 - Result:
-  - Prompt text length: `6744`
+  - Prompt text length: `7025`
   - Registered keys: `['create_master_prompts', 'create_tickets', 'highest_form_of_leverage', 'phased_code_review', 'surgical_bugfix']`
 - Interpretation: the bundled prompt registry discovers the new JSON file without any manual registration changes, and the public API returns the new prompt text successfully.
 

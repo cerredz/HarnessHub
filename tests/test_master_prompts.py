@@ -121,6 +121,14 @@ class BundledMasterPromptStructureTests(unittest.TestCase):
                 for section_name in REQUIRED_PROMPT_SECTIONS:
                     self.assertIn(section_name, prompt.prompt)
 
+    def test_all_bundled_prompts_list_sections_in_order(self) -> None:
+        registry = MasterPromptRegistry()
+
+        for prompt in registry.list():
+            with self.subTest(prompt=prompt.key):
+                positions = [prompt.prompt.index(section_name) for section_name in REQUIRED_PROMPT_SECTIONS]
+                self.assertEqual(positions, sorted(positions))
+
 
 class CreateMasterPromptsPromptTests(unittest.TestCase):
     """Verify the bundled create_master_prompts prompt has valid content."""
