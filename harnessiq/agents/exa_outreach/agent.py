@@ -125,19 +125,17 @@ class ExaOutreachAgent(BaseAgent):
         allowed_resend_operations: tuple[str, ...] | None = None,
         allowed_exa_operations: tuple[str, ...] | None = None,
     ) -> None:
-        candidate_memory_path = Path(memory_path) if memory_path is not None else None
+        # Store all params needed by build_instance_payload() before calling super().__init__().
+        self._candidate_memory_path = Path(memory_path) if memory_path is not None else None
         resolved_templates = _coerce_email_data(email_data)
         if not resolved_templates:
             raise ValueError("ExaOutreachAgent requires at least one email template.")
-        instance_payload = _build_exa_outreach_instance_payload(
-            memory_path=candidate_memory_path,
-            email_data=resolved_templates,
-            search_query=search_query,
-            max_tokens=max_tokens,
-            reset_threshold=reset_threshold,
-            allowed_resend_operations=allowed_resend_operations,
-            allowed_exa_operations=allowed_exa_operations,
-        )
+        self._payload_email_data = resolved_templates
+        self._payload_search_query = search_query
+        self._payload_max_tokens = max_tokens
+        self._payload_reset_threshold = reset_threshold
+        self._payload_allowed_resend_operations = allowed_resend_operations
+        self._payload_allowed_exa_operations = allowed_exa_operations
 
         # Current run ID - assigned in prepare() before the loop starts.
         self._current_run_id: str | None = None
@@ -166,9 +164,8 @@ class ExaOutreachAgent(BaseAgent):
             model=model,
             tool_executor=tool_registry,
             runtime_config=runtime_config,
-            memory_path=candidate_memory_path,
-            instance_payload=instance_payload,
-            repo_root=_find_repo_root(candidate_memory_path),
+            memory_path=self._candidate_memory_path,
+            repo_root=_find_repo_root(self._candidate_memory_path),
         )
         resolved_memory_path = self.memory_path
         self._memory_store = ExaOutreachMemoryStore(memory_path=resolved_memory_path)
@@ -199,6 +196,17 @@ class ExaOutreachAgent(BaseAgent):
     # ------------------------------------------------------------------
     # BaseAgent overrides
     # ------------------------------------------------------------------
+
+    def build_instance_payload(self) -> dict[str, Any]:
+        return _build_exa_outreach_instance_payload(
+            memory_path=self._candidate_memory_path,
+            email_data=self._payload_email_data,
+            search_query=self._payload_search_query,
+            max_tokens=self._payload_max_tokens,
+            reset_threshold=self._payload_reset_threshold,
+            allowed_resend_operations=self._payload_allowed_resend_operations,
+            allowed_exa_operations=self._payload_allowed_exa_operations,
+        )
 
     def prepare(self) -> None:
         """Initialise memory directory and start a new run in the storage backend."""

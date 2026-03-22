@@ -38,19 +38,22 @@ class _InspectableAgent(BaseAgent):
         tool_executor: ToolRegistry,
         parameter_versions: list[str] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
-        instance_payload: dict[str, object] | None = None,
+        payload: dict | None = None,
         repo_root: str | Path | None = None,
     ) -> None:
         self._parameter_versions = parameter_versions or ["initial"]
         self._parameter_index = 0
+        self._payload = payload or {}
         super().__init__(
             name="inspectable_agent",
             model=model,
             tool_executor=tool_executor,
             runtime_config=runtime_config,
-            instance_payload=instance_payload,
             repo_root=repo_root,
         )
+
+    def build_instance_payload(self) -> dict:
+        return self._payload
 
     def build_system_prompt(self) -> str:
         return "System prompt"
@@ -128,13 +131,13 @@ class BaseAgentTests(unittest.TestCase):
             first = _InspectableAgent(
                 model=model,
                 tool_executor=registry,
-                instance_payload=payload,
+                payload=payload,
                 repo_root=temp_dir,
             )
             second = _InspectableAgent(
                 model=model,
                 tool_executor=registry,
-                instance_payload=dict(payload),
+                payload=dict(payload),
                 repo_root=temp_dir,
             )
 

@@ -333,16 +333,14 @@ class LinkedInJobApplierAgent(BaseAgent):
         notify_on_pause: bool = DEFAULT_LINKEDIN_NOTIFY_ON_PAUSE,
         pause_webhook: str | None = None,
     ) -> None:
-        candidate_memory_path = Path(memory_path) if memory_path is not None else None
-        instance_payload = _build_linkedin_instance_payload(
-            memory_path=candidate_memory_path,
-            max_tokens=max_tokens,
-            reset_threshold=reset_threshold,
-            action_log_window=action_log_window,
-            linkedin_start_url=linkedin_start_url,
-            notify_on_pause=notify_on_pause,
-            pause_webhook=pause_webhook,
-        )
+        # Store all params needed by build_instance_payload() before calling super().__init__().
+        self._candidate_memory_path = Path(memory_path) if memory_path is not None else None
+        self._payload_max_tokens = max_tokens
+        self._payload_reset_threshold = reset_threshold
+        self._payload_action_log_window = action_log_window
+        self._payload_linkedin_start_url = linkedin_start_url
+        self._payload_notify_on_pause = notify_on_pause
+        self._payload_pause_webhook = pause_webhook
         self._screenshot_persistor = screenshot_persistor
 
         runtime_config = AgentRuntimeConfig(
@@ -354,9 +352,8 @@ class LinkedInJobApplierAgent(BaseAgent):
             model=model,
             tool_executor=ToolRegistry(create_linkedin_browser_stub_tools()),
             runtime_config=runtime_config,
-            memory_path=candidate_memory_path,
-            instance_payload=instance_payload,
-            repo_root=_find_repo_root(candidate_memory_path),
+            memory_path=self._candidate_memory_path,
+            repo_root=_find_repo_root(self._candidate_memory_path),
         )
         resolved_memory_path = self.memory_path
         self._config = LinkedInAgentConfig(
@@ -378,6 +375,17 @@ class LinkedInJobApplierAgent(BaseAgent):
                 self._build_internal_tools(),
                 tuple(browser_tools),
             )
+        )
+
+    def build_instance_payload(self) -> dict[str, Any]:
+        return _build_linkedin_instance_payload(
+            memory_path=self._candidate_memory_path,
+            max_tokens=self._payload_max_tokens,
+            reset_threshold=self._payload_reset_threshold,
+            action_log_window=self._payload_action_log_window,
+            linkedin_start_url=self._payload_linkedin_start_url,
+            notify_on_pause=self._payload_notify_on_pause,
+            pause_webhook=self._payload_pause_webhook,
         )
 
     @property

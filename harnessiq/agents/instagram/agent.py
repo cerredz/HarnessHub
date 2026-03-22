@@ -23,13 +23,13 @@ from harnessiq.shared.instagram import (
     InstagramMemoryStore,
     InstagramSearchBackend,
 )
-from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition, ToolResult
+from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolResult
+from harnessiq.tools.instagram import create_search_keyword_tool
 from harnessiq.tools.registry import ToolRegistry
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
 _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
-_SEARCH_TOOL_KEY = "instagram.search_keyword"
 
 
 class InstagramKeywordDiscoveryAgent(BaseAgent):
@@ -51,20 +51,16 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         if search_backend is None:
             raise ValueError("InstagramKeywordDiscoveryAgent requires a search_backend.")
 
-        candidate_memory_path = Path(memory_path) if memory_path is not None else None
+        # Store all params needed by build_instance_payload() before calling super().__init__().
+        self._candidate_memory_path = Path(memory_path) if memory_path is not None else None
         normalized_icps = _normalize_icp_descriptions(icp_descriptions)
-        instance_payload = _build_instagram_instance_payload(
-            memory_path=candidate_memory_path,
-            icp_descriptions=normalized_icps,
-            max_tokens=max_tokens,
-            reset_threshold=reset_threshold,
-            recent_search_window=recent_search_window,
-            recent_result_window=recent_result_window,
-            search_result_limit=search_result_limit,
-        )
-
         self._search_backend = search_backend
         self._initial_icp_descriptions = normalized_icps
+        self._payload_max_tokens = max_tokens
+        self._payload_reset_threshold = reset_threshold
+        self._payload_recent_search_window = recent_search_window
+        self._payload_recent_result_window = recent_result_window
+        self._payload_search_result_limit = search_result_limit
         self._config = InstagramKeywordAgentConfig(
             memory_path=Path("."),
             max_tokens=max_tokens,
@@ -84,9 +80,8 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             model=model,
             tool_executor=tool_registry,
             runtime_config=runtime_config,
-            memory_path=candidate_memory_path,
-            instance_payload=instance_payload,
-            repo_root=_find_repo_root(candidate_memory_path),
+            memory_path=self._candidate_memory_path,
+            repo_root=_find_repo_root(self._candidate_memory_path),
         )
         resolved_memory_path = self.memory_path or _DEFAULT_MEMORY_PATH
         self._memory_store = InstagramMemoryStore(memory_path=resolved_memory_path)
@@ -176,6 +171,17 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             AgentParameterSection(title="Recent Searches", content=recent_searches),
         )
 
+    def build_instance_payload(self) -> dict[str, Any]:
+        return _build_instagram_instance_payload(
+            memory_path=self._candidate_memory_path,
+            icp_descriptions=self._initial_icp_descriptions,
+            max_tokens=self._payload_max_tokens,
+            reset_threshold=self._payload_reset_threshold,
+            recent_search_window=self._payload_recent_search_window,
+            recent_result_window=self._payload_recent_result_window,
+            search_result_limit=self._payload_search_result_limit,
+        )
+
     def get_emails(self) -> tuple[str, ...]:
         return tuple(self._memory_store.get_emails())
 
@@ -186,31 +192,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         return tuple(self._memory_store.read_search_history())
 
     def _build_internal_tools(self) -> tuple[RegisteredTool, ...]:
-        return (
-            RegisteredTool(
-                definition=_tool_definition(
-                    key=_SEARCH_TOOL_KEY,
-                    name="search_keyword",
-                    description=(
-                        "Run a deterministic Google site:instagram.com search for one keyword, load the search page "
-                        "and opened result tabs fully, extract public emails from visited pages, and persist all "
-                        "new leads/emails to durable memory."
-                    ),
-                    properties={
-                        "keyword": {
-                            "type": "string",
-                            "description": "The concise Instagram creator niche keyword to search.",
-                        },
-                        "max_results": {
-                            "type": "integer",
-                            "description": "Maximum number of Instagram result URLs to open for this keyword.",
-                        },
-                    },
-                    required=("keyword",),
-                ),
-                handler=self._handle_search_keyword,
-            ),
-        )
+        return (create_search_keyword_tool(handler=self._handle_search_keyword),)
 
     def _handle_search_keyword(self, arguments: dict[str, Any]) -> dict[str, Any]:
         keyword = str(arguments["keyword"]).strip()
@@ -238,8 +220,9 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         }
 
     def _execute_tool(self, tool_call: ToolCall) -> ToolResult:
+        from harnessiq.tools.instagram import SEARCH_KEYWORD
         result = super()._execute_tool(tool_call)
-        if tool_call.tool_key == _SEARCH_TOOL_KEY:
+        if tool_call.tool_key == SEARCH_KEYWORD:
             self.refresh_parameters()
         return result
 
@@ -257,27 +240,6 @@ def _normalize_icp_descriptions(icp_descriptions: Iterable[str]) -> tuple[str, .
         if cleaned:
             normalized.append(cleaned)
     return tuple(normalized)
-
-
-def _tool_definition(
-    *,
-    key: str,
-    name: str,
-    description: str,
-    properties: dict[str, Any],
-    required: Sequence[str] = (),
-) -> ToolDefinition:
-    return ToolDefinition(
-        key=key,
-        name=name,
-        description=description,
-        input_schema={
-            "type": "object",
-            "properties": properties,
-            "required": list(required),
-            "additionalProperties": False,
-        },
-    )
 
 
 def _build_instagram_instance_payload(

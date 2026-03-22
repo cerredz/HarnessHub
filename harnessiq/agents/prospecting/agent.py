@@ -38,11 +38,17 @@ from harnessiq.shared.prospecting import (
     normalize_prospecting_runtime_parameters,
     utcnow,
 )
-from harnessiq.shared.tools import RegisteredTool, SEARCH_OR_SUMMARIZE, ToolDefinition
+from harnessiq.shared.tools import RegisteredTool, SEARCH_OR_SUMMARIZE
 from harnessiq.tools import (
     build_browser_tool_definitions,
     create_evaluate_company_tool,
     create_search_or_summarize_tool,
+)
+from harnessiq.tools.prospecting import (
+    create_complete_search_tool,
+    create_record_listing_result_tool,
+    create_save_qualified_lead_tool,
+    create_start_search_tool,
 )
 from harnessiq.tools.registry import ToolRegistry
 
@@ -88,20 +94,18 @@ class GoogleMapsProspectingAgent(BaseAgent):
         runtime_config: AgentRuntimeConfig | None = None,
         json_subcall_runner: JsonSubcallRunner | None = None,
     ) -> None:
-        candidate_memory_path = Path(memory_path) if memory_path is not None else None
-        instance_payload = _build_instance_payload(
-            memory_path=candidate_memory_path,
-            company_description=company_description,
-            max_tokens=max_tokens,
-            reset_threshold=reset_threshold,
-            qualification_threshold=qualification_threshold,
-            summarize_at_x=summarize_at_x,
-            max_searches_per_run=max_searches_per_run,
-            max_listings_per_search=max_listings_per_search,
-            website_inspect_enabled=website_inspect_enabled,
-            sink_record_type=sink_record_type,
-            eval_system_prompt=eval_system_prompt,
-        )
+        # Store all params needed by build_instance_payload() before calling super().__init__().
+        self._candidate_memory_path = Path(memory_path) if memory_path is not None else None
+        self._payload_company_description = company_description
+        self._payload_max_tokens = max_tokens
+        self._payload_reset_threshold = reset_threshold
+        self._payload_qualification_threshold = qualification_threshold
+        self._payload_summarize_at_x = summarize_at_x
+        self._payload_max_searches_per_run = max_searches_per_run
+        self._payload_max_listings_per_search = max_listings_per_search
+        self._payload_website_inspect_enabled = website_inspect_enabled
+        self._payload_sink_record_type = sink_record_type
+        self._payload_eval_system_prompt = eval_system_prompt
         self._config = ProspectingAgentConfig(
             memory_path=Path("."),
             max_tokens=max_tokens,
@@ -138,9 +142,8 @@ class GoogleMapsProspectingAgent(BaseAgent):
             model=model,
             tool_executor=tool_registry,
             runtime_config=runtime_config,
-            memory_path=candidate_memory_path,
-            instance_payload=instance_payload,
-            repo_root=_find_repo_root(candidate_memory_path),
+            memory_path=self._candidate_memory_path,
+            repo_root=_find_repo_root(self._candidate_memory_path),
         )
         resolved_memory_path = self.memory_path or _DEFAULT_MEMORY_PATH
         self._memory_store = ProspectingMemoryStore(memory_path=resolved_memory_path)
@@ -349,6 +352,21 @@ class GoogleMapsProspectingAgent(BaseAgent):
             "sink_record_type": self._config.sink_record_type,
         }
 
+    def build_instance_payload(self) -> dict[str, Any]:
+        return _build_instance_payload(
+            memory_path=self._candidate_memory_path,
+            company_description=self._payload_company_description,
+            max_tokens=self._payload_max_tokens,
+            reset_threshold=self._payload_reset_threshold,
+            qualification_threshold=self._payload_qualification_threshold,
+            summarize_at_x=self._payload_summarize_at_x,
+            max_searches_per_run=self._payload_max_searches_per_run,
+            max_listings_per_search=self._payload_max_listings_per_search,
+            website_inspect_enabled=self._payload_website_inspect_enabled,
+            sink_record_type=self._payload_sink_record_type,
+            eval_system_prompt=self._payload_eval_system_prompt,
+        )
+
     def _build_public_tools(self) -> tuple[RegisteredTool, ...]:
         return (
             create_evaluate_company_tool(handler=self._handle_evaluate_company),
@@ -357,64 +375,10 @@ class GoogleMapsProspectingAgent(BaseAgent):
 
     def _build_internal_tools(self) -> tuple[RegisteredTool, ...]:
         return (
-            _tool(
-                key="prospecting.start_search",
-                name="start_search",
-                description="Persist the start of a Google Maps search so the run can resume after a reset.",
-                properties={
-                    "index": {"type": "integer", "description": "Search index."},
-                    "query": {"type": "string", "description": "Search query."},
-                    "location": {"type": "string", "description": "Search location."},
-                },
-                required=("index", "query", "location"),
-                handler=self._handle_start_search,
-            ),
-            _tool(
-                key="prospecting.record_listing_result",
-                name="record_listing_result",
-                description="Persist progress for one evaluated listing within the active search.",
-                properties={
-                    "search_index": {"type": "integer", "description": "Active search index."},
-                    "listing_position": {"type": "integer", "description": "Zero-based listing position."},
-                    "verdict": {
-                        "type": "string",
-                        "enum": ["QUALIFIED", "DISQUALIFIED", "SKIP"],
-                        "description": "Evaluation verdict.",
-                    },
-                },
-                required=("search_index", "listing_position", "verdict"),
-                handler=self._handle_record_listing_result,
-            ),
-            _tool(
-                key="prospecting.save_qualified_lead",
-                name="save_qualified_lead",
-                description="Persist one qualified lead record into durable memory for ledger export.",
-                properties={
-                    "record": {
-                        "type": "object",
-                        "description": "Qualified lead record payload derived from evaluation output.",
-                        "additionalProperties": True,
-                    }
-                },
-                required=("record",),
-                handler=self._handle_save_qualified_lead,
-            ),
-            _tool(
-                key="prospecting.complete_search",
-                name="complete_search",
-                description="Persist completion metadata for a Google Maps search and clear the in-progress pointer.",
-                properties={
-                    "search_index": {"type": "integer", "description": "Completed search index."},
-                    "query": {"type": "string", "description": "Search query."},
-                    "location": {"type": "string", "description": "Search location."},
-                    "listings_found": {
-                        "type": "integer",
-                        "description": "Number of listings seen for the search.",
-                    },
-                },
-                required=("search_index", "query", "location", "listings_found"),
-                handler=self._handle_complete_search,
-            ),
+            create_start_search_tool(handler=self._handle_start_search),
+            create_record_listing_result_tool(handler=self._handle_record_listing_result),
+            create_save_qualified_lead_tool(handler=self._handle_save_qualified_lead),
+            create_complete_search_tool(handler=self._handle_complete_search),
         )
 
     def _execute_tool(self, tool_call):  # type: ignore[override]
@@ -700,31 +664,6 @@ def _unavailable_browser_handler(tool_name: str):
         raise RuntimeError(f"Browser tool '{tool_name}' requires a runtime handler.")
 
     return handler
-
-
-def _tool(
-    *,
-    key: str,
-    name: str,
-    description: str,
-    properties: dict[str, Any],
-    required: Sequence[str],
-    handler: Callable[[dict[str, Any]], dict[str, Any]],
-) -> RegisteredTool:
-    return RegisteredTool(
-        definition=ToolDefinition(
-            key=key,
-            name=name,
-            description=description,
-            input_schema={
-                "type": "object",
-                "properties": properties,
-                "required": list(required),
-                "additionalProperties": False,
-            },
-        ),
-        handler=handler,
-    )
 
 
 def _parse_json_object(raw_text: str) -> dict[str, Any]:

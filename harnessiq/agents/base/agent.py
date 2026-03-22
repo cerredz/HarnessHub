@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Sequence
 
 from harnessiq.shared.agents import (
     AgentContextEntry,
@@ -47,7 +47,6 @@ class BaseAgent(ABC):
         tool_executor: AgentToolExecutor,
         runtime_config: AgentRuntimeConfig | None = None,
         memory_path: Path | None = None,
-        instance_payload: Mapping[str, Any] | None = None,
         repo_root: str | Path | None = None,
         instance_name: str | None = None,
     ) -> None:
@@ -59,7 +58,7 @@ class BaseAgent(ABC):
         self._instance_store = AgentInstanceStore(repo_root=self._repo_root)
         self._instance_record = self._instance_store.resolve(
             agent_name=name,
-            payload=instance_payload,
+            payload=self.build_instance_payload(),
             instance_name=instance_name,
             memory_path=memory_path,
         )
@@ -132,6 +131,10 @@ class BaseAgent(ABC):
         for entry in self._transcript:
             context_window.append(self._transcript_entry_to_context_entry(entry))
         return context_window
+
+    @abstractmethod
+    def build_instance_payload(self) -> dict[str, Any]:
+        """Build the agent instance payload persisted to the instance registry."""
 
     @abstractmethod
     def build_system_prompt(self) -> str:

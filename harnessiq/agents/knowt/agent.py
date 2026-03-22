@@ -52,15 +52,11 @@ class KnowtAgent(BaseAgent):
         config: KnowtAgentConfig | None = None,
         tools: "Sequence[RegisteredTool] | None" = None,
     ) -> None:
+        # Store all params needed by build_instance_payload() before calling super().__init__().
         initial_config = config or KnowtAgentConfig(
             memory_path=Path(memory_path),
             max_tokens=max_tokens,
             reset_threshold=reset_threshold,
-        )
-        instance_payload = _build_knowt_instance_payload(
-            memory_path=Path(initial_config.memory_path),
-            max_tokens=initial_config.max_tokens,
-            reset_threshold=initial_config.reset_threshold,
         )
         self._config = initial_config
         self._memory_store = KnowtMemoryStore(memory_path=self._config.memory_path)
@@ -85,7 +81,6 @@ class KnowtAgent(BaseAgent):
             tool_executor=tool_registry,
             runtime_config=runtime_config,
             memory_path=self._config.memory_path,
-            instance_payload=instance_payload,
             repo_root=_find_repo_root(Path(self._config.memory_path)),
         )
         resolved_memory_path = self.memory_path
@@ -96,6 +91,13 @@ class KnowtAgent(BaseAgent):
         )
         self._memory_store = KnowtMemoryStore(memory_path=resolved_memory_path)
         self._memory_store.prepare()
+
+    def build_instance_payload(self) -> dict[str, Any]:
+        return _build_knowt_instance_payload(
+            memory_path=Path(self._config.memory_path),
+            max_tokens=self._config.max_tokens,
+            reset_threshold=self._config.reset_threshold,
+        )
 
     @property
     def config(self) -> KnowtAgentConfig:
