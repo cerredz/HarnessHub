@@ -1,51 +1,29 @@
 Title: Add shared leads models, memory store, and pluggable storage contracts
-
-Issue URL: https://github.com/cerredz/HarnessHub/issues/151
-
-Intent:
-Define the durable domain model for the leads agent so multi-ICP runs, per-ICP search logs, dedupe state, saved leads, and run metadata are persisted deterministically outside the transcript and can survive context pruning.
-
+Intent: Define the durable leads-agent domain model so company context, multi-ICP progress, per-ICP search logs, summarized history, dedupe keys, and saved leads all persist deterministically outside the transcript.
 Scope:
-This ticket adds the shared leads dataclasses, a file-backed memory store, and the leads-specific pluggable storage contract/default backend.
-This ticket does not add the Apollo provider, the concrete leads agent loop, or CLI/docs.
-
+- Add the shared leads dataclasses for run config, run state, ICPs, searches, summaries, and leads.
+- Add a file-backed leads memory store for per-ICP durable search state.
+- Add a pluggable leads storage backend contract with a default filesystem implementation for saved-lead persistence and dedupe.
+- Register the new shared module in the repository file index.
+- Do not implement the concrete leads agent loop, provider composition, or CLI behavior in this ticket.
 Relevant Files:
-- `harnessiq/shared/leads.py`: define leads-agent domain models, memory-store helpers, configuration objects, and default file-backed storage.
-- `harnessiq/utils/run_storage.py`: extend or reuse generic run storage only if needed for leads-specific events without breaking existing consumers.
-- `tests/test_leads_shared.py`: add focused coverage for leads shared types, dedupe lookup, per-ICP search persistence, and storage backend behavior.
-- `artifacts/file_index.md`: register the new shared module if added.
-
-Approach:
-Follow the successful `shared.exa_outreach` pattern, but adapt it to this use case instead of forcing the leads agent into outreach-specific abstractions. The shared model should represent:
-
-- company background and run configuration
-- ICP definitions and per-ICP progress/state
-- search log entries and summarized search history
-- discovered/saved lead records with deterministic dedupe keys
-- a pluggable save/storage backend for durable lead persistence
-
-Keep search history durable and per-ICP so the leads agent can rotate ICP context in and out of parameter sections while preserving what has already been tried.
-
+- `harnessiq/shared/leads.py`: canonical leads-agent domain models, memory-store helpers, and default storage backend.
+- `tests/test_leads_shared.py`: coverage for shared models, per-ICP persistence, search compaction, and save-backend dedupe.
+- `artifacts/file_index.md`: repository structure index updated for the new shared module and test surface.
+Approach: Split durable state into two explicit layers. `LeadsMemoryStore` owns run config/state plus per-ICP search logs, summaries, and saved dedupe keys so the future agent can rotate ICP context without losing deterministic memory. `LeadsStorageBackend` owns cross-run lead persistence and dedupe, with `FileSystemLeadsStorageBackend` reusing the generic run-storage layer for run-level audit while persisting normalized lead entries in a dedicated file.
 Assumptions:
-- The user wants a default filesystem-backed persistence layer plus a pluggable storage interface for future non-filesystem backends.
-- Dedupe must live in deterministic storage/memory, not in transcript-only state.
-- The default backend should be able to answer “have we already seen this person?” and “what searches have been run for this ICP?” efficiently enough for test and SDK usage.
-
+- Search history must remain per-ICP and durable because transcript pruning is now deterministic.
+- Cross-run dedupe belongs in storage, not in transcript-only memory or model reasoning.
+- A default filesystem backend is sufficient for v1 as long as the storage contract is pluggable.
 Acceptance Criteria:
-- [ ] A new shared leads module exists with typed records for ICPs, leads, searches, summaries, and run configuration.
-- [ ] A leads memory store can prepare the memory directory structure and read/write per-ICP durable state.
-- [ ] A pluggable storage backend contract exists for saving leads, with a default filesystem implementation.
-- [ ] Shared tests verify round trips, dedupe behavior, per-ICP search history persistence, and summary replacement behavior.
-
+- [ ] A shared leads module exists with typed records for run config/state, ICPs, searches, summaries, and leads.
+- [ ] A leads memory store can prepare the memory layout, persist per-ICP search state, and replace older search blocks with summaries.
+- [ ] A pluggable storage backend contract exists for saved leads, with a default filesystem backend that supports dedupe and lead listing.
+- [ ] Shared tests verify round trips, dedupe behavior, per-ICP search persistence, and summary replacement behavior.
 Verification Steps:
-- Static analysis: run the linter against `harnessiq/shared/leads.py` and any touched storage helpers.
-- Type checking: run the type checker or validate annotations/import safety for the new shared module.
-- Unit tests: run `pytest tests/test_leads_shared.py`.
-- Integration and contract tests: run shared storage tests alongside any existing run-storage coverage affected by the change.
-- Smoke verification: create a temporary leads memory directory, write per-ICP searches/leads, summarize a search block, and confirm reload behavior.
-
-Dependencies:
-- Ticket 2 if the shared model needs to align with the new pruning config names; otherwise independent.
-
-Drift Guard:
-This ticket must not implement model prompting, provider-tool selection, or CLI behavior. It is strictly the durable data/storage layer the concrete leads harness will depend on.
+- Run `python -m py_compile harnessiq/shared/leads.py tests/test_leads_shared.py`.
+- Run `python -m pytest tests/test_leads_shared.py`.
+- Run `python -m pytest tests/test_exa_outreach_shared.py`.
+- Smoke-check that summary compaction preserves the search tail and next search sequence, and that duplicate leads are rejected across runs.
+Dependencies: Ticket 2 is available and informs the transcript-pruning requirements this durable state will support.
+Drift Guard: This ticket must not add model prompting, provider-tool selection logic, or CLI UX. It is strictly the shared storage and memory layer for the later leads harness.

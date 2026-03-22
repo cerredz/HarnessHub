@@ -61,6 +61,7 @@ from __future__ import annotations
 from harnessiq.shared.tools import RegisteredTool
 
 from .catalog import ToolEntry
+from .factory import define_tool, tool
 from .registry import ToolsetRegistry
 
 # Shared module-level registry instance — initialized lazily on first access.
@@ -164,11 +165,65 @@ def list_tools() -> list[ToolEntry]:
     return _get_registry().list()
 
 
+def register_tool(tool_instance: RegisteredTool) -> None:
+    """Register a custom tool into the module-level catalog.
+
+    After calling this function, the tool is retrievable via :func:`get_tool`,
+    its family appears in :func:`get_family`, and :func:`list_tools` includes
+    a metadata entry for it.
+
+    Args:
+        tool_instance: A :class:`~harnessiq.shared.tools.RegisteredTool`,
+            typically created with :func:`define_tool` or the :func:`tool`
+            decorator.
+
+    Raises:
+        ValueError: If the tool's key already exists in the built-in, provider,
+            or custom catalog.
+
+    Example::
+
+        my_tool = define_tool(
+            key="custom.shout",
+            description="Convert text to uppercase.",
+            parameters={"text": {"type": "string"}},
+            handler=lambda args: args["text"].upper(),
+        )
+        register_tool(my_tool)
+        retrieved = get_tool("custom.shout")
+    """
+    _get_registry().register_tool(tool_instance)
+
+
+def register_tools(*tool_instances: RegisteredTool) -> None:
+    """Register multiple custom tools into the module-level catalog.
+
+    Equivalent to calling :func:`register_tool` for each item in order.
+
+    Args:
+        *tool_instances: One or more :class:`~harnessiq.shared.tools.RegisteredTool`
+            objects to register.
+
+    Raises:
+        ValueError: If any tool's key already exists in the built-in, provider,
+            or custom catalog.
+
+    Example::
+
+        register_tools(tool_a, tool_b, tool_c)
+    """
+    _get_registry().register_tools(*tool_instances)
+
+
 __all__ = [
     "ToolEntry",
     "ToolsetRegistry",
+    "define_tool",
     "get_family",
     "get_tool",
     "get_tools",
     "list_tools",
+    "register_tool",
+    "register_tools",
+    "tool",
 ]

@@ -6,6 +6,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from harnessiq.agents import (
     AgentModelRequest,
@@ -13,8 +14,19 @@ from harnessiq.agents import (
     InstagramKeywordDiscoveryAgent,
     InstagramMemoryStore,
 )
+from harnessiq.shared.agents import AgentRuntimeConfig
 from harnessiq.shared.instagram import InstagramLeadRecord, InstagramSearchExecution, InstagramSearchRecord
 from harnessiq.shared.tools import ToolCall
+
+_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
+
+
+def setUpModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.start()
+
+
+def tearDownModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.stop()
 
 
 class _FakeModel:
@@ -31,10 +43,14 @@ class _FakeSearchBackend:
     def __init__(self, execution: InstagramSearchExecution) -> None:
         self.execution = execution
         self.calls: list[tuple[str, int]] = []
+        self.close_calls = 0
 
     def search_keyword(self, *, keyword: str, max_results: int) -> InstagramSearchExecution:
         self.calls.append((keyword, max_results))
         return self.execution
+
+    def close(self) -> None:
+        self.close_calls += 1
 
 
 def _build_execution(keyword: str = "fitness coach") -> InstagramSearchExecution:
@@ -48,7 +64,7 @@ def _build_execution(keyword: str = "fitness coach") -> InstagramSearchExecution
     )
     search_record = InstagramSearchRecord(
         keyword=keyword,
-        query='site:instagram.com "@gmail.com" "fitness coach"',
+        query='site:instagram .com "@gmail .com" fitness coach',
         searched_at="2026-03-19T00:00:00Z",
         visited_urls=("https://www.instagram.com/creator-a/",),
         lead_count=1,
@@ -132,15 +148,31 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
             agent.prepare()
 
             first_result = agent.tool_executor.execute("instagram.search_keyword", {"keyword": "fitness coach"})
-            duplicate_result = agent.tool_executor.execute("instagram.search_keyword", {"keyword": "fitness coach"})
+            agent.tool_executor.execute("instagram.search_keyword", {"keyword": "fitness coach"})
 
             self.assertEqual(agent.get_emails(), ("creator@example.com",))
             self.assertEqual(first_result.output["status"], "searched")
             self.assertIn("merge_summary", first_result.output)
             self.assertNotIn("query", first_result.output)
             self.assertNotIn("visited_urls", first_result.output)
+
+    def test_duplicate_search_result_is_compact(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+            agent = InstagramKeywordDiscoveryAgent(
+                model=model,
+                search_backend=_FakeSearchBackend(_build_execution()),
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators",),
+            )
+            agent.prepare()
+
+            agent.tool_executor.execute("instagram.search_keyword", {"keyword": "fitness coach"})
+            duplicate_result = agent.tool_executor.execute("instagram.search_keyword", {"keyword": "fitness coach"})
+
             self.assertEqual(duplicate_result.output["status"], "already_searched")
             self.assertNotIn("query", duplicate_result.output)
+            self.assertNotIn("visited_urls", duplicate_result.output)
 
     def test_recent_searches_are_rendered_as_comma_separated_keywords(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -202,6 +234,55 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
         from harnessiq.agents import InstagramKeywordDiscoveryAgent as Imported
 
         self.assertIs(Imported, InstagramKeywordDiscoveryAgent)
+
+    def test_run_closes_backend_after_completion(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            backend = _FakeSearchBackend(_build_execution())
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+            agent = InstagramKeywordDiscoveryAgent(
+                model=model,
+                search_backend=backend,
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators",),
+            )
+
+            agent.run(max_cycles=1)
+
+            self.assertEqual(backend.close_calls, 1)
+
+    def test_run_closes_backend_after_tool_error(self) -> None:
+        class _FailingModel:
+            def generate_turn(self, request: AgentModelRequest) -> AgentModelResponse:
+                raise RuntimeError("boom")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            backend = _FakeSearchBackend(_build_execution())
+            agent = InstagramKeywordDiscoveryAgent(
+                model=_FailingModel(),
+                search_backend=backend,
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators",),
+            )
+
+            with self.assertRaisesRegex(RuntimeError, "boom"):
+                agent.run(max_cycles=1)
+
+            self.assertEqual(backend.close_calls, 1)
+    def test_runtime_config_preserves_langsmith_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = InstagramKeywordDiscoveryAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                search_backend=_FakeSearchBackend(_build_execution()),
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators",),
+                runtime_config=AgentRuntimeConfig(
+                    langsmith_api_key="ls_test_sdk",
+                    langsmith_project="instagram-project",
+                ),
+            )
+
+            self.assertEqual(agent.runtime_config.langsmith_api_key, "ls_test_sdk")
+            self.assertEqual(agent.runtime_config.langsmith_project, "instagram-project")
 
 
 if __name__ == "__main__":

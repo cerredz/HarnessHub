@@ -16,6 +16,20 @@ LEAD_DATABASE_FILENAME = "lead_database.json"
 RUNTIME_PARAMETERS_FILENAME = "runtime_parameters.json"
 AGENT_IDENTITY_FILENAME = "agent_identity.txt"
 ADDITIONAL_PROMPT_FILENAME = "additional_prompt.txt"
+INSTAGRAM_GOOGLE_SEARCH_URL = "https://www.google.com/search"
+DEFAULT_INSTAGRAM_BROWSER_CHANNEL = "chrome"
+DEFAULT_INSTAGRAM_HEADLESS = False
+DEFAULT_INSTAGRAM_TIMEOUT_MS = 30_000
+DEFAULT_INSTAGRAM_NETWORK_IDLE_TIMEOUT_MS = 5_000
+DEFAULT_INSTAGRAM_BROWSER_VIEWPORT = {"width": 1280, "height": 900}
+DEFAULT_INSTAGRAM_BROWSER_LAUNCH_ARGS = ("--disable-blink-features=AutomationControlled",)
+DEFAULT_INSTAGRAM_BROWSER_INIT_SCRIPT = """
+Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+Object.defineProperty(navigator, 'platform', {get: () => 'Win32'});
+Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+window.chrome = window.chrome || { runtime: {} };
+"""
 
 DEFAULT_RECENT_SEARCH_WINDOW = 10
 DEFAULT_RECENT_RESULT_WINDOW = 10
@@ -23,11 +37,14 @@ DEFAULT_SEARCH_RESULT_LIMIT = 5
 
 DEFAULT_AGENT_IDENTITY = (
     "A deterministic Instagram creator discovery agent that turns ICP descriptions into concise "
-    "Google search keywords, runs targeted site:instagram.com searches, extracts public emails from "
-    "loaded pages, and persists every verified discovery to durable memory."
+    "Google search keywords, runs targeted spaced site:instagram Google searches, extracts public "
+    "emails from Google result snippets, and persists every verified discovery to durable memory."
 )
 
-_EMAIL_PATTERN = re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.IGNORECASE)
+_EMAIL_PATTERN = re.compile(
+    r"[A-Z0-9._%+-]+\s*@\s*(?:[A-Z0-9-]+\s*\.(?!\s))+[A-Z]{2,63}\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -340,14 +357,22 @@ def build_instagram_google_query(keyword: str) -> str:
     cleaned_keyword = keyword.strip()
     if not cleaned_keyword:
         raise ValueError("keyword must not be blank.")
-    return f'site:instagram.com "@gmail.com" "{cleaned_keyword}"'
+    return f'site:instagram .com "@gmail .com" {cleaned_keyword}'
+
+
+def build_instagram_google_fallback_query(keyword: str) -> str:
+    """Build the Google fallback query when the spaced query yields no results."""
+    cleaned_keyword = keyword.strip()
+    if not cleaned_keyword:
+        raise ValueError("keyword must not be blank.")
+    return f'site:instagram.com "@gmail.com" {cleaned_keyword}'
 
 
 def extract_emails(text: str) -> list[str]:
     """Return unique normalized email addresses from a text blob."""
     if not text:
         return []
-    return _dedupe_emails(_EMAIL_PATTERN.findall(text))
+    return _dedupe_emails(_normalize_email_match(match.group(0)) for match in _EMAIL_PATTERN.finditer(text))
 
 
 def normalize_instagram_runtime_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
@@ -445,14 +470,26 @@ def _dedupe_strings(values: Sequence[str]) -> list[str]:
     return result
 
 
+def _normalize_email_match(value: str) -> str:
+    return re.sub(r"\s+", "", value.strip()).lower()
+
+
 __all__ = [
     "ADDITIONAL_PROMPT_FILENAME",
     "AGENT_IDENTITY_FILENAME",
     "DEFAULT_AGENT_IDENTITY",
+    "DEFAULT_INSTAGRAM_BROWSER_CHANNEL",
+    "DEFAULT_INSTAGRAM_BROWSER_INIT_SCRIPT",
+    "DEFAULT_INSTAGRAM_BROWSER_LAUNCH_ARGS",
+    "DEFAULT_INSTAGRAM_BROWSER_VIEWPORT",
+    "DEFAULT_INSTAGRAM_HEADLESS",
+    "DEFAULT_INSTAGRAM_NETWORK_IDLE_TIMEOUT_MS",
+    "DEFAULT_INSTAGRAM_TIMEOUT_MS",
     "DEFAULT_RECENT_RESULT_WINDOW",
     "DEFAULT_RECENT_SEARCH_WINDOW",
     "DEFAULT_SEARCH_RESULT_LIMIT",
     "ICP_PROFILES_FILENAME",
+    "INSTAGRAM_GOOGLE_SEARCH_URL",
     "InstagramKeywordAgentConfig",
     "InstagramLeadDatabase",
     "InstagramLeadRecord",
@@ -464,6 +501,7 @@ __all__ = [
     "LeadMergeSummary",
     "RUNTIME_PARAMETERS_FILENAME",
     "SEARCH_HISTORY_FILENAME",
+    "build_instagram_google_fallback_query",
     "build_instagram_google_query",
     "extract_emails",
     "normalize_instagram_runtime_parameters",

@@ -62,10 +62,7 @@ class PaperclipOperationCatalogTests(unittest.TestCase):
 
     def test_catalog_covers_expected_categories(self) -> None:
         categories = {operation.category for operation in build_paperclip_operation_catalog()}
-        self.assertEqual(
-            categories,
-            {"Companies", "Agents", "Issues", "Approvals", "Activity", "Costs"},
-        )
+        self.assertEqual(categories, {"Companies", "Agents", "Issues", "Approvals", "Activity", "Costs"})
 
     def test_representative_issue_operation_requires_payload(self) -> None:
         operation = get_paperclip_operation("checkout_issue")
@@ -85,10 +82,7 @@ class PaperclipOperationCatalogTests(unittest.TestCase):
 class PaperclipClientTests(unittest.TestCase):
     def _client(self, request_executor=None) -> PaperclipClient:
         credentials = PaperclipCredentials(api_key="pc_test_token")
-        return PaperclipClient(
-            credentials=credentials,
-            request_executor=request_executor or (lambda method, url, **kwargs: {"ok": True}),
-        )
+        return PaperclipClient(credentials=credentials, request_executor=request_executor or (lambda method, url, **kwargs: {"ok": True}))
 
     def test_prepare_request_renders_issue_list_url_and_query(self) -> None:
         prepared = self._client().prepare_request(
@@ -96,7 +90,6 @@ class PaperclipClientTests(unittest.TestCase):
             path_params={"company_id": "company-1"},
             query={"status": "todo,in_progress", "assigneeAgentId": "agent-42"},
         )
-
         self.assertEqual(prepared.method, "GET")
         self.assertIn("/companies/company-1/issues", prepared.url)
         self.assertIn("status=todo%2Cin_progress", prepared.url)
@@ -109,17 +102,12 @@ class PaperclipClientTests(unittest.TestCase):
             payload={"status": "done", "comment": "Finished."},
             run_id="run-123",
         )
-
         self.assertEqual(prepared.headers["Authorization"], "Bearer pc_test_token")
         self.assertEqual(prepared.headers["X-Paperclip-Run-Id"], "run-123")
         self.assertEqual(prepared.json_body["status"], "done")
 
     def test_prepare_request_ignores_run_id_for_read_operation(self) -> None:
-        prepared = self._client().prepare_request(
-            "get_issue",
-            path_params={"issue_id": "issue-1"},
-            run_id="run-123",
-        )
+        prepared = self._client().prepare_request("get_issue", path_params={"issue_id": "issue-1"}, run_id="run-123")
         self.assertNotIn("X-Paperclip-Run-Id", prepared.headers)
 
     def test_prepare_request_raises_on_missing_path_param(self) -> None:
@@ -128,25 +116,15 @@ class PaperclipClientTests(unittest.TestCase):
 
     def test_prepare_request_raises_on_query_for_non_query_operation(self) -> None:
         with self.assertRaises(ValueError):
-            self._client().prepare_request(
-                "get_issue",
-                path_params={"issue_id": "issue-1"},
-                query={"status": "todo"},
-            )
+            self._client().prepare_request("get_issue", path_params={"issue_id": "issue-1"}, query={"status": "todo"})
 
     def test_prepare_request_raises_on_missing_required_payload(self) -> None:
         with self.assertRaises(ValueError):
-            self._client().prepare_request(
-                "create_issue",
-                path_params={"company_id": "company-1"},
-            )
+            self._client().prepare_request("create_issue", path_params={"company_id": "company-1"})
 
     def test_prepare_request_rejects_payload_for_payloadless_operation(self) -> None:
         with self.assertRaises(ValueError):
-            self._client().prepare_request(
-                "list_companies",
-                payload={"unexpected": True},
-            )
+            self._client().prepare_request("list_companies", payload={"unexpected": True})
 
     def test_execute_operation_delegates_to_request_executor(self) -> None:
         captured: list[dict[str, object]] = []
@@ -156,7 +134,6 @@ class PaperclipClientTests(unittest.TestCase):
             return {"id": "company-1"}
 
         result = self._client(request_executor=fake_request).execute_operation("list_companies")
-
         self.assertEqual(result["id"], "company-1")
         self.assertEqual(captured[0]["method"], "GET")
         self.assertIn("/companies", captured[0]["url"])
@@ -181,10 +158,7 @@ class PaperclipToolsTests(unittest.TestCase):
             captured.append({"method": method, "url": url, **kwargs})
             return {"id": "issue-1", "status": "done"}
 
-        client = PaperclipClient(
-            credentials=PaperclipCredentials(api_key="pc_test_token"),
-            request_executor=fake_request,
-        )
+        client = PaperclipClient(credentials=PaperclipCredentials(api_key="pc_test_token"), request_executor=fake_request)
         registry = ToolRegistry(create_paperclip_tools(client=client))
 
         result = registry.execute(
@@ -207,10 +181,7 @@ class PaperclipToolsTests(unittest.TestCase):
 
     def test_allowed_operations_subset(self) -> None:
         credentials = PaperclipCredentials(api_key="pc_test_token")
-        tools = create_paperclip_tools(
-            credentials=credentials,
-            allowed_operations=["get_current_agent", "list_issues"],
-        )
+        tools = create_paperclip_tools(credentials=credentials, allowed_operations=["get_current_agent", "list_issues"])
         enum_values = tools[0].definition.input_schema["properties"]["operation"]["enum"]
         self.assertEqual(set(enum_values), {"get_current_agent", "list_issues"})
 

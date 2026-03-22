@@ -22,7 +22,7 @@ from harnessiq.shared.agents import AgentModelRequest, AgentModelResponse
 from harnessiq.shared.providers import ProviderMessage
 from harnessiq.shared.tools import ToolCall
 
-DEFAULT_GROK_MODEL = "grok-4-1-fast"
+DEFAULT_GROK_MODEL = "grok-4-1-fast-reasoning"
 
 
 class GrokAgentModel:

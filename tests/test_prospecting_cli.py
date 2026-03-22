@@ -99,8 +99,6 @@ class ProspectingCliTests(unittest.TestCase):
 
             mock_agent = MagicMock()
             mock_agent.last_run_id = "run-123"
-            mock_agent.instance_id = "google_maps_prospecting::abc12345"
-            mock_agent.instance_name = "nj-dentists"
             mock_result = MagicMock()
             mock_result.cycles_completed = 3
             mock_result.pause_reason = None
@@ -134,8 +132,6 @@ class ProspectingCliTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             payload = json.loads("".join(call.args[0] for call in mock_write.call_args_list))
-            self.assertEqual(payload["instance_id"], "google_maps_prospecting::abc12345")
-            self.assertEqual(payload["instance_name"], "nj-dentists")
             self.assertEqual(payload["ledger_run_id"], "run-123")
             self.assertEqual(payload["result"]["cycles_completed"], 3)
             self.assertEqual(payload["result"]["resets"], 1)

@@ -1,5 +1,6 @@
 Title: Restore provider HTTP error propagation through tracing
 Issue URL: https://github.com/cerredz/HarnessHub/issues/200
+PR URL: https://github.com/cerredz/HarnessHub/pull/202
 
 Intent:
 Fix the provider failure path so real HTTP/provider errors remain the surfaced exception when traced model or tool calls fail. This restores debuggability for Exa/xAI and any other provider using the shared HTTP layer, instead of masking provider failures behind a secondary traceback-assignment `TypeError`.
@@ -8,7 +9,8 @@ Scope:
 This ticket updates the shared provider error/tracing path and adds regression coverage for the exception propagation behavior. It does not make unauthorized credentials succeed, alter provider request payloads, or change business logic in any specific agent.
 
 Relevant Files:
-- `harnessiq/providers/http.py`: adjust `ProviderHTTPError` so it behaves correctly as an exception during re-raise and traceback handling.
+- `harnessiq/shared/http.py`: adjust `ProviderHTTPError` so it behaves correctly as an exception during re-raise and traceback handling.
+- `harnessiq/providers/http.py`: confirm the shared exception import path continues to work after the fix.
 - `harnessiq/providers/langsmith.py`: validate whether any defensive normalization is needed around traced exception paths after the exception-class fix.
 - `tests/test_providers.py`: add or update regression coverage proving traced provider failures preserve the original provider exception type and details.
 
@@ -24,7 +26,7 @@ Acceptance Criteria:
 - [ ] A provider failure raised from the shared HTTP layer remains a `ProviderHTTPError` when propagated through traced model/tool/agent execution.
 - [ ] The original provider name, status code, and message remain available after the fix.
 - [ ] No existing provider or tracing tests regress.
-- [ ] A targeted regression test covers the previous “provider error masked by secondary traceback TypeError” path.
+- [ ] A targeted regression test covers the previous provider error being masked by a secondary traceback `TypeError` path.
 
 Verification Steps:
 1. Run the configured linter/static-analysis step for the changed Python files if one exists; otherwise document that no project linter is configured and perform manual style review.

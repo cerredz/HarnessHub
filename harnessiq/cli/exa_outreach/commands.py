@@ -4,13 +4,22 @@ from __future__ import annotations
 
 import argparse
 import importlib
-import json
-import re
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from harnessiq.cli.common import (
+    add_agent_options,
+    add_text_or_file_options,
+    emit_json,
+    parse_generic_assignments,
+    resolve_memory_path,
+    resolve_text_argument,
+)
+from harnessiq.cli._langsmith import seed_langsmith_environment
+from harnessiq.agents import AgentRuntimeConfig
 from harnessiq.shared.exa_outreach import ExaOutreachMemoryStore
+from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
 SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS = ("max_tokens", "reset_threshold")
 
@@ -25,17 +34,27 @@ def register_exa_outreach_commands(
     prepare_parser = outreach_subparsers.add_parser(
         "prepare", help="Create or refresh an outreach agent memory folder"
     )
-    _add_agent_options(prepare_parser)
+    add_agent_options(
+        prepare_parser,
+        agent_help="Logical agent name used to resolve the memory folder.",
+        memory_root_default="memory/outreach",
+        memory_root_help="Root directory that holds per-agent outreach memory folders.",
+    )
     prepare_parser.set_defaults(command_handler=_handle_prepare)
 
     configure_parser = outreach_subparsers.add_parser(
         "configure",
         help="Write outreach agent search query, identity, runtime params, and additional prompt",
     )
-    _add_agent_options(configure_parser)
-    _add_text_or_file_options(configure_parser, "query", "Search query")
-    _add_text_or_file_options(configure_parser, "agent_identity", "Agent identity")
-    _add_text_or_file_options(configure_parser, "additional_prompt", "Additional prompt")
+    add_agent_options(
+        configure_parser,
+        agent_help="Logical agent name used to resolve the memory folder.",
+        memory_root_default="memory/outreach",
+        memory_root_help="Root directory that holds per-agent outreach memory folders.",
+    )
+    add_text_or_file_options(configure_parser, "query", "Search query")
+    add_text_or_file_options(configure_parser, "agent_identity", "Agent identity")
+    add_text_or_file_options(configure_parser, "additional_prompt", "Additional prompt")
     configure_parser.add_argument(
         "--runtime-param",
         action="append",
@@ -51,13 +70,23 @@ def register_exa_outreach_commands(
     show_parser = outreach_subparsers.add_parser(
         "show", help="Render the current outreach agent state as JSON"
     )
-    _add_agent_options(show_parser)
+    add_agent_options(
+        show_parser,
+        agent_help="Logical agent name used to resolve the memory folder.",
+        memory_root_default="memory/outreach",
+        memory_root_help="Root directory that holds per-agent outreach memory folders.",
+    )
     show_parser.set_defaults(command_handler=_handle_show)
 
     run_parser = outreach_subparsers.add_parser(
         "run", help="Run the ExaOutreach agent from persisted CLI state"
     )
-    _add_agent_options(run_parser)
+    add_agent_options(
+        run_parser,
+        agent_help="Logical agent name used to resolve the memory folder.",
+        memory_root_default="memory/outreach",
+        memory_root_help="Root directory that holds per-agent outreach memory folders.",
+    )
     run_parser.add_argument(
         "--model-factory",
         required=True,
@@ -70,13 +99,19 @@ def register_exa_outreach_commands(
     )
     run_parser.add_argument(
         "--resend-credentials-factory",
-        required=True,
-        help="Import path (module:callable) that returns a ResendCredentials instance.",
+        default=None,
+        help="Import path (module:callable) that returns a ResendCredentials instance. Required unless --search-only.",
     )
     run_parser.add_argument(
         "--email-data-factory",
-        required=True,
-        help="Import path (module:callable) that returns a list[dict] of email templates.",
+        default=None,
+        help="Import path (module:callable) that returns a list[dict] of email templates. Required unless --search-only.",
+    )
+    run_parser.add_argument(
+        "--search-only",
+        action="store_true",
+        default=False,
+        help="Discover and log leads only — skip template selection and email sending.",
     )
     run_parser.add_argument(
         "--runtime-param",
@@ -84,6 +119,13 @@ def register_exa_outreach_commands(
         default=[],
         metavar="KEY=VALUE",
         help="Override a persisted runtime parameter for this run only.",
+    )
+    run_parser.add_argument(
+        "--sink",
+        action="append",
+        default=[],
+        metavar="SPEC",
+        help="Add a per-run output sink override using kind:value or kind:key=value,key=value.",
     )
     run_parser.add_argument(
         "--max-cycles", type=int, help="Optional max cycle count passed to agent.run()."
@@ -99,7 +141,7 @@ def register_exa_outreach_commands(
 def _handle_prepare(args: argparse.Namespace) -> int:
     store = _load_store(args)
     store.prepare()
-    _emit_json(
+    emit_json(
         {
             "agent": args.agent,
             "memory_path": str(store.memory_path.resolve()),
@@ -114,7 +156,7 @@ def _handle_configure(args: argparse.Namespace) -> int:
     store.prepare()
     updated: list[str] = []
 
-    query = _resolve_text_argument(
+    query = resolve_text_argument(
         getattr(args, "query_text", None),
         getattr(args, "query_file", None),
     )
@@ -124,7 +166,7 @@ def _handle_configure(args: argparse.Namespace) -> int:
         store.write_query_config(config)
         updated.append("search_query")
 
-    agent_identity = _resolve_text_argument(
+    agent_identity = resolve_text_argument(
         getattr(args, "agent_identity_text", None),
         getattr(args, "agent_identity_file", None),
     )
@@ -132,7 +174,7 @@ def _handle_configure(args: argparse.Namespace) -> int:
         store.write_agent_identity(agent_identity)
         updated.append("agent_identity")
 
-    additional_prompt = _resolve_text_argument(
+    additional_prompt = resolve_text_argument(
         getattr(args, "additional_prompt_text", None),
         getattr(args, "additional_prompt_file", None),
     )
@@ -150,14 +192,14 @@ def _handle_configure(args: argparse.Namespace) -> int:
     payload = _build_summary(store)
     payload["updated"] = updated
     payload["status"] = "configured"
-    _emit_json(payload)
+    emit_json(payload)
     return 0
 
 
 def _handle_show(args: argparse.Namespace) -> int:
     store = _load_store(args)
     store.prepare()
-    _emit_json(_build_summary(store))
+    emit_json(_build_summary(store))
     return 0
 
 
@@ -167,16 +209,29 @@ def _handle_run(args: argparse.Namespace) -> int:
 
     store = _load_store(args)
     store.prepare()
+    seed_langsmith_environment(Path(args.memory_root).expanduser())
+
+    search_only: bool = getattr(args, "search_only", False)
+
+    if not search_only:
+        if not args.resend_credentials_factory:
+            raise ValueError("--resend-credentials-factory is required unless --search-only is set.")
+        if not args.email_data_factory:
+            raise ValueError("--email-data-factory is required unless --search-only is set.")
 
     model = _load_factory(args.model_factory)()
     if not hasattr(model, "generate_turn"):
         raise TypeError("Model factory must return an object that implements generate_turn(request).")
 
     exa_credentials = _load_factory(args.exa_credentials_factory)()
-    resend_credentials = _load_factory(args.resend_credentials_factory)()
-    raw_email_data = _load_factory(args.email_data_factory)()
-    if not isinstance(raw_email_data, list):
-        raise TypeError("Email data factory must return a list of dicts.")
+    resend_credentials = _load_factory(args.resend_credentials_factory)() if not search_only else None
+    if not search_only:
+        raw_email_data = _load_factory(args.email_data_factory)()
+        if not isinstance(raw_email_data, list):
+            raise TypeError("Email data factory must return a list of dicts.")
+        email_data = [EmailTemplate.from_dict(d) for d in raw_email_data]
+    else:
+        email_data = []
 
     # Read persisted search query and runtime overrides
     query_config = store.read_query_config()
@@ -191,23 +246,31 @@ def _handle_run(args: argparse.Namespace) -> int:
         model=model,
         exa_credentials=exa_credentials,
         resend_credentials=resend_credentials,
-        email_data=[EmailTemplate.from_dict(d) for d in raw_email_data],
+        email_data=email_data,
+        search_only=search_only,
         search_query=search_query,
         memory_path=store.memory_path,
         max_tokens=max_tokens,
         reset_threshold=reset_threshold,
+        runtime_config=_build_runtime_config(args.sink),
     )
     result = agent.run(max_cycles=args.max_cycles)
 
     # Print a run summary to stdout.
     run_id = agent._current_run_id or "unknown"
+    if not isinstance(run_id, str):
+        run_id = str(run_id)
     _print_run_summary(store, run_id)
+    ledger_run_id = agent.last_run_id
+    if ledger_run_id is not None and not isinstance(ledger_run_id, str):
+        ledger_run_id = str(ledger_run_id)
 
-    _emit_json(
+    emit_json(
         {
             "agent": args.agent,
             "instance_id": _optional_string(getattr(agent, "instance_id", None)),
             "instance_name": _optional_string(getattr(agent, "instance_name", None)),
+            "ledger_run_id": ledger_run_id,
             "memory_path": str(store.memory_path.resolve()),
             "run_id": run_id,
             "result": {
@@ -227,83 +290,11 @@ def _handle_run(args: argparse.Namespace) -> int:
 
 
 def _load_store(args: argparse.Namespace) -> ExaOutreachMemoryStore:
-    return ExaOutreachMemoryStore(
-        memory_path=_resolve_memory_path(args.agent, args.memory_root)
-    )
-
-
-def _resolve_memory_path(agent_name: str, memory_root: str) -> Path:
-    return Path(memory_root).expanduser() / _slugify_agent_name(agent_name)
-
-
-def _slugify_agent_name(agent_name: str) -> str:
-    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", agent_name.strip()).strip("-")
-    if not cleaned:
-        raise ValueError("Agent names must contain at least one alphanumeric character.")
-    return cleaned
-
-
-def _add_agent_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--agent", required=True, help="Logical agent name used to resolve the memory folder."
-    )
-    parser.add_argument(
-        "--memory-root",
-        default="memory/outreach",
-        help="Root directory that holds per-agent outreach memory folders.",
-    )
-
-
-def _add_text_or_file_options(
-    parser: argparse.ArgumentParser, field_name: str, label: str
-) -> None:
-    group = parser.add_mutually_exclusive_group()
-    option_name = field_name.replace("_", "-")
-    group.add_argument(f"--{option_name}-text", help=f"{label} content provided inline.")
-    group.add_argument(
-        f"--{option_name}-file",
-        help=f"Path to a UTF-8 text file containing {label.lower()} content.",
-    )
-
-
-def _resolve_text_argument(text_value: str | None, file_value: str | None) -> str | None:
-    if text_value is not None:
-        return text_value
-    if file_value is not None:
-        return Path(file_value).read_text(encoding="utf-8")
-    return None
+    return ExaOutreachMemoryStore(memory_path=resolve_memory_path(args.agent, args.memory_root))
 
 
 def _parse_runtime_assignments(assignments: Sequence[str]) -> dict[str, Any]:
-    return normalize_exa_outreach_runtime_parameters(_parse_generic_assignments(assignments))
-
-
-def _parse_generic_assignments(assignments: Sequence[str]) -> dict[str, Any]:
-    parsed: dict[str, Any] = {}
-    for assignment in assignments:
-        key, raw_value = _split_assignment(assignment)
-        parsed[key] = _parse_scalar(raw_value)
-    return parsed
-
-
-def _split_assignment(assignment: str) -> tuple[str, str]:
-    key, separator, value = assignment.partition("=")
-    if not separator:
-        raise ValueError(f"Expected KEY=VALUE assignment, received '{assignment}'.")
-    normalized_key = key.strip()
-    if not normalized_key:
-        raise ValueError(f"Expected a non-empty key in assignment '{assignment}'.")
-    return normalized_key, value
-
-
-def _parse_scalar(value: str) -> Any:
-    trimmed = value.strip()
-    if not trimmed:
-        return ""
-    try:
-        return json.loads(trimmed)
-    except json.JSONDecodeError:
-        return value
+    return normalize_exa_outreach_runtime_parameters(parse_generic_assignments(assignments))
 
 
 def _optional_string(value: Any) -> str | None:
@@ -335,10 +326,6 @@ def _load_factory(spec: str):
     return target
 
 
-def _emit_json(payload: dict[str, Any]) -> None:
-    print(json.dumps(payload, indent=2, sort_keys=True))
-
-
 def _print_help(parser: argparse.ArgumentParser) -> int:
     parser.print_help()
     return 0
@@ -362,6 +349,13 @@ def _print_run_summary(store: ExaOutreachMemoryStore, run_id: str) -> None:
     print(f"  Run files saved to: {store.runs_dir.resolve()}")
     print("=" * 64)
     print()
+
+
+def _build_runtime_config(sink_specs: Sequence[str]) -> AgentRuntimeConfig:
+    connections = ConnectionsConfigStore().load().enabled_connections()
+    return AgentRuntimeConfig(
+        output_sinks=build_output_sinks(connections=connections, sink_specs=sink_specs),
+    )
 
 
 def normalize_exa_outreach_runtime_parameters(parameters: dict[str, Any]) -> dict[str, Any]:

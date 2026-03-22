@@ -39,11 +39,11 @@ Assumptions:
 
 Acceptance Criteria:
 
-- [ ] The ledger implementation is split across focused modules with `ledger.py` remaining as a compatibility facade.
-- [ ] Public imports currently used by tests continue to resolve without caller changes.
-- [ ] Output sink behavior and ledger connection parsing behavior remain unchanged.
-- [ ] Ledger CLI tests and sink tests pass after the refactor.
-- [ ] The resulting `ledger.py` file is materially smaller and easier to scan than the current implementation-heavy version.
+- [x] The ledger implementation is split across focused modules with `ledger.py` remaining as a compatibility facade.
+- [x] Public imports currently used by tests continue to resolve without caller changes.
+- [x] Output sink behavior and ledger connection parsing behavior remain unchanged.
+- [x] Ledger CLI tests and sink tests pass after the refactor.
+- [x] The resulting `ledger.py` file is materially smaller and easier to scan than the current implementation-heavy version.
 
 Verification Steps:
 

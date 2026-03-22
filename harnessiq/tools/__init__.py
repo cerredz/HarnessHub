@@ -144,6 +144,11 @@ from .general_purpose import (
     truncate_text,
     unique_records,
 )
+from .instagram import create_instagram_tools
+from .paperclip import (
+    build_paperclip_request_tool_definition,
+    create_paperclip_tools,
+)
 from .prompting import create_prompt_tools, create_system_prompt
 from .paperclip import (
     build_paperclip_request_tool_definition,
@@ -305,6 +310,8 @@ __all__ = [
     "create_context_compaction_tools",
     "create_filesystem_tools",
     "create_general_purpose_tools",
+    "create_instagram_tools",
+    "create_paperclip_tools",
     "create_evaluate_company_tool",
     "brainstorm",
     "chain_of_thought",

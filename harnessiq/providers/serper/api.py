@@ -1,4 +1,4 @@
-"""Serper API endpoint constants and authentication helpers."""
+﻿"""Serper API endpoint constants and authentication helpers."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Mapping
 
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://google.serper.dev"
+from harnessiq.shared.providers import SERPER_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -27,3 +27,4 @@ def url(base_url: str, path: str) -> str:
 
 
 __all__ = ["DEFAULT_BASE_URL", "build_headers", "url"]
+

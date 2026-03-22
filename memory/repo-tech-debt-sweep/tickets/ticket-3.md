@@ -40,11 +40,11 @@ Assumptions:
 
 Acceptance Criteria:
 
-- [ ] The Resend implementation is split into smaller focused modules with `harnessiq/tools/resend.py` remaining as a compatibility facade.
-- [ ] Existing public imports for Resend classes, constants, and factory functions continue to work.
-- [ ] The Resend operation catalog size and supported operation names remain unchanged.
-- [ ] The Resend tool test suite passes after the refactor.
-- [ ] The new structure makes it possible to edit catalog/client/tool-factory concerns independently without opening one large file.
+- [x] The Resend implementation is split into smaller focused modules with `harnessiq/tools/resend.py` remaining as a compatibility facade.
+- [x] Existing public imports for Resend classes, constants, and factory functions continue to work.
+- [x] The Resend operation catalog size and supported operation names remain unchanged.
+- [x] The Resend tool test suite passes after the refactor.
+- [x] The new structure makes it possible to edit catalog/client/tool-factory concerns independently without opening one large file.
 
 Verification Steps:
 

@@ -158,9 +158,7 @@ def _require_operation_name(arguments: Mapping[str, object], allowed: frozenset[
         raise ValueError("The 'operation' argument must be a string.")
     if value not in allowed:
         allowed_str = ", ".join(sorted(allowed))
-        raise ValueError(
-            f"Unsupported Paperclip operation '{value}'. Allowed: {allowed_str}."
-        )
+        raise ValueError(f"Unsupported Paperclip operation '{value}'. Allowed: {allowed_str}.")
     return value
 
 

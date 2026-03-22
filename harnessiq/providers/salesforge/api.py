@@ -1,4 +1,4 @@
-"""Salesforge endpoint and authentication helpers."""
+﻿"""Salesforge endpoint and authentication helpers."""
 
 from __future__ import annotations
 
@@ -7,9 +7,8 @@ from typing import Mapping
 from harnessiq.providers.base import omit_none_values
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://api.salesforge.ai"
-
-_PREFIX = "/public/api/v1"
+from harnessiq.shared.providers import SALESFORGE_DEFAULT_BASE_URL as DEFAULT_BASE_URL
+from harnessiq.shared.salesforge import SALESFORGE_API_PREFIX
 
 
 def build_headers(
@@ -29,32 +28,32 @@ def build_headers(
 
 def sequences_url(base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the sequences list/create URL."""
-    return join_url(base_url, f"{_PREFIX}/sequence")
+    return join_url(base_url, f"{SALESFORGE_API_PREFIX}/sequence")
 
 
 def sequence_url(sequence_id: str | int, base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the URL for a single sequence resource."""
-    return join_url(base_url, f"{_PREFIX}/sequence/{sequence_id}")
+    return join_url(base_url, f"{SALESFORGE_API_PREFIX}/sequence/{sequence_id}")
 
 
 def sequence_pause_url(sequence_id: str | int, base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the URL to pause a sequence."""
-    return join_url(base_url, f"{_PREFIX}/sequence/{sequence_id}/pause")
+    return join_url(base_url, f"{SALESFORGE_API_PREFIX}/sequence/{sequence_id}/pause")
 
 
 def sequence_resume_url(sequence_id: str | int, base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the URL to resume a sequence."""
-    return join_url(base_url, f"{_PREFIX}/sequence/{sequence_id}/resume")
+    return join_url(base_url, f"{SALESFORGE_API_PREFIX}/sequence/{sequence_id}/resume")
 
 
 def sequence_stats_url(sequence_id: str | int, base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the URL to fetch sequence stats."""
-    return join_url(base_url, f"{_PREFIX}/sequence/{sequence_id}/stats")
+    return join_url(base_url, f"{SALESFORGE_API_PREFIX}/sequence/{sequence_id}/stats")
 
 
 def sequence_contacts_url(sequence_id: str | int, base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the URL to add/list contacts in a sequence."""
-    return join_url(base_url, f"{_PREFIX}/sequence/{sequence_id}/contact")
+    return join_url(base_url, f"{SALESFORGE_API_PREFIX}/sequence/{sequence_id}/contact")
 
 
 def sequence_contact_url(
@@ -63,7 +62,7 @@ def sequence_contact_url(
     base_url: str = DEFAULT_BASE_URL,
 ) -> str:
     """Return the URL to remove a contact from a sequence."""
-    return join_url(base_url, f"{_PREFIX}/sequence/{sequence_id}/contact/{contact_id}")
+    return join_url(base_url, f"{SALESFORGE_API_PREFIX}/sequence/{sequence_id}/contact/{contact_id}")
 
 
 # --- Contact endpoints ---
@@ -71,17 +70,17 @@ def sequence_contact_url(
 
 def contacts_url(base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the contacts list/create URL."""
-    return join_url(base_url, f"{_PREFIX}/contact")
+    return join_url(base_url, f"{SALESFORGE_API_PREFIX}/contact")
 
 
 def contact_url(contact_id: str | int, base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the URL for a single contact resource."""
-    return join_url(base_url, f"{_PREFIX}/contact/{contact_id}")
+    return join_url(base_url, f"{SALESFORGE_API_PREFIX}/contact/{contact_id}")
 
 
 def contact_activity_url(contact_id: str | int, base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the URL for contact activity history."""
-    return join_url(base_url, f"{_PREFIX}/contact/{contact_id}/activity")
+    return join_url(base_url, f"{SALESFORGE_API_PREFIX}/contact/{contact_id}/activity")
 
 
 # --- Mailbox endpoints ---
@@ -89,12 +88,12 @@ def contact_activity_url(contact_id: str | int, base_url: str = DEFAULT_BASE_URL
 
 def mailboxes_url(base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the mailboxes list URL."""
-    return join_url(base_url, f"{_PREFIX}/mailbox")
+    return join_url(base_url, f"{SALESFORGE_API_PREFIX}/mailbox")
 
 
 def mailbox_url(mailbox_id: str | int, base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the URL for a single mailbox resource."""
-    return join_url(base_url, f"{_PREFIX}/mailbox/{mailbox_id}")
+    return join_url(base_url, f"{SALESFORGE_API_PREFIX}/mailbox/{mailbox_id}")
 
 
 # --- Unsubscribe endpoints ---
@@ -102,4 +101,5 @@ def mailbox_url(mailbox_id: str | int, base_url: str = DEFAULT_BASE_URL) -> str:
 
 def unsubscribe_url(base_url: str = DEFAULT_BASE_URL) -> str:
     """Return the unsubscribe list URL."""
-    return join_url(base_url, f"{_PREFIX}/unsubscribe")
+    return join_url(base_url, f"{SALESFORGE_API_PREFIX}/unsubscribe")
+

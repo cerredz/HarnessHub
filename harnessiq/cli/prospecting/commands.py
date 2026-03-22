@@ -4,13 +4,20 @@ from __future__ import annotations
 
 import argparse
 import importlib
-import json
 import os
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
 from harnessiq.agents import AgentRuntimeConfig, GoogleMapsProspectingAgent, ProspectingMemoryStore
+from harnessiq.cli.common import (
+    add_agent_options,
+    add_text_or_file_options,
+    emit_json,
+    parse_generic_assignments,
+    resolve_memory_path,
+    resolve_text_argument,
+)
 from harnessiq.shared.prospecting import (
     SUPPORTED_PROSPECTING_CUSTOM_PARAMETERS,
     SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS,
@@ -18,6 +25,7 @@ from harnessiq.shared.prospecting import (
     normalize_prospecting_runtime_parameters,
     slugify_agent_name,
 )
+from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
 _DEFAULT_BROWSER_TOOLS_FACTORY = "harnessiq.integrations.google_maps_playwright:create_browser_tools"
 
@@ -33,17 +41,27 @@ def register_prospecting_commands(
         "prepare",
         help="Create or refresh a Google Maps prospecting memory folder",
     )
-    _add_agent_options(prepare_parser)
+    add_agent_options(
+        prepare_parser,
+        agent_help="Logical agent name used to resolve the memory folder.",
+        memory_root_default="memory/prospecting",
+        memory_root_help="Root directory that holds per-agent prospecting memory folders.",
+    )
     prepare_parser.set_defaults(command_handler=_handle_prepare)
 
     configure_parser = prospecting_subparsers.add_parser(
         "configure",
         help="Persist company description, prompts, and parameters for the prospecting agent",
     )
-    _add_agent_options(configure_parser)
-    _add_text_or_file_options(configure_parser, "company_description", "Company description")
-    _add_text_or_file_options(configure_parser, "agent_identity", "Agent identity")
-    _add_text_or_file_options(configure_parser, "additional_prompt", "Additional prompt")
+    add_agent_options(
+        configure_parser,
+        agent_help="Logical agent name used to resolve the memory folder.",
+        memory_root_default="memory/prospecting",
+        memory_root_help="Root directory that holds per-agent prospecting memory folders.",
+    )
+    add_text_or_file_options(configure_parser, "company_description", "Company description")
+    add_text_or_file_options(configure_parser, "agent_identity", "Agent identity")
+    add_text_or_file_options(configure_parser, "additional_prompt", "Additional prompt")
     configure_parser.add_argument(
         "--eval-system-prompt-file",
         help="Path to a UTF-8 text file that replaces the default company evaluation prompt.",
@@ -74,14 +92,24 @@ def register_prospecting_commands(
         "show",
         help="Render the current prospecting agent state as JSON",
     )
-    _add_agent_options(show_parser)
+    add_agent_options(
+        show_parser,
+        agent_help="Logical agent name used to resolve the memory folder.",
+        memory_root_default="memory/prospecting",
+        memory_root_help="Root directory that holds per-agent prospecting memory folders.",
+    )
     show_parser.set_defaults(command_handler=_handle_show)
 
     run_parser = prospecting_subparsers.add_parser(
         "run",
         help="Run the Google Maps prospecting agent from persisted memory",
     )
-    _add_agent_options(run_parser)
+    add_agent_options(
+        run_parser,
+        agent_help="Logical agent name used to resolve the memory folder.",
+        memory_root_default="memory/prospecting",
+        memory_root_help="Root directory that holds per-agent prospecting memory folders.",
+    )
     run_parser.add_argument(
         "--model-factory",
         required=True,
@@ -123,7 +151,12 @@ def register_prospecting_commands(
         "init-browser",
         help="Open a persistent browser session and save it for Google Maps prospecting runs",
     )
-    _add_agent_options(init_browser_parser)
+    add_agent_options(
+        init_browser_parser,
+        agent_help="Logical agent name used to resolve the memory folder.",
+        memory_root_default="memory/prospecting",
+        memory_root_help="Root directory that holds per-agent prospecting memory folders.",
+    )
     init_browser_parser.add_argument(
         "--channel",
         default="chrome",
@@ -138,29 +171,10 @@ def register_prospecting_commands(
     init_browser_parser.set_defaults(command_handler=_handle_init_browser)
 
 
-def _add_agent_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--agent", required=True, help="Logical agent name used to resolve the memory folder.")
-    parser.add_argument(
-        "--memory-root",
-        default="memory/prospecting",
-        help="Root directory that holds per-agent prospecting memory folders.",
-    )
-
-
-def _add_text_or_file_options(parser: argparse.ArgumentParser, field_name: str, label: str) -> None:
-    group = parser.add_mutually_exclusive_group()
-    option_name = field_name.replace("_", "-")
-    group.add_argument(f"--{option_name}-text", help=f"{label} content provided inline.")
-    group.add_argument(
-        f"--{option_name}-file",
-        help=f"Path to a UTF-8 text file containing {label.lower()} content.",
-    )
-
-
 def _handle_prepare(args: argparse.Namespace) -> int:
     store = _load_store(args)
     store.prepare()
-    _emit_json(
+    emit_json(
         {
             "agent": args.agent,
             "memory_path": str(store.memory_path.resolve()),
@@ -175,18 +189,18 @@ def _handle_configure(args: argparse.Namespace) -> int:
     store.prepare()
     updated: list[str] = []
 
-    company_description = _resolve_text_argument(args.company_description_text, args.company_description_file)
+    company_description = resolve_text_argument(args.company_description_text, args.company_description_file)
     if company_description is not None:
         store.write_company_description(company_description)
         store.ensure_state_matches_company_description()
         updated.append("company_description")
 
-    agent_identity = _resolve_text_argument(args.agent_identity_text, args.agent_identity_file)
+    agent_identity = resolve_text_argument(args.agent_identity_text, args.agent_identity_file)
     if agent_identity is not None:
         store.write_agent_identity(agent_identity)
         updated.append("agent_identity")
 
-    additional_prompt = _resolve_text_argument(args.additional_prompt_text, args.additional_prompt_file)
+    additional_prompt = resolve_text_argument(args.additional_prompt_text, args.additional_prompt_file)
     if additional_prompt is not None:
         store.write_additional_prompt(additional_prompt)
         updated.append("additional_prompt")
@@ -209,14 +223,14 @@ def _handle_configure(args: argparse.Namespace) -> int:
     payload = _build_summary(store)
     payload["status"] = "configured"
     payload["updated"] = updated
-    _emit_json(payload)
+    emit_json(payload)
     return 0
 
 
 def _handle_show(args: argparse.Namespace) -> int:
     store = _load_store(args)
     store.prepare()
-    _emit_json(_build_summary(store))
+    emit_json(_build_summary(store))
     return 0
 
 
@@ -253,8 +267,6 @@ def _handle_run(args: argparse.Namespace) -> int:
     payload.update(
         {
             "agent": args.agent,
-            "instance_id": _optional_string(getattr(agent, "instance_id", None)),
-            "instance_name": _optional_string(getattr(agent, "instance_name", None)),
             "ledger_run_id": agent.last_run_id,
             "result": {
                 "cycles_completed": result.cycles_completed,
@@ -264,7 +276,7 @@ def _handle_run(args: argparse.Namespace) -> int:
             },
         }
     )
-    _emit_json(payload)
+    emit_json(payload)
     return 0
 
 
@@ -290,7 +302,7 @@ def _handle_init_browser(args: argparse.Namespace) -> int:
     print("Open Google Maps, sign in if needed, then press Enter to close the browser.")
     input()
     session.stop()
-    _emit_json(
+    emit_json(
         {
             "agent": args.agent,
             "browser_data_dir": str(store.browser_data_dir.resolve()),
@@ -301,59 +313,17 @@ def _handle_init_browser(args: argparse.Namespace) -> int:
 
 
 def _load_store(args: argparse.Namespace) -> ProspectingMemoryStore:
-    return ProspectingMemoryStore(memory_path=_resolve_memory_path(args.agent, args.memory_root))
-
-
-def _resolve_memory_path(agent_name: str, memory_root: str) -> Path:
-    return Path(memory_root).expanduser() / slugify_agent_name(agent_name)
-
-
-def _resolve_text_argument(text_value: str | None, file_value: str | None) -> str | None:
-    if text_value is not None:
-        return text_value
-    if file_value is not None:
-        return Path(file_value).read_text(encoding="utf-8")
-    return None
+    return ProspectingMemoryStore(
+        memory_path=resolve_memory_path(args.agent, args.memory_root, slugifier=slugify_agent_name)
+    )
 
 
 def _parse_runtime_assignments(assignments: Sequence[str]) -> dict[str, Any]:
-    return normalize_prospecting_runtime_parameters(_parse_generic_assignments(assignments))
+    return normalize_prospecting_runtime_parameters(parse_generic_assignments(assignments))
 
 
 def _parse_custom_assignments(assignments: Sequence[str]) -> dict[str, Any]:
-    return normalize_prospecting_custom_parameters(_parse_generic_assignments(assignments))
-
-
-def _parse_generic_assignments(assignments: Sequence[str]) -> dict[str, Any]:
-    parsed: dict[str, Any] = {}
-    for assignment in assignments:
-        key, raw_value = _split_assignment(assignment)
-        parsed[key] = _parse_scalar(raw_value)
-    return parsed
-
-
-def _split_assignment(assignment: str) -> tuple[str, str]:
-    key, separator, value = assignment.partition("=")
-    if not separator:
-        raise ValueError(f"Expected KEY=VALUE assignment, received '{assignment}'.")
-    normalized_key = key.strip()
-    if not normalized_key:
-        raise ValueError(f"Expected a non-empty key in assignment '{assignment}'.")
-    return normalized_key, value
-
-
-def _parse_scalar(value: str) -> Any:
-    trimmed = value.strip()
-    if not trimmed:
-        return ""
-    try:
-        return json.loads(trimmed)
-    except json.JSONDecodeError:
-        return value
-
-
-def _optional_string(value: Any) -> str | None:
-    return value if isinstance(value, str) and value else None
+    return normalize_prospecting_custom_parameters(parse_generic_assignments(assignments))
 
 
 def _build_summary(store: ProspectingMemoryStore) -> dict[str, Any]:
@@ -373,8 +343,10 @@ def _build_summary(store: ProspectingMemoryStore) -> dict[str, Any]:
 
 
 def _build_runtime_config(sink_specs: Sequence[str]) -> AgentRuntimeConfig:
-    del sink_specs
-    return AgentRuntimeConfig()
+    connections = ConnectionsConfigStore().load().enabled_connections()
+    return AgentRuntimeConfig(
+        output_sinks=build_output_sinks(connections=connections, sink_specs=sink_specs),
+    )
 
 
 def _load_factory(spec: str):
@@ -388,10 +360,6 @@ def _load_factory(spec: str):
     if not callable(target):
         raise TypeError(f"Imported object '{spec}' is not callable.")
     return target
-
-
-def _emit_json(payload: dict[str, Any]) -> None:
-    print(json.dumps(payload, indent=2, sort_keys=True))
 
 
 def _print_help(parser: argparse.ArgumentParser) -> int:

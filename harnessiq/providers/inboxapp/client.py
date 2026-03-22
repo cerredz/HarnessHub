@@ -1,4 +1,4 @@
-"""InboxApp credentials and HTTP client."""
+﻿"""InboxApp credentials and HTTP client."""
 
 from __future__ import annotations
 
@@ -6,39 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from harnessiq.providers.http import RequestExecutor, request_json
-from harnessiq.providers.inboxapp.api import DEFAULT_BASE_URL
-
-
-@dataclass(frozen=True, slots=True)
-class InboxAppCredentials:
-    """Runtime credentials for the InboxApp API."""
-
-    api_key: str
-    base_url: str = DEFAULT_BASE_URL
-    timeout_seconds: float = 60.0
-
-    def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("InboxApp api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("InboxApp base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("InboxApp timeout_seconds must be greater than zero.")
-
-    def masked_api_key(self) -> str:
-        """Return a redacted version of the API key."""
-        key = self.api_key
-        if len(key) <= 4:
-            return "*" * len(key)
-        return f"{key[:3]}{'*' * max(1, len(key) - 7)}{key[-4:]}"
-
-    def as_redacted_dict(self) -> dict[str, object]:
-        """Return a safe-to-log credential summary."""
-        return {
-            "api_key_masked": self.masked_api_key(),
-            "base_url": self.base_url,
-            "timeout_seconds": self.timeout_seconds,
-        }
+from harnessiq.shared.credentials import InboxAppCredentials
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,3 +60,4 @@ class InboxAppClient:
 
 
 __all__ = ["InboxAppClient", "InboxAppCredentials"]
+

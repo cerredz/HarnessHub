@@ -36,7 +36,7 @@ Assumptions:
 
 Acceptance Criteria:
 - [ ] Every `BaseAgent` subclass inherits a helper that returns rich tool inspection metadata for its configured tools.
-- [ ] The inspection payload includes each tool's key, name, description, input schema, required parameters, and handler identity.
+- [ ] The inspection payload includes each tool's key, name, description, input_schema, required parameters, and handler identity.
 - [ ] Existing `available_tools()` behavior remains unchanged.
 - [ ] Tool execution and validation behavior remain unchanged.
 - [ ] Tests cover the shared inspection payload and at least one concrete inherited agent.

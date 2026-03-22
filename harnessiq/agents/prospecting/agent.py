@@ -20,12 +20,14 @@ from harnessiq.shared.prospecting import (
     DEFAULT_AGENT_IDENTITY,
     DEFAULT_COMPANY_DESCRIPTION,
     DEFAULT_EVAL_SYSTEM_PROMPT,
+    DEFAULT_GOOGLE_MAPS_SEARCH_BASE_URL,
     DEFAULT_MAX_LISTINGS_PER_SEARCH,
     DEFAULT_MAX_SEARCHES_PER_RUN,
     DEFAULT_QUALIFICATION_THRESHOLD,
     DEFAULT_SINK_RECORD_TYPE,
     DEFAULT_SUMMARIZE_AT_X,
     DEFAULT_WEBSITE_INSPECT_ENABLED,
+    NEXT_QUERY_SYSTEM_PROMPT,
     ProspectingAgentConfig,
     ProspectingMemoryStore,
     ProspectingState,
@@ -33,41 +35,23 @@ from harnessiq.shared.prospecting import (
     RUN_STATUS_COMPLETE,
     RUN_STATUS_ERROR,
     RUN_STATUS_IN_PROGRESS,
+    SEARCH_SUMMARY_SYSTEM_PROMPT,
     SearchRecord,
     normalize_prospecting_custom_parameters,
     normalize_prospecting_runtime_parameters,
     utcnow,
 )
-from harnessiq.shared.tools import RegisteredTool, SEARCH_OR_SUMMARIZE
+from harnessiq.shared.tools import RegisteredTool, SEARCH_OR_SUMMARIZE, ToolDefinition
 from harnessiq.tools import (
     build_browser_tool_definitions,
     create_evaluate_company_tool,
     create_search_or_summarize_tool,
-)
-from harnessiq.tools.prospecting import (
-    create_complete_search_tool,
-    create_record_listing_result_tool,
-    create_save_qualified_lead_tool,
-    create_start_search_tool,
 )
 from harnessiq.tools.registry import ToolRegistry
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
 _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
-_GOOGLE_MAPS_SEARCH_BASE_URL = "https://www.google.com/maps/search/"
-
-_SEARCH_SUMMARY_SYSTEM_PROMPT = """You summarize completed Google Maps searches for a prospecting run.
-Return ONLY JSON with the schema {"summary": "<compact summary>", "insights": ["..."]}.
-Keep the summary compact, mention industries and locations already searched, and highlight patterns that should steer future search expansion."""
-
-_NEXT_QUERY_SYSTEM_PROMPT = """You generate the next Google Maps search pair for a prospecting run.
-Rules:
-- Stay anchored to the company description.
-- Never repeat an already-searched (query, location) pair.
-- Diversify geography before repeating the exact same city.
-- Return ONLY JSON with the schema {"query": "...", "location": "..."}.
-- If no sensible next search remains, return {"query": "", "location": ""}."""
 
 JsonSubcallRunner = Callable[[str, Sequence[AgentParameterSection], str], dict[str, Any]]
 
@@ -106,6 +90,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
         self._payload_website_inspect_enabled = website_inspect_enabled
         self._payload_sink_record_type = sink_record_type
         self._payload_eval_system_prompt = eval_system_prompt
+
         self._config = ProspectingAgentConfig(
             memory_path=Path("."),
             max_tokens=max_tokens,
@@ -257,7 +242,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
             "{{max_searches_per_run}}": str(self._config.max_searches_per_run),
             "{{max_listings_per_search}}": str(self._config.max_listings_per_search),
             "{{website_inspect_enabled}}": str(self._config.website_inspect_enabled).lower(),
-            "{{google_maps_search_base_url}}": _GOOGLE_MAPS_SEARCH_BASE_URL,
+            "{{google_maps_search_base_url}}": DEFAULT_GOOGLE_MAPS_SEARCH_BASE_URL,
             "{{tool_lines}}": tool_lines,
         }
         for placeholder, value in replacements.items():
@@ -375,10 +360,64 @@ class GoogleMapsProspectingAgent(BaseAgent):
 
     def _build_internal_tools(self) -> tuple[RegisteredTool, ...]:
         return (
-            create_start_search_tool(handler=self._handle_start_search),
-            create_record_listing_result_tool(handler=self._handle_record_listing_result),
-            create_save_qualified_lead_tool(handler=self._handle_save_qualified_lead),
-            create_complete_search_tool(handler=self._handle_complete_search),
+            _tool(
+                key="prospecting.start_search",
+                name="start_search",
+                description="Persist the start of a Google Maps search so the run can resume after a reset.",
+                properties={
+                    "index": {"type": "integer", "description": "Search index."},
+                    "query": {"type": "string", "description": "Search query."},
+                    "location": {"type": "string", "description": "Search location."},
+                },
+                required=("index", "query", "location"),
+                handler=self._handle_start_search,
+            ),
+            _tool(
+                key="prospecting.record_listing_result",
+                name="record_listing_result",
+                description="Persist progress for one evaluated listing within the active search.",
+                properties={
+                    "search_index": {"type": "integer", "description": "Active search index."},
+                    "listing_position": {"type": "integer", "description": "Zero-based listing position."},
+                    "verdict": {
+                        "type": "string",
+                        "enum": ["QUALIFIED", "DISQUALIFIED", "SKIP"],
+                        "description": "Evaluation verdict.",
+                    },
+                },
+                required=("search_index", "listing_position", "verdict"),
+                handler=self._handle_record_listing_result,
+            ),
+            _tool(
+                key="prospecting.save_qualified_lead",
+                name="save_qualified_lead",
+                description="Persist one qualified lead record into durable memory for ledger export.",
+                properties={
+                    "record": {
+                        "type": "object",
+                        "description": "Qualified lead record payload derived from evaluation output.",
+                        "additionalProperties": True,
+                    }
+                },
+                required=("record",),
+                handler=self._handle_save_qualified_lead,
+            ),
+            _tool(
+                key="prospecting.complete_search",
+                name="complete_search",
+                description="Persist completion metadata for a Google Maps search and clear the in-progress pointer.",
+                properties={
+                    "search_index": {"type": "integer", "description": "Completed search index."},
+                    "query": {"type": "string", "description": "Search query."},
+                    "location": {"type": "string", "description": "Search location."},
+                    "listings_found": {
+                        "type": "integer",
+                        "description": "Number of listings seen for the search.",
+                    },
+                },
+                required=("search_index", "query", "location", "listings_found"),
+                handler=self._handle_complete_search,
+            ),
         )
 
     def _execute_tool(self, tool_call):  # type: ignore[override]
@@ -435,7 +474,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
         action = "continued"
         if unsummarized and len(unsummarized) >= int(arguments["summarize_at_x"]):
             summary_payload = self._run_json_subcall(
-                system_prompt=_SEARCH_SUMMARY_SYSTEM_PROMPT,
+                system_prompt=SEARCH_SUMMARY_SYSTEM_PROMPT,
                 sections=(
                     AgentParameterSection(
                         title="Company Description",
@@ -474,7 +513,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
             action = "summarized_and_continued"
 
         next_query_payload = self._run_json_subcall(
-            system_prompt=_NEXT_QUERY_SYSTEM_PROMPT,
+            system_prompt=NEXT_QUERY_SYSTEM_PROMPT,
             sections=(
                 AgentParameterSection(
                     title="Company Description",
@@ -664,6 +703,31 @@ def _unavailable_browser_handler(tool_name: str):
         raise RuntimeError(f"Browser tool '{tool_name}' requires a runtime handler.")
 
     return handler
+
+
+def _tool(
+    *,
+    key: str,
+    name: str,
+    description: str,
+    properties: dict[str, Any],
+    required: Sequence[str],
+    handler: Callable[[dict[str, Any]], dict[str, Any]],
+) -> RegisteredTool:
+    return RegisteredTool(
+        definition=ToolDefinition(
+            key=key,
+            name=name,
+            description=description,
+            input_schema={
+                "type": "object",
+                "properties": properties,
+                "required": list(required),
+                "additionalProperties": False,
+            },
+        ),
+        handler=handler,
+    )
 
 
 def _parse_json_object(raw_text: str) -> dict[str, Any]:

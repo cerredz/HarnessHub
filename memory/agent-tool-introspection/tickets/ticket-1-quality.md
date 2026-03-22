@@ -32,7 +32,7 @@ $env:PYTHONPATH='C:\Users\Michael Cerreto\HarnessHub\Lib\site-packages'; .venv\S
 
 Result:
 
-- `83 passed in 0.54s`
+- `83 passed in 1.26s`
 
 Coverage intent:
 

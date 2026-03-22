@@ -1,4 +1,4 @@
-"""Lemlist API endpoint constants and authentication helpers."""
+﻿"""Lemlist API endpoint constants and authentication helpers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Mapping
 
 from harnessiq.providers.http import join_url
 
-DEFAULT_BASE_URL = "https://api.lemlist.com/api"
+from harnessiq.shared.providers import LEMLIST_DEFAULT_BASE_URL as DEFAULT_BASE_URL
 
 
 def build_headers(
@@ -30,3 +30,4 @@ def build_headers(
 def url(base_url: str, path: str) -> str:
     """Return a fully qualified Lemlist API URL."""
     return join_url(base_url, path)
+

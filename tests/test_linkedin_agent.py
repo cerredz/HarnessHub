@@ -5,6 +5,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from harnessiq.agents import (
     AgentModelRequest,
@@ -12,8 +13,19 @@ from harnessiq.agents import (
     LinkedInJobApplierAgent,
     build_linkedin_browser_tool_definitions,
 )
+from harnessiq.shared.agents import AgentRuntimeConfig
 from harnessiq.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW, LinkedInAgentConfig
 from harnessiq.shared.tools import ToolCall
+
+_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
+
+
+def setUpModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.start()
+
+
+def tearDownModule() -> None:
+    _LANGSMITH_CLIENT_PATCHER.stop()
 
 
 class _FakeModel:
@@ -186,10 +198,12 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
                     ),
                 ]
             )
+            # max_tokens is sized to accommodate the master_prompt.md base (~5519 tokens)
+            # while still triggering a reset once the first transcript turn is appended.
             agent = LinkedInJobApplierAgent(
                 model=model,
                 memory_path=temp_dir,
-                max_tokens=3000,
+                max_tokens=5900,
                 reset_threshold=0.95,
             )
 
@@ -208,6 +222,20 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
             self.assertTrue(agent.instance_id.startswith("linkedin_job_applier::"))
             self.assertEqual(agent.instance_record.memory_path, Path(temp_dir))
             self.assertEqual(agent.memory_path, Path(temp_dir))
+
+    def test_runtime_config_preserves_langsmith_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = LinkedInJobApplierAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                memory_path=temp_dir,
+                runtime_config=AgentRuntimeConfig(
+                    langsmith_api_key="ls_test_sdk",
+                    langsmith_project="linkedin-project",
+                ),
+            )
+
+            self.assertEqual(agent.runtime_config.langsmith_api_key, "ls_test_sdk")
+            self.assertEqual(agent.runtime_config.langsmith_project, "linkedin-project")
 
 
 if __name__ == "__main__":

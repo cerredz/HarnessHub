@@ -66,8 +66,6 @@ REASON_BRAINSTORM_COUNT_PRESETS: dict[str, int] = {
     "medium": 15,
     "large": 30,
 }
-REASON_BRAINSTORM_COUNT_MAX = 25
-REASON_BRAINSTORM_COUNT_DEFAULT = 10
 REASON_COT_STEPS_MIN = 3
 REASON_COT_STEPS_MAX = 10
 REASON_COT_STEPS_DEFAULT = 5
@@ -137,9 +135,16 @@ EXA_OUTREACH_CHECK_CONTACTED = "exa_outreach.check_contacted"
 EXA_OUTREACH_LOG_LEAD = "exa_outreach.log_lead"
 EXA_OUTREACH_LOG_EMAIL_SENT = "exa_outreach.log_email_sent"
 
+# Leads agent internal tool key constants
+LEADS_CHECK_SEEN = "leads.check_seen_lead"
+LEADS_COMPACT_SEARCH_HISTORY = "leads.compact_search_history"
+LEADS_LOG_SEARCH = "leads.log_search"
+LEADS_SAVE_LEADS = "leads.save_leads"
+
 # Provider tool key constants
 ATTIO_REQUEST = "attio.request"
 ARCADS_REQUEST = "arcads.request"
+ARXIV_REQUEST = "arxiv.request"
 CREATIFY_REQUEST = "creatify.request"
 EXA_REQUEST = "exa.request"
 INSTANTLY_REQUEST = "instantly.request"
@@ -154,22 +159,46 @@ ZOOMINFO_REQUEST = "zoominfo.request"
 PEOPLEDATALABS_REQUEST = "peopledatalabs.request"
 PROXYCURL_REQUEST = "proxycurl.request"
 CORESIGNAL_REQUEST = "coresignal.request"
+APOLLO_REQUEST = "apollo.request"
+ZEROBOUNCE_REQUEST = "zerobounce.request"
+EXPANDI_REQUEST = "expandi.request"
+SMARTLEAD_REQUEST = "smartlead.request"
+LUSHA_REQUEST = "lusha.request"
 GOOGLE_DRIVE_REQUEST = "google_drive.request"
 PAPERCLIP_REQUEST = "paperclip.request"
 SERPER_REQUEST = "serper.request"
+INSTAGRAM_SEARCH_KEYWORD = "instagram.search_keyword"
 
 
 @dataclass(frozen=True, slots=True)
 class ToolDefinition:
-    """Provider-agnostic metadata for a callable tool."""
+    """Provider-agnostic metadata for a callable tool.
+
+    Attributes:
+        key: Unique tool identifier in ``namespace.name`` format.
+        name: Short human-readable name (snake_case).
+        description: What the tool does and when to use it.
+        input_schema: JSON Schema object describing accepted arguments.
+        tool_type: The execution type for this tool.  Currently only
+            ``"function"`` is supported.  Additional types
+            (``"computer_use"``, ``"code_interpreter"``, ``"multi_agent"``,
+            etc.) will be introduced in future SDK releases.
+    """
 
     key: str
     name: str
     description: str
     input_schema: JsonObject
+    tool_type: str = "function"
 
     def as_dict(self) -> JsonObject:
-        """Return the canonical metadata without executable runtime state."""
+        """Return the canonical metadata without executable runtime state.
+
+        ``tool_type`` is intentionally omitted — it is SDK metadata used to
+        identify the tool's execution model, not part of the model API payload.
+        Provider adapters serialise ``ToolDefinition`` to their own wire format
+        independently of this method.
+        """
         return {
             "key": self.key,
             "name": self.name,
@@ -284,7 +313,9 @@ def _describe_handler(handler: ToolHandler) -> JsonObject:
 __all__ = [
     "ADD_NUMBERS",
     "ATTIO_REQUEST",
+    "APOLLO_REQUEST",
     "ARCADS_REQUEST",
+    "ARXIV_REQUEST",
     "BROWSER_CLICK",
     "BROWSER_EXTRACT_CONTENT",
     "BROWSER_FIND_ELEMENT",
@@ -307,6 +338,7 @@ __all__ = [
     "EVALUATE_COMPANY",
     "EXA_OUTREACH_CHECK_CONTACTED",
     "EXA_OUTREACH_GET_TEMPLATE",
+    "EXPANDI_REQUEST",
     "EXA_OUTREACH_LIST_TEMPLATES",
     "EXA_OUTREACH_LOG_EMAIL_SENT",
     "EXA_OUTREACH_LOG_LEAD",
@@ -322,6 +354,7 @@ __all__ = [
     "HEAVY_COMPACTION",
     "INSTANTLY_REQUEST",
     "INBOXAPP_REQUEST",
+    "INSTAGRAM_SEARCH_KEYWORD",
     "JsonObject",
     "FILES_CREATE_FILE",
     "FILES_EDIT_FILE",
@@ -331,9 +364,15 @@ __all__ = [
     "KNOWT_CREATE_SCRIPT",
     "KNOWT_CREATE_VIDEO",
     "LEADIQ_REQUEST",
+    "LEADS_CHECK_SEEN",
+    "LEADS_COMPACT_SEARCH_HISTORY",
+    "LEADS_LOG_SEARCH",
+    "LEADS_SAVE_LEADS",
+    "LUSHA_REQUEST",
     "LEMLIST_REQUEST",
     "LOG_COMPACTION",
     "OUTREACH_REQUEST",
+    "PAPERCLIP_REQUEST",
     "PEOPLEDATALABS_REQUEST",
     "PHANTOMBUSTER_REQUEST",
     "PROMPT_CREATE_SYSTEM_PROMPT",
@@ -410,6 +449,7 @@ __all__ = [
     "SALESFORGE_REQUEST",
     "SEARCH_OR_SUMMARIZE",
     "SERPER_REQUEST",
+    "SMARTLEAD_REQUEST",
     "SNOVIO_REQUEST",
     "TEXT_NORMALIZE_WHITESPACE",
     "TEXT_REGEX_EXTRACT",
@@ -419,5 +459,6 @@ __all__ = [
     "ToolDefinition",
     "ToolHandler",
     "ToolResult",
+    "ZEROBOUNCE_REQUEST",
     "ZOOMINFO_REQUEST",
 ]

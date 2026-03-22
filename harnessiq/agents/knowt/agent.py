@@ -11,6 +11,7 @@ from harnessiq.shared.agents import (
     AgentModel,
     AgentParameterSection,
     AgentRuntimeConfig,
+    merge_agent_runtime_config,
 )
 from harnessiq.shared.knowt import (
     KnowtAgentConfig,
@@ -51,6 +52,7 @@ class KnowtAgent(BaseAgent):
         reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD,
         config: KnowtAgentConfig | None = None,
         tools: "Sequence[RegisteredTool] | None" = None,
+        runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         # Store all params needed by build_instance_payload() before calling super().__init__().
         initial_config = config or KnowtAgentConfig(
@@ -71,15 +73,15 @@ class KnowtAgent(BaseAgent):
             ),
         )
         tool_registry = ToolRegistry(resolved_tools)
-        runtime_config = AgentRuntimeConfig(
-            max_tokens=self._config.max_tokens,
-            reset_threshold=self._config.reset_threshold,
-        )
         super().__init__(
             name="knowt_content_creator",
             model=model,
             tool_executor=tool_registry,
-            runtime_config=runtime_config,
+            runtime_config=merge_agent_runtime_config(
+                runtime_config,
+                max_tokens=self._config.max_tokens,
+                reset_threshold=self._config.reset_threshold,
+            ),
             memory_path=self._config.memory_path,
             repo_root=_find_repo_root(Path(self._config.memory_path)),
         )
@@ -137,6 +139,16 @@ class KnowtAgent(BaseAgent):
                 ),
             ),
         )
+
+    def build_ledger_outputs(self) -> dict[str, object]:
+        return {
+            "script": self._memory_store.read_script(),
+            "avatar_description": self._memory_store.read_avatar_description(),
+            "creation_log": [entry.as_dict() for entry in self._memory_store.read_creation_log()],
+        }
+
+    def build_ledger_tags(self) -> list[str]:
+        return ["knowt", "content", "video"]
 
 
 __all__ = ["KnowtAgent"]

@@ -3,7 +3,7 @@ Title: Add leads agent CLI, documentation, and repository exports
 Issue URL: https://github.com/cerredz/HarnessHub/issues/153
 
 Intent:
-Make the new leads agent usable from the repo’s public surfaces by adding CLI entrypoints, docs/examples, export wiring, and architecture index updates.
+Make the new leads agent usable from the repo's public surfaces by adding CLI entrypoints, docs/examples, export wiring, and architecture index updates.
 
 Scope:
 This ticket adds CLI commands, docs, README coverage, package/toolset exports, and artifact index updates needed to expose the completed leads agent end to end.
@@ -25,7 +25,7 @@ Update docs with one clear SDK example and one CLI example, and make sure the ar
 
 Assumptions:
 - The final agent/config shape is stable by the time this ticket begins.
-- The repo’s root CLI should expose a top-level `leads` command family rather than burying it under another namespace.
+- The repo's root CLI should expose a top-level `leads` command family rather than burying it under another namespace.
 - README and docs should describe the deterministic pruning behavior at a high level but not duplicate implementation detail from the code.
 
 Acceptance Criteria:

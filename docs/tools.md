@@ -26,3 +26,17 @@ registry = ToolRegistry(
     ]
 )
 ```
+
+Provider-backed tools follow the same pattern. For example, Apollo is exposed as one MCP-style request tool whose `operation` argument selects the API endpoint:
+
+```python
+from harnessiq.providers.apollo.client import ApolloCredentials
+from harnessiq.tools.apollo import create_apollo_tools
+
+apollo_tools = create_apollo_tools(
+    credentials=ApolloCredentials(api_key="apollo_..."),
+    allowed_operations=("search_people", "search_organizations", "enrich_person"),
+)
+```
+
+This returns a `RegisteredTool` keyed as `apollo.request`, ready to drop into a `ToolRegistry` or a concrete agent harness such as `LeadsAgent`.

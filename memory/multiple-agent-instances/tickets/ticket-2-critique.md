@@ -1,0 +1,4 @@
+Self-critique findings:
+- The concrete harness integration needed to preserve existing explicit-memory workflows while still allowing payload-driven ids. I avoided making the registry override caller-specified memory paths because that would have broken current SDK and CLI behavior.
+- For LinkedIn specifically, the user intent depends on durable configuration files such as `job_preferences.md`, so I expanded the payload snapshot to include those stored inputs when they already exist. This keeps “different job targets” from collapsing into the same instance record.
+- The ExaOutreach pytest module could not be executed in this environment because `pytest` is absent from the virtualenv. I compensated with a direct constructor/run smoke script and noted the limitation explicitly in the quality results.

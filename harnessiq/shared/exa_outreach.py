@@ -1,4 +1,9 @@
-"""Shared data models, memory store, and storage backend for ExaOutreachAgent."""
+"""Shared data models and memory helpers for ``ExaOutreachAgent``.
+
+This module re-exports the generic run-storage backend types used by the
+outreach harness so older import paths remain stable while run persistence
+continues to live in ``harnessiq.utils.run_storage``.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.utils.run_storage import (
     RUNS_DIRNAME,
     FileSystemStorageBackend,
@@ -24,13 +30,41 @@ AGENT_IDENTITY_FILENAME = "agent_identity.txt"
 ADDITIONAL_PROMPT_FILENAME = "additional_prompt.txt"
 
 DEFAULT_AGENT_IDENTITY = (
-    "A disciplined outreach specialist who finds relevant prospects via Exa neural "
-    "search, selects the most appropriate email template for each lead, personalizes "
-    "the message with specific details from their profile, and sends concise, "
-    "value-first cold emails."
+    "A disciplined Exa prospecting specialist who finds relevant prospects via Exa "
+    "neural search, logs new leads deterministically, and, when email tools are "
+    "available, can progress qualified leads into personalized outreach."
+)
+LEGACY_DEFAULT_AGENT_IDENTITIES = frozenset(
+    {
+        "A disciplined outreach specialist who finds relevant prospects via Exa neural "
+        "search, selects the most appropriate email template for each lead, personalizes "
+        "the message with specific details from their profile, and sends concise, "
+        "value-first cold emails."
+    }
 )
 
 DEFAULT_SEARCH_QUERY = "(search query not configured)"
+
+
+@dataclass(frozen=True, slots=True)
+class ExaOutreachAgentConfig:
+    """Runtime configuration for the ExaOutreach harness."""
+
+    email_data: tuple["EmailTemplate", ...]
+    memory_path: Path
+    storage_backend: StorageBackend
+    search_query: str = DEFAULT_SEARCH_QUERY
+    search_only: bool = False
+    max_tokens: int = DEFAULT_AGENT_MAX_TOKENS
+    reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD
+    allowed_resend_operations: tuple[str, ...] | None = None
+    allowed_exa_operations: tuple[str, ...] | None = None
+
+    def __post_init__(self) -> None:
+        if not self.search_only and not self.email_data:
+            raise ValueError(
+                "ExaOutreachAgentConfig.email_data must not be empty when search_only is False."
+            )
 
 # ---------------------------------------------------------------------------
 # EmailTemplate
@@ -202,6 +236,17 @@ class OutreachRunLog:
             "emails_sent": [r.as_dict() for r in self.emails_sent],
         }
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "OutreachRunLog":
+        return cls(
+            run_id=str(data["run_id"]),
+            started_at=str(data["started_at"]),
+            query=str(data.get("query", "")),
+            leads_found=[LeadRecord.from_dict(item) for item in data.get("leads_found", [])],
+            emails_sent=[EmailSentRecord.from_dict(item) for item in data.get("emails_sent", [])],
+            completed_at=str(data["completed_at"]) if data.get("completed_at") else None,
+        )
+
 
 # ---------------------------------------------------------------------------
 # ExaOutreachMemoryStore
@@ -263,26 +308,7 @@ class ExaOutreachMemoryStore:
         path = self.runs_dir / f"{run_id}.json"
         if not path.exists():
             raise FileNotFoundError(f"Run file for '{run_id}' not found at '{path}'.")
-        data = json.loads(path.read_text(encoding="utf-8"))
-        record = RunRecord.from_dict(data)
-        leads_found = [
-            LeadRecord.from_dict(e["data"])
-            for e in record.events
-            if e.get("type") == "lead"
-        ]
-        emails_sent = [
-            EmailSentRecord.from_dict(e["data"])
-            for e in record.events
-            if e.get("type") == "email_sent"
-        ]
-        return OutreachRunLog(
-            run_id=record.run_id,
-            started_at=record.started_at,
-            query=str(record.metadata.get("query", "")),
-            leads_found=leads_found,
-            emails_sent=emails_sent,
-            completed_at=record.completed_at,
-        )
+        return _load_outreach_run(path)
 
     def read_query_config(self) -> dict[str, Any]:
         return _read_json_file(self.query_config_path, expected_type=dict)
@@ -339,6 +365,32 @@ def _read_json_file(path: Path, *, expected_type: type) -> Any:
     return payload
 
 
+def _load_outreach_run(path: Path) -> OutreachRunLog:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if "leads_found" in data or "emails_sent" in data or "query" in data:
+        return OutreachRunLog.from_dict(data)
+
+    record = RunRecord.from_dict(data)
+    leads_found = [
+        LeadRecord.from_dict(event["data"])
+        for event in record.events
+        if event.get("type") == "lead"
+    ]
+    emails_sent = [
+        EmailSentRecord.from_dict(event["data"])
+        for event in record.events
+        if event.get("type") == "email_sent"
+    ]
+    return OutreachRunLog(
+        run_id=record.run_id,
+        started_at=record.started_at,
+        query=str(record.metadata.get("query", "")),
+        leads_found=leads_found,
+        emails_sent=emails_sent,
+        completed_at=record.completed_at,
+    )
+
+
 def _run_file_sort_key(path: Path) -> int:
     """Extract the run number from ``run_N.json`` for deterministic sorting."""
     match = re.search(r"run_(\d+)\.json$", path.name)
@@ -352,8 +404,10 @@ __all__ = [
     "DEFAULT_SEARCH_QUERY",
     "EmailSentRecord",
     "EmailTemplate",
+    "ExaOutreachAgentConfig",
     "ExaOutreachMemoryStore",
     "FileSystemStorageBackend",
+    "LEGACY_DEFAULT_AGENT_IDENTITIES",
     "LeadRecord",
     "OutreachRunLog",
     "QUERY_CONFIG_FILENAME",

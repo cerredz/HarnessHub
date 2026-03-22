@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from harnessiq.providers.http import join_url
-
-DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com"
-DEFAULT_API_VERSION = "v1beta"
+from harnessiq.shared.providers import (
+    GEMINI_DEFAULT_API_VERSION as DEFAULT_API_VERSION,
+    GEMINI_DEFAULT_BASE_URL as DEFAULT_BASE_URL,
+)
 
 
 def build_headers() -> dict[str, str]:

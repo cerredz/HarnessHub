@@ -28,7 +28,7 @@ Post-critique verification:
 $env:PYTHONPATH='C:\Users\Michael Cerreto\HarnessHub\Lib\site-packages'; .venv\Scripts\python.exe -m pytest tests\test_tools.py tests\test_agents_base.py tests\test_knowt_agent.py tests\test_linkedin_agent.py tests\test_exa_outreach_agent.py tests\test_email_agent.py
 ```
 
-- Result: `83 passed in 0.54s`
+- Result: `83 passed in 1.26s`
 
 Remaining risk:
 

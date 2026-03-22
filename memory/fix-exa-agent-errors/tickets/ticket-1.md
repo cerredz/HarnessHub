@@ -1,5 +1,6 @@
 Title: Restore ExaOutreach run storage and CLI compatibility on main
 Issue URL: https://github.com/cerredz/HarnessHub/issues/199
+PR URL: https://github.com/cerredz/HarnessHub/pull/201
 
 Intent:
 Fix the broken ExaOutreach execution path on refreshed `main` so the outreach harness can persist lead/email activity deterministically again, search-only mode records the expected run metadata, and the CLI `outreach run` command emits JSON robustly in both real runs and mocked test scenarios.

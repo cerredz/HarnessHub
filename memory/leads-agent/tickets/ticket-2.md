@@ -1,44 +1,30 @@
-Title: Add deterministic agent transcript pruning controls
-
-Issue URL: https://github.com/cerredz/HarnessHub/issues/150
-
-Intent:
-Extend the shared agent runtime so long-running agents can deterministically compact transcript state on a fixed interval defined by search count or token budget, which is required for the leads agent’s rolling per-ICP search loop.
-
+Title: Add deterministic agent runtime pruning controls
+Intent: Extend the shared agent runtime so long-running agents can prune transcript state on a deterministic interval based on durable progress or an explicit token ceiling, which is required for the leads-agent search-loop design.
 Scope:
-This ticket adds shared runtime configuration and `BaseAgent` behavior for deterministic pruning/compaction scheduling.
-This ticket does not add the leads-specific memory model, Apollo integration, or user-facing CLI/docs.
-
+- Add shared runtime configuration fields and defaults for deterministic pruning.
+- Add base-agent support for interval-driven pruning and explicit prune token limits.
+- Keep the existing reset-on-budget behavior intact as a separate fallback.
+- Add runtime tests covering config validation and both pruning triggers.
+- Do not implement leads-specific storage, ICP orchestration, or provider logic in this ticket.
 Relevant Files:
-- `harnessiq/shared/agents.py`: add shared runtime config fields and any new transcript-pruning configuration types/constants.
-- `harnessiq/agents/base/agent.py`: implement deterministic pruning hooks in the shared run loop.
-- `tests/test_agents_base.py`: add coverage for interval-based pruning and token-threshold pruning interactions.
-- `artifacts/file_index.md`: update the architecture index if the runtime contract meaningfully changes.
-
-Approach:
-Keep the current `BaseAgent` architecture intact and introduce an opt-in deterministic pruning contract rather than a leads-agent-specific fork. The runtime should support fixed-interval pruning triggers that are independent of the existing “reset when transcript budget is exceeded” fallback.
-Design the shared config so it can represent both token-driven and event-count-driven pruning without embedding leads-specific names. The concrete leads agent can then map “search count” to the generic runtime signal while other agents remain unaffected unless they opt in.
-
+- `harnessiq/shared/agents.py`: shared runtime config surface and validation.
+- `harnessiq/agents/base/agent.py`: pruning hooks, loop orchestration, and reset behavior.
+- `tests/test_agents_base.py`: targeted coverage for deterministic pruning behavior.
+Approach: Add optional `prune_progress_interval` and `prune_token_limit` fields to `AgentRuntimeConfig`, with positive-value validation. Update `BaseAgent` to track a pruning-progress baseline and expose an overridable `pruning_progress_value()` hook so domain agents can map pruning to durable work such as saved searches instead of raw transcript length. Evaluate deterministic pruning only when another model turn is needed, then fall back to the existing reset-threshold logic.
 Assumptions:
-- Deterministic pruning can be added without breaking the existing `LinkedInJobApplierAgent`, `ExaOutreachAgent`, and `KnowtAgent` tests.
-- The pruning mechanism may reuse existing context-compaction concepts, but the scheduler itself belongs in shared runtime code.
-- Search-count-triggered pruning will be driven by explicit agent/runtime bookkeeping rather than inferred heuristically from arbitrary tool calls.
-
+- Deterministic pruning should be opt-in so current agents retain existing behavior by default.
+- Progress-based pruning needs an overridable hook because different agents count “progress” differently.
+- A terminal turn should not trigger transcript pruning because no future context window needs to be preserved.
 Acceptance Criteria:
-- [ ] Shared runtime config supports deterministic pruning thresholds that can be reused by concrete agents.
-- [ ] `BaseAgent` can deterministically compact/reset transcript state based on the configured schedule.
-- [ ] Existing runtime behavior remains unchanged for agents that do not opt into the new controls.
-- [ ] Base-agent tests cover fixed-interval pruning and confirm parameter sections are reloaded correctly after pruning.
-
+- [ ] `AgentRuntimeConfig` exposes optional deterministic pruning controls and rejects invalid values.
+- [ ] `BaseAgent` can prune on a configurable progress interval without breaking the existing reset-threshold path.
+- [ ] `BaseAgent` can prune on an explicit prune token limit distinct from the global max-token reset limit.
+- [ ] Deterministic pruning does not fire after a terminal response.
+- [ ] Existing agent tests that rely on the shared runtime continue to pass.
 Verification Steps:
-- Static analysis: run the linter against `harnessiq/shared/agents.py` and `harnessiq/agents/base/agent.py`.
-- Type checking: run the type checker or validate full type annotations/import safety for the touched modules.
-- Unit tests: run `pytest tests/test_agents_base.py`.
-- Integration and contract tests: run agent-level tests that exercise current harnesses to confirm no regression in shared runtime semantics.
-- Smoke verification: run a fake-model scenario that triggers deterministic pruning and inspect the resulting requests passed to the model.
-
-Dependencies:
-- None.
-
-Drift Guard:
-This ticket must not implement any leads-domain models, storage backends, provider wiring, or CLI commands. It only establishes the shared runtime capability that the leads agent will depend on later.
+- Run `python -m py_compile harnessiq/shared/agents.py harnessiq/agents/base/agent.py tests/test_agents_base.py`.
+- Run `python -m pytest tests/test_agents_base.py`.
+- Run `python -m pytest tests/test_linkedin_agent.py`.
+- Run `python -m pytest tests/test_knowt_agent.py`.
+Dependencies: None.
+Drift Guard: This ticket must not add leads-agent orchestration, search summarization, storage backends, or CLI plumbing. It only establishes the reusable runtime pruning controls those later tickets will consume.
