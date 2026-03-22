@@ -17,7 +17,7 @@ from harnessiq.shared.tools import (
 )
 
 ContextSummarizer = Callable[[AgentContextWindow], str | AgentContextEntry]
-_ALLOWED_CONTEXT_KINDS = frozenset({"parameter", "message", "tool_call", "tool_result", "summary"})
+_ALLOWED_CONTEXT_KINDS = frozenset({"parameter", "message", "assistant", "tool_call", "tool_result", "summary", "context"})
 _CONTEXT_WINDOW_PROPERTY: dict[str, object] = {
     "type": "array",
     "description": "An ordered list of normalized agent context entries.",

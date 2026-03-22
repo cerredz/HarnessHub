@@ -5,15 +5,20 @@ from __future__ import annotations
 import json
 import logging
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 from typing import Any, Sequence
 
 from harnessiq.providers import build_langsmith_client, trace_agent_run, trace_tool_call
 from harnessiq.providers.output_sinks import extract_model_metadata
 from harnessiq.shared.agents import (
+    AgentContextDirective,
     AgentContextEntry,
+    AgentContextRuntimeState,
     AgentContextWindow,
+    AgentInjectedSection,
     AgentModel,
     AgentModelRequest,
     AgentModelResponse,
@@ -24,14 +29,89 @@ from harnessiq.shared.agents import (
     AgentRuntimeConfig,
     AgentToolExecutor,
     AgentTranscriptEntry,
+    DEFAULT_AGENT_CONTEXT_MEMORY_FIELD_RULES,
+    json_parameter_section,
+    render_json_parameter_content,
     estimate_text_tokens,
 )
-from harnessiq.shared.tools import HEAVY_COMPACTION, LOG_COMPACTION, REMOVE_TOOL_RESULTS, REMOVE_TOOLS
+from harnessiq.shared.tools import (
+    CONTEXT_COMPACTION_TOOL_KEYS,
+    CONTEXT_PARAMETER_TOOL_KEYS,
+    HEAVY_COMPACTION,
+    LOG_COMPACTION,
+    REMOVE_TOOL_RESULTS,
+    REMOVE_TOOLS,
+)
 from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
+from harnessiq.tools.context import create_context_tools
+from harnessiq.tools.registry import ToolRegistry
 from harnessiq.utils.agent_instances import AgentInstanceRecord, AgentInstanceStore
 from harnessiq.utils.ledger import JSONLLedgerSink, LedgerEntry, new_run_id
 
 logger = logging.getLogger(__name__)
+_CONTEXT_STATE_FILENAME = "context_runtime_state.json"
+_CONTEXT_MEMORY_SECTION_TITLE = "Context Memory"
+_DIRECTIVE_PRIORITY_ORDER = {"critical": 0, "standard": 1, "advisory": 2}
+
+
+class _BoundContextToolExecutor:
+    """Merge BaseAgent-bound context tools with an existing executor."""
+
+    def __init__(self, *, delegate: AgentToolExecutor, context_tools: Sequence[Any]) -> None:
+        self._delegate = delegate
+        self._context_registry = ToolRegistry(context_tools)
+
+    def definitions(self, tool_keys: Sequence[str] | None = None) -> list[ToolDefinition]:
+        if tool_keys is None:
+            delegate_definitions = self._delegate.definitions()
+            context_definitions = self._context_registry.definitions()
+            delegate_keys = {definition.key for definition in delegate_definitions}
+            return [
+                *delegate_definitions,
+                *(definition for definition in context_definitions if definition.key not in delegate_keys),
+            ]
+        definitions: list[ToolDefinition] = []
+        delegate_keys = set(getattr(self._delegate, "keys", lambda: ())())
+        context_keys = set(self._context_registry.keys())
+        for tool_key in tool_keys:
+            if tool_key in context_keys:
+                definitions.extend(self._context_registry.definitions([tool_key]))
+                continue
+            if tool_key in delegate_keys:
+                definitions.extend(self._delegate.definitions([tool_key]))
+                continue
+            definitions.extend(self._delegate.definitions([tool_key]))
+        return definitions
+
+    def inspect(self, tool_keys: Sequence[str] | None = None) -> list[dict[str, Any]]:
+        if tool_keys is None:
+            payload: list[dict[str, Any]] = []
+            inspector = getattr(self._delegate, "inspect", None)
+            if callable(inspector):
+                payload.extend(inspector())
+            else:
+                payload.extend(definition.inspect() for definition in self._delegate.definitions())
+            payload.extend(self._context_registry.inspect())
+            return payload
+
+        payload: list[dict[str, Any]] = []
+        inspector = getattr(self._delegate, "inspect", None)
+        context_keys = set(self._context_registry.keys())
+        delegate_keys = set(getattr(self._delegate, "keys", lambda: ())())
+        for tool_key in tool_keys:
+            if tool_key in context_keys:
+                payload.extend(self._context_registry.inspect([tool_key]))
+                continue
+            if callable(inspector) and tool_key in delegate_keys:
+                payload.extend(inspector([tool_key]))
+                continue
+            payload.extend(definition.inspect() for definition in self._delegate.definitions([tool_key]))
+        return payload
+
+    def execute(self, tool_key: str, arguments: dict[str, Any]) -> ToolResult:
+        if tool_key in self._context_registry:
+            return self._context_registry.execute(tool_key, arguments)
+        return self._delegate.execute(tool_key, arguments)
 
 
 class BaseAgent(ABC):
@@ -43,6 +123,7 @@ class BaseAgent(ABC):
             REMOVE_TOOLS,
             HEAVY_COMPACTION,
             LOG_COMPACTION,
+            *CONTEXT_COMPACTION_TOOL_KEYS,
         }
     )
 
@@ -59,7 +140,6 @@ class BaseAgent(ABC):
     ) -> None:
         self._name = name
         self._model = model
-        self._tool_executor = tool_executor
         self._runtime_config = runtime_config or AgentRuntimeConfig()
         self._repo_root = _resolve_repo_root(repo_root, memory_path)
         self._instance_store = AgentInstanceStore(repo_root=self._repo_root)
@@ -73,8 +153,11 @@ class BaseAgent(ABC):
         self._parameter_sections: tuple[AgentParameterSection, ...] = ()
         self._transcript: list[AgentTranscriptEntry] = []
         self._reset_count = 0
+        self._cycle_index = 0
         self._last_run_id: str | None = None
         self._last_prune_progress = 0
+        self._context_runtime_state = self._load_context_runtime_state()
+        self._tool_executor = tool_executor
 
     @property
     def name(self) -> str:
@@ -99,6 +182,10 @@ class BaseAgent(ABC):
     @property
     def reset_count(self) -> int:
         return self._reset_count
+
+    @property
+    def cycle_index(self) -> int:
+        return self._cycle_index
 
     @property
     def memory_path(self) -> Path:
@@ -167,25 +254,198 @@ class BaseAgent(ABC):
         return tuple(definition.inspect() for definition in definitions)
 
     def refresh_parameters(self) -> tuple[AgentParameterSection, ...]:
-        sections = tuple(self.load_parameter_sections())
+        sections = tuple(self._compose_parameter_sections(tuple(self.load_parameter_sections())))
         self._parameter_sections = sections
         return sections
 
     def reset_context(self) -> None:
         self._transcript.clear()
-        self.refresh_parameters()
         self._reset_count += 1
+        self._expire_context_directives()
+        self.refresh_parameters()
 
     def build_model_request(self) -> AgentModelRequest:
         if not self._parameter_sections:
             self.refresh_parameters()
         return AgentModelRequest(
             agent_name=self._name,
-            system_prompt=self.build_system_prompt(),
+            system_prompt=self._effective_system_prompt(),
             parameter_sections=self._parameter_sections,
             transcript=tuple(self._transcript),
             tools=self.available_tools(),
         )
+
+    def enable_context_tools(self) -> None:
+        """Wrap the current executor with the generic context-tool family."""
+        self._tool_executor = self._bind_context_tools(self._tool_executor)
+
+    def _bind_context_tools(self, tool_executor: AgentToolExecutor) -> AgentToolExecutor:
+        return _BoundContextToolExecutor(
+            delegate=tool_executor,
+            context_tools=create_context_tools(
+                get_context_window=self.build_context_window,
+                get_runtime_state=lambda: self._context_runtime_state,
+                save_runtime_state=self._save_context_runtime_state,
+                refresh_parameters=self.refresh_parameters,
+                get_reset_count=lambda: self._reset_count,
+                get_cycle_index=lambda: self._cycle_index,
+                get_system_prompt=self.build_system_prompt,
+                run_model_subcall=self._run_context_model_subcall,
+            ),
+        )
+
+    def _effective_system_prompt(self) -> str:
+        prompt = self.build_system_prompt()
+        directives = self._active_context_directives()
+        if not directives:
+            return prompt
+        lines = [
+            "[CONTEXT DIRECTIVES]",
+            *(
+                f"- ({directive.priority.upper()}) {directive.directive}"
+                for directive in directives
+            ),
+        ]
+        return f"{prompt}\n\n" + "\n".join(lines)
+
+    def _compose_parameter_sections(
+        self,
+        base_sections: Sequence[AgentParameterSection],
+    ) -> tuple[AgentParameterSection, ...]:
+        state = self._context_runtime_state
+        injected_first: list[AgentParameterSection] = []
+        injected_before_memory: list[AgentParameterSection] = []
+        injected_last: list[AgentParameterSection] = []
+
+        for section in state.injected_sections:
+            rendered = AgentParameterSection(title=section.label, content=section.content)
+            if section.position in {"first", "after_master_prompt"}:
+                injected_first.append(rendered)
+            elif section.position == "before_memory":
+                injected_before_memory.append(rendered)
+            else:
+                injected_last.append(rendered)
+
+        resolved_base: list[AgentParameterSection] = []
+        for section in base_sections:
+            resolved_base.append(
+                AgentParameterSection(
+                    title=section.title,
+                    content=state.section_overrides.get(section.title, section.content),
+                )
+            )
+
+        memory_sections: list[AgentParameterSection] = []
+        memory_payload = self._build_context_memory_payload()
+        if memory_payload is not None:
+            memory_sections.append(json_parameter_section(_CONTEXT_MEMORY_SECTION_TITLE, memory_payload))
+
+        return tuple(
+            [
+                *injected_first,
+                *resolved_base,
+                *injected_before_memory,
+                *memory_sections,
+                *injected_last,
+            ]
+        )
+
+    def _build_context_memory_payload(self) -> dict[str, Any] | None:
+        state = self._context_runtime_state
+        payload: dict[str, Any] = {}
+        if state.memory_fields:
+            payload["memory_fields"] = deepcopy(state.memory_fields)
+            payload["memory_field_rules"] = dict(state.memory_field_rules)
+        directives = self._active_context_directives()
+        if directives:
+            payload["active_directives"] = [directive.as_dict() for directive in directives]
+        if state.checkpoints:
+            payload["checkpoints"] = [
+                {
+                    "checkpoint_name": checkpoint.checkpoint_name,
+                    "description": checkpoint.description,
+                    "key": checkpoint.key,
+                    "saved_at_cycle": checkpoint.saved_at_cycle,
+                    "saved_at_reset": checkpoint.saved_at_reset,
+                    "token_count": checkpoint.token_count,
+                }
+                for checkpoint in state.checkpoints.values()
+            ]
+        return payload or None
+
+    def _context_state_path(self) -> Path:
+        return self._memory_path / _CONTEXT_STATE_FILENAME
+
+    def _load_context_runtime_state(self) -> AgentContextRuntimeState:
+        path = self._context_state_path()
+        if not path.exists():
+            return AgentContextRuntimeState(
+                memory_field_rules=dict(DEFAULT_AGENT_CONTEXT_MEMORY_FIELD_RULES)
+            )
+        raw = path.read_text(encoding="utf-8").strip()
+        if not raw:
+            return AgentContextRuntimeState(
+                memory_field_rules=dict(DEFAULT_AGENT_CONTEXT_MEMORY_FIELD_RULES)
+            )
+        payload = json.loads(raw)
+        if not isinstance(payload, dict):
+            raise ValueError(f"Expected JSON object in '{path.name}'.")
+        return AgentContextRuntimeState.from_dict(payload)
+
+    def _save_context_runtime_state(self) -> None:
+        path = self._context_state_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(self._context_runtime_state.as_dict(), indent=2, sort_keys=True, default=str),
+            encoding="utf-8",
+        )
+
+    def _active_context_directives(self) -> list[AgentContextDirective]:
+        return sorted(
+            self._context_runtime_state.active_directives(self._reset_count),
+            key=lambda directive: (
+                _DIRECTIVE_PRIORITY_ORDER.get(directive.priority, 99),
+                directive.directive_id,
+            ),
+        )
+
+    def _expire_context_directives(self) -> None:
+        active = self._context_runtime_state.active_directives(self._reset_count)
+        if len(active) == len(self._context_runtime_state.directives):
+            return
+        self._context_runtime_state.directives = active
+        self._save_context_runtime_state()
+
+    def _run_context_model_subcall(
+        self,
+        *,
+        system_prompt: str,
+        transcript_text: str,
+        model_override: str | None = None,
+    ) -> str:
+        model = self._model
+        if model_override is not None:
+            override_builder = getattr(model, "with_model_override", None)
+            if callable(override_builder):
+                model = override_builder(model_override)
+        request = AgentModelRequest(
+            agent_name=f"{self._name}.context_subcall",
+            system_prompt=system_prompt,
+            parameter_sections=(
+                AgentParameterSection(title="Transcript", content=transcript_text),
+            ),
+            transcript=(),
+            tools=(),
+        )
+        generate_turn_with_override = getattr(model, "generate_turn_with_override", None)
+        if callable(generate_turn_with_override) and model_override is not None:
+            response = generate_turn_with_override(request, model_override)
+        else:
+            response = model.generate_turn(request)
+        summary = response.assistant_message.strip()
+        if not summary:
+            raise ValueError("Context summarization subcall returned empty assistant content.")
+        return summary
 
     def pruning_progress_value(self) -> int:
         """Return the generic progress counter used by deterministic pruning.
@@ -202,6 +462,7 @@ class BaseAgent(ABC):
         """Run the agent loop until it pauses, completes, or hits ``max_cycles``."""
         self.prepare()
         self._reset_count = 0
+        self._cycle_index = 0
         self._transcript.clear()
         self.refresh_parameters()
         self._last_run_id = new_run_id()
@@ -212,6 +473,7 @@ class BaseAgent(ABC):
         cycles_completed = 0
         try:
             while max_cycles is None or cycles_completed < max_cycles:
+                self._cycle_index = cycles_completed + 1
                 request = self.build_model_request()
                 total_estimated_request_tokens += request.estimated_tokens()
                 response = self._model.generate_turn(request)
@@ -452,6 +714,7 @@ class BaseAgent(ABC):
             AgentTranscriptEntry(
                 entry_type="assistant",
                 content="\n".join(parts) if parts else "(no assistant content)",
+                role="assistant",
             )
         )
         for tool_call in response.tool_calls:
@@ -460,13 +723,21 @@ class BaseAgent(ABC):
                 AgentTranscriptEntry(
                     entry_type="tool_call",
                     content=f"{tool_call.tool_key}\n{arguments}",
+                    tool_key=tool_call.tool_key,
+                    arguments=dict(tool_call.arguments),
                 )
             )
 
     def _record_tool_result(self, result: ToolResult) -> None:
         rendered_output = json.dumps(result.output, indent=2, sort_keys=True, default=str)
-        content = f"{result.tool_key}\n{rendered_output}"
-        self._transcript.append(AgentTranscriptEntry(entry_type="tool_result", content=content))
+        self._transcript.append(
+            AgentTranscriptEntry(
+                entry_type="tool_result",
+                content=f"{result.tool_key}\n{rendered_output}",
+                tool_key=result.tool_key,
+                output=deepcopy(result.output),
+            )
+        )
 
     def _should_reset_context(self) -> bool:
         if not self._transcript:
@@ -532,24 +803,93 @@ class BaseAgent(ABC):
     def _context_entry_to_transcript_entry(self, entry: dict[str, Any]) -> AgentTranscriptEntry:
         kind = entry.get("kind")
         content = str(entry.get("content", ""))
-        if kind == "message":
-            return AgentTranscriptEntry(entry_type="assistant", content=content)
+        metadata = deepcopy(entry.get("metadata")) if isinstance(entry.get("metadata"), dict) else None
+        if kind in {"message", "assistant"}:
+            role = str(entry.get("role", "assistant"))
+            return AgentTranscriptEntry(
+                entry_type="user" if role == "user" else "assistant",
+                content=content,
+                role="user" if role == "user" else "assistant",
+                metadata=metadata,
+            )
         if kind == "tool_call":
-            return AgentTranscriptEntry(entry_type="tool_call", content=content)
+            arguments = entry.get("arguments")
+            return AgentTranscriptEntry(
+                entry_type="tool_call",
+                content=content,
+                tool_key=str(entry.get("tool_key")) if entry.get("tool_key") is not None else None,
+                tool_call_id=str(entry.get("tool_call_id")) if entry.get("tool_call_id") is not None else None,
+                arguments=dict(arguments) if isinstance(arguments, dict) else None,
+                metadata=metadata,
+            )
         if kind == "tool_result":
-            return AgentTranscriptEntry(entry_type="tool_result", content=content)
+            return AgentTranscriptEntry(
+                entry_type="tool_result",
+                content=content,
+                tool_key=str(entry.get("tool_key")) if entry.get("tool_key") is not None else None,
+                tool_call_id=str(entry.get("tool_call_id")) if entry.get("tool_call_id") is not None else None,
+                output=deepcopy(entry.get("output")),
+                metadata=metadata,
+            )
         if kind == "summary":
-            return AgentTranscriptEntry(entry_type="summary", content=content)
+            return AgentTranscriptEntry(entry_type="summary", content=content, metadata=metadata)
+        if kind == "context":
+            return AgentTranscriptEntry(
+                entry_type="context",
+                content=content,
+                label=str(entry.get("label", "Context")),
+                metadata=metadata,
+            )
         raise ValueError(f"Unsupported context entry kind '{kind}'.")
 
-def _transcript_entry_to_context_entry(self, entry: AgentTranscriptEntry) -> AgentContextEntry:
-        if entry.entry_type == "assistant":
-            return {"kind": "message", "role": "assistant", "content": entry.content}
+    def _transcript_entry_to_context_entry(self, entry: AgentTranscriptEntry) -> AgentContextEntry:
+        if entry.entry_type in {"assistant", "user"}:
+            payload: AgentContextEntry = {
+                "kind": "assistant" if entry.entry_type == "assistant" else "message",
+                "role": "assistant" if entry.entry_type == "assistant" else "user",
+                "content": entry.content,
+            }
+            if entry.metadata:
+                payload["metadata"] = deepcopy(entry.metadata)
+            return payload
         if entry.entry_type == "tool_call":
-            return {"kind": "tool_call", "content": entry.content}
+            payload = {
+                "kind": "tool_call",
+                "content": entry.content,
+            }
+            if entry.tool_key is not None:
+                payload["tool_key"] = entry.tool_key
+            if entry.tool_call_id is not None:
+                payload["tool_call_id"] = entry.tool_call_id
+            if entry.arguments is not None:
+                payload["arguments"] = deepcopy(entry.arguments)
+            if entry.metadata:
+                payload["metadata"] = deepcopy(entry.metadata)
+            return payload
         if entry.entry_type == "summary":
-            return {"kind": "summary", "content": entry.content}
-        return {"kind": "tool_result", "content": entry.content}
+            payload: AgentContextEntry = {"kind": "summary", "content": entry.content}
+            if entry.metadata:
+                payload["metadata"] = deepcopy(entry.metadata)
+            return payload
+        if entry.entry_type == "context":
+            payload = {
+                "kind": "context",
+                "label": entry.label or "Context",
+                "content": entry.content,
+            }
+            if entry.metadata:
+                payload["metadata"] = deepcopy(entry.metadata)
+            return payload
+        payload = {"kind": "tool_result", "content": entry.content}
+        if entry.tool_key is not None:
+            payload["tool_key"] = entry.tool_key
+        if entry.tool_call_id is not None:
+            payload["tool_call_id"] = entry.tool_call_id
+        if entry.output is not None:
+            payload["output"] = deepcopy(entry.output)
+        if entry.metadata:
+            payload["metadata"] = deepcopy(entry.metadata)
+        return payload
 
 
 def _resolve_repo_root(repo_root: str | Path | None, memory_path: Path | None) -> Path:
@@ -579,5 +919,7 @@ __all__ = [
     "AgentToolExecutor",
     "AgentTranscriptEntry",
     "BaseAgent",
+    "json_parameter_section",
+    "render_json_parameter_content",
     "estimate_text_tokens",
 ]

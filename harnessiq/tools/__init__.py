@@ -118,6 +118,7 @@ from .context_compaction import (
     remove_tool_result_entries,
     summarize_and_log_compact,
 )
+from .context import create_context_tools
 from .filesystem import (
     append_text_file,
     copy_path,
@@ -177,7 +178,7 @@ from .resend import (
     create_resend_tools,
     get_resend_operation,
 )
-from .registry import ToolRegistry, create_builtin_registry
+from .registry import ToolRegistry, create_builtin_registry, create_tool_registry, merge_tools
 
 __all__ = [
     "ADD_NUMBERS",
@@ -307,6 +308,8 @@ __all__ = [
     "count_by_field",
     "create_browser_tools",
     "create_builtin_registry",
+    "create_context_tools",
+    "create_tool_registry",
     "create_context_compaction_tools",
     "create_filesystem_tools",
     "create_general_purpose_tools",
@@ -330,6 +333,7 @@ __all__ = [
     "limit_records",
     "list_directory",
     "make_directory",
+    "merge_tools",
     "normalize_whitespace",
     "path_exists",
     "pause_for_human",
