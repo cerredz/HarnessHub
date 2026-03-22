@@ -1,173 +1,177 @@
-This artifact is the high-signal architecture map for the repository. It is not an exhaustive inventory. Keep it focused on meaningful structure and use it to decide where new code should live before adding files or moving logic across boundaries.
+# Repository File Index
 
-Context:
+This artifact is generated from the live repository tree and source files by `python scripts/sync_repo_docs.py`.
 
-- This file is not meant to be a full inventory of every subdirectory or support artifact. Its job is to explain the architectural shape of the repository so a reader can understand where core product logic lives, where public-facing documentation lives, and where new work should usually be added.
-- The top-level folders matter because they define the boundaries of the codebase: the SDK itself lives under `harnessiq/`, supporting documentation lives outside it, and repository artifacts describe or support the package rather than becoming part of the shipped runtime.
+It is intentionally high-signal rather than exhaustive: the goal is to explain the active architectural shape of the repo, show where major responsibilities live, and make drift visible when the source tree changes.
 
-Codebase standards:
+## Snapshot
 
-- Agents in this codebase are harnesses: they inherit shared runtime behavior from `BaseAgent` and then specialize prompts, parameter sections, tool wiring, and domain-specific logic.
-- Agents under `harnessiq/agents/` should focus on orchestration. Configs, constants, protocols, dataclasses, memory-store types, and reusable normalization helpers should live in `harnessiq/shared/`, not inline inside an agent module.
-- Executable `RegisteredTool` factories, tool handlers, provider-tool composition, and other tool-runtime concerns should live in `harnessiq/tools/` so harnesses can import them instead of defining large tool registries inline.
-- The static tool catalog belongs in `harnessiq/toolset/`. Use it for reusable catalog/lookup concerns, not as a place to hide domain-specific harness orchestration.
-- When a concrete agent needs internal tools, define them under `harnessiq/tools/<domain>/` and import them into the harness constructor. Do not leave agent-specific `ToolDefinition` or `RegisteredTool` construction embedded in the agent module unless it is trivial local glue.
-- We define tools and toolsets as reusable building blocks for users. Users should be able to choose which tools or toolsets to inject into which agent rather than being locked into one fixed bundle.
-- Agents should interact with external capabilities through the tool layer, and third-party platforms should be reached through provider-backed tools and provider clients rather than through undocumented ad hoc calls.
-- Agents should be structured to accept an injected toolset or tool executor as part of their configuration instead of strictly defining the full tool surface internally. An agent can provide a sensible default toolset, but that default should remain overridable.
-- Autonomous agents are expected to have a durable memory folder. That memory can store any files needed across runs, including user inputs, runtime parameters, custom parameters, action logs, and deterministic state records.
-- The shared runtime also maintains an SDK-level agent instance registry so each resolved agent run has a stable name/id pair plus a persisted payload snapshot and memory-path binding in `memory/agent_instances.json`.
-- Default SDK-managed agent memory is organized per logical harness and per resolved instance under `memory/agents/<agent_name>/<instance_id>/`. Explicit CLI or SDK memory paths remain supported, but those paths are still recorded in the shared instance registry.
-- Tools are not only optional model add-ons; they should be used wherever a deterministic check is possible. If an agent can verify state from durable memory or another authoritative source, it should do that explicitly instead of relying on model recall alone (for example, checking LinkedIn memory to confirm whether a job was already applied to).
-- These agents are being built for full autonomy, so designs must assume multiple context window resets. Durable memory and parameter sections should carry forward the state needed to resume work without losing orientation.
-- Agent behavior should be configurable through parameters. The shared runtime comes from `BaseAgent`, while concrete harnesses can expose runtime parameters and user-defined custom parameters where the workflow requires them.
-- Built-in harness metadata should live in a shared declarative manifest layer under `harnessiq/shared/`. Prompt paths, typed runtime/custom parameter specs, durable memory-file contracts, provider families, and structured output schemas should be defined there so CLIs and custom harness integrations can share one source of truth instead of hand-rolling per-agent metadata.
-- Update this file whenever a meaningful architectural folder is added or when the intended boundary between `agents/`, `shared/`, `tools/`, and `toolset/` changes.
-- The shared runtime now also owns a framework-level audit ledger. Every terminal run emits a universal `LedgerEntry` envelope after execution, and output sinks are injected at the runtime-config layer rather than at the harness layer.
-- Output sinks are a post-run export concern, not an in-context agent capability. They must never participate in the execution loop, modify the transcript, or change the returned `AgentRunResult`.
+| Metric | Count |
+| --- | --- |
+| Concrete harness manifests | 6 |
+| Top-level CLI commands | 15 |
+| Registered CLI command paths | 101 |
+| Model providers | 4 |
+| Service provider packages | 25 |
+| Tool-only external service surfaces | 1 |
+| Built-in sink types | 8 |
+| Test modules | 71 |
 
-Top-level directories:
+## Codebase Standards
 
-- `artifacts/`: repository-level architecture and maintenance artifacts. This folder explains how the repo is organized and gives contributors a shared reference point for structural decisions.
-- `docs/`: lightweight package documentation and usage guides. This folder matters because it explains how the SDK is intended to be used outside the source tree, including framework features such as the output-sink and audit-ledger layer.
-- `harnessiq/`: the production Python SDK package for Harnessiq. This is the most important top-level folder because it contains the runtime, abstractions, integrations, and public package surface that actually ship to users.
+- Treat `harnessiq/` as the only authoritative runtime source tree. `build/`, `src/`, caches, and packaging metadata are generated or residue directories.
+- Concrete harness metadata belongs in the shared manifest layer under `harnessiq/shared/`, and CLI behavior should consume that metadata instead of duplicating typed parameter rules.
+- Agents orchestrate. Tools execute deterministic operations. Providers wrap external systems. Utilities own cross-cutting runtime infrastructure like the ledger and output sinks.
+- Durable memory is a first-class design constraint: harnesses are expected to persist state that survives resets and restarts.
+- Provider-backed integrations should flow through `harnessiq/providers/` and `harnessiq/tools/`, not through ad hoc HTTP logic embedded in harness modules.
+- Output sinks are post-run exports only. They do not participate in the model loop or mutate the transcript.
+- This file and the companion CLI/README docs are generated by `python scripts/sync_repo_docs.py`; update the source tree and rerun the generator instead of hand-editing the artifacts.
 
-Source layout:
+## Top-Level Directories
 
-- `harnessiq/agents/`: provider-agnostic agent runtime primitives plus concrete agent harnesses, including domain-specific packages such as `agents/prospecting/` for long-running Google Maps lead discovery with durable memory and reset-safe resume logic
-- `harnessiq/cli/`: package-native command-line entrypoints and root command dispatch, including sink connection management plus ledger log/export/report commands and agent-specific workflows such as `cli/prospecting/` for preparing, configuring, and running the Google Maps prospecting harness
-- `harnessiq/config/`: repo-local credential config models, persisted agent credential bindings, and `.env` loader/store helpers
-- `harnessiq/integrations/`: adapters that bridge the core SDK to external runtime surfaces such as model implementations and browser automation, including narrow Playwright-backed browser executors for concrete agents like LinkedIn, Instagram discovery, and Google Maps prospecting
-- `harnessiq/master_prompts/`: curated, deployable system prompts for agents and direct SDK use
-- `harnessiq/providers/`: provider translation helpers, HTTP clients, and operation catalogs for both LLM providers and external-service APIs, including service-specific folders such as `google_drive/` for deterministic folder and file persistence plus provider-backed output-sink transports for destinations like Notion, Confluence, Supabase, Linear, Slack, and Discord
-- `harnessiq/shared/`: shared types, configs, constants, and declarative harness manifests reused across modules, including per-agent durable-memory schemas such as `shared/prospecting.py`
-- `harnessiq/shared/harness_manifest.py`: typed manifest primitives for concrete harness metadata, including runtime/custom parameter specs, durable memory-file declarations, provider families, and output schema contracts
-- `harnessiq/shared/harness_manifests.py`: registry of the built-in harness manifests plus lookup helpers used by CLI modules and custom harness imports
-- `harnessiq/tools/`: the executable tool runtime layer, including built-in tools, prompt/filesystem helpers, reasoning tools, provider-backed tool factories such as `tools/google_drive/`, and reusable public browser/prospecting tools such as the browser interaction family plus `EVALUATE_COMPANY` and `SEARCH_OR_SUMMARIZE`
-- `harnessiq/toolset/`: plug-and-play toolset SDK for retrieving, composing, and registering built-in, provider, and custom tools
-- `harnessiq/utils/`: agent-agnostic utility infrastructure such as run storage, agent instance ids/registry helpers, and the framework-level audit ledger/output-sink implementation used by all agents
-- `harnessiq/agents/base/agent.py`: shared `BaseAgent` runtime loop plus additive tool introspection helpers; agents still expose canonical `available_tools()` and now also a richer inherited inspection surface for descriptions, parameters, schemas, and backing function metadata
-- `harnessiq/cli/leads/`: leads-agent CLI commands for managed multi-ICP configuration and execution
-- `harnessiq/cli/linkedin/`: LinkedIn-specific CLI commands for agent memory management and execution
-- `harnessiq/config/`: credential-config layer; `.env`-backed `CredentialLoader` and `ProviderCredentialConfig` base type for all provider credential models
-- `harnessiq/tools/leads/`: leads-agent tool factory and provider-tool composition helpers; the leads harness imports this module instead of defining its tool registry inline
-- `harnessiq/tools/apollo/`: MCP-style tool factory for Apollo.io sales intelligence and engagement APIs
-- `harnessiq/providers/anthropic/`: Anthropic request and tool-translation helpers
-- `harnessiq/providers/openai/`: OpenAI request and tool-translation helpers
-- `harnessiq/providers/grok/`: Grok request and tool-translation helpers
-- `harnessiq/providers/gemini/`: Gemini request and tool-translation helpers
-- `harnessiq/providers/snovio/`: Snov.io email-finding and outreach API client
-- `harnessiq/providers/leadiq/`: LeadIQ lead-intelligence API client (GraphQL)
-- `harnessiq/providers/salesforge/`: Salesforge AI sales-engagement API client
-- `harnessiq/providers/phantombuster/`: PhantomBuster web-automation API client
-- `harnessiq/providers/zoominfo/`: ZoomInfo B2B-intelligence API client (JWT auth)
-- `harnessiq/providers/peopledatalabs/`: People Data Labs people and company data-enrichment API client
-- `harnessiq/providers/proxycurl/`: Proxycurl LinkedIn data API client
-- `harnessiq/providers/coresignal/`: Coresignal professional network data API client
-- `harnessiq/providers/creatify/`: Creatify AI video creation API - credentials, client, and full operation catalog
-- `harnessiq/providers/arcads/`: Arcads AI video ad API - credentials, client, and operation catalog
-- `harnessiq/providers/instantly/`: Instantly.ai cold email API v2 - credentials, client, and full operation catalog
-- `harnessiq/providers/outreach/`: Outreach.io sales engagement API - credentials, OAuth client, and core operation catalog
-- `harnessiq/providers/lemlist/`: Lemlist outreach API - credentials, client, and full operation catalog
-- `harnessiq/providers/exa/`: Exa neural search API - credentials, client, and full operation catalog
-- `harnessiq/agents/exa_outreach/`: ExaOutreach agent harness - finds prospects via Exa search, sends personalised emails via Resend, and deterministically persists leads and email records to a pluggable `StorageBackend`
-- `harnessiq/providers/arxiv/`: public arXiv API client with Atom feed parsing and PDF download helpers
-- `harnessiq/tools/registry.py`: deterministic registry for executable tools; exposes canonical `definitions()` for model-facing metadata and a richer `inspect()` surface for human/tooling introspection of parameters and handler identity
-- `harnessiq/tools/creatify/`: MCP-style tool factory for Creatify AI video creation
-- `harnessiq/tools/arcads/`: MCP-style tool factory for Arcads AI advertising video creation
-- `harnessiq/tools/instantly/`: MCP-style tool factory for Instantly cold email platform
-- `harnessiq/tools/outreach/`: MCP-style tool factory for Outreach sales engagement platform
-- `harnessiq/tools/lemlist/`: MCP-style tool factory for Lemlist B2B outreach platform
-- `harnessiq/tools/exa/`: MCP-style tool factory for Exa neural search engine
-- `harnessiq/tools/snovio/`: MCP-style tool factory for Snov.io email intelligence (OAuth2 auth handled transparently)
-- `harnessiq/tools/leadiq/`: MCP-style tool factory for LeadIQ contact intelligence (GraphQL API)
-- `harnessiq/tools/salesforge/`: MCP-style tool factory for Salesforge cold email automation
-- `harnessiq/tools/phantombuster/`: MCP-style tool factory for PhantomBuster browser automation
-- `harnessiq/tools/zoominfo/`: MCP-style tool factory for ZoomInfo B2B intelligence (JWT auth handled transparently)
-- `harnessiq/tools/peopledatalabs/`: MCP-style tool factory for People Data Labs data enrichment
-- `harnessiq/tools/proxycurl/`: MCP-style tool factory for Proxycurl (deprecated - shut down Jan 2025)
-- `harnessiq/tools/coresignal/`: MCP-style tool factory for Coresignal professional data
-- `harnessiq/tools/reasoning/`: reasoning tool package - exposes the three core injectable tools (`brainstorm`, `chain_of_thought`, `critique`) and the 50-lens cognitive scaffolding catalog
-- `harnessiq/tools/reasoning/core.py`: three high-level injectable reasoning tools (`reason.brainstorm`, `reason.chain_of_thought`, `reason.critique`) plus `create_reasoning_tools()` factory; supports brainstorm count presets (`"small"`, `"medium"`, `"large"`); instruction outputs are natural language prose injected into the agent context window
-- `harnessiq/tools/reasoning/lenses.py`: 50 reasoning lens tools for agent cognitive scaffolding - includes step-by-step, tree-of-thoughts, first-principles, red-teaming, pre-mortem, and 45 others across 8 cognitive categories (core logical, analytical, perspective, creative, systems, temporal, evaluative, scientific)
-- `harnessiq/tools/knowt/`: Knowt-specific content creation tool factory (create_script, create_avatar_description, create_video via Creatify lipsync_v2, create_file, edit_file)
-- `harnessiq/tools/reasoning.py`: injectable reasoning tools (`reason.brainstorm`, `reason.chain_of_thought`, `reason.critique`) - inject structured reasoning instructions into the agent context window
-- `harnessiq/agents/harness_architect/`: Harness Architect meta-agent; produces complete, immediately deployable harness specifications covering all three context window zones, typed in-context memory schemas, reset protocols, tool access configuration, BaseAgent parameter blocks, and CLI invocation contracts
-- `harnessiq/agents/harness_architect/prompts/`: system prompt files for the Harness Architect agent; `master_prompt.md` loaded at runtime - encodes the three-zone architecture model, in-context memory schema design rules, reset protocol specification checklist, and annotated BaseAgent reference code
-- `harnessiq/agents/prompt_architect/`: Prompt Architect meta-agent; produces complete, immediately deployable action-oriented master prompts via a 15-phase sequential workflow covering domain reconstruction, atomic phase decomposition, persona drafting, structural review, and phase sequence stress testing
-- `harnessiq/agents/prompt_architect/prompts/`: system prompt files for the Prompt Architect agent; `master_prompt.md` loaded at runtime - encodes the full 15-phase prompt engineering workflow, checklist for phase/checklist separation and domain specificity, failure mode guardrails, and eight observable success criteria
-- `harnessiq/agents/linkedin/prompts/`: system prompt files for the LinkedIn agent; `master_prompt.md` loaded at runtime by `build_system_prompt()` with `{{AGENT_IDENTITY}}`, `{{TOOL_LIST}}`, and `{{ACTION_LOG_WINDOW}}` template substitution - covers search strategy, Easy Apply flows, form-filling rules, error recovery, and custom instructions integration
-- `harnessiq/agents/knowt/`: Knowt TikTok content creation agent harness; enforces brainstorm -> script -> avatar -> video pipeline via deterministic file-backed memory
-- `harnessiq/agents/knowt/prompts/`: system prompt files for the Knowt agent; `master_prompt.md` loaded at runtime so it can be updated without touching Python source
-- `harnessiq/agents/leads/`: multi-ICP leads discovery agent harness; rotates one agent instance across ICPs, composes provider tools by platform family, persists searches/leads deterministically, and uses durable search progress for transcript pruning
-- `harnessiq/agents/leads/prompts/`: system prompt files for the leads agent; `master_prompt.md` loaded at runtime with `{{PLATFORMS}}`, `{{SEARCH_SUMMARY_EVERY}}`, `{{SEARCH_TAIL_SIZE}}`, and `{{TOOL_LIST}}` template substitution
-- `harnessiq/shared/knowt.py`: `KnowtMemoryStore` (file-backed), `KnowtAgentConfig`, `KnowtCreationLogEntry`, and filename constants for the Knowt agent harness
-- `harnessiq/shared/linkedin.py`: LinkedIn constants and data models - `JobSearchConfig` (structured filter params: title, location, remote_type, experience_levels, date_posted, easy_apply_only, salary range, job_type, companies, industries, description), `JobApplicationRecord`, `ActionLogEntry`, `LinkedInAgentConfig`, `LinkedInManagedFile`, filename constants
-- `harnessiq/toolset/`: plug-and-play toolset SDK - `get_tool`, `get_tools`, `get_family`, `list_tools`, `define_tool`, `@tool` decorator, `register_tool`, `register_tools`; backed by `ToolsetRegistry` and a static provider catalog
-- `harnessiq/toolset/factory.py`: `define_tool()` factory and `@tool` decorator for ergonomic custom `RegisteredTool` creation; validates `tool_type` with clear planned-vs-unknown messaging
-- `harnessiq/config/`: credential loader and base credential configuration types; `CredentialLoader` resolves named environment variables from a repo-local `.env` file
-- `harnessiq/providers/apollo/`: Apollo.io sales intelligence API client, request catalog, and credential model
-- `harnessiq/agents/exa_outreach/prompts/`: system prompt files for the ExaOutreach agent; `master_prompt.md` loaded at runtime
-- `harnessiq/shared/exa_outreach.py`: `EmailTemplate`, `LeadRecord`, `EmailSentRecord`, `OutreachRunLog`, `StorageBackend` protocol, `FileSystemStorageBackend` (per-run JSON files under `runs/`), and `ExaOutreachMemoryStore`
-- `harnessiq/shared/leads.py`: leads-agent shared domain models and config including `LeadsAgentConfig`, `LeadRunConfig`, `LeadRunState`, `LeadICP`, `LeadICPState`, `LeadSearchRecord`, `LeadSearchSummary`, `LeadRecord`, `LeadsMemoryStore`, and `FileSystemLeadsStorageBackend` for per-ICP durable search state plus cross-run lead dedupe/persistence
-- `harnessiq/cli/exa_outreach/`: ExaOutreach CLI - `prepare`, `configure`, `show`, and `run` subcommands registered under `harnessiq outreach`
+| Path | Kind | Responsibility |
+| --- | --- | --- |
+| `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
+| `.pytest_cache/` | generated/cache | Test runner cache; generated, not part of the source of truth. |
+| `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
+| `build/` | generated/cache | Setuptools build output; generated, not part of the live source tree. |
+| `docs/` | repo docs | Focused usage and architecture notes for the package. |
+| `harnessiq/` | source | Live SDK package source. |
+| `harnessiq.egg-info/` | generated/cache | Packaging metadata emitted by local builds. |
+| `memory/` | local state | Task artifacts plus durable agent runtime state; not part of the shipped package. |
+| `scripts/` | repo tooling | Repository maintenance and generation scripts. |
+| `src/` | generated/cache | Legacy or generated residue in this checkout; not the authoritative package source. |
+| `tests/` | source | unittest coverage for runtime, CLI, providers, and tools. |
 
-Tests:
-- `tests/test_agents_base.py`: coverage for the generic agent loop, transcript handling, context resets, and structured pause behavior
-- `tests/test_email_agent.py`: coverage for the abstract email-capable harness, masked Resend credentials, and Resend tool integration through the agent loop
-- `tests/test_linkedin_agent.py`: coverage for the LinkedIn-specific harness, memory files, durable state tools, JobSearchConfig structured/string parameter, context window section ordering, and custom instructions injection
-- `tests/test_tools.py`: coverage for tool definitions, registry behavior, validation, execution, and built-in key ordering
-- `tests/test_context_compaction_tools.py`: coverage for the context-window compaction tool family
-- `tests/test_general_tools.py`: coverage for the reusable text, record, and control-flow tool family
-- `tests/test_prompt_filesystem_tools.py`: coverage for system-prompt generation and non-destructive filesystem tools
-- `tests/test_resend_tools.py`: coverage for the Resend operation catalog, MCP-style request tool, and Resend-specific transport/header behavior
-- `tests/test_provider_base.py`: coverage for shared provider helpers and HTTP transport
-- `tests/test_providers.py`: coverage for provider message normalization and request translation across all supported providers
-- `tests/test_anthropic_provider.py`: coverage for Anthropic request, tool, and client helpers
-- `tests/test_grok_provider.py`: coverage for Grok request, tool, and client helpers
-- `tests/test_openai_provider.py`: coverage for OpenAI request, tool, and client helpers
-- `tests/test_gemini_provider.py`: coverage for Gemini content, tool, and client helpers
-- `tests/test_config_loader.py`: coverage for the CredentialLoader and HTTP transport hostname inference
-- `tests/test_snovio_provider.py`: coverage for Snov.io request builders, client, operation catalog, and tool factory (OAuth2 token exchange)
-- `tests/test_leadiq_provider.py`: coverage for LeadIQ operation catalog and tool factory (GraphQL dispatch)
-- `tests/test_salesforge_provider.py`: coverage for Salesforge operation catalog and tool factory
-- `tests/test_phantombuster_provider.py`: coverage for PhantomBuster operation catalog and tool factory
-- `tests/test_zoominfo_provider.py`: coverage for ZoomInfo operation catalog and tool factory (JWT auth)
-- `tests/test_peopledatalabs_provider.py`: coverage for People Data Labs operation catalog and tool factory
-- `tests/test_proxycurl_provider.py`: coverage for Proxycurl operation catalog and tool factory (deprecated provider)
-- `tests/test_coresignal_provider.py`: coverage for Coresignal operation catalog and tool factory
-- `tests/test_config_loader.py`: coverage for CredentialLoader `.env` parsing, error cases, and HTTP transport hostname mapping for all six new providers
-- `tests/test_creatify_provider.py`: coverage for Creatify credentials, client, operation catalog, and tool factory
-- `tests/test_arcads_provider.py`: coverage for Arcads credentials (Basic Auth), client, operation catalog, and tool factory
-- `tests/test_instantly_provider.py`: coverage for Instantly credentials, client, V2 operation catalog, and tool factory
-- `tests/test_outreach_provider.py`: coverage for Outreach credentials (OAuth Bearer), client, core operation catalog, and tool factory
-- `tests/test_lemlist_provider.py`: coverage for Lemlist credentials (Basic Auth), client, operation catalog, and tool factory
-- `tests/test_exa_provider.py`: coverage for Exa credentials, client, search operation catalog, and tool factory
-- `tests/test_arxiv_provider.py`: coverage for arXiv transport config, Atom feed parsing, URL builders, client/download behavior, and operation catalog
-- `tests/test_credentials_config.py`: coverage for persisted agent credential bindings and repo-local `.env` resolution
-- `tests/test_reasoning_tools.py`: coverage for the three core reasoning tools (brainstorm, chain_of_thought, critique) - handler behavior, count presets, boundary validation, registry integration, and instruction output shape
-- `tests/test_knowt_tools.py`: coverage for Knowt tool handlers, memory guard enforcement, Creatify integration, and file-scoped create/edit operations
-- `tests/test_knowt_agent.py`: coverage for the Knowt agent harness - construction, system prompt file loading, parameter sections, tool wiring, and run loop behavior
-- `tests/test_toolset_factory.py`: coverage for `define_tool()` factory and `@tool` decorator - construction, schema building, handler execution, `tool_type` validation, `ToolDefinition.tool_type` backwards compatibility
-- `tests/test_toolset_registry.py`: coverage for `ToolsetRegistry` - built-in/provider/custom tool lookup, `register_tool`/`register_tools`, collision detection, `list_tools`, `get_family`
-- `tests/test_exa_outreach_shared.py`: coverage for `EmailTemplate`, `LeadRecord`, `EmailSentRecord`, `OutreachRunLog`, `FileSystemStorageBackend`, `ExaOutreachMemoryStore`, and tool key constants
-- `tests/test_exa_outreach_agent.py`: coverage for `ExaOutreachAgent` construction, available tools, system prompt building, parameter section ordering, all five internal tool handlers, prepare/run lifecycle, and SDK exports
-- `tests/test_exa_outreach_cli.py`: coverage for the ExaOutreach CLI - parser registration, `prepare`/`configure`/`show`/`run` handlers, `normalize_exa_outreach_runtime_parameters`, and `SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS`
-- `tests/test_leads_shared.py`: coverage for the leads-agent shared types, per-ICP memory store, search compaction persistence, and filesystem save-backend dedupe behavior
-- `tests/test_leads_agent.py`: coverage for the leads-agent harness - construction, prompt/parameter sections, ICP rotation, deterministic search persistence, save/dedupe behavior, and pruning tied to durable search progress
-- `tests/test_leads_cli.py`: coverage for the leads CLI - parser registration, configure/show state management, runtime parameter normalization, storage backend injection, and run wiring
+## Package Layout
 
-Current memory artifacts:
+| Path | Live Subpackages | Responsibility |
+| --- | --- | --- |
+| `harnessiq/agents/` | base, email, exa_outreach, instagram, knowt, leads, linkedin, prospecting | Shared runtime bases plus the concrete harness packages exported by the SDK. |
+| `harnessiq/cli/` | exa_outreach, instagram, leads, ledger, linkedin, prospecting | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
+| `harnessiq/config/` | - | Environment loading, credential binding, and provider-credential spec models. |
+| `harnessiq/integrations/` | - | Concrete external runtime adapters such as Playwright backends and model factories. |
+| `harnessiq/master_prompts/` | prompts | Packaged prompt assets and prompt registry helpers. |
+| `harnessiq/providers/` | anthropic, apollo, arcads, arxiv, attio, coresignal, creatify, exa, expandi, gemini, google_drive, grok, inboxapp, instantly, leadiq, lemlist, lusha, openai, outreach, paperclip, peopledatalabs, phantombuster, playwright, proxycurl, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | Model-provider adapters, external service clients, output-sink transport clients, and Playwright runtime support. |
+| `harnessiq/shared/` | - | Shared manifests, durable memory stores, operation metadata, and package-wide types/constants. |
+| `harnessiq/tools/` | apollo, arcads, arxiv, attio, coresignal, creatify, eval, exa, expandi, google_drive, inboxapp, instagram, instantly, knowt, leadiq, leads, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, prospecting, proxycurl, reasoning, salesforge, search, serper, smartlead, snovio, zerobounce, zoominfo | Built-in tool families, provider-backed tool factories, and domain-specific helper tools. |
+| `harnessiq/toolset/` | - | Static tool catalog plus registration and lookup helpers for reusable tool composition. |
+| `harnessiq/utils/` | - | Agent instance storage, ledger export/report helpers, and built-in output sink implementations. |
 
-- `memory/refactor-types-constants/`: planning, ticket, quality, critique, and PR-body artifacts for the shared definitions refactor
-- `memory/linkedin-agent-harness/`: internalization, tickets, and verification artifacts for the LinkedIn harness work
-- `memory/add-context-compaction-tools/`: internalization, tickets, and verification artifacts for the context-window compaction work
-- `memory/add-generalizable-tools/`: internalization, brainstorming, ticket, and verification artifacts for the general-purpose tool expansion
-- `memory/add-system-prompt-terminal-tools/`: internalization, clarification, ticket, and verification artifacts for prompt and filesystem tool expansion
-- `memory/email-agent-resend-mcp/`: internalization, ticket, quality, and critique artifacts for the Resend-backed email agent base work
-- `memory/shared-definition-consolidation/`: internalization and ticket plan artifacts for the shared-definition cleanup
-- `memory/add-data-providers/`: internalization, ticket, quality, and critique artifacts for the data-service provider expansion (Snov.io, LeadIQ, Salesforge, PhantomBuster, ZoomInfo, People Data Labs, Proxycurl, Coresignal)
-- `memory/add-service-providers/`: internalization, clarifications, and ticket artifacts for adding Creatify, Arcads, Instantly, Outreach, Lemlist, and Exa providers plus the config layer
-- `memory/knowt-agent/`: internalization, clarification, ticket, and verification artifacts for the reasoning tools and Knowt TikTok content creation agent work
-- `memory/add-reasoning-tools/`: internalization, tickets, quality, and critique artifacts for the 50 reasoning lens tool expansion
-- `memory/apply-pr-112-review-feedback/`: internalization, tickets, quality, and critique artifacts for the PR #112 review feedback - porting define_tool()/tool() to main and adding register_tool()/register_tools() to ToolsetRegistry
+## Key Files
+
+| Path | Responsibility |
+| --- | --- |
+| `harnessiq/shared/harness_manifest.py` | Typed manifest primitives for runtime/custom parameters, durable memory entries, provider families, and output schemas. |
+| `harnessiq/shared/harness_manifests.py` | Registry of the built-in harness manifests in deterministic order. |
+| `harnessiq/cli/main.py` | Root argparse entrypoint that wires every top-level command family into `harnessiq`. |
+| `harnessiq/cli/platform_commands.py` | Platform-first CLI roots that synthesize manifest-driven prepare/show/run/inspect and credential management commands. |
+| `harnessiq/cli/platform_adapters.py` | Harness-specific adapter layer that turns manifest metadata into platform CLI behavior. |
+| `harnessiq/toolset/catalog_provider.py` | Provider-tool catalog metadata used by the toolset lookup layer. |
+| `harnessiq/tools/builtin.py` | Built-in tool registry composition for the base runtime surface. |
+| `harnessiq/utils/ledger_sinks.py` | Built-in output sink registration plus sink-construction helpers. |
+| `scripts/sync_repo_docs.py` | AST-driven repository docs generator that keeps README and architecture artifacts aligned with live source. |
+
+## Harness Registry
+
+| Manifest | Display Name | Import | Memory Root | Runtime Params | Custom Params | Memory Entries | Providers | Output Fields |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| exa_outreach | Exa Outreach | `harnessiq.agents.exa_outreach:ExaOutreachAgent` | `memory/outreach` | max_tokens, reset_threshold | - | query_config.json, agent_identity.txt, additional_prompt.txt, runs | exa, resend | emails_sent, leads_found, search_query |
+| instagram | Instagram Keyword Discovery | `harnessiq.agents.instagram:InstagramKeywordDiscoveryAgent` | `memory/instagram` | max_tokens, recent_result_window, recent_search_window, reset_threshold, search_result_limit | - | icp_profiles.json, search_history.json, lead_database.json, runtime_parameters.json, agent_identity.txt, additional_prompt.txt | playwright | emails, leads, search_history |
+| knowt | Knowt Content Creator | `harnessiq.agents.knowt:KnowtAgent` | `memory/knowt` | max_tokens, reset_threshold | - | current_script.md, current_avatar_description.md, creation_log.jsonl | creatify | avatar_description, creation_log, script |
+| leads | Leads Agent | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | run_config.json, run_state.json, runtime_parameters.json, icps/*.json, lead_storage, lead_storage/saved_leads.json | apollo, arcads, arxiv, attio, coresignal, creatify, exa, expandi, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | icp_states, run_config, run_state, saved_leads |
+| linkedin | LinkedIn Job Applier | `harnessiq.agents.linkedin:LinkedInJobApplierAgent` | `memory/linkedin` | max_tokens, reset_threshold, action_log_window, linkedin_start_url, notify_on_pause, pause_webhook | - | job_preferences.md, user_profile.md, agent_identity.md, runtime_parameters.json, custom_parameters.json, additional_prompt.md, applied_jobs.jsonl, action_log.jsonl, managed_files.json, managed_files, screenshots | playwright | jobs_applied, managed_files, recent_actions |
+| prospecting | Google Maps Prospecting | `harnessiq.agents.prospecting:GoogleMapsProspectingAgent` | `memory/prospecting` | max_tokens, reset_threshold | qualification_threshold, summarize_at_x, max_searches_per_run, max_listings_per_search, website_inspect_enabled, sink_record_type, eval_system_prompt | company_description.md, agent_identity.md, additional_prompt.md, runtime_parameters.json, custom_parameters.json, prospecting_state.json, qualified_leads.jsonl, browser-data | playwright | company_description, counts, qualified_leads, searches_completed, summary |
+
+## CLI Architecture
+
+| Command | Direct Subcommands | Description | Source |
+| --- | --- | --- | --- |
+| harnessiq connect | confluence, discord, linear, notion, obsidian, slack, supabase | Configure a global output sink connection | `harnessiq/cli/ledger/commands.py` |
+| harnessiq connections | list, remove, test | Inspect or manage configured sink connections | `harnessiq/cli/ledger/commands.py` |
+| harnessiq credentials | bind, show, test | Manage persisted harness credential bindings | `harnessiq/cli/platform_commands.py` |
+| harnessiq export | - | Export ledger entries in a structured format | `harnessiq/cli/ledger/commands.py` |
+| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Inspect one harness manifest and generated CLI surface | `harnessiq/cli/platform_commands.py` |
+| harnessiq instagram | configure, get-emails, prepare, run, show | Manage and run the Instagram keyword discovery agent | `harnessiq/cli/instagram/commands.py` |
+| harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent | `harnessiq/cli/leads/commands.py` |
+| harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent | `harnessiq/cli/linkedin/commands.py` |
+| harnessiq logs | - | Inspect the local audit ledger | `harnessiq/cli/ledger/commands.py` |
+| harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent | `harnessiq/cli/exa_outreach/commands.py` |
+| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
+| harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent | `harnessiq/cli/prospecting/commands.py` |
+| harnessiq report | - | Build a cross-agent report from the local ledger | `harnessiq/cli/ledger/commands.py` |
+| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
+| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
+
+## Provider Surfaces
+
+### Model Providers
+
+| Provider | Package |
+| --- | --- |
+| anthropic | `harnessiq/providers/anthropic/` |
+| openai | `harnessiq/providers/openai/` |
+| grok | `harnessiq/providers/grok/` |
+| gemini | `harnessiq/providers/gemini/` |
+
+### Service Provider Packages
+
+| Family | Ops | Provider Package | Tool Surface | Catalog Source |
+| --- | --- | --- | --- | --- |
+| apollo | 13 | `harnessiq/providers/apollo` | `harnessiq/tools/apollo/operations.py` | `harnessiq/shared/apollo.py` |
+| arcads | 10 | `harnessiq/providers/arcads` | `harnessiq/tools/arcads/operations.py` | `harnessiq/shared/arcads.py` |
+| arxiv | 4 | `harnessiq/providers/arxiv` | `harnessiq/tools/arxiv/operations.py` | `harnessiq/shared/arxiv.py` |
+| attio | 7 | `harnessiq/providers/attio` | `harnessiq/tools/attio/operations.py` | `harnessiq/shared/attio.py` |
+| coresignal | 9 | `harnessiq/providers/coresignal` | `harnessiq/tools/coresignal/operations.py` | `harnessiq/shared/coresignal.py` |
+| creatify | 58 | `harnessiq/providers/creatify` | `harnessiq/tools/creatify/operations.py` | `harnessiq/shared/creatify.py` |
+| exa | 15 | `harnessiq/providers/exa` | `harnessiq/tools/exa/operations.py` | `harnessiq/shared/exa.py` |
+| expandi | 22 | `harnessiq/providers/expandi` | `harnessiq/tools/expandi/operations.py` | `harnessiq/shared/expandi.py` |
+| google_drive | 3 | `harnessiq/providers/google_drive` | `harnessiq/tools/google_drive/operations.py` | `harnessiq/shared/google_drive.py` |
+| inboxapp | 9 | `harnessiq/providers/inboxapp` | `harnessiq/tools/inboxapp/operations.py` | `harnessiq/shared/inboxapp.py` |
+| instantly | 75 | `harnessiq/providers/instantly` | `harnessiq/tools/instantly/operations.py` | `harnessiq/shared/instantly.py` |
+| leadiq | 12 | `harnessiq/providers/leadiq` | `harnessiq/tools/leadiq/operations.py` | `harnessiq/shared/leadiq.py` |
+| lemlist | 34 | `harnessiq/providers/lemlist` | `harnessiq/tools/lemlist/operations.py` | `harnessiq/shared/lemlist.py` |
+| lusha | 40 | `harnessiq/providers/lusha` | `harnessiq/tools/lusha/operations.py` | `harnessiq/shared/lusha.py` |
+| outreach | 65 | `harnessiq/providers/outreach` | `harnessiq/tools/outreach/operations.py` | `harnessiq/shared/outreach.py` |
+| paperclip | 48 | `harnessiq/providers/paperclip` | `harnessiq/tools/paperclip/operations.py` | `harnessiq/shared/paperclip.py` |
+| peopledatalabs | 11 | `harnessiq/providers/peopledatalabs` | `harnessiq/tools/peopledatalabs/operations.py` | `harnessiq/shared/peopledatalabs.py` |
+| phantombuster | 15 | `harnessiq/providers/phantombuster` | `harnessiq/tools/phantombuster/operations.py` | `harnessiq/shared/phantombuster.py` |
+| proxycurl | 11 | `harnessiq/providers/proxycurl` | `harnessiq/tools/proxycurl/operations.py` | `harnessiq/shared/proxycurl.py` |
+| salesforge | 22 | `harnessiq/providers/salesforge` | `harnessiq/tools/salesforge/operations.py` | `harnessiq/shared/salesforge.py` |
+| serper | 10 | `harnessiq/providers/serper` | `harnessiq/tools/serper/operations.py` | `harnessiq/shared/serper.py` |
+| smartlead | 48 | `harnessiq/providers/smartlead` | `harnessiq/tools/smartlead/operations.py` | `harnessiq/shared/smartlead.py` |
+| snovio | 23 | `harnessiq/providers/snovio` | `harnessiq/tools/snovio/operations.py` | `harnessiq/shared/snovio.py` |
+| zerobounce | 22 | `harnessiq/providers/zerobounce` | `harnessiq/tools/zerobounce/operations.py` | `harnessiq/shared/zerobounce.py` |
+| zoominfo | 12 | `harnessiq/providers/zoominfo` | `harnessiq/tools/zoominfo/operations.py` | `harnessiq/shared/zoominfo.py` |
+
+### Tool-Only External Service Surfaces
+
+| Family | Ops | Tool Surface | Catalog Source |
+| --- | --- | --- | --- |
+| resend | 64 | `harnessiq/tools/resend.py` | `harnessiq/shared/resend_catalog.py` |
+
+### Built-In Output Sink Types
+
+| Sink Type |
+| --- |
+| `confluence` |
+| `discord` |
+| `jsonl` |
+| `linear` |
+| `notion` |
+| `obsidian` |
+| `slack` |
+| `supabase` |
+
+## Test Surface
+
+`tests/` currently contains 71 test modules. The table below groups them by dominant responsibility.
+
+| Area | Count | Examples |
+| --- | --- | --- |
+| agents | 10 | `tests/test_agent_instances.py`, `tests/test_agents_base.py`, `tests/test_email_agent.py` |
+| cli | 7 | `tests/test_exa_outreach_cli.py`, `tests/test_instagram_cli.py`, `tests/test_leads_cli.py` |
+| ledger | 1 | `tests/test_output_sinks.py` |
+| providers | 30 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
+| support | 12 | `tests/test_cli_common.py`, `tests/test_config_loader.py`, `tests/test_credentials_config.py` |
+| tools | 11 | `tests/test_context_compaction_tools.py`, `tests/test_general_tools.py`, `tests/test_knowt_tools.py` |
