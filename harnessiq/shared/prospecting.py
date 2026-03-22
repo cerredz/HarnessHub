@@ -33,6 +33,7 @@ DEFAULT_MAX_SEARCHES_PER_RUN = 50
 DEFAULT_MAX_LISTINGS_PER_SEARCH = 10
 DEFAULT_WEBSITE_INSPECT_ENABLED = True
 DEFAULT_SINK_RECORD_TYPE = "prospecting_lead"
+DEFAULT_GOOGLE_MAPS_SEARCH_BASE_URL = "https://www.google.com/maps/search/"
 RUN_STATUS_IN_PROGRESS = "in_progress"
 RUN_STATUS_CONSOLIDATING = "consolidating"
 RUN_STATUS_COMPLETE = "complete"
@@ -87,6 +88,18 @@ Factor 5 - Industry Margin Tier
 PITCH HOOK: If QUALIFIED, write a 1-2 sentence pitch hook anchored in specific data.
 
 Return ONLY valid JSON matching the output contract. No other text."""
+
+SEARCH_SUMMARY_SYSTEM_PROMPT = """You summarize completed Google Maps searches for a prospecting run.
+Return ONLY JSON with the schema {"summary": "<compact summary>", "insights": ["..."]}.
+Keep the summary compact, mention industries and locations already searched, and highlight patterns that should steer future search expansion."""
+
+NEXT_QUERY_SYSTEM_PROMPT = """You generate the next Google Maps search pair for a prospecting run.
+Rules:
+- Stay anchored to the company description.
+- Never repeat an already-searched (query, location) pair.
+- Diversify geography before repeating the exact same city.
+- Return ONLY JSON with the schema {"query": "...", "location": "..."}.
+- If no sensible next search remains, return {"query": "", "location": ""}."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -580,12 +593,14 @@ __all__ = [
     "DEFAULT_AGENT_IDENTITY",
     "DEFAULT_COMPANY_DESCRIPTION",
     "DEFAULT_EVAL_SYSTEM_PROMPT",
+    "DEFAULT_GOOGLE_MAPS_SEARCH_BASE_URL",
     "DEFAULT_MAX_LISTINGS_PER_SEARCH",
     "DEFAULT_MAX_SEARCHES_PER_RUN",
     "DEFAULT_QUALIFICATION_THRESHOLD",
     "DEFAULT_SINK_RECORD_TYPE",
     "DEFAULT_SUMMARIZE_AT_X",
     "DEFAULT_WEBSITE_INSPECT_ENABLED",
+    "NEXT_QUERY_SYSTEM_PROMPT",
     "ProspectingAgentConfig",
     "ProspectingMemoryStore",
     "ProspectingState",
@@ -596,6 +611,7 @@ __all__ = [
     "RUN_STATUS_CONSOLIDATING",
     "RUN_STATUS_ERROR",
     "RUN_STATUS_IN_PROGRESS",
+    "SEARCH_SUMMARY_SYSTEM_PROMPT",
     "SUPPORTED_PROSPECTING_CUSTOM_PARAMETERS",
     "SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS",
     "STATE_FILENAME",

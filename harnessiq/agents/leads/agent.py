@@ -101,13 +101,6 @@ class LeadsAgent(BaseAgent):
                 allowed_provider_operations=allowed_provider_operations,
             )
         )
-        runtime_config = AgentRuntimeConfig(
-            max_tokens=self._config.max_tokens,
-            reset_threshold=self._config.reset_threshold,
-            prune_progress_interval=self._config.prune_search_interval,
-            prune_token_limit=self._config.prune_token_limit,
-        )
-        tool_registry = ToolRegistry(_merge_tools(external_tools, self._build_internal_tools()))
         super().__init__(
             name="leads_agent",
             model=model,
