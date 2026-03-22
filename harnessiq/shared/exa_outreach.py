@@ -1,4 +1,9 @@
-"""Shared data models, memory store, and storage backend for ExaOutreachAgent."""
+"""Shared data models and memory helpers for ``ExaOutreachAgent``.
+
+This module re-exports the generic run-storage backend types used by the
+outreach harness so older import paths remain stable while run persistence
+continues to live in ``harnessiq.utils.run_storage``.
+"""
 
 from __future__ import annotations
 
