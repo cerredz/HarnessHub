@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import argparse
-import json
 from typing import Any
 
+from harnessiq.cli.common import emit_json
 from harnessiq.utils import (
     ConnectionsConfigStore,
     SinkConnection,
@@ -113,7 +113,7 @@ def _handle_connect(args: argparse.Namespace) -> int:
     )
     store = ConnectionsConfigStore()
     path = store.upsert(connection)
-    _emit_json({"config_path": str(path), "connection": connection.as_dict(), "status": "connected"})
+    emit_json({"config_path": str(path), "connection": connection.as_dict(), "status": "connected"})
     return 0
 
 
@@ -121,14 +121,14 @@ def _handle_connections_list(args: argparse.Namespace) -> int:
     del args
     store = ConnectionsConfigStore()
     payload = [connection.as_dict() for connection in store.load().connections]
-    _emit_json({"connections": payload})
+    emit_json({"connections": payload})
     return 0
 
 
 def _handle_connections_remove(args: argparse.Namespace) -> int:
     store = ConnectionsConfigStore()
     path = store.remove(args.name)
-    _emit_json({"config_path": str(path), "removed": args.name, "status": "removed"})
+    emit_json({"config_path": str(path), "removed": args.name, "status": "removed"})
     return 0
 
 
@@ -140,7 +140,7 @@ def _handle_connections_test(args: argparse.Namespace) -> int:
         raise ValueError(f"No sink connection named '{args.name}' exists.")
     connection = indexed[args.name]
     sink = build_sink_from_connection(connection)
-    _emit_json(
+    emit_json(
         {
             "connection": connection.as_dict(),
             "sink_class": type(sink).__name__,
@@ -182,10 +182,6 @@ def _handle_report(args: argparse.Namespace) -> int:
 def _load_filtered_entries(*, agent: str | None, since: str | None, ledger_path: str | None):
     entries = load_ledger_entries(ledger_path)
     return filter_ledger_entries(entries, agent_name=agent, since=since)
-
-
-def _emit_json(payload: dict[str, Any]) -> None:
-    print(json.dumps(payload, indent=2, sort_keys=True))
 
 
 def _print_help(parser: argparse.ArgumentParser) -> int:
