@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 
 from harnessiq.agents import (
     AgentModelRequest,
@@ -36,6 +38,8 @@ class _InspectableAgent(BaseAgent):
         tool_executor: ToolRegistry,
         parameter_versions: list[str] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
+        instance_payload: dict[str, object] | None = None,
+        repo_root: str | Path | None = None,
     ) -> None:
         self._parameter_versions = parameter_versions or ["initial"]
         self._parameter_index = 0
@@ -44,6 +48,8 @@ class _InspectableAgent(BaseAgent):
             model=model,
             tool_executor=tool_executor,
             runtime_config=runtime_config,
+            instance_payload=instance_payload,
+            repo_root=repo_root,
         )
 
     def build_system_prompt(self) -> str:
@@ -112,6 +118,33 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(model.requests[1].transcript[2].entry_type, "tool_result")
         self.assertIn("session.echo", model.requests[1].transcript[1].content)
         self.assertIn("hello", model.requests[1].transcript[2].content)
+
+    def test_base_agent_resolves_stable_instance_metadata(self) -> None:
+        registry = ToolRegistry([])
+        model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+        payload = {"segment": "platform", "max_tokens": 1024}
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            first = _InspectableAgent(
+                model=model,
+                tool_executor=registry,
+                instance_payload=payload,
+                repo_root=temp_dir,
+            )
+            second = _InspectableAgent(
+                model=model,
+                tool_executor=registry,
+                instance_payload=dict(payload),
+                repo_root=temp_dir,
+            )
+
+            self.assertEqual(first.instance_id, second.instance_id)
+            self.assertEqual(first.instance_name, second.instance_name)
+            self.assertEqual(first.instance_record.memory_path, second.instance_record.memory_path)
+            self.assertEqual(
+                first.memory_path.resolve(),
+                (Path(temp_dir) / "memory" / "agents" / "inspectable_agent" / first.instance_id).resolve(),
+            )
 
     def test_run_pauses_when_a_tool_returns_pause_signal(self) -> None:
         registry = ToolRegistry(

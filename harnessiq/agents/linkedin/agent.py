@@ -333,8 +333,34 @@ class LinkedInJobApplierAgent(BaseAgent):
         notify_on_pause: bool = DEFAULT_LINKEDIN_NOTIFY_ON_PAUSE,
         pause_webhook: str | None = None,
     ) -> None:
+        candidate_memory_path = Path(memory_path) if memory_path is not None else None
+        instance_payload = _build_linkedin_instance_payload(
+            memory_path=candidate_memory_path,
+            max_tokens=max_tokens,
+            reset_threshold=reset_threshold,
+            action_log_window=action_log_window,
+            linkedin_start_url=linkedin_start_url,
+            notify_on_pause=notify_on_pause,
+            pause_webhook=pause_webhook,
+        )
+        self._screenshot_persistor = screenshot_persistor
+
+        runtime_config = AgentRuntimeConfig(
+            max_tokens=max_tokens,
+            reset_threshold=reset_threshold,
+        )
+        super().__init__(
+            name="linkedin_job_applier",
+            model=model,
+            tool_executor=ToolRegistry(create_linkedin_browser_stub_tools()),
+            runtime_config=runtime_config,
+            memory_path=candidate_memory_path,
+            instance_payload=instance_payload,
+            repo_root=_find_repo_root(candidate_memory_path),
+        )
+        resolved_memory_path = self.memory_path
         self._config = LinkedInAgentConfig(
-            memory_path=_resolve_memory_path(memory_path),
+            memory_path=resolved_memory_path,
             max_tokens=max_tokens,
             reset_threshold=reset_threshold,
             action_log_window=action_log_window,
@@ -343,27 +369,15 @@ class LinkedInJobApplierAgent(BaseAgent):
             pause_webhook=pause_webhook,
         )
         self._memory_store = LinkedInMemoryStore(
-            memory_path=self._config.memory_path,
+            memory_path=resolved_memory_path,
             action_log_window=self._config.action_log_window,
         )
-        self._screenshot_persistor = screenshot_persistor
-
-        tool_registry = ToolRegistry(
+        self._tool_executor = ToolRegistry(
             _merge_tools(
                 create_linkedin_browser_stub_tools(),
                 self._build_internal_tools(),
                 tuple(browser_tools),
             )
-        )
-        runtime_config = AgentRuntimeConfig(
-            max_tokens=self._config.max_tokens,
-            reset_threshold=self._config.reset_threshold,
-        )
-        super().__init__(
-            name="linkedin_job_applier",
-            model=model,
-            tool_executor=tool_registry,
-            runtime_config=runtime_config,
         )
 
     @property
@@ -777,6 +791,45 @@ def _resolve_memory_path(memory_path: str | Path | None) -> Path:
     return Path(memory_path)
 
 
+def _build_linkedin_instance_payload(
+    *,
+    memory_path: Path | None,
+    max_tokens: int,
+    reset_threshold: float,
+    action_log_window: int,
+    linkedin_start_url: str,
+    notify_on_pause: bool,
+    pause_webhook: str | None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "runtime": {
+            "action_log_window": action_log_window,
+            "linkedin_start_url": linkedin_start_url,
+            "max_tokens": max_tokens,
+            "notify_on_pause": notify_on_pause,
+            "pause_webhook": pause_webhook,
+            "reset_threshold": reset_threshold,
+        }
+    }
+    if memory_path is not None:
+        payload["memory_path"] = str(memory_path)
+    if memory_path is None or not memory_path.exists():
+        return payload
+
+    store = LinkedInMemoryStore(memory_path=memory_path)
+    payload["job_preferences"] = _read_optional_text(store.job_preferences_path)
+    payload["user_profile"] = _read_optional_text(store.user_profile_path)
+    payload["agent_identity"] = _read_optional_text(store.agent_identity_path)
+    payload["additional_prompt"] = _read_optional_text(store.additional_prompt_path)
+    runtime_parameters = store.read_runtime_parameters() if store.runtime_parameters_path.exists() else {}
+    custom_parameters = store.read_custom_parameters() if store.custom_parameters_path.exists() else {}
+    if runtime_parameters:
+        payload["runtime"] = runtime_parameters
+    if custom_parameters:
+        payload["custom"] = custom_parameters
+    return payload
+
+
 def _unavailable_browser_handler(tool_name: str):
     def handler(arguments: dict[str, Any]) -> dict[str, Any]:
         message = f"Browser tool '{tool_name}' requires a runtime handler."
@@ -852,6 +905,24 @@ def _json_block(payload: Any) -> str:
 
 def _relative_path_text(path: Path, root: Path) -> str:
     return path.resolve().relative_to(root.resolve()).as_posix()
+
+
+def _read_optional_text(path: Path) -> str:
+    if not path.exists():
+        return ""
+    return path.read_text(encoding="utf-8").strip()
+
+
+def _find_repo_root(path: Path | None) -> Path:
+    if path is None:
+        return Path.cwd()
+    resolved = path.resolve()
+    for candidate in (resolved, *resolved.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    if resolved.parent.name == "linkedin" and resolved.parent.parent.name == "memory":
+        return resolved.parent.parent.parent
+    return Path.cwd()
 
 
 SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS = (

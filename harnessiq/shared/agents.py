@@ -50,6 +50,8 @@ class AgentRuntimeConfig:
 
     max_tokens: int = DEFAULT_AGENT_MAX_TOKENS
     reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD
+    output_sinks: tuple[Any, ...] = ()
+    include_default_output_sink: bool = True
 
     def __post_init__(self) -> None:
         if self.max_tokens <= 0:

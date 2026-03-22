@@ -18,7 +18,6 @@ from harnessiq.shared.prospecting import (
     normalize_prospecting_runtime_parameters,
     slugify_agent_name,
 )
-from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
 _DEFAULT_BROWSER_TOOLS_FACTORY = "harnessiq.integrations.google_maps_playwright:create_browser_tools"
 
@@ -254,6 +253,8 @@ def _handle_run(args: argparse.Namespace) -> int:
     payload.update(
         {
             "agent": args.agent,
+            "instance_id": _optional_string(getattr(agent, "instance_id", None)),
+            "instance_name": _optional_string(getattr(agent, "instance_name", None)),
             "ledger_run_id": agent.last_run_id,
             "result": {
                 "cycles_completed": result.cycles_completed,
@@ -351,6 +352,10 @@ def _parse_scalar(value: str) -> Any:
         return value
 
 
+def _optional_string(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
 def _build_summary(store: ProspectingMemoryStore) -> dict[str, Any]:
     state = store.read_state()
     qualified_leads = store.read_qualified_leads()
@@ -368,10 +373,8 @@ def _build_summary(store: ProspectingMemoryStore) -> dict[str, Any]:
 
 
 def _build_runtime_config(sink_specs: Sequence[str]) -> AgentRuntimeConfig:
-    connections = ConnectionsConfigStore().load().enabled_connections()
-    return AgentRuntimeConfig(
-        output_sinks=build_output_sinks(connections=connections, sink_specs=sink_specs),
-    )
+    del sink_specs
+    return AgentRuntimeConfig()
 
 
 def _load_factory(spec: str):

@@ -130,6 +130,8 @@ class LinkedInCLITests(unittest.TestCase):
 
             self.assertEqual(exit_code, 0)
             payload = json.loads(run_stdout.getvalue())
+            self.assertTrue(payload["instance_id"].startswith("linkedin_job_applier::"))
+            self.assertIsNotNone(payload["instance_name"])
             self.assertEqual(payload["result"]["status"], "completed")
             self.assertEqual(payload["result"]["cycles_completed"], 1)
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from harnessiq.shared.agents import (
     AgentContextEntry,
@@ -24,6 +24,7 @@ from harnessiq.shared.agents import (
 )
 from harnessiq.shared.tools import HEAVY_COMPACTION, LOG_COMPACTION, REMOVE_TOOL_RESULTS, REMOVE_TOOLS
 from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
+from harnessiq.utils.agent_instances import AgentInstanceRecord, AgentInstanceStore
 
 
 class BaseAgent(ABC):
@@ -46,15 +47,27 @@ class BaseAgent(ABC):
         tool_executor: AgentToolExecutor,
         runtime_config: AgentRuntimeConfig | None = None,
         memory_path: Path | None = None,
+        instance_payload: Mapping[str, Any] | None = None,
+        repo_root: str | Path | None = None,
+        instance_name: str | None = None,
     ) -> None:
         self._name = name
         self._model = model
         self._tool_executor = tool_executor
         self._runtime_config = runtime_config or AgentRuntimeConfig()
-        self._memory_path = memory_path
+        self._repo_root = _resolve_repo_root(repo_root, memory_path)
+        self._instance_store = AgentInstanceStore(repo_root=self._repo_root)
+        self._instance_record = self._instance_store.resolve(
+            agent_name=name,
+            payload=instance_payload,
+            instance_name=instance_name,
+            memory_path=memory_path,
+        )
+        self._memory_path = self._instance_record.memory_path
         self._parameter_sections: tuple[AgentParameterSection, ...] = ()
         self._transcript: list[AgentTranscriptEntry] = []
         self._reset_count = 0
+        self._last_run_id: str | None = None
 
     @property
     def name(self) -> str:
@@ -81,8 +94,32 @@ class BaseAgent(ABC):
         return self._reset_count
 
     @property
-    def memory_path(self) -> Path | None:
+    def memory_path(self) -> Path:
         return self._memory_path
+
+    @property
+    def repo_root(self) -> Path:
+        return self._repo_root
+
+    @property
+    def instance_store(self) -> AgentInstanceStore:
+        return self._instance_store
+
+    @property
+    def instance_record(self) -> AgentInstanceRecord:
+        return self._instance_record
+
+    @property
+    def instance_id(self) -> str:
+        return self._instance_record.instance_id
+
+    @property
+    def instance_name(self) -> str:
+        return self._instance_record.instance_name
+
+    @property
+    def last_run_id(self) -> str | None:
+        return self._last_run_id
 
     def build_context_window(self) -> AgentContextWindow:
         """Return the current context window including parameters and transcript entries."""
@@ -280,7 +317,7 @@ class BaseAgent(ABC):
             return AgentTranscriptEntry(entry_type="summary", content=content)
         raise ValueError(f"Unsupported context entry kind '{kind}'.")
 
-    def _transcript_entry_to_context_entry(self, entry: AgentTranscriptEntry) -> AgentContextEntry:
+def _transcript_entry_to_context_entry(self, entry: AgentTranscriptEntry) -> AgentContextEntry:
         if entry.entry_type == "assistant":
             return {"kind": "message", "role": "assistant", "content": entry.content}
         if entry.entry_type == "tool_call":
@@ -288,6 +325,17 @@ class BaseAgent(ABC):
         if entry.entry_type == "summary":
             return {"kind": "summary", "content": entry.content}
         return {"kind": "tool_result", "content": entry.content}
+
+
+def _resolve_repo_root(repo_root: str | Path | None, memory_path: Path | None) -> Path:
+    if repo_root is not None:
+        return Path(repo_root).expanduser().resolve()
+    if memory_path is not None:
+        resolved_memory_path = Path(memory_path).expanduser().resolve()
+        for candidate in (resolved_memory_path, *resolved_memory_path.parents):
+            if (candidate / ".git").exists():
+                return candidate
+    return Path.cwd().resolve()
 
 
 __all__ = [

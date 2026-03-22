@@ -42,10 +42,7 @@ from .linkedin import (
     LinkedInMemoryStore,
     build_linkedin_browser_tool_definitions,
     create_linkedin_browser_stub_tools,
-    linkedin_google_drive_binding_name,
-    load_linkedin_google_drive_credentials,
     normalize_linkedin_runtime_parameters,
-    save_linkedin_google_drive_credentials,
 )
 from .prospecting import (
     GoogleMapsProspectingAgent,
@@ -94,10 +91,7 @@ __all__ = [
     "create_linkedin_browser_stub_tools",
     "estimate_text_tokens",
     "fingerprint_agent_payload",
-    "linkedin_google_drive_binding_name",
-    "load_linkedin_google_drive_credentials",
     "normalize_linkedin_runtime_parameters",
-    "save_linkedin_google_drive_credentials",
     "GoogleMapsProspectingAgent",
     "ProspectingAgentConfig",
     "ProspectingMemoryStore",
@@ -107,3 +101,22 @@ __all__ = [
     "normalize_prospecting_custom_parameters",
     "normalize_prospecting_runtime_parameters",
 ]
+
+try:
+    from .linkedin import (
+        linkedin_google_drive_binding_name,
+        load_linkedin_google_drive_credentials,
+        save_linkedin_google_drive_credentials,
+    )
+except ImportError:  # pragma: no cover - optional provider surface may be unavailable
+    linkedin_google_drive_binding_name = None
+    load_linkedin_google_drive_credentials = None
+    save_linkedin_google_drive_credentials = None
+else:
+    __all__.extend(
+        [
+            "linkedin_google_drive_binding_name",
+            "load_linkedin_google_drive_credentials",
+            "save_linkedin_google_drive_credentials",
+        ]
+    )

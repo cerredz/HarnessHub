@@ -7,6 +7,7 @@ import importlib
 import json
 import os
 import re
+import sys
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
@@ -220,6 +221,8 @@ def _handle_run(args: argparse.Namespace) -> int:
     _emit_json(
         {
             "agent": args.agent,
+            "instance_id": _optional_string(getattr(agent, "instance_id", None)),
+            "instance_name": _optional_string(getattr(agent, "instance_name", None)),
             "memory_path": str(store.memory_path.resolve()),
             "applied_jobs_file": str(store.applied_jobs_path.resolve()),
             "result": {
@@ -327,6 +330,10 @@ def _parse_scalar(value: str) -> Any:
         return value
 
 
+def _optional_string(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
 def _build_summary(store: LinkedInMemoryStore) -> dict[str, Any]:
     return {
         "additional_prompt": store.read_additional_prompt(),
@@ -358,25 +365,26 @@ def _emit_json(payload: dict[str, Any]) -> None:
 
 
 def _print_applied_jobs_summary(jobs: list[JobApplicationRecord], applied_jobs_path: Path) -> None:
-    """Print a human-readable summary of job applications to stdout."""
-    print()
-    print("=" * 64)
+    """Print a human-readable summary of job applications to stderr."""
+    stream = sys.stderr
+    print(file=stream)
+    print("=" * 64, file=stream)
     if not jobs:
-        print("  NO JOBS APPLIED TO IN THIS RUN")
+        print("  NO JOBS APPLIED TO IN THIS RUN", file=stream)
     else:
-        print(f"  JOBS APPLIED TO ({len(jobs)} total)")
-        print("  " + "─" * 60)
+        print(f"  JOBS APPLIED TO ({len(jobs)} total)", file=stream)
+        print("  " + "─" * 60, file=stream)
         for job in jobs:
             status_label = job.status.upper() if job.status else "?"
-            print(f"  [{status_label}] {job.title} @ {job.company}")
-            print(f"           {job.url}")
+            print(f"  [{status_label}] {job.title} @ {job.company}", file=stream)
+            print(f"           {job.url}", file=stream)
             if job.notes:
-                print(f"           Note: {job.notes}")
-    print()
-    print(f"  Full records saved to:")
-    print(f"  {applied_jobs_path.resolve()}")
-    print("=" * 64)
-    print()
+                print(f"           Note: {job.notes}", file=stream)
+    print(file=stream)
+    print("  Full records saved to:", file=stream)
+    print(f"  {applied_jobs_path.resolve()}", file=stream)
+    print("=" * 64, file=stream)
+    print(file=stream)
 
 
 def _print_help(parser: argparse.ArgumentParser) -> int:

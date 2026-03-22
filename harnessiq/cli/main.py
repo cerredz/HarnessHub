@@ -14,14 +14,18 @@ def build_parser() -> argparse.ArgumentParser:
     from harnessiq.cli.linkedin import register_linkedin_commands
     from harnessiq.cli.exa_outreach import register_exa_outreach_commands
     from harnessiq.cli.instagram import register_instagram_commands
-    from harnessiq.cli.ledger import register_ledger_commands
     from harnessiq.cli.prospecting import register_prospecting_commands
 
     register_linkedin_commands(subparsers)
     register_exa_outreach_commands(subparsers)
     register_instagram_commands(subparsers)
-    register_ledger_commands(subparsers)
     register_prospecting_commands(subparsers)
+    try:
+        from harnessiq.cli.ledger import register_ledger_commands
+    except ImportError:
+        register_ledger_commands = None
+    if register_ledger_commands is not None:
+        register_ledger_commands(subparsers)
     return parser
 
 

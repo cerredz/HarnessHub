@@ -206,6 +206,8 @@ def _handle_run(args: argparse.Namespace) -> int:
     _emit_json(
         {
             "agent": args.agent,
+            "instance_id": _optional_string(getattr(agent, "instance_id", None)),
+            "instance_name": _optional_string(getattr(agent, "instance_name", None)),
             "memory_path": str(store.memory_path.resolve()),
             "run_id": run_id,
             "result": {
@@ -302,6 +304,10 @@ def _parse_scalar(value: str) -> Any:
         return json.loads(trimmed)
     except json.JSONDecodeError:
         return value
+
+
+def _optional_string(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
 
 
 def _build_summary(store: ExaOutreachMemoryStore) -> dict[str, Any]:

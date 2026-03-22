@@ -118,6 +118,8 @@ class MyAgent(BaseAgent):
 
 **Context window ordering:** parameter sections (durable state) → transcript (assistant messages, tool calls, tool results).
 
+**Instance identity and default memory layout:** every constructed agent resolves a stable `instance_id`, `instance_name`, and `instance_record`. The shared registry is persisted at `memory/agent_instances.json`, and default SDK-managed memory paths resolve under `memory/agents/<agent_name>/<instance_id>/`.
+
 **Compaction tools** available in every built-in registry: `context.remove_tool_results`, `context.remove_tools`, `context.heavy_compaction`, `context.log_compaction`.
 
 ### BaseEmailAgent
@@ -155,14 +157,17 @@ from harnessiq.agents import LinkedInJobApplierAgent
 
 agent = LinkedInJobApplierAgent(
     model=model,
-    memory_path="./memory/linkedin/candidate-a",
     max_tokens=80_000,
     reset_threshold=0.9,
     notify_on_pause=True,
     pause_webhook="https://hooks.example.com/notify",
 )
 result = agent.run(max_cycles=30)
+print(agent.instance_id)
+print(agent.memory_path)
 ```
+
+Pass `memory_path` explicitly when you want to bind the agent to a pre-existing CLI-managed folder such as `./memory/linkedin/candidate-a`.
 
 **Instantiate from persisted CLI state:**
 
