@@ -3,6 +3,9 @@ Title: Slim Instagram recent-search context and search tool transcript payload
 Issue URL:
 - https://github.com/cerredz/HarnessHub/issues/217
 
+PR URL:
+- https://github.com/cerredz/HarnessHub/pull/218
+
 Intent:
 Reduce Instagram agent context-window bloat so the model spends tokens on choosing the next keyword rather than rereading verbose search metadata and persisted result details.
 
