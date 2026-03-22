@@ -21,7 +21,7 @@ class RequestExecutor(Protocol):
         """Execute an HTTP request and return the decoded JSON payload."""
 
 
-@dataclass(slots=True)
+@dataclass
 class ProviderHTTPError(RuntimeError):
     """Raised when a provider HTTP request fails.
 

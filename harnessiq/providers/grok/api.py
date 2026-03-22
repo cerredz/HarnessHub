@@ -19,6 +19,7 @@ def build_headers(
     headers = omit_none_values(
         {
             "Authorization": f"Bearer {api_key}",
+            "User-Agent": "Mozilla/5.0",
         }
     )
     if extra_headers:
