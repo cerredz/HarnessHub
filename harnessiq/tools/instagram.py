@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Mapping
 
-from harnessiq.shared.instagram import DEFAULT_SEARCH_RESULT_LIMIT, build_instagram_google_query
+from harnessiq.shared.instagram import DEFAULT_SEARCH_RESULT_LIMIT
 from harnessiq.shared.tools import INSTAGRAM_SEARCH_KEYWORD, RegisteredTool, ToolArguments, ToolDefinition
 
 if TYPE_CHECKING:
@@ -80,7 +80,6 @@ def _build_search_keyword_handler(
             return {
                 "keyword": keyword,
                 "message": "Keyword already exists in durable search history.",
-                "query": build_instagram_google_query(keyword),
                 "status": "already_searched",
             }
 
@@ -93,9 +92,7 @@ def _build_search_keyword_handler(
             "keyword": execution.search_record.keyword,
             "lead_count": execution.search_record.lead_count,
             "merge_summary": merge_summary.as_dict(),
-            "query": execution.search_record.query,
             "status": "searched",
-            "visited_urls": list(execution.search_record.visited_urls),
         }
 
     return handler

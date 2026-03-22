@@ -175,18 +175,14 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
 
     def load_parameter_sections(self) -> Sequence[AgentParameterSection]:
         icp_profiles = self._memory_store.read_icp_profiles()
-        recent_searches = [
-            record.as_dict()
+        recent_searches = ", ".join(
+            record.keyword
             for record in self._memory_store.read_recent_searches(self._config.recent_search_window)
-        ]
-        recent_results = [
-            record.as_dict()
-            for record in self._memory_store.read_recent_leads(self._config.recent_result_window)
-        ]
+            if record.keyword
+        )
         return (
             AgentParameterSection(title="ICP Profiles", content=_json_block(icp_profiles)),
-            AgentParameterSection(title="Recent Searches", content=_json_block(recent_searches)),
-            AgentParameterSection(title="Recent Search Results", content=_json_block(recent_results)),
+            AgentParameterSection(title="Recent Searches", content=recent_searches),
         )
 
     def get_emails(self) -> tuple[str, ...]:
