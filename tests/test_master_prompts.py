@@ -9,6 +9,7 @@ from harnessiq.master_prompts import MasterPrompt, MasterPromptRegistry, get_pro
 EXPECTED_PROMPT_KEYS = {
     "create_master_prompts",
     "create_tickets",
+    "highest_form_of_leverage",
     "phased_code_review",
     "surgical_bugfix",
 }
@@ -149,6 +150,23 @@ class CreateMasterPromptsPromptTests(unittest.TestCase):
 
     def test_prompt_key_matches_filename_convention(self) -> None:
         self.assertEqual(self.prompt.key, "create_master_prompts")
+
+
+class HighestFormOfLeveragePromptTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.prompt = MasterPromptRegistry().get("highest_form_of_leverage")
+
+    def test_prompt_key_matches_filename_convention(self) -> None:
+        self.assertEqual(self.prompt.key, "highest_form_of_leverage")
+
+    def test_prompt_mentions_requested_leverage_components(self) -> None:
+        text = self.prompt.prompt
+
+        self.assertIn("game theory", text)
+        self.assertIn("marketing psychology", text)
+        self.assertIn("insane implementation speed", text)
+        self.assertIn("delusional optimism", text)
+        self.assertIn("specific knowledge", text)
 
 
 class ModuleLevelAPITests(unittest.TestCase):
