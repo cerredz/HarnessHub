@@ -10,6 +10,7 @@ EXPECTED_PROMPT_KEYS = {
     "create_master_prompts",
     "create_tickets",
     "phased_code_review",
+    "principal_software_engineer_design_patterns",
     "surgical_bugfix",
 }
 REQUIRED_PROMPT_SECTIONS = (
@@ -149,6 +150,24 @@ class CreateMasterPromptsPromptTests(unittest.TestCase):
 
     def test_prompt_key_matches_filename_convention(self) -> None:
         self.assertEqual(self.prompt.key, "create_master_prompts")
+
+
+class PrincipalSoftwareEngineerDesignPatternsPromptTests(unittest.TestCase):
+    """Verify the bundled principal engineer prompt has the expected domain content."""
+
+    def setUp(self) -> None:
+        self.prompt = MasterPromptRegistry().get("principal_software_engineer_design_patterns")
+
+    def test_prompt_key_matches_filename_convention(self) -> None:
+        self.assertEqual(self.prompt.key, "principal_software_engineer_design_patterns")
+
+    def test_prompt_references_repository_file_index_artifact(self) -> None:
+        self.assertIn("artifacts/file_index.md", self.prompt.prompt)
+
+    def test_prompt_covers_patterns_across_multiple_categories(self) -> None:
+        for marker in ("Singleton", "Decorator", "Strategy", "Hexagonal", "Thread Pool"):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, self.prompt.prompt)
 
 
 class ModuleLevelAPITests(unittest.TestCase):
