@@ -30,9 +30,24 @@ from harnessiq.utils import (
 )
 
 from .base import BaseAgent
+from .provider_base import BaseProviderToolAgent
+from .apollo import BaseApolloAgent
+from harnessiq.shared.apollo_agent import ApolloAgentConfig, DEFAULT_APOLLO_AGENT_IDENTITY
 from .email import BaseEmailAgent
 from harnessiq.shared.knowt import KnowtMemoryStore
 from harnessiq.shared.email import DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
+from .exa import BaseExaAgent
+from harnessiq.shared.exa_agent import DEFAULT_EXA_AGENT_IDENTITY, ExaAgentConfig
+from .instantly import BaseInstantlyAgent
+from harnessiq.shared.instantly_agent import (
+    DEFAULT_INSTANTLY_AGENT_IDENTITY,
+    InstantlyAgentConfig,
+)
+from .outreach import BaseOutreachAgent
+from harnessiq.shared.outreach_agent import (
+    DEFAULT_OUTREACH_AGENT_IDENTITY,
+    OutreachAgentConfig,
+)
 
 from .exa_outreach import ExaOutreachAgent
 from harnessiq.shared.exa_outreach import ExaOutreachMemoryStore
@@ -73,18 +88,28 @@ __all__ = [
     "AgentToolExecutor",
     "AgentTranscriptEntry",
     "BaseAgent",
+    "BaseApolloAgent",
     "BaseEmailAgent",
+    "BaseExaAgent",
+    "BaseInstantlyAgent",
+    "BaseOutreachAgent",
+    "BaseProviderToolAgent",
+    "ApolloAgentConfig",
+    "DEFAULT_APOLLO_AGENT_IDENTITY",
     "ExaOutreachAgent",
     "ExaOutreachMemoryStore",
+    "DEFAULT_EXA_AGENT_IDENTITY",
     "DEFAULT_EMAIL_AGENT_IDENTITY",
+    "DEFAULT_INSTANTLY_AGENT_IDENTITY",
+    "DEFAULT_OUTREACH_AGENT_IDENTITY",
     "InstagramKeywordDiscoveryAgent",
     "InstagramMemoryStore",
     "KnowtAgent",
     "KnowtMemoryStore",
     "LeadsAgent",
     "EmailAgentConfig",
-    "InstagramKeywordDiscoveryAgent",
-    "InstagramMemoryStore",
+    "ExaAgentConfig",
+    "InstantlyAgentConfig",
     "JobApplicationRecord",
     "LinkedInAgentConfig",
     "LinkedInJobApplierAgent",
@@ -101,6 +126,7 @@ __all__ = [
     "ProspectingAgentConfig",
     "ProspectingMemoryStore",
     "QualifiedLeadRecord",
+    "OutreachAgentConfig",
     "SUPPORTED_PROSPECTING_CUSTOM_PARAMETERS",
     "SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS",
     "normalize_prospecting_custom_parameters",
