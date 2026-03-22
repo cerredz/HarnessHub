@@ -77,6 +77,13 @@ class _InspectableAgent(BaseAgent):
     def build_ledger_tags(self) -> list[str]:
         return ["inspectable"]
 
+    def pruning_progress_value(self) -> int:
+        if self._progress_step is None:
+            return super().pruning_progress_value()
+        value = self._progress_value
+        self._progress_value += self._progress_step
+        return value
+
 
 class _CollectingSink:
     def __init__(self) -> None:
@@ -90,12 +97,6 @@ class _FailingSink:
     def on_run_complete(self, entry: LedgerEntry) -> None:
         del entry
         raise RuntimeError("sink failed")
-    def pruning_progress_value(self) -> int:
-        if self._progress_step is None:
-            return super().pruning_progress_value()
-        value = self._progress_value
-        self._progress_value += self._progress_step
-        return value
 
 
 def _constant_tool(tool_key: str, name: str, handler):

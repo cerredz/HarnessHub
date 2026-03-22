@@ -34,6 +34,14 @@ DEFAULT_AGENT_IDENTITY = (
     "neural search, logs new leads deterministically, and, when email tools are "
     "available, can progress qualified leads into personalized outreach."
 )
+LEGACY_DEFAULT_AGENT_IDENTITIES = frozenset(
+    {
+        "A disciplined outreach specialist who finds relevant prospects via Exa neural "
+        "search, selects the most appropriate email template for each lead, personalizes "
+        "the message with specific details from their profile, and sends concise, "
+        "value-first cold emails."
+    }
+)
 
 DEFAULT_SEARCH_QUERY = "(search query not configured)"
 
@@ -46,14 +54,17 @@ class ExaOutreachAgentConfig:
     memory_path: Path
     storage_backend: StorageBackend
     search_query: str = DEFAULT_SEARCH_QUERY
+    search_only: bool = False
     max_tokens: int = DEFAULT_AGENT_MAX_TOKENS
     reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD
     allowed_resend_operations: tuple[str, ...] | None = None
     allowed_exa_operations: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
-        if not self.email_data:
-            raise ValueError("ExaOutreachAgentConfig.email_data must not be empty.")
+        if not self.search_only and not self.email_data:
+            raise ValueError(
+                "ExaOutreachAgentConfig.email_data must not be empty when search_only is False."
+            )
 
 # ---------------------------------------------------------------------------
 # EmailTemplate
@@ -396,6 +407,7 @@ __all__ = [
     "ExaOutreachAgentConfig",
     "ExaOutreachMemoryStore",
     "FileSystemStorageBackend",
+    "LEGACY_DEFAULT_AGENT_IDENTITIES",
     "LeadRecord",
     "OutreachRunLog",
     "QUERY_CONFIG_FILENAME",

@@ -351,11 +351,11 @@ def harnessiq_home_dir(home_dir: Path | str | None = None) -> Path:
     override = os.environ.get("HARNESSIQ_HOME", "").strip()
     if override:
         return Path(override).expanduser().resolve()
-    preferred = (Path.home() / DEFAULT_HARNESSIQ_DIRNAME).expanduser().resolve()
     try:
+        preferred = (Path.home() / DEFAULT_HARNESSIQ_DIRNAME).expanduser().resolve()
         preferred.mkdir(parents=True, exist_ok=True)
         return preferred
-    except OSError:
+    except (OSError, RuntimeError):
         fallback = (Path.cwd() / DEFAULT_HARNESSIQ_DIRNAME).resolve()
         fallback.mkdir(parents=True, exist_ok=True)
         return fallback

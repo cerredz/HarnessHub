@@ -7,6 +7,7 @@ from harnessiq.shared.tools import (
     REASON_BRAINSTORM_COUNT_DEFAULT,
     REASON_BRAINSTORM_COUNT_MAX,
     REASON_BRAINSTORM_COUNT_MIN,
+    REASON_BRAINSTORM_COUNT_PRESETS,
     REASON_CHAIN_OF_THOUGHT,
     REASON_COT_STEPS_DEFAULT,
     REASON_COT_STEPS_MAX,
@@ -26,7 +27,7 @@ from harnessiq.shared.tools import (
 def brainstorm(arguments: ToolArguments) -> dict[str, str]:
     """Inject a brainstorm reasoning instruction into the agent's context window."""
     topic = _require_string(arguments, "topic")
-    count = _optional_int(arguments, "count", REASON_BRAINSTORM_COUNT_DEFAULT)
+    count = _optional_brainstorm_count(arguments, "count", REASON_BRAINSTORM_COUNT_DEFAULT)
     if not (REASON_BRAINSTORM_COUNT_MIN <= count <= REASON_BRAINSTORM_COUNT_MAX):
         raise ValueError(
             f"'count' must be between {REASON_BRAINSTORM_COUNT_MIN} and "
@@ -162,11 +163,15 @@ def create_injectable_reasoning_tools() -> tuple[RegisteredTool, ...]:
                             "description": "The subject to brainstorm ideas about.",
                         },
                         "count": {
-                            "type": "integer",
+                            "anyOf": [
+                                {"type": "integer"},
+                                {"type": "string", "enum": sorted(REASON_BRAINSTORM_COUNT_PRESETS)},
+                            ],
                             "description": (
                                 f"Number of ideas to generate "
                                 f"({REASON_BRAINSTORM_COUNT_MIN}–{REASON_BRAINSTORM_COUNT_MAX}). "
-                                f"Defaults to {REASON_BRAINSTORM_COUNT_DEFAULT}."
+                                f"Defaults to {REASON_BRAINSTORM_COUNT_DEFAULT}. "
+                                "Also accepts the presets small, medium, or large."
                             ),
                         },
                         "context": {
@@ -287,6 +292,24 @@ def _optional_int(arguments: ToolArguments, key: str, default: int) -> int:
     if isinstance(value, int):
         return value
     raise ValueError(f"'{key}' must be an integer when provided.")
+
+
+def _optional_brainstorm_count(arguments: ToolArguments, key: str, default: int) -> int:
+    value = arguments.get(key)
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        raise ValueError(f"'{key}' must be an integer or supported preset, not a boolean.")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in REASON_BRAINSTORM_COUNT_PRESETS:
+            return REASON_BRAINSTORM_COUNT_PRESETS[normalized]
+        raise ValueError(
+            f"'count' preset must be one of {', '.join(sorted(REASON_BRAINSTORM_COUNT_PRESETS))}."
+        )
+    raise ValueError(f"'{key}' must be an integer or supported preset when provided.")
 
 
 __all__ = [
