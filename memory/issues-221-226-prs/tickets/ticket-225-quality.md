@@ -18,6 +18,7 @@
 - `python -m unittest tests.test_sdk_package`
   - Failed on the pre-existing `tests.test_sdk_package.HarnessiqPackageTests.test_agents_and_providers_keep_shared_definitions_out_of_local_modules` assertion, which still reports long-standing violations in `harnessiq/providers/output_sink_metadata.py` and `harnessiq/providers/google_drive/`.
   - The new provider-base export assertions passed within the same module.
+  - Post-critique rerun preserved the same failure shape after extending the wheel/sdist smoke test to cover the exported provider config types.
 - `python -m unittest tests.test_sdk_package.HarnessiqPackageTests.test_provider_base_exports_resolve_from_documented_modules tests.test_sdk_package.HarnessiqPackageTests.test_shared_definition_exports_originate_from_shared_modules`
   - Passed.
 
@@ -35,6 +36,7 @@
     - `tests.test_linkedin_cli` fails when `Path.home()` cannot be determined in the test environment.
     - `tests.test_providers` references an undefined `provider_error` symbol.
     - `tests.test_sdk_package` reports the pre-existing shared-definition violations noted above.
+  - Post-critique rerun produced the same failure set.
 - Manual import-path verification passed:
   - `harnessiq.agents` exports `BaseProviderToolAgent`, `BaseApolloAgent`, `BaseExaAgent`, `BaseInstantlyAgent`, `BaseOutreachAgent`, and the four provider config types.
   - The exported base classes resolve to `harnessiq.agents.<provider>.agent` or `harnessiq.agents.provider_base.agent`, and the config types resolve to their `harnessiq.shared.*_agent` modules.
