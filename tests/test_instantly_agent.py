@@ -132,6 +132,25 @@ class BaseInstantlyAgentTests(unittest.TestCase):
                 ["list_campaigns", "get_campaign"],
             )
 
+    def test_instantly_agent_rejects_client_with_mismatched_credentials(self) -> None:
+        with TemporaryDirectory() as temp_repo_root:
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+            config_credentials = InstantlyCredentials(api_key="instantly-secret-key")
+            mismatched_client = InstantlyClient(
+                credentials=InstantlyCredentials(api_key="different-secret-key"),
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "instantly_client credentials must match InstantlyAgentConfig.instantly_credentials.",
+            ):
+                _TestInstantlyAgent(
+                    model=model,
+                    instantly_credentials=config_credentials,
+                    instantly_client=mismatched_client,
+                    repo_root=temp_repo_root,
+                )
+
 
 def _make_custom_tool() -> RegisteredTool:
     return RegisteredTool(
