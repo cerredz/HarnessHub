@@ -10,6 +10,8 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from harnessiq.shared.harness_manifest import HarnessManifest
+
 
 def add_agent_options(
     parser: argparse.ArgumentParser,
@@ -106,6 +108,36 @@ def emit_json(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True, default=_json_default))
 
 
+def format_manifest_parameter_keys(
+    manifest: HarnessManifest,
+    *,
+    scope: str,
+) -> str:
+    """Return a comma-delimited key list for one manifest parameter scope."""
+    if scope == "runtime":
+        keys = manifest.runtime_parameter_names
+    elif scope == "custom":
+        keys = manifest.custom_parameter_names
+    else:
+        raise ValueError(f"Unsupported manifest parameter scope '{scope}'.")
+    return ", ".join(keys)
+
+
+def parse_manifest_parameter_assignments(
+    assignments: Sequence[str],
+    *,
+    manifest: HarnessManifest,
+    scope: str,
+) -> dict[str, Any]:
+    """Parse CLI assignments and coerce them using a harness manifest."""
+    parsed = parse_generic_assignments(assignments)
+    if scope == "runtime":
+        return manifest.coerce_runtime_parameters(parsed)
+    if scope == "custom":
+        return manifest.coerce_custom_parameters(parsed)
+    raise ValueError(f"Unsupported manifest parameter scope '{scope}'.")
+
+
 def _json_default(value: Any) -> Any:
     if isinstance(value, Path):
         return os.fspath(value)
@@ -116,6 +148,8 @@ __all__ = [
     "add_agent_options",
     "add_text_or_file_options",
     "emit_json",
+    "format_manifest_parameter_keys",
+    "parse_manifest_parameter_assignments",
     "parse_generic_assignments",
     "parse_scalar",
     "resolve_memory_path",

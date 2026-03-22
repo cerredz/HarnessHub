@@ -60,6 +60,7 @@ class HarnessiqPackageTests(unittest.TestCase):
                         "assert harnessiq.__version__ == '0.1.0'; "
                         "assert hasattr(harnessiq.agents, 'LinkedInJobApplierAgent'); "
                         "assert hasattr(harnessiq.agents, 'json_parameter_section'); "
+                        "assert hasattr(harnessiq.agents, 'get_harness_manifest'); "
                         "assert hasattr(harnessiq.agents, 'InstagramKeywordDiscoveryAgent'); "
                         "assert hasattr(harnessiq.agents, 'GoogleMapsProspectingAgent'); "
                         "assert callable(cli_main); "
