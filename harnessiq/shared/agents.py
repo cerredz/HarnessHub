@@ -123,6 +123,8 @@ def merge_agent_runtime_config(
     return AgentRuntimeConfig(
         max_tokens=max_tokens,
         reset_threshold=reset_threshold,
+        output_sinks=runtime_config.output_sinks,
+        include_default_output_sink=runtime_config.include_default_output_sink,
         prune_progress_interval=(
             runtime_config.prune_progress_interval
             if prune_progress_interval is _UNSET

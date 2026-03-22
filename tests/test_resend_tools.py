@@ -12,6 +12,12 @@ from harnessiq.shared.resend import (
 )
 from harnessiq.tools import RESEND_REQUEST, ResendClient, ResendCredentials, build_resend_operation_catalog, create_resend_tools
 from harnessiq.tools.registry import ToolRegistry
+from harnessiq.tools.resend import (
+    ResendClient as ModuleResendClient,
+    ResendCredentials as ModuleResendCredentials,
+    build_resend_operation_catalog as module_build_resend_operation_catalog,
+    create_resend_tools as module_create_resend_tools,
+)
 
 
 class ResendToolsTests(unittest.TestCase):
@@ -21,6 +27,11 @@ class ResendToolsTests(unittest.TestCase):
         self.assertEqual(SharedResendOperation.__module__, "harnessiq.shared.resend")
         self.assertEqual(SharedResendPreparedRequest.__module__, "harnessiq.shared.resend")
         self.assertEqual(len(shared_build_resend_operation_catalog()), 64)
+    def test_package_and_module_resend_exports_remain_compatible(self) -> None:
+        self.assertIs(ResendClient, ModuleResendClient)
+        self.assertIs(ResendCredentials, ModuleResendCredentials)
+        self.assertIs(build_resend_operation_catalog, module_build_resend_operation_catalog)
+        self.assertIs(create_resend_tools, module_create_resend_tools)
 
     def test_operation_catalog_covers_expected_resend_surface(self) -> None:
         catalog = build_resend_operation_catalog()
