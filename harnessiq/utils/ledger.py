@@ -1,25 +1,44 @@
-"""Framework-level audit ledger models, sinks, connection config, and query helpers."""
+"""Compatibility facade for the decomposed ledger subsystem."""
 
 from __future__ import annotations
 
-import csv
-import html
-import json
-import os
-import time
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from io import StringIO
-from pathlib import Path
-from typing import Any, Literal, Mapping, Protocol, Sequence
-from uuid import uuid4
-
-from harnessiq.providers.output_sinks import (
-    ConfluenceClient,
-    LinearClient,
-    NotionClient,
-    SupabaseClient,
-    WebhookDeliveryClient,
+from harnessiq.utils.ledger_connections import (
+    ConnectionsConfig,
+    ConnectionsConfigStore,
+    SinkConnection,
+    default_ledger_path,
+    harnessiq_home_dir,
+    parse_sink_spec,
+)
+from harnessiq.utils.ledger_exports import (
+    export_ledger_entries,
+    filter_ledger_entries,
+    follow_ledger,
+    load_ledger_entries,
+)
+from harnessiq.utils.ledger_models import (
+    DEFAULT_CONNECTIONS_FILENAME,
+    DEFAULT_HARNESSIQ_DIRNAME,
+    DEFAULT_LEDGER_FILENAME,
+    LedgerEntry,
+    LedgerStatus,
+    OutputSink,
+    new_run_id,
+    parse_relative_duration,
+)
+from harnessiq.utils.ledger_reports import build_ledger_report, render_ledger_report
+from harnessiq.utils.ledger_sinks import (
+    ConfluenceSink,
+    DiscordSink,
+    JSONLLedgerSink,
+    LinearSink,
+    NotionSink,
+    ObsidianSink,
+    SlackSink,
+    SupabaseSink,
+    build_output_sinks,
+    build_sink_from_connection,
+    build_sink_from_spec,
 )
 
 DEFAULT_HARNESSIQ_DIRNAME = ".harnessiq"
@@ -351,11 +370,11 @@ def harnessiq_home_dir(home_dir: Path | str | None = None) -> Path:
     override = os.environ.get("HARNESSIQ_HOME", "").strip()
     if override:
         return Path(override).expanduser().resolve()
-    preferred = (Path.home() / DEFAULT_HARNESSIQ_DIRNAME).expanduser().resolve()
     try:
+        preferred = (Path.home() / DEFAULT_HARNESSIQ_DIRNAME).expanduser().resolve()
         preferred.mkdir(parents=True, exist_ok=True)
         return preferred
-    except OSError:
+    except (OSError, RuntimeError):
         fallback = (Path.cwd() / DEFAULT_HARNESSIQ_DIRNAME).resolve()
         fallback.mkdir(parents=True, exist_ok=True)
         return fallback

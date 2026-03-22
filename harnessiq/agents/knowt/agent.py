@@ -72,14 +72,6 @@ class KnowtAgent(BaseAgent):
             ),
         )
         tool_registry = ToolRegistry(resolved_tools)
-        runtime_config = AgentRuntimeConfig(
-            max_tokens=self._config.max_tokens,
-            reset_threshold=self._config.reset_threshold,
-            output_sinks=runtime_config.output_sinks if runtime_config is not None else (),
-            include_default_output_sink=(
-                runtime_config.include_default_output_sink if runtime_config is not None else True
-            ),
-        )
         super().__init__(
             name="knowt_content_creator",
             model=model,
