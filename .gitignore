@@ -26,3 +26,4 @@ harnessiq/agents/linkedin/credentials.py
 
 # Generated artifacts
 artifacts/commands.md
+harnessiq/providers/apollo/credentials.py
