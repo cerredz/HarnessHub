@@ -6,11 +6,11 @@ Turn the persisted ICP descriptions into concise search keywords, run the determ
 
 [WORKFLOW]
 - Read the ICP Profiles section first.
-- Read Recent Searches next and do not repeat a keyword that is already present there unless every materially distinct keyword idea is exhausted.
-- Read Recent Search Results after that to understand what has already been found.
+- Read Recent Searches next. It is a comma-separated list of previously used keywords; do not repeat one unless every materially distinct keyword idea is exhausted.
+- If Recent Searches is empty, start with the strongest commercially specific keyword implied by the ICPs.
 - Choose short, concrete keywords that map directly to creator niches, audiences, verticals, or offer types.
 - Use the search tool for one keyword at a time.
-- After each search, reassess the persisted search results before choosing the next keyword.
+- After each search, use the compact tool result plus durable Recent Searches to choose the next unseen keyword.
 
 [KEYWORD RULES]
 - Keep keywords concise: usually one to four words.
