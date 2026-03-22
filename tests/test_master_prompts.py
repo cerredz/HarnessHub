@@ -7,6 +7,16 @@ import unittest
 from harnessiq.master_prompts import MasterPrompt, MasterPromptRegistry, get_prompt, get_prompt_text, list_prompts
 
 
+EXPECTED_PROMPT_KEYS = {
+    "answer_with_notable_web_sources",
+    "create_master_prompts",
+    "hybrid_academic_and_web_research",
+    "research_with_arxiv_papers",
+    "research_with_hugging_face_hub_pages",
+    "research_with_hugging_face_papers",
+}
+
+
 class MasterPromptDataclassTests(unittest.TestCase):
     def test_master_prompt_is_frozen(self) -> None:
         prompt = MasterPrompt(key="k", title="T", description="D", prompt="P")
@@ -78,6 +88,13 @@ class MasterPromptRegistryTests(unittest.TestCase):
         self.assertIs(registry._cache, registry._cache)
         self.assertEqual([p.key for p in first], [p.key for p in second])
 
+    def test_expected_prompt_keys_are_bundled(self) -> None:
+        registry = MasterPromptRegistry()
+
+        keys = {prompt.key for prompt in registry.list()}
+
+        self.assertTrue(EXPECTED_PROMPT_KEYS.issubset(keys))
+
 
 class CreateMasterPromptsPromptTests(unittest.TestCase):
     """Verify the bundled create_master_prompts prompt has valid content."""
@@ -107,6 +124,36 @@ class CreateMasterPromptsPromptTests(unittest.TestCase):
 
     def test_prompt_key_matches_filename_convention(self) -> None:
         self.assertEqual(self.prompt.key, "create_master_prompts")
+
+
+class BundledMasterPromptCatalogTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.prompts = MasterPromptRegistry().list()
+
+    def test_all_expected_prompts_have_required_fields(self) -> None:
+        relevant = [prompt for prompt in self.prompts if prompt.key in EXPECTED_PROMPT_KEYS]
+        self.assertEqual({prompt.key for prompt in relevant}, EXPECTED_PROMPT_KEYS)
+        for prompt in relevant:
+            with self.subTest(prompt=prompt.key):
+                self.assertTrue(prompt.title.strip())
+                self.assertTrue(prompt.description.strip())
+                self.assertTrue(prompt.prompt.strip())
+
+    def test_all_expected_prompts_contain_master_prompt_sections(self) -> None:
+        required_markers = (
+            "Identity",
+            "Goal",
+            "Checklist",
+            "Things Not To Do",
+            "Success Criteria",
+            "Artifacts",
+            "Inputs",
+        )
+        relevant = [prompt for prompt in self.prompts if prompt.key in EXPECTED_PROMPT_KEYS]
+        for prompt in relevant:
+            with self.subTest(prompt=prompt.key):
+                for marker in required_markers:
+                    self.assertIn(marker, prompt.prompt)
 
 
 class ModuleLevelAPITests(unittest.TestCase):
