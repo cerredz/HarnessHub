@@ -4,6 +4,12 @@ from __future__ import annotations
 
 import unittest
 
+from harnessiq.shared.resend import (
+    ResendCredentials as SharedResendCredentials,
+    ResendOperation as SharedResendOperation,
+    ResendPreparedRequest as SharedResendPreparedRequest,
+    build_resend_operation_catalog as shared_build_resend_operation_catalog,
+)
 from harnessiq.tools import RESEND_REQUEST, ResendClient, ResendCredentials, build_resend_operation_catalog, create_resend_tools
 from harnessiq.tools.registry import ToolRegistry
 from harnessiq.tools.resend import (
@@ -15,6 +21,12 @@ from harnessiq.tools.resend import (
 
 
 class ResendToolsTests(unittest.TestCase):
+    def test_shared_resend_facade_preserves_public_models_and_catalog(self) -> None:
+        self.assertIs(ResendCredentials, SharedResendCredentials)
+        self.assertEqual(SharedResendCredentials.__module__, "harnessiq.shared.resend")
+        self.assertEqual(SharedResendOperation.__module__, "harnessiq.shared.resend")
+        self.assertEqual(SharedResendPreparedRequest.__module__, "harnessiq.shared.resend")
+        self.assertEqual(len(shared_build_resend_operation_catalog()), 64)
     def test_package_and_module_resend_exports_remain_compatible(self) -> None:
         self.assertIs(ResendClient, ModuleResendClient)
         self.assertIs(ResendCredentials, ModuleResendCredentials)
