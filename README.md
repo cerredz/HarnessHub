@@ -99,14 +99,14 @@ print(result.status)  # "completed"
 
 ### BaseAgent
 
-`harnessiq.agents.BaseAgent` is the abstract base for all agents. It provides the full agent loop, context-window management, automatic context reset, and compaction integration.
+`harnessiq.agents.BaseAgent` is the abstract base for all agents. It provides the full agent loop, context-window management, automatic context reset, compaction integration, and the shared instance/audit plumbing.
 
 ```python
-from harnessiq.agents import BaseAgent, AgentRuntimeConfig, AgentParameterSection
+from harnessiq.agents import BaseAgent, AgentRuntimeConfig, json_parameter_section
 
 class MyAgent(BaseAgent):
     def build_system_prompt(self) -> str: ...
-    def load_parameter_sections(self) -> list[AgentParameterSection]: ...
+    def load_parameter_sections(self): ...
     def prepare(self) -> None: ...  # optional one-time setup
 ```
 
@@ -123,6 +123,8 @@ class MyAgent(BaseAgent):
 **Instance identity and default memory layout:** every constructed agent resolves a stable `instance_id`, `instance_name`, and `instance_record`. The shared registry is persisted at `memory/agent_instances.json`, and default SDK-managed memory paths resolve under `memory/agents/<agent_name>/<instance_id>/`.
 
 **Compaction tools** available in every built-in registry: `context.remove_tool_results`, `context.remove_tools`, `context.heavy_compaction`, `context.log_compaction`.
+
+**Runtime helpers:** use `json_parameter_section()` for durable JSON-backed memory blocks, `inspect_tools()` for rich tool metadata, and `build_context_window()` to inspect the current assembled context state. Output sinks remain post-run only; custom sink types can be registered through `harnessiq.utils.register_output_sink()`.
 
 ### BaseEmailAgent
 
@@ -152,7 +154,7 @@ agent = MyEmailAgent(name="mailer", model=model, config=config)
 
 ### LinkedInJobApplierAgent
 
-A loop agent for autonomous LinkedIn job applications. Maintains durable file-backed memory: job preferences, user profile, applied-jobs log, action log, managed files, and screenshots. Browser automation tools are injected at runtime via `browser_tools`.
+A loop agent for autonomous LinkedIn job applications. Maintains durable file-backed memory: job preferences, user profile, applied-jobs log, action log, managed files, and screenshots. Browser automation tools are injected at runtime via `browser_tools`, and additive custom helpers can be injected through `tools=`.
 
 ```python
 from harnessiq.agents import LinkedInJobApplierAgent
@@ -369,29 +371,24 @@ agent = LeadsAgent(..., storage_backend=MyLeadWarehouse())
 Tools are `RegisteredTool(definition, handler)` objects stored in a `ToolRegistry`. Keys follow the `namespace.tool_name` convention.
 
 ```python
-from harnessiq.tools.registry import ToolRegistry, create_builtin_registry
-from harnessiq.shared.tools import RegisteredTool, ToolDefinition
+from harnessiq.toolset import define_tool
+from harnessiq.tools import create_builtin_registry, create_tool_registry
 
 registry = create_builtin_registry()
 
-custom = ToolRegistry([
-    RegisteredTool(
-        definition=ToolDefinition(
-            key="my.tool",
-            name="my_tool",
-            description="Does something useful.",
-            input_schema={
-                "type": "object",
-                "properties": {"x": {"type": "string"}},
-                "required": ["x"],
-                "additionalProperties": False,
-            },
-        ),
-        handler=lambda args: {"result": args["x"].upper()},
-    )
-])
+custom_tool = define_tool(
+    key="my.tool",
+    description="Does something useful.",
+    parameters={"x": {"type": "string", "description": "Input text."}},
+    required=["x"],
+    handler=lambda args: {"result": args["x"].upper()},
+)
+
+custom = create_tool_registry((custom_tool,))
 result = custom.execute("my.tool", {"x": "hello"})
 ```
+
+Most concrete agents now accept additive `tools=` injection directly, so custom tools can be passed into a harness without rebuilding its entire default tool surface.
 
 ### Built-in Tools
 

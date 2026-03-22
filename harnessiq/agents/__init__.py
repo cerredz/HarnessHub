@@ -11,6 +11,8 @@ from harnessiq.shared.agents import (
     AgentRuntimeConfig,
     AgentToolExecutor,
     AgentTranscriptEntry,
+    json_parameter_section,
+    render_json_parameter_content,
     estimate_text_tokens,
 )
 from harnessiq.shared.linkedin import (
@@ -96,7 +98,9 @@ __all__ = [
     "create_linkedin_browser_stub_tools",
     "estimate_text_tokens",
     "fingerprint_agent_payload",
+    "json_parameter_section",
     "normalize_linkedin_runtime_parameters",
+    "render_json_parameter_content",
     "GoogleMapsProspectingAgent",
     "ProspectingAgentConfig",
     "ProspectingMemoryStore",

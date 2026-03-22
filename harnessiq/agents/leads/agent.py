@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -16,7 +15,9 @@ from harnessiq.shared.agents import (
     AgentPauseSignal,
     AgentRunResult,
     AgentRuntimeConfig,
+    json_parameter_section,
     merge_agent_runtime_config,
+    render_json_parameter_content,
 )
 from harnessiq.shared.leads import (
     DEFAULT_LEADS_SEARCH_SUMMARY_EVERY,
@@ -38,7 +39,7 @@ from harnessiq.shared.tools import (
     RegisteredTool,
 )
 from harnessiq.tools.leads import create_leads_tools
-from harnessiq.tools.registry import ToolRegistry
+from harnessiq.tools.registry import create_tool_registry
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
@@ -88,7 +89,7 @@ class LeadsAgent(BaseAgent):
         self._run_id: str | None = None
         self._active_icp_index = 0
 
-        tool_registry = ToolRegistry(
+        tool_registry = create_tool_registry(
             create_leads_tools(
                 config=self._config,
                 memory_store=self._memory_store,
@@ -122,6 +123,9 @@ class LeadsAgent(BaseAgent):
     @property
     def memory_store(self) -> LeadsMemoryStore:
         return self._memory_store
+
+    def build_instance_payload(self) -> dict[str, Any]:
+        return _build_leads_instance_payload(config=self._config)
 
     def prepare(self) -> None:
         self._memory_store.prepare()
@@ -182,34 +186,30 @@ class LeadsAgent(BaseAgent):
         )
         return (
             AgentParameterSection(title="Company Background", content=self._config.run_config.company_background),
-            AgentParameterSection(title="Active ICP", content=_json_block(icp.as_dict())),
-            AgentParameterSection(
-                title="Run Progress",
-                content=_json_block(
-                    {
-                        "run_id": run_state.run_id,
-                        "active_icp_index": self._active_icp_index,
-                        "icp_position": self._active_icp_index + 1,
-                        "icp_count": len(self._config.run_config.icps),
-                        "platforms": list(self._config.run_config.platforms),
-                        "searches_attempted_for_icp": _total_searches_for_state(icp_state),
-                        "saved_leads_for_icp": len(icp_state.saved_lead_keys),
-                        "max_leads_per_icp": self._config.run_config.max_leads_per_icp,
-                    }
-                ),
+            json_parameter_section("Active ICP", icp.as_dict()),
+            json_parameter_section(
+                "Run Progress",
+                {
+                    "run_id": run_state.run_id,
+                    "active_icp_index": self._active_icp_index,
+                    "icp_position": self._active_icp_index + 1,
+                    "icp_count": len(self._config.run_config.icps),
+                    "platforms": list(self._config.run_config.platforms),
+                    "searches_attempted_for_icp": _total_searches_for_state(icp_state),
+                    "saved_leads_for_icp": len(icp_state.saved_lead_keys),
+                    "max_leads_per_icp": self._config.run_config.max_leads_per_icp,
+                },
             ),
             AgentParameterSection(
                 title="Search History",
                 content=_render_search_history(summaries, recent_searches),
             ),
-            AgentParameterSection(
-                title="Saved Leads (Current ICP)",
-                content=_json_block(
-                    {
-                        "count": len(icp_state.saved_lead_keys),
-                        "dedupe_keys_tail": icp_state.saved_lead_keys[-10:],
-                    }
-                ),
+            json_parameter_section(
+                "Saved Leads (Current ICP)",
+                {
+                    "count": len(icp_state.saved_lead_keys),
+                    "dedupe_keys_tail": icp_state.saved_lead_keys[-10:],
+                },
             ),
         )
 
@@ -362,11 +362,41 @@ def _render_search_history(
     }
     if not payload["summaries"] and not payload["recent_searches"]:
         return "(no search history recorded yet)"
-    return _json_block(payload)
+    return render_json_parameter_content(payload)
 
 
-def _json_block(payload: Any) -> str:
-    return json.dumps(payload, indent=2, sort_keys=True)
+def _build_leads_instance_payload(*, config: LeadsAgentConfig) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "memory_path": str(config.memory_path),
+        "run_config": config.run_config.as_dict(),
+        "runtime": {
+            "max_tokens": config.max_tokens,
+            "reset_threshold": config.reset_threshold,
+            "prune_search_interval": config.prune_search_interval,
+            "prune_token_limit": config.prune_token_limit,
+        },
+    }
+    if not config.memory_path.exists():
+        return payload
+
+    store = LeadsMemoryStore(memory_path=config.memory_path)
+    if store.run_state_path.exists():
+        payload["run_state"] = store.read_run_state().as_dict()
+
+    icp_states = store.list_icp_states()
+    if icp_states:
+        payload["icp_progress"] = [
+            {
+                "icp": state.icp.as_dict(),
+                "status": state.status,
+                "search_count": len(state.searches),
+                "summary_count": len(state.summaries),
+                "saved_lead_count": len(state.saved_lead_keys),
+                "completed_at": state.completed_at,
+            }
+            for state in icp_states
+        ]
+    return payload
 
 
 def _total_searches_for_state(state: LeadICPState) -> int:

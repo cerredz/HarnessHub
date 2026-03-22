@@ -6,8 +6,8 @@ Harnessiq agents are provider-agnostic. You supply a model adapter that implemen
 from harnessiq.agents import (
     AgentModelRequest,
     AgentModelResponse,
-    AgentParameterSection,
     BaseAgent,
+    json_parameter_section,
 )
 from harnessiq.tools import create_builtin_registry
 
@@ -24,8 +24,8 @@ class DemoAgent(BaseAgent):
     def build_system_prompt(self) -> str:
         return "You are a precise demo agent."
 
-    def load_parameter_sections(self) -> list[AgentParameterSection]:
-        return [AgentParameterSection(title="Goal", content="Demonstrate the Harnessiq runtime.")]
+    def load_parameter_sections(self):
+        return [json_parameter_section("Goal", {"task": "Demonstrate the Harnessiq runtime."})]
 
 
 agent = DemoAgent(
@@ -59,3 +59,5 @@ runtime = AgentRuntimeConfig(
 - `prune_token_limit`: optional hard cap that triggers pruning even if the progress interval has not elapsed.
 
 Concrete agents can override `pruning_progress_value()` to tie pruning to durable work instead of raw transcript size. The leads agent uses this to prune after a configurable number of persisted searches while preserving the durable search summaries in parameter sections.
+
+For custom agents, `json_parameter_section()` is the SDK helper for durable JSON-backed memory blocks, and `build_context_window()` / `inspect_tools()` expose the assembled runtime state for debugging and orchestration.

@@ -55,15 +55,18 @@ class HarnessiqPackageTests(unittest.TestCase):
                     "-c",
                     (
                         f"import sys; sys.path.insert(0, r'{wheel_path}'); "
-                        "import harnessiq, harnessiq.agents, harnessiq.config, harnessiq.tools; "
+                        "import harnessiq, harnessiq.agents, harnessiq.config, harnessiq.tools, harnessiq.utils; "
                         "from harnessiq.cli.main import main as cli_main; "
                         "assert harnessiq.__version__ == '0.1.0'; "
                         "assert hasattr(harnessiq.agents, 'LinkedInJobApplierAgent'); "
+                        "assert hasattr(harnessiq.agents, 'json_parameter_section'); "
                         "assert hasattr(harnessiq.agents, 'InstagramKeywordDiscoveryAgent'); "
                         "assert hasattr(harnessiq.agents, 'GoogleMapsProspectingAgent'); "
                         "assert callable(cli_main); "
                         "assert hasattr(harnessiq.config, 'CredentialsConfigStore'); "
-                        "assert hasattr(harnessiq.tools, 'create_builtin_registry')"
+                        "assert hasattr(harnessiq.tools, 'create_builtin_registry'); "
+                        "assert hasattr(harnessiq.tools, 'create_tool_registry'); "
+                        "assert hasattr(harnessiq.utils, 'register_output_sink')"
                     ),
                 ],
                 check=True,

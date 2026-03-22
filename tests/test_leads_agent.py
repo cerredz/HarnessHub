@@ -74,6 +74,18 @@ class LeadsAgentTests(unittest.TestCase):
 
         self.assertIs(ImportedLeadsAgent, LeadsAgent)
 
+    def test_custom_tools_are_added_alongside_internal_tools(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent, _ = self._make_agent(
+                temp_dir=temp_dir,
+                responses=[AgentModelResponse(assistant_message="done", should_continue=False)],
+            )
+
+            keys = {tool.key for tool in agent.available_tools()}
+
+            self.assertIn("apollo.request", keys)
+            self.assertIn(LEADS_LOG_SEARCH, keys)
+
     def test_run_bootstraps_memory_and_parameter_sections(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             agent, model = self._make_agent(
