@@ -1,5 +1,6 @@
 Title: Add the highest_form_of_leverage bundled master prompt
 Issue URL: https://github.com/cerredz/HarnessHub/issues/235
+PR URL: https://github.com/cerredz/HarnessHub/pull/236
 Intent: Add a new deployable master prompt to the bundled prompt catalog so users can retrieve a system prompt that answers like a leverage-maximizing operator who combines game theory, marketing psychology, aggressive implementation speed, delusional optimism, and specific domain knowledge.
 Scope: Create one new bundled prompt JSON asset, update the master prompt regression tests for the new catalog member, and add task workflow artifacts under `memory/highest-form-of-leverage-master-prompt/`. Do not refactor the prompt registry, do not add new CLI surfaces, and do not pull in unrelated prompt-catalog work from the dirty local branch.
 Relevant Files:
