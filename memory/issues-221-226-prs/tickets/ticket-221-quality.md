@@ -38,7 +38,7 @@
 ## Stage 5 - Smoke & Manual Verification
 
 - Manual smoke check executed:
-  - `python - <<script>>` instantiating the test subclass from `tests.test_provider_base_agents`
+  - `python - <<script>>` instantiating the test subclass from `tests.test_provider_base_agents` with a temporary repo root for isolated instance storage
 - Observed output:
   - `tool_keys`: `['example.request', 'custom.helper']`
   - `parameter_titles`: `['Example Provider Credentials', 'Working Set']`

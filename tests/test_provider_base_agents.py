@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from tempfile import TemporaryDirectory
 import unittest
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection
@@ -34,6 +35,7 @@ class _TestProviderAgent(BaseProviderToolAgent):
         tools: tuple[RegisteredTool, ...] = (),
         credential_content: str | None = None,
         provider_name: str = "Example Provider",
+        repo_root: str | None = None,
     ) -> None:
         self._credential_content = credential_content or render_redacted_provider_credentials(
             {"api_key_masked": "exa***1234"},
@@ -47,6 +49,7 @@ class _TestProviderAgent(BaseProviderToolAgent):
             tools=tools,
             max_tokens=2_000,
             reset_threshold=0.5,
+            repo_root=repo_root,
         )
 
     def provider_identity(self) -> str:
@@ -101,62 +104,85 @@ class ProviderAgentHelperTests(unittest.TestCase):
 
 class BaseProviderToolAgentTests(unittest.TestCase):
     def test_agent_builds_prompt_and_parameter_sections_from_hooks(self) -> None:
-        provider_tool = _make_provider_tool()
-        custom_tool = _make_custom_tool()
-        model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
-        agent = _TestProviderAgent(model=model, provider_tools=(provider_tool,), tools=(custom_tool,))
+        with TemporaryDirectory() as temp_repo_root:
+            provider_tool = _make_provider_tool()
+            custom_tool = _make_custom_tool()
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+            agent = _TestProviderAgent(
+                model=model,
+                provider_tools=(provider_tool,),
+                tools=(custom_tool,),
+                repo_root=temp_repo_root,
+            )
 
-        agent.run(max_cycles=1)
+            agent.run(max_cycles=1)
 
-        request = model.requests[0]
-        self.assertIn("[IDENTITY]", request.system_prompt)
-        self.assertIn("Use the provider request surface for all remote record work.", request.system_prompt)
-        self.assertIn("provider_request", request.system_prompt)
-        self.assertIn("`list_records`", request.system_prompt)
-        self.assertIn("Prefer safe preview operations before mutations.", request.system_prompt)
-        self.assertIn("Return concise action summaries", request.system_prompt)
-        self.assertEqual(request.parameter_sections[0].title, "Example Provider Credentials")
-        self.assertEqual(request.parameter_sections[1].title, "Working Set")
-        self.assertEqual([tool.key for tool in request.tools], ["example.request", "custom.helper"])
+            request = model.requests[0]
+            self.assertIn("[IDENTITY]", request.system_prompt)
+            self.assertIn("Use the provider request surface for all remote record work.", request.system_prompt)
+            self.assertIn("provider_request", request.system_prompt)
+            self.assertIn("`list_records`", request.system_prompt)
+            self.assertIn("Prefer safe preview operations before mutations.", request.system_prompt)
+            self.assertIn("Return concise action summaries", request.system_prompt)
+            self.assertEqual(request.parameter_sections[0].title, "Example Provider Credentials")
+            self.assertEqual(request.parameter_sections[1].title, "Working Set")
+            self.assertEqual([tool.key for tool in request.tools], ["example.request", "custom.helper"])
 
     def test_agent_preserves_default_provider_tool_surface_when_custom_tools_conflict(self) -> None:
-        captured: list[str] = []
-        provider_tool = _make_provider_tool(captured=captured, output_prefix="provider")
-        conflicting_tool = _make_provider_tool(
-            captured=captured,
-            output_prefix="custom",
-            description="Custom override that should never replace the provider default.",
-        )
-        model = _FakeModel(
-            [
-                AgentModelResponse(
-                    assistant_message="List the records.",
-                    tool_calls=(
-                        ToolCall(
-                            tool_key="example.request",
-                            arguments={"operation": "list_records"},
+        with TemporaryDirectory() as temp_repo_root:
+            captured: list[str] = []
+            provider_tool = _make_provider_tool(captured=captured, output_prefix="provider")
+            conflicting_tool = _make_provider_tool(
+                captured=captured,
+                output_prefix="custom",
+                description="Custom override that should never replace the provider default.",
+            )
+            model = _FakeModel(
+                [
+                    AgentModelResponse(
+                        assistant_message="List the records.",
+                        tool_calls=(
+                            ToolCall(
+                                tool_key="example.request",
+                                arguments={"operation": "list_records"},
+                            ),
                         ),
-                    ),
-                    should_continue=False,
-                )
-            ]
-        )
-        agent = _TestProviderAgent(model=model, provider_tools=(provider_tool,), tools=(conflicting_tool,))
+                        should_continue=False,
+                    )
+                ]
+            )
+            agent = _TestProviderAgent(
+                model=model,
+                provider_tools=(provider_tool,),
+                tools=(conflicting_tool,),
+                repo_root=temp_repo_root,
+            )
 
-        result = agent.run(max_cycles=1)
+            result = agent.run(max_cycles=1)
 
-        self.assertEqual(result.status, "completed")
-        self.assertEqual(captured, ["provider:list_records"])
-        self.assertIn('"source": "provider"', agent.transcript[-1].content)
+            self.assertEqual(result.status, "completed")
+            self.assertEqual(captured, ["provider:list_records"])
+            self.assertIn('"source": "provider"', agent.transcript[-1].content)
 
     def test_agent_requires_provider_name_and_provider_tools(self) -> None:
-        model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+        with TemporaryDirectory() as temp_repo_root:
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
 
-        with self.assertRaises(ValueError):
-            _TestProviderAgent(model=model, provider_tools=(), provider_name="Example Provider")
+            with self.assertRaises(ValueError):
+                _TestProviderAgent(
+                    model=model,
+                    provider_tools=(),
+                    provider_name="Example Provider",
+                    repo_root=temp_repo_root,
+                )
 
-        with self.assertRaises(ValueError):
-            _TestProviderAgent(model=model, provider_tools=(_make_provider_tool(),), provider_name="   ")
+            with self.assertRaises(ValueError):
+                _TestProviderAgent(
+                    model=model,
+                    provider_tools=(_make_provider_tool(),),
+                    provider_name="   ",
+                    repo_root=temp_repo_root,
+                )
 
 
 def _make_provider_tool(

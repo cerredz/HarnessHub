@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig, BaseAgent
@@ -30,6 +31,9 @@ class BaseProviderToolAgent(BaseAgent, ABC):
         max_tokens: int,
         reset_threshold: float,
         runtime_config: AgentRuntimeConfig | None = None,
+        memory_path: str | Path | None = None,
+        repo_root: str | Path | None = None,
+        instance_name: str | None = None,
     ) -> None:
         normalized_provider_name = provider_name.strip()
         if not normalized_provider_name:
@@ -56,6 +60,9 @@ class BaseProviderToolAgent(BaseAgent, ABC):
                 max_tokens=max_tokens,
                 reset_threshold=reset_threshold,
             ),
+            memory_path=memory_path,
+            repo_root=repo_root,
+            instance_name=instance_name,
         )
 
     def build_instance_payload(self) -> dict[str, Any]:
