@@ -1,5 +1,6 @@
 Title: Refactor the context tool family to resolve PR #239 review comments
 Issue URL: https://github.com/cerredz/HarnessHub/issues/241
+PR URL: https://github.com/cerredz/HarnessHub/pull/243
 
 Intent:
 Resolve the architectural and usability feedback left on PR #239 by moving context-tool binding out of `BaseAgent`, separating tool definitions from execution logic, preserving explicit opt-in activation, and improving the tool descriptions that agents see.
