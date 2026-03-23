@@ -266,6 +266,9 @@ class HttpTransportHostnameTests(unittest.TestCase):
     def test_apollo_hostname(self) -> None:
         self.assertEqual(self._infer("https://api.apollo.io/api/v1/mixed_people/api_search"), "apollo")
 
+    def test_browser_use_hostname(self) -> None:
+        self.assertEqual(self._infer("https://api.browser-use.com/api/v2/tasks"), "browser_use")
+
     def test_leadiq_hostname(self) -> None:
         self.assertEqual(self._infer("https://api.leadiq.com/graphql"), "leadiq")
 

@@ -151,7 +151,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def read_ast(path: Path) -> ast.Module:
-    return ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    return ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
 
 
 def relative_path(path: Path) -> str:

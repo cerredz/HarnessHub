@@ -16,22 +16,23 @@ from harnessiq.master_prompts import (
 
 
 EXPECTED_PROMPT_KEYS = {
+    "answer_with_notable_web_sources",
     "autonomous_execution_loop",
     "create_github_execution_issues",
     "create_jira_execution_tickets",
     "create_linear_execution_tickets",
     "create_master_prompts",
-    "implement_and_critique_solutions",
-    "parallel_problem_decomposition",
-    "spawn_specialized_subagents",
-}
-
-EXPECTED_PROMPT_KEYS = {
-    "create_master_prompts",
     "create_tickets",
     "highest_form_of_leverage",
+    "hybrid_academic_and_web_research",
+    "implement_and_critique_solutions",
+    "parallel_problem_decomposition",
     "phased_code_review",
     "principal_software_engineer_design_patterns",
+    "research_with_arxiv_papers",
+    "research_with_hugging_face_hub_pages",
+    "research_with_hugging_face_papers",
+    "spawn_specialized_subagents",
     "surgical_bugfix",
 }
 REQUIRED_PROMPT_SECTIONS = (
@@ -43,26 +44,6 @@ REQUIRED_PROMPT_SECTIONS = (
     "Artifacts",
     "Inputs",
 )
-
-
-EXPECTED_PROMPT_KEYS = (
-    "create_master_prompts",
-    "create_tickets",
-    "phased_code_review",
-    "surgical_bugfix",
-)
-
-
-EXPECTED_PROMPT_KEYS = {
-    "answer_with_notable_web_sources",
-    "create_master_prompts",
-    "hybrid_academic_and_web_research",
-    "research_with_arxiv_papers",
-    "research_with_hugging_face_hub_pages",
-    "research_with_hugging_face_papers",
-}
-
-
 class MasterPromptDataclassTests(unittest.TestCase):
     def test_master_prompt_is_frozen(self) -> None:
         prompt = MasterPrompt(key="k", title="T", description="D", prompt="P")

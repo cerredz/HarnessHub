@@ -16,7 +16,14 @@ from setuptools.build_meta import build_sdist, build_wheel
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-AGENT_ALLOWED_LOCAL_CONSTANTS = {"_PROMPTS_DIR", "_MASTER_PROMPT_PATH", "_DEFAULT_MEMORY_PATH"}
+AGENT_ALLOWED_LOCAL_CONSTANTS = {
+    "_PROMPTS_DIR",
+    "_MASTER_PROMPT_PATH",
+    "_DEFAULT_MEMORY_PATH",
+    "_CONTEXT_STATE_FILENAME",
+    "_CONTEXT_MEMORY_SECTION_TITLE",
+    "_DIRECTIVE_PRIORITY_ORDER",
+}
 PROVIDER_ALLOWED_LOCAL_CONSTANTS = {"P", "R"}
 SHARED_CLASS_SUFFIXES = ("Config", "Credentials", "Operation", "PreparedRequest", "Error")
 

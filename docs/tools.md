@@ -58,3 +58,23 @@ apollo_tools = create_apollo_tools(
 ```
 
 This returns a `RegisteredTool` keyed as `apollo.request`, ready to drop into a `ToolRegistry` or a concrete agent harness such as `LeadsAgent`.
+
+Browser Use follows the same provider-backed pattern:
+
+```python
+from harnessiq.shared.credentials import BrowserUseCredentials
+from harnessiq.tools.browser_use import create_browser_use_tools
+
+browser_use_tools = create_browser_use_tools(
+    credentials=BrowserUseCredentials(api_key="bu_..."),
+    allowed_operations=(
+        "create_task",
+        "get_task_status",
+        "create_session",
+        "list_profiles",
+        "execute_skill",
+    ),
+)
+```
+
+This returns a `RegisteredTool` keyed as `browser_use.request`. Inject it through an agent's additive `tools=` surface when you want coarse-grained Browser Use Cloud automation. It is not a drop-in replacement for the selector-driven `browser_tools` factories used by the current Playwright-backed LinkedIn and prospecting harnesses.

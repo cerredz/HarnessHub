@@ -107,6 +107,8 @@ def _infer_provider_name(url: str) -> str:
         return "resend"
     if "apollo" in host:
         return "apollo"
+    if "browser-use" in host or "browseruse" in host:
+        return "browser_use"
     if "snov.io" in host or "snovio" in host:
         return "snovio"
     if "leadiq" in host:

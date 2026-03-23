@@ -607,7 +607,7 @@ class BaseAgentTests(unittest.TestCase):
 
         self.assertEqual(context_window[0]["kind"], "parameter")
         self.assertEqual(context_window[0]["label"], "State")
-        self.assertEqual(context_window[1]["kind"], "message")
+        self.assertEqual(context_window[1]["kind"], "assistant")
         self.assertEqual(context_window[2]["kind"], "tool_result")
 
     def test_json_parameter_section_renders_sorted_json_content(self) -> None:

@@ -15,6 +15,7 @@ from harnessiq.shared.tools import (
     BROWSER_SELECT_OPTION,
     BROWSER_TYPE,
     BROWSER_UPLOAD_FILE,
+    BROWSER_USE_REQUEST,
     BROWSER_VIEW_HTML,
     BROWSER_WAIT_FOR_ELEMENT,
     CONTROL_PAUSE_FOR_HUMAN,
@@ -107,6 +108,7 @@ from harnessiq.shared.tools import (
 )
 
 from .browser import build_browser_tool_definitions, create_browser_tools
+from .browser_use import build_browser_use_request_tool_definition, create_browser_use_tools
 from .eval import build_evaluate_company_tool_definition, create_evaluate_company_tool
 from .builtin import BUILTIN_TOOLS
 from .context_compaction import (
@@ -195,6 +197,7 @@ __all__ = [
     "BROWSER_SELECT_OPTION",
     "BROWSER_TYPE",
     "BROWSER_UPLOAD_FILE",
+    "BROWSER_USE_REQUEST",
     "BROWSER_VIEW_HTML",
     "BROWSER_WAIT_FOR_ELEMENT",
     "BUILTIN_TOOLS",
@@ -299,6 +302,7 @@ __all__ = [
     "append_text_file",
     "apply_log_compaction",
     "build_browser_tool_definitions",
+    "build_browser_use_request_tool_definition",
     "build_evaluate_company_tool_definition",
     "build_paperclip_request_tool_definition",
     "build_resend_operation_catalog",
@@ -307,6 +311,7 @@ __all__ = [
     "copy_path",
     "count_by_field",
     "create_browser_tools",
+    "create_browser_use_tools",
     "create_builtin_registry",
     "create_context_tools",
     "create_tool_registry",

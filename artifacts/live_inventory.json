@@ -740,6 +740,45 @@
       },
       {
         "aliases": [],
+        "command": "harnessiq prompts",
+        "help": "Inspect bundled master prompts",
+        "segments": [
+          "prompts"
+        ],
+        "source_file": "harnessiq/cli/master_prompts/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prompts list",
+        "help": "List bundled master prompts",
+        "segments": [
+          "prompts",
+          "list"
+        ],
+        "source_file": "harnessiq/cli/master_prompts/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prompts show",
+        "help": "Render one bundled master prompt as JSON",
+        "segments": [
+          "prompts",
+          "show"
+        ],
+        "source_file": "harnessiq/cli/master_prompts/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prompts text",
+        "help": "Print the raw prompt text for one prompt",
+        "segments": [
+          "prompts",
+          "text"
+        ],
+        "source_file": "harnessiq/cli/master_prompts/commands.py"
+      },
+      {
+        "aliases": [],
         "command": "harnessiq prospecting",
         "help": "Manage and run the Google Maps prospecting agent",
         "segments": [
@@ -1606,6 +1645,38 @@
           "source_file": "harnessiq/cli/platform_commands.py"
         }
       ],
+      "prompts": [
+        {
+          "aliases": [],
+          "command": "harnessiq prompts list",
+          "help": "List bundled master prompts",
+          "segments": [
+            "prompts",
+            "list"
+          ],
+          "source_file": "harnessiq/cli/master_prompts/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq prompts show",
+          "help": "Render one bundled master prompt as JSON",
+          "segments": [
+            "prompts",
+            "show"
+          ],
+          "source_file": "harnessiq/cli/master_prompts/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq prompts text",
+          "help": "Print the raw prompt text for one prompt",
+          "segments": [
+            "prompts",
+            "text"
+          ],
+          "source_file": "harnessiq/cli/master_prompts/commands.py"
+        }
+      ],
       "prospecting": [
         {
           "aliases": [],
@@ -1889,6 +1960,15 @@
       },
       {
         "aliases": [],
+        "command": "harnessiq prompts",
+        "help": "Inspect bundled master prompts",
+        "segments": [
+          "prompts"
+        ],
+        "source_file": "harnessiq/cli/master_prompts/commands.py"
+      },
+      {
+        "aliases": [],
         "command": "harnessiq prospecting",
         "help": "Manage and run the Google Maps prospecting agent",
         "segments": [
@@ -1926,14 +2006,14 @@
     ]
   },
   "counts": {
-    "command_paths": 101,
+    "command_paths": 105,
     "harnesses": 6,
     "model_providers": 4,
-    "service_provider_packages": 25,
+    "service_provider_packages": 26,
     "sink_types": 8,
-    "test_modules": 71,
+    "test_modules": 79,
     "tool_only_external_surfaces": 1,
-    "top_level_commands": 15
+    "top_level_commands": 16
   },
   "harnesses": [
     {
@@ -2223,6 +2303,7 @@
         "arcads",
         "arxiv",
         "attio",
+        "browser_use",
         "coresignal",
         "creatify",
         "exa",
@@ -2609,14 +2690,19 @@
   "package_layout": [
     {
       "children": [
+        "apollo",
         "base",
         "email",
+        "exa",
         "exa_outreach",
         "instagram",
+        "instantly",
         "knowt",
         "leads",
         "linkedin",
-        "prospecting"
+        "outreach",
+        "prospecting",
+        "provider_base"
       ],
       "description": "Shared runtime bases plus the concrete harness packages exported by the SDK.",
       "path": "harnessiq/agents/"
@@ -2628,6 +2714,7 @@
         "leads",
         "ledger",
         "linkedin",
+        "master_prompts",
         "prospecting"
       ],
       "description": "Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations.",
@@ -2657,6 +2744,7 @@
         "arcads",
         "arxiv",
         "attio",
+        "browser_use",
         "coresignal",
         "creatify",
         "exa",
@@ -2697,6 +2785,8 @@
         "arcads",
         "arxiv",
         "attio",
+        "browser_use",
+        "context",
         "coresignal",
         "creatify",
         "eval",
@@ -2787,6 +2877,13 @@
         "operations": 7,
         "provider_path": "harnessiq/providers/attio",
         "tool_path": "harnessiq/tools/attio/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/browser_use.py",
+        "family": "browser_use",
+        "operations": 43,
+        "provider_path": "harnessiq/providers/browser_use",
+        "tool_path": "harnessiq/tools/browser_use/operations.py"
       },
       {
         "catalog_path": "harnessiq/shared/coresignal.py",
@@ -2956,19 +3053,19 @@
     ]
   },
   "tests": {
-    "count": 71,
+    "count": 79,
     "groups": [
       {
-        "count": 10,
+        "count": 15,
         "examples": [
           "test_agent_instances.py",
           "test_agents_base.py",
-          "test_email_agent.py"
+          "test_apollo_agent.py"
         ],
         "name": "agents"
       },
       {
-        "count": 7,
+        "count": 8,
         "examples": [
           "test_exa_outreach_cli.py",
           "test_instagram_cli.py",
@@ -2984,7 +3081,7 @@
         "name": "ledger"
       },
       {
-        "count": 30,
+        "count": 31,
         "examples": [
           "test_anthropic_provider.py",
           "test_apollo_provider.py",
@@ -3002,11 +3099,11 @@
         "name": "support"
       },
       {
-        "count": 11,
+        "count": 12,
         "examples": [
           "test_context_compaction_tools.py",
-          "test_general_tools.py",
-          "test_knowt_tools.py"
+          "test_context_window_tools.py",
+          "test_general_tools.py"
         ],
         "name": "tools"
       }
@@ -3024,6 +3121,12 @@
       "kind": "generated/cache",
       "name": ".pytest_cache",
       "path": ".pytest_cache/"
+    },
+    {
+      "description": "Repository directory not yet classified in the generated file index.",
+      "kind": "other",
+      "name": ".worktrees",
+      "path": ".worktrees/"
     },
     {
       "description": "Generated and curated repository reference artifacts.",
