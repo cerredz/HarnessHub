@@ -10,12 +10,15 @@ from typing import Any, Iterable, Protocol, Sequence, runtime_checkable
 from urllib.parse import urlsplit, urlunsplit
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
+from harnessiq.shared.harness_manifest import HarnessManifest, HarnessMemoryFileSpec, HarnessParameterSpec
+from harnessiq.toolset.catalog import PROVIDER_FACTORY_MAP
 from harnessiq.utils.run_storage import FileSystemStorageBackend
 
 ICPS_DIRNAME = "icps"
 LEADS_STORAGE_DIRNAME = "lead_storage"
 RUN_CONFIG_FILENAME = "run_config.json"
 RUN_STATE_FILENAME = "run_state.json"
+RUNTIME_PARAMETERS_FILENAME = "runtime_parameters.json"
 SAVED_LEADS_FILENAME = "saved_leads.json"
 DEFAULT_LEADS_SEARCH_SUMMARY_EVERY = 500
 DEFAULT_LEADS_SEARCH_TAIL_SIZE = 20
@@ -738,6 +741,47 @@ def normalize_leads_platform_name(value: str) -> str:
     return value.strip().lower()
 
 
+LEADS_HARNESS_MANIFEST = HarnessManifest(
+    manifest_id="leads",
+    agent_name="leads_agent",
+    display_name="Leads Agent",
+    module_path="harnessiq.agents.leads",
+    class_name="LeadsAgent",
+    cli_command="leads",
+    cli_adapter_path="harnessiq.cli.platform_adapters:LeadsHarnessCliAdapter",
+    default_memory_root="memory/leads",
+    prompt_path="harnessiq/agents/leads/prompts/master_prompt.md",
+    runtime_parameters=(
+        HarnessParameterSpec("max_tokens", "integer", "Maximum model context budget for the harness.", default=DEFAULT_AGENT_MAX_TOKENS),
+        HarnessParameterSpec("reset_threshold", "number", "Fraction of max_tokens that triggers a reset.", default=DEFAULT_AGENT_RESET_THRESHOLD),
+        HarnessParameterSpec("prune_search_interval", "integer", "Progress interval that triggers deterministic pruning.", nullable=True, default=None),
+        HarnessParameterSpec("prune_token_limit", "integer", "Optional token cap that triggers pruning.", nullable=True, default=None),
+        HarnessParameterSpec("search_summary_every", "integer", "Number of searches between automatic summary compaction.", default=DEFAULT_LEADS_SEARCH_SUMMARY_EVERY),
+        HarnessParameterSpec("search_tail_size", "integer", "Number of recent searches preserved in prompt context.", default=DEFAULT_LEADS_SEARCH_TAIL_SIZE),
+        HarnessParameterSpec("max_leads_per_icp", "integer", "Optional per-ICP lead cap.", nullable=True, default=None),
+    ),
+    memory_files=(
+        HarnessMemoryFileSpec("run_config", RUN_CONFIG_FILENAME, "Durable lead-run configuration.", format="json"),
+        HarnessMemoryFileSpec("run_state", RUN_STATE_FILENAME, "Durable rotating-run progress state.", format="json"),
+        HarnessMemoryFileSpec("runtime_parameters", RUNTIME_PARAMETERS_FILENAME, "Persisted typed runtime overrides.", format="json"),
+        HarnessMemoryFileSpec("icp_states", f"{ICPS_DIRNAME}/*.json", "Per-ICP durable state files.", format="json"),
+        HarnessMemoryFileSpec("lead_storage", LEADS_STORAGE_DIRNAME, "Storage backend root for saved leads and run artifacts.", kind="directory", format="directory"),
+        HarnessMemoryFileSpec("saved_leads", f"{LEADS_STORAGE_DIRNAME}/{SAVED_LEADS_FILENAME}", "Persisted deduplicated saved leads.", format="json"),
+    ),
+    provider_families=tuple(sorted(PROVIDER_FACTORY_MAP)),
+    output_schema={
+        "type": "object",
+        "properties": {
+            "run_config": {"type": "object", "additionalProperties": True},
+            "run_state": {"type": "object", "additionalProperties": True},
+            "icp_states": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+            "saved_leads": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+        },
+        "additionalProperties": False,
+    },
+)
+
+
 def _slugify(value: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return normalized
@@ -797,6 +841,8 @@ __all__ = [
     "LeadSearchSummary",
     "LeadsMemoryStore",
     "LeadsStorageBackend",
+    "LEADS_HARNESS_MANIFEST",
+    "RUNTIME_PARAMETERS_FILENAME",
     "RUN_CONFIG_FILENAME",
     "RUN_STATE_FILENAME",
     "SAVED_LEADS_FILENAME",

@@ -13,6 +13,7 @@ from harnessiq.shared.agents import (
     AgentModel,
     AgentParameterSection,
     AgentRuntimeConfig,
+    json_parameter_section,
     merge_agent_runtime_config,
 )
 from harnessiq.shared.instagram import (
@@ -27,7 +28,7 @@ from harnessiq.shared.instagram import (
 from harnessiq.shared.tools import INSTAGRAM_SEARCH_KEYWORD, RegisteredTool, ToolCall, ToolResult
 from harnessiq.toolset import get_tool
 from harnessiq.tools.instagram import create_instagram_tools
-from harnessiq.tools.registry import ToolRegistry
+from harnessiq.tools.registry import create_tool_registry
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
@@ -49,6 +50,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         recent_search_window: int = DEFAULT_RECENT_SEARCH_WINDOW,
         recent_result_window: int = DEFAULT_RECENT_RESULT_WINDOW,
         search_result_limit: int = DEFAULT_SEARCH_RESULT_LIMIT,
+        tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         if search_backend is None:
@@ -83,13 +85,14 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             search_result_limit=search_result_limit,
         )[0]
         search_tool_definition = get_tool(INSTAGRAM_SEARCH_KEYWORD).definition
-        tool_registry = ToolRegistry(
+        tool_registry = create_tool_registry(
             (
                 RegisteredTool(
                     definition=search_tool_definition,
                     handler=bound_search_tool.handler,
                 ),
-            )
+            ),
+            tuple(tools or ()),
         )
         base_runtime_config = AgentRuntimeConfig(
             max_tokens=max_tokens,
@@ -124,6 +127,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         search_backend: InstagramSearchBackend,
         memory_path: str | Path | None = None,
         runtime_overrides: Mapping[str, Any] | None = None,
+        tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> "InstagramKeywordDiscoveryAgent":
         resolved_path = _resolve_memory_path(memory_path)
@@ -140,6 +144,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             search_backend=search_backend,
             memory_path=resolved_path,
             icp_descriptions=store.read_icp_profiles(),
+            tools=tools,
             runtime_config=runtime_config,
             **normalized,
         )
@@ -189,7 +194,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             if record.keyword
         )
         return (
-            AgentParameterSection(title="ICP Profiles", content=_json_block(icp_profiles)),
+            json_parameter_section("ICP Profiles", icp_profiles),
             AgentParameterSection(title="Recent Searches", content=recent_searches),
         )
 
@@ -288,10 +293,6 @@ def _find_repo_root(path: Path | None) -> Path:
     if resolved.parent.name == "instagram" and resolved.parent.parent.name == "memory":
         return resolved.parent.parent.parent
     return Path.cwd()
-
-
-def _json_block(payload: Any) -> str:
-    return json.dumps(payload, indent=2, sort_keys=True)
 
 
 __all__ = [

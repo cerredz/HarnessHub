@@ -225,17 +225,33 @@ class LangSmithTracingTests(unittest.TestCase):
 
         def boom() -> dict[str, str]:
             raise provider_error
+
+        with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
+            with self.assertRaises(ProviderHTTPError) as raised:
+                trace_model_call(
+                    boom,
+                    provider="grok",
+                    model_name="grok-4-1-fast",
+                    system_prompt="Stay precise.",
+                    messages=self.messages,
+                    client=object(),
+                )
+
+        self.assertIs(raised.exception, provider_error)
+        self.assertEqual(fake_langsmith.run_trees[0].end_calls[-1]["error"], "grok request failed (403): Forbidden")
+
     def test_trace_model_call_preserves_provider_http_error(self) -> None:
         fake_langsmith = _FakeLangSmith()
+        provider_error = ProviderHTTPError(
+            provider="grok",
+            message="Forbidden",
+            status_code=403,
+            url="https://api.x.ai/v1/chat/completions",
+            body={"error": {"message": "Forbidden"}},
+        )
 
         def boom() -> dict[str, str]:
-            raise ProviderHTTPError(
-                provider="grok",
-                message="Forbidden",
-                status_code=403,
-                url="https://api.x.ai/v1/chat/completions",
-                body={"error": {"message": "Forbidden"}},
-            )
+            raise provider_error
 
         with mock.patch("harnessiq.providers.langsmith._get_langsmith_module", return_value=fake_langsmith):
             with self.assertRaises(ProviderHTTPError) as raised:

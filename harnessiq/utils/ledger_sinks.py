@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,6 +26,10 @@ from harnessiq.utils.ledger_models import (
     _safe_slug,
     _truncate,
 )
+
+OutputSinkFactory = Callable[[Mapping[str, Any]], OutputSink]
+_BUILTIN_SINK_FACTORIES: dict[str, OutputSinkFactory] = {}
+_CUSTOM_SINK_FACTORIES: dict[str, OutputSinkFactory] = {}
 
 
 @dataclass(slots=True)
@@ -180,6 +185,36 @@ class LinearSink:
             client.create_issue(team_id=self.team_id, title=title, description=description)
 
 
+def register_output_sink(
+    sink_type: str,
+    factory: OutputSinkFactory,
+    *,
+    allow_replace: bool = False,
+) -> None:
+    """Register a custom output sink factory under ``sink_type``."""
+    normalized = _normalize_sink_type(sink_type)
+    if not callable(factory):
+        raise TypeError("factory must be callable.")
+    if normalized in _BUILTIN_SINK_FACTORIES and not allow_replace:
+        raise ValueError(f"Sink type '{normalized}' is reserved for a built-in Harnessiq sink.")
+    if normalized in _CUSTOM_SINK_FACTORIES and not allow_replace:
+        raise ValueError(f"Sink type '{normalized}' is already registered.")
+    _CUSTOM_SINK_FACTORIES[normalized] = factory
+
+
+def unregister_output_sink(sink_type: str) -> None:
+    """Remove a previously registered custom sink type."""
+    normalized = _normalize_sink_type(sink_type)
+    if normalized in _BUILTIN_SINK_FACTORIES:
+        raise ValueError(f"Cannot unregister built-in sink type '{normalized}'.")
+    _CUSTOM_SINK_FACTORIES.pop(normalized, None)
+
+
+def list_output_sink_types() -> tuple[str, ...]:
+    """Return the currently available sink type names."""
+    return tuple([*sorted(_BUILTIN_SINK_FACTORIES), *sorted(_CUSTOM_SINK_FACTORIES)])
+
+
 def build_output_sinks(
     *,
     connections: Sequence[SinkConnection] = (),
@@ -196,56 +231,74 @@ def build_output_sinks(
 
 
 def build_sink_from_connection(connection: SinkConnection) -> OutputSink:
-    return _build_sink(connection.sink_type, connection.config)
+    return build_output_sink(connection.sink_type, connection.config)
 
 
 def build_sink_from_spec(spec: str) -> OutputSink:
     sink_type, config = parse_sink_spec(spec)
-    return _build_sink(sink_type, config)
+    return build_output_sink(sink_type, config)
+
+
+def build_output_sink(sink_type: str, config: Mapping[str, Any]) -> OutputSink:
+    """Build one output sink instance from a sink type and config mapping."""
+    normalized = _normalize_sink_type(sink_type)
+    factory = _CUSTOM_SINK_FACTORIES.get(normalized) or _BUILTIN_SINK_FACTORIES.get(normalized)
+    if factory is None:
+        raise ValueError(
+            f"Unsupported sink type '{sink_type}'. "
+            f"Available sink types: {', '.join(list_output_sink_types())}."
+        )
+    return factory(dict(config))
 
 
 def _build_sink(sink_type: str, config: Mapping[str, Any]) -> OutputSink:
+    return build_output_sink(sink_type, config)
+
+
+def _normalize_sink_type(sink_type: str) -> str:
     normalized = sink_type.strip().lower()
-    data = dict(config)
-    if normalized == "jsonl":
-        return JSONLLedgerSink(path=data.get("path"))
-    if normalized == "obsidian":
-        return ObsidianSink(
-            vault_path=str(data["vault_path"]),
-            note_folder=str(data.get("note_folder", "Agent Runs")),
-            filename_template=str(data.get("filename_template", "{date}-{agent_name}-{run_id}.md")),
-        )
-    if normalized == "slack":
-        return SlackSink(webhook_url=str(data["webhook_url"]))
-    if normalized == "discord":
-        return DiscordSink(webhook_url=str(data["webhook_url"]))
-    if normalized == "notion":
-        return NotionSink(
-            api_token=str(data["api_token"]),
-            database_id=str(data["database_id"]),
-            property_mapping=dict(data.get("property_mapping", {})) if data.get("property_mapping") else None,
-        )
-    if normalized == "confluence":
-        return ConfluenceSink(
-            base_url=str(data["base_url"]),
-            api_token=str(data["api_token"]),
-            space_key=str(data["space_key"]),
-            parent_page_id=str(data["parent_page_id"]) if data.get("parent_page_id") is not None else None,
-        )
-    if normalized == "supabase":
-        return SupabaseSink(
-            base_url=str(data["base_url"]),
-            api_key=str(data["api_key"]),
-            table=str(data.get("table", "agent_runs")),
-            schema=str(data.get("schema", "public")),
-        )
-    if normalized == "linear":
-        return LinearSink(
-            api_key=str(data["api_key"]),
-            team_id=str(data["team_id"]),
-            explode_field=str(data["explode_field"]) if data.get("explode_field") is not None else None,
-        )
-    raise ValueError(f"Unsupported sink type '{sink_type}'.")
+    if not normalized:
+        raise ValueError("Sink type must not be blank.")
+    return normalized
+
+
+def _register_builtin_sinks() -> None:
+    if _BUILTIN_SINK_FACTORIES:
+        return
+    _BUILTIN_SINK_FACTORIES.update(
+        {
+            "jsonl": lambda data: JSONLLedgerSink(path=data.get("path")),
+            "obsidian": lambda data: ObsidianSink(
+                vault_path=str(data["vault_path"]),
+                note_folder=str(data.get("note_folder", "Agent Runs")),
+                filename_template=str(data.get("filename_template", "{date}-{agent_name}-{run_id}.md")),
+            ),
+            "slack": lambda data: SlackSink(webhook_url=str(data["webhook_url"])),
+            "discord": lambda data: DiscordSink(webhook_url=str(data["webhook_url"])),
+            "notion": lambda data: NotionSink(
+                api_token=str(data["api_token"]),
+                database_id=str(data["database_id"]),
+                property_mapping=dict(data.get("property_mapping", {})) if data.get("property_mapping") else None,
+            ),
+            "confluence": lambda data: ConfluenceSink(
+                base_url=str(data["base_url"]),
+                api_token=str(data["api_token"]),
+                space_key=str(data["space_key"]),
+                parent_page_id=str(data["parent_page_id"]) if data.get("parent_page_id") is not None else None,
+            ),
+            "supabase": lambda data: SupabaseSink(
+                base_url=str(data["base_url"]),
+                api_key=str(data["api_key"]),
+                table=str(data.get("table", "agent_runs")),
+                schema=str(data.get("schema", "public")),
+            ),
+            "linear": lambda data: LinearSink(
+                api_key=str(data["api_key"]),
+                team_id=str(data["team_id"]),
+                explode_field=str(data["explode_field"]) if data.get("explode_field") is not None else None,
+            ),
+        }
+    )
 
 
 def _build_notion_properties(
@@ -460,7 +513,14 @@ __all__ = [
     "ObsidianSink",
     "SlackSink",
     "SupabaseSink",
+    "build_output_sink",
     "build_output_sinks",
     "build_sink_from_connection",
     "build_sink_from_spec",
+    "list_output_sink_types",
+    "register_output_sink",
+    "unregister_output_sink",
 ]
+
+
+_register_builtin_sinks()

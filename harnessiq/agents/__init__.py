@@ -11,9 +11,18 @@ from harnessiq.shared.agents import (
     AgentRuntimeConfig,
     AgentToolExecutor,
     AgentTranscriptEntry,
+    json_parameter_section,
+    render_json_parameter_content,
     estimate_text_tokens,
     json_parameter_section,
     render_json_parameter_content,
+)
+from harnessiq.shared.harness_manifests import (
+    HARNESS_MANIFESTS,
+    get_harness_manifest,
+    list_harness_manifests,
+    register_harness_manifest,
+    register_harness_manifests,
 )
 from harnessiq.shared.linkedin import (
     ActionLogEntry,
@@ -102,6 +111,7 @@ __all__ = [
     "ExaOutreachMemoryStore",
     "DEFAULT_EXA_AGENT_IDENTITY",
     "DEFAULT_EMAIL_AGENT_IDENTITY",
+    "HARNESS_MANIFESTS",
     "DEFAULT_INSTANTLY_AGENT_IDENTITY",
     "DEFAULT_OUTREACH_AGENT_IDENTITY",
     "InstagramKeywordDiscoveryAgent",
@@ -124,6 +134,11 @@ __all__ = [
     "estimate_text_tokens",
     "fingerprint_agent_payload",
     "json_parameter_section",
+    "get_harness_manifest",
+    "json_parameter_section",
+    "list_harness_manifests",
+    "register_harness_manifest",
+    "register_harness_manifests",
     "normalize_linkedin_runtime_parameters",
     "render_json_parameter_content",
     "GoogleMapsProspectingAgent",
