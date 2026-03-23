@@ -195,7 +195,7 @@ def test_run_generic_knowt_uses_bound_creatify_credentials(tmp_path: Path) -> No
         status="completed",
     )
 
-    with patch("harnessiq.cli.platform_adapters.KnowtAgent", return_value=mock_agent) as patched_agent:
+    with patch("harnessiq.cli.adapters.knowt.KnowtAgent", return_value=mock_agent) as patched_agent:
         exit_code, payload = _run(
             [
                 "run",
