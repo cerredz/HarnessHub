@@ -31,6 +31,7 @@ EXPECTED_PROMPT_KEYS = {
     "create_tickets",
     "highest_form_of_leverage",
     "phased_code_review",
+    "principal_software_engineer_design_patterns",
     "surgical_bugfix",
 }
 REQUIRED_PROMPT_SECTIONS = (
