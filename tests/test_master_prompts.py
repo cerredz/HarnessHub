@@ -51,6 +51,16 @@ EXPECTED_PROMPT_KEYS = (
 )
 
 
+EXPECTED_PROMPT_KEYS = {
+    "answer_with_notable_web_sources",
+    "create_master_prompts",
+    "hybrid_academic_and_web_research",
+    "research_with_arxiv_papers",
+    "research_with_hugging_face_hub_pages",
+    "research_with_hugging_face_papers",
+}
+
+
 class MasterPromptDataclassTests(unittest.TestCase):
     def test_master_prompt_is_frozen(self) -> None:
         prompt = MasterPrompt(key="k", title="T", description="D", prompt="P")
