@@ -15,7 +15,7 @@ from harnessiq.agents import (
 )
 from harnessiq.shared.agents import AgentRuntimeConfig
 from harnessiq.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW, LinkedInAgentConfig
-from harnessiq.shared.tools import ToolCall
+from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
 
 _LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
 
@@ -39,6 +39,25 @@ class _FakeModel:
 
 
 class LinkedInJobApplierAgentTests(unittest.TestCase):
+    def test_custom_tools_are_added_to_the_agent_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            custom_tool = RegisteredTool(
+                definition=ToolDefinition(
+                    key="custom.linkedin_helper",
+                    name="linkedin_helper",
+                    description="Custom helper.",
+                    input_schema={"type": "object", "properties": {}, "required": [], "additionalProperties": False},
+                ),
+                handler=lambda arguments: {"ok": True, "arguments": arguments},
+            )
+            agent = LinkedInJobApplierAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                memory_path=temp_dir,
+                tools=(custom_tool,),
+            )
+
+            self.assertIn("custom.linkedin_helper", {tool.key for tool in agent.available_tools()})
+
     def test_shared_linkedin_config_normalizes_paths_and_validates_window(self) -> None:
         config = LinkedInAgentConfig(memory_path="memory")
 

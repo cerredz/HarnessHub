@@ -136,14 +136,19 @@ def harnessiq_home_dir(home_dir: Path | str | None = None) -> Path:
     override = os.environ.get("HARNESSIQ_HOME", "").strip()
     if override:
         return Path(override).expanduser().resolve()
-    preferred = (Path.home() / DEFAULT_HARNESSIQ_DIRNAME).expanduser().resolve()
     try:
-        preferred.mkdir(parents=True, exist_ok=True)
-        return preferred
-    except OSError:
-        fallback = (Path.cwd() / DEFAULT_HARNESSIQ_DIRNAME).resolve()
-        fallback.mkdir(parents=True, exist_ok=True)
-        return fallback
+        preferred = (Path.home() / DEFAULT_HARNESSIQ_DIRNAME).expanduser().resolve()
+    except RuntimeError:
+        preferred = None
+    if preferred is not None:
+        try:
+            preferred.mkdir(parents=True, exist_ok=True)
+            return preferred
+        except OSError:
+            pass
+    fallback = (Path.cwd() / DEFAULT_HARNESSIQ_DIRNAME).resolve()
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
 
 
 def default_ledger_path(home_dir: Path | str | None = None) -> Path:

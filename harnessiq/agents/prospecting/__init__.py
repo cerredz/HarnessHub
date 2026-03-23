@@ -4,6 +4,7 @@ from .agent import GoogleMapsProspectingAgent
 from harnessiq.shared.prospecting import (
     ProspectingAgentConfig,
     ProspectingMemoryStore,
+    PROSPECTING_HARNESS_MANIFEST,
     QualifiedLeadRecord,
     SUPPORTED_PROSPECTING_CUSTOM_PARAMETERS,
     SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS,
@@ -15,6 +16,7 @@ __all__ = [
     "GoogleMapsProspectingAgent",
     "ProspectingAgentConfig",
     "ProspectingMemoryStore",
+    "PROSPECTING_HARNESS_MANIFEST",
     "QualifiedLeadRecord",
     "SUPPORTED_PROSPECTING_CUSTOM_PARAMETERS",
     "SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS",

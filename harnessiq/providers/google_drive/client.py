@@ -1,4 +1,4 @@
-"""Google Drive OAuth credentials and deterministic file/folder client."""
+"""Google Drive deterministic file and folder client."""
 
 from __future__ import annotations
 
@@ -8,15 +8,13 @@ from typing import Any, Mapping, Protocol
 from urllib import error, parse, request
 
 from harnessiq.providers.google_drive.api import (
-    DEFAULT_BASE_URL,
-    DEFAULT_SCOPE,
-    DEFAULT_TOKEN_URL,
     FOLDER_MIME_TYPE,
     JSON_MIME_TYPE,
     build_bearer_headers,
     files_url,
 )
 from harnessiq.providers.http import ProviderHTTPError, RequestExecutor, request_json
+from harnessiq.shared.google_drive import GoogleDriveCredentials
 
 
 class TokenRequestExecutor(Protocol):
@@ -114,52 +112,6 @@ def request_bytes_json(
         return json.loads(text)
     except json.JSONDecodeError:
         return text
-
-
-@dataclass(frozen=True, slots=True)
-class GoogleDriveCredentials:
-    """Runtime credentials for Google Drive OAuth access."""
-
-    client_id: str
-    client_secret: str
-    refresh_token: str
-    base_url: str = DEFAULT_BASE_URL
-    token_url: str = DEFAULT_TOKEN_URL
-    scope: str = DEFAULT_SCOPE
-    timeout_seconds: float = 60.0
-
-    def __post_init__(self) -> None:
-        if not self.client_id.strip():
-            raise ValueError("Google Drive client_id must not be blank.")
-        if not self.client_secret.strip():
-            raise ValueError("Google Drive client_secret must not be blank.")
-        if not self.refresh_token.strip():
-            raise ValueError("Google Drive refresh_token must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Google Drive base_url must not be blank.")
-        if not self.token_url.strip():
-            raise ValueError("Google Drive token_url must not be blank.")
-        if not self.scope.strip():
-            raise ValueError("Google Drive scope must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Google Drive timeout_seconds must be greater than zero.")
-
-    def masked_refresh_token(self) -> str:
-        token = self.refresh_token
-        if len(token) <= 6:
-            return "*" * len(token)
-        return f"{token[:3]}{'*' * max(1, len(token) - 6)}{token[-3:]}"
-
-    def as_redacted_dict(self) -> dict[str, object]:
-        return {
-            "client_id": self.client_id,
-            "client_secret_masked": "***",
-            "refresh_token_masked": self.masked_refresh_token(),
-            "base_url": self.base_url,
-            "token_url": self.token_url,
-            "scope": self.scope,
-            "timeout_seconds": self.timeout_seconds,
-        }
 
 
 @dataclass(frozen=True, slots=True)
