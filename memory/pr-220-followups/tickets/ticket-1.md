@@ -1,7 +1,7 @@
 Title: Implement PR 220 follow-up refactors and Google Drive expansion
 
-Issue URL:
-https://github.com/cerredz/HarnessHub/issues/240
+Workflow Issue:
+`#240` (deleted after PR creation)
 
 PR URL:
 https://github.com/cerredz/HarnessHub/pull/242
