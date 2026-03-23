@@ -2,8 +2,18 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Literal, Mapping
+
+from harnessiq.utils.harness_manifest.coercion import (
+    coerce_boolean,
+    coerce_integer,
+    coerce_number,
+    coerce_parameters,
+    coerce_string,
+    is_empty_nullable,
+)
+from harnessiq.utils.harness_manifest.validation import validate_unique_keys
 
 HarnessParameterType = Literal["string", "integer", "number", "boolean"]
 HarnessMemoryEntryKind = Literal["file", "directory"]
@@ -34,16 +44,16 @@ class HarnessParameterSpec:
 
     def coerce(self, value: Any) -> Any:
         """Normalize one parameter value using the declared type contract."""
-        if self.nullable and _is_empty_nullable(value):
+        if self.nullable and is_empty_nullable(value):
             return None
         if self.value_type == "integer":
-            coerced = _coerce_integer(value)
+            coerced = coerce_integer(value)
         elif self.value_type == "number":
-            coerced = _coerce_number(value)
+            coerced = coerce_number(value)
         elif self.value_type == "boolean":
-            coerced = _coerce_boolean(value)
+            coerced = coerce_boolean(value)
         else:
-            coerced = _coerce_string(value)
+            coerced = coerce_string(value)
         if self.choices and coerced not in self.choices:
             allowed = ", ".join(repr(choice) for choice in self.choices)
             raise ValueError(f"Parameter '{self.key}' must be one of: {allowed}.")
@@ -123,9 +133,9 @@ class HarnessManifest:
         object.__setattr__(self, "custom_parameters", tuple(self.custom_parameters))
         object.__setattr__(self, "memory_files", tuple(self.memory_files))
         object.__setattr__(self, "provider_families", tuple(self.provider_families))
-        _validate_unique_keys(self.runtime_parameters, label="runtime parameter")
-        _validate_unique_keys(self.custom_parameters, label="custom parameter")
-        _validate_unique_keys(self.memory_files, label="memory file")
+        validate_unique_keys(self.runtime_parameters, label="runtime parameter")
+        validate_unique_keys(self.custom_parameters, label="custom parameter")
+        validate_unique_keys(self.memory_files, label="memory file")
         duplicate_keys = set(self.runtime_parameter_names).intersection(self.custom_parameter_names)
         if duplicate_keys:
             rendered = ", ".join(sorted(duplicate_keys))
@@ -151,6 +161,7 @@ class HarnessManifest:
         return f"memory/{suffix}"
 
     def get_memory_file(self, key: str) -> HarnessMemoryFileSpec | None:
+        """Look up one declared memory entry by key."""
         normalized_key = key.strip()
         for entry in self.memory_files:
             if entry.key == normalized_key:
@@ -158,7 +169,8 @@ class HarnessManifest:
         return None
 
     def coerce_runtime_parameters(self, parameters: Mapping[str, Any]) -> dict[str, Any]:
-        return _coerce_parameters(
+        """Coerce runtime parameters using the manifest's declared runtime schema."""
+        return coerce_parameters(
             parameters,
             specs=self.runtime_parameters,
             open_ended=self.runtime_parameters_open_ended,
@@ -166,7 +178,8 @@ class HarnessManifest:
         )
 
     def coerce_custom_parameters(self, parameters: Mapping[str, Any]) -> dict[str, Any]:
-        return _coerce_parameters(
+        """Coerce custom parameters using the manifest's declared custom schema."""
+        return coerce_parameters(
             parameters,
             specs=self.custom_parameters,
             open_ended=self.custom_parameters_open_ended,
@@ -174,6 +187,7 @@ class HarnessManifest:
         )
 
     def default_runtime_parameters(self) -> dict[str, Any]:
+        """Return runtime defaults declared directly on the manifest."""
         return {
             spec.key: spec.default
             for spec in self.runtime_parameters
@@ -181,6 +195,7 @@ class HarnessManifest:
         }
 
     def default_custom_parameters(self) -> dict[str, Any]:
+        """Return custom defaults declared directly on the manifest."""
         return {
             spec.key: spec.default
             for spec in self.custom_parameters
@@ -188,94 +203,16 @@ class HarnessManifest:
         }
 
     def resolve_runtime_parameters(self, parameters: Mapping[str, Any]) -> dict[str, Any]:
+        """Merge runtime defaults with explicitly provided runtime parameter values."""
         resolved = self.default_runtime_parameters()
         resolved.update(self.coerce_runtime_parameters(parameters))
         return resolved
 
     def resolve_custom_parameters(self, parameters: Mapping[str, Any]) -> dict[str, Any]:
+        """Merge custom defaults with explicitly provided custom parameter values."""
         resolved = self.default_custom_parameters()
         resolved.update(self.coerce_custom_parameters(parameters))
         return resolved
-
-
-def _coerce_parameters(
-    parameters: Mapping[str, Any],
-    *,
-    specs: tuple[HarnessParameterSpec, ...],
-    open_ended: bool,
-    label: str,
-) -> dict[str, Any]:
-    if open_ended and not specs:
-        return {str(key): value for key, value in parameters.items()}
-    spec_index = {spec.key: spec for spec in specs}
-    normalized: dict[str, Any] = {}
-    for raw_key, value in parameters.items():
-        key = str(raw_key).strip()
-        spec = spec_index.get(key)
-        if spec is None:
-            if open_ended:
-                normalized[key] = value
-                continue
-            supported = ", ".join(sorted(spec_index))
-            raise ValueError(f"Unsupported {label} parameter '{key}'. Supported: {supported}.")
-        normalized[key] = spec.coerce(value)
-    return normalized
-
-
-def _validate_unique_keys(items: tuple[Any, ...], *, label: str) -> None:
-    seen: set[str] = set()
-    for item in items:
-        key = getattr(item, "key", "").strip()
-        if key in seen:
-            raise ValueError(f"Duplicate {label} key '{key}'.")
-        seen.add(key)
-
-
-def _is_empty_nullable(value: Any) -> bool:
-    if value is None:
-        return True
-    if not isinstance(value, str):
-        return False
-    normalized = value.strip().lower()
-    return not normalized or normalized in {"null", "none"}
-
-
-def _coerce_integer(value: Any) -> int:
-    if isinstance(value, bool):
-        raise ValueError("Boolean values are not valid integer parameters.")
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str) and value.strip():
-        return int(value)
-    raise ValueError("Parameter must be an integer.")
-
-
-def _coerce_number(value: Any) -> float:
-    if isinstance(value, bool):
-        raise ValueError("Boolean values are not valid numeric parameters.")
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str) and value.strip():
-        return float(value)
-    raise ValueError("Parameter must be a number.")
-
-
-def _coerce_boolean(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        normalized = value.strip().lower()
-        if normalized in {"true", "1", "yes", "on"}:
-            return True
-        if normalized in {"false", "0", "no", "off"}:
-            return False
-    raise ValueError("Parameter must be a boolean.")
-
-
-def _coerce_string(value: Any) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError("Parameter must be a non-empty string.")
-    return value
 
 
 __all__ = [

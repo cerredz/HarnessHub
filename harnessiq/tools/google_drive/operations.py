@@ -36,11 +36,7 @@ def build_google_drive_request_tool_definition(
                 },
                 "payload": {
                     "type": "object",
-                    "description": (
-                        "Operation payload. For ensure_folder: {name, parent_id?}. "
-                        "For find_file: {name, parent_id?, mime_type?}. "
-                        "For upsert_json_file: {name, parent_id?, payload}."
-                    ),
+                    "description": _build_payload_description(operations),
                     "additionalProperties": True,
                 },
             },
@@ -70,12 +66,52 @@ def create_google_drive_tools(
             name = _require_string(payload, "name")
             parent_id = _optional_string(payload, "parent_id")
             result = google_drive_client.ensure_folder(name=name, parent_id=parent_id)
+        elif operation_name == "list_files":
+            result = google_drive_client.list_files(
+                name=_optional_string(payload, "name"),
+                parent_id=_optional_string(payload, "parent_id"),
+                mime_type=_optional_string(payload, "mime_type"),
+                query=_optional_string(payload, "query"),
+                page_size=_optional_int(payload, "page_size") or 100,
+                include_trashed=_optional_bool(payload, "include_trashed") or False,
+            )
         elif operation_name == "find_file":
             name = _require_string(payload, "name")
             result = google_drive_client.find_file(
                 name=name,
                 parent_id=_optional_string(payload, "parent_id"),
                 mime_type=_optional_string(payload, "mime_type"),
+            )
+        elif operation_name == "get_file":
+            result = google_drive_client.get_file(_require_string(payload, "file_id"))
+        elif operation_name == "copy_file":
+            result = google_drive_client.copy_file(
+                _require_string(payload, "file_id"),
+                name=_optional_string(payload, "name"),
+                parent_id=_optional_string(payload, "parent_id"),
+            )
+        elif operation_name == "move_file":
+            clear_existing_parents = _optional_bool(payload, "clear_existing_parents")
+            result = google_drive_client.move_file(
+                _require_string(payload, "file_id"),
+                new_parent_id=_optional_string(payload, "new_parent_id"),
+                remove_parent_ids=_optional_string_list(payload, "remove_parent_ids"),
+                clear_existing_parents=True if clear_existing_parents is None else clear_existing_parents,
+                name=_optional_string(payload, "name"),
+            )
+        elif operation_name == "create_shortcut":
+            result = google_drive_client.create_shortcut(
+                target_file_id=_require_string(payload, "target_file_id"),
+                name=_optional_string(payload, "name"),
+                parent_id=_optional_string(payload, "parent_id"),
+            )
+        elif operation_name == "list_permissions":
+            result = google_drive_client.list_permissions(_require_string(payload, "file_id"))
+        elif operation_name == "create_permission":
+            result = google_drive_client.create_permission(
+                _require_string(payload, "file_id"),
+                permission=_build_permission_payload(payload),
+                send_notification_email=_optional_bool(payload, "send_notification_email"),
             )
         else:
             name = _require_string(payload, "name")
@@ -96,11 +132,16 @@ def _build_tool_description(operations: Sequence[GoogleDriveOperation]) -> str:
     grouped: OrderedDict[str, list[str]] = OrderedDict()
     for operation in operations:
         grouped.setdefault(operation.category, []).append(operation.summary())
-    lines = ["Execute authenticated Google Drive folder lookup/create and JSON file upsert operations."]
+    lines = ["Execute authenticated Google Drive lookup, file-management, shortcut, and permission operations."]
     for category, summaries in grouped.items():
         lines.append(f"{category}: {', '.join(summaries)}")
     lines.append("Use the payload object for operation-specific arguments. OAuth token refresh is handled internally.")
     return "\n".join(lines)
+
+
+def _build_payload_description(operations: Sequence[GoogleDriveOperation]) -> str:
+    parts = [f"{operation.name}: {operation.payload_summary()}" for operation in operations]
+    return "Operation payload. " + " ".join(parts)
 
 
 def _select_operations(allowed: Sequence[str] | None) -> tuple[GoogleDriveOperation, ...]:
@@ -159,6 +200,55 @@ def _optional_string(payload: Mapping[str, object], key: str) -> str | None:
         raise ValueError(f"The '{key}' field must be a string when provided.")
     normalized = value.strip()
     return normalized or None
+
+
+def _optional_int(payload: Mapping[str, object], key: str) -> int | None:
+    value = payload.get(key)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"The '{key}' field must be an integer when provided.")
+    return value
+
+
+def _optional_bool(payload: Mapping[str, object], key: str) -> bool | None:
+    value = payload.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        raise ValueError(f"The '{key}' field must be a boolean when provided.")
+    return value
+
+
+def _optional_string_list(payload: Mapping[str, object], key: str) -> list[str] | None:
+    value = payload.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        raise ValueError(f"The '{key}' field must be a list of strings when provided.")
+    normalized: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item.strip():
+            raise ValueError(f"The '{key}' field must contain only non-empty strings.")
+        normalized.append(item.strip())
+    return normalized
+
+
+def _build_permission_payload(payload: Mapping[str, object]) -> dict[str, object]:
+    permission = {
+        "type": _require_string(payload, "type"),
+        "role": _require_string(payload, "role"),
+    }
+    email_address = _optional_string(payload, "email_address")
+    if email_address is not None:
+        permission["emailAddress"] = email_address
+    domain = _optional_string(payload, "domain")
+    if domain is not None:
+        permission["domain"] = domain
+    allow_file_discovery = _optional_bool(payload, "allow_file_discovery")
+    if allow_file_discovery is not None:
+        permission["allowFileDiscovery"] = allow_file_discovery
+    return permission
 
 
 __all__ = [

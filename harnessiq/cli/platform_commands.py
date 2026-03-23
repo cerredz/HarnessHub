@@ -17,7 +17,7 @@ from harnessiq.cli.common import (
     resolve_memory_path,
     resolve_repo_root,
 )
-from harnessiq.cli.platform_adapters import HarnessAdapterContext
+from harnessiq.cli.adapters import HarnessAdapterContext
 from harnessiq.config import (
     AgentCredentialBinding,
     AgentCredentialsNotConfiguredError,

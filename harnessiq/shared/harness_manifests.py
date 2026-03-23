@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from importlib import metadata
 from types import MappingProxyType
 
 from harnessiq.shared.exa_outreach import EXA_OUTREACH_HARNESS_MANIFEST
@@ -12,6 +11,11 @@ from harnessiq.shared.knowt import KNOWT_HARNESS_MANIFEST
 from harnessiq.shared.leads import LEADS_HARNESS_MANIFEST
 from harnessiq.shared.linkedin import LINKEDIN_HARNESS_MANIFEST
 from harnessiq.shared.prospecting import PROSPECTING_HARNESS_MANIFEST
+from harnessiq.utils.harness_manifest.registry import (
+    load_entrypoint_manifests,
+    register_manifest,
+    resolve_registered_manifest,
+)
 
 from .harness_manifest import HarnessManifest
 
@@ -31,17 +35,12 @@ _ENTRYPOINTS_LOADED = False
 
 
 def _register_manifest(manifest: HarnessManifest) -> HarnessManifest:
-    if manifest.manifest_id in _HARNESS_MANIFESTS:
-        raise ValueError(f"Duplicate harness manifest id '{manifest.manifest_id}'.")
-    if manifest.agent_name in _HARNESS_MANIFESTS_BY_AGENT_NAME:
-        raise ValueError(f"Duplicate harness agent name '{manifest.agent_name}'.")
-    if manifest.cli_command is not None and manifest.cli_command in _HARNESS_MANIFESTS_BY_CLI_COMMAND:
-        raise ValueError(f"Duplicate harness CLI command '{manifest.cli_command}'.")
-    _HARNESS_MANIFESTS[manifest.manifest_id] = manifest
-    _HARNESS_MANIFESTS_BY_AGENT_NAME[manifest.agent_name] = manifest
-    if manifest.cli_command is not None:
-        _HARNESS_MANIFESTS_BY_CLI_COMMAND[manifest.cli_command] = manifest
-    return manifest
+    return register_manifest(
+        manifest,
+        manifests=_HARNESS_MANIFESTS,
+        manifests_by_agent_name=_HARNESS_MANIFESTS_BY_AGENT_NAME,
+        manifests_by_cli_command=_HARNESS_MANIFESTS_BY_CLI_COMMAND,
+    )
 
 
 for _manifest in _BUILTIN_HARNESS_MANIFESTS:
@@ -68,29 +67,7 @@ def _ensure_entrypoints_loaded() -> None:
     if _ENTRYPOINTS_LOADED:
         return
     _ENTRYPOINTS_LOADED = True
-    try:
-        entry_points = metadata.entry_points(group="harnessiq.harnesses")
-    except TypeError:  # pragma: no cover - compatibility fallback
-        entry_points = metadata.entry_points().get("harnessiq.harnesses", [])
-    for entry_point in entry_points:
-        loaded = entry_point.load()
-        if isinstance(loaded, HarnessManifest):
-            register_harness_manifest(loaded)
-            continue
-        if callable(loaded):
-            produced = loaded()
-            if isinstance(produced, HarnessManifest):
-                register_harness_manifest(produced)
-                continue
-            if isinstance(produced, Iterable):
-                register_harness_manifests(
-                    manifest for manifest in produced if isinstance(manifest, HarnessManifest)
-                )
-                continue
-        raise TypeError(
-            f"Harness entry point '{entry_point.name}' must resolve to a HarnessManifest, "
-            "a callable returning one, or an iterable of HarnessManifest instances."
-        )
+    register_harness_manifests(load_entrypoint_manifests())
 
 
 def list_harness_manifests() -> tuple[HarnessManifest, ...]:
@@ -102,14 +79,12 @@ def list_harness_manifests() -> tuple[HarnessManifest, ...]:
 def get_harness_manifest(query: str) -> HarnessManifest:
     """Resolve a harness manifest by manifest id, agent name, or CLI command."""
     _ensure_entrypoints_loaded()
-    normalized_query = query.strip()
-    if normalized_query in HARNESS_MANIFESTS:
-        return HARNESS_MANIFESTS[normalized_query]
-    if normalized_query in HARNESS_MANIFESTS_BY_AGENT_NAME:
-        return HARNESS_MANIFESTS_BY_AGENT_NAME[normalized_query]
-    if normalized_query in HARNESS_MANIFESTS_BY_CLI_COMMAND:
-        return HARNESS_MANIFESTS_BY_CLI_COMMAND[normalized_query]
-    raise KeyError(f"No harness manifest exists for '{query}'.")
+    return resolve_registered_manifest(
+        query,
+        manifests=HARNESS_MANIFESTS,
+        manifests_by_agent_name=HARNESS_MANIFESTS_BY_AGENT_NAME,
+        manifests_by_cli_command=HARNESS_MANIFESTS_BY_CLI_COMMAND,
+    )
 
 
 __all__ = [

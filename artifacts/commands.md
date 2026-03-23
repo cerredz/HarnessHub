@@ -6,8 +6,8 @@ This artifact is generated from the live `harnessiq/cli/` source tree by `python
 
 | Metric | Count |
 | --- | --- |
-| Top-level commands | 15 |
-| Registered command paths | 101 |
+| Top-level commands | 16 |
+| Registered command paths | 105 |
 
 Alias paths are included in the registered command total. Canonical commands list aliases where they exist.
 
@@ -26,6 +26,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq logs | - | Inspect the local audit ledger | `harnessiq/cli/ledger/commands.py` |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent | `harnessiq/cli/exa_outreach/commands.py` |
 | harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
+| harnessiq prompts | list, show, text | Inspect bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent | `harnessiq/cli/prospecting/commands.py` |
 | harnessiq report | - | Build a cross-agent report from the local ledger | `harnessiq/cli/ledger/commands.py` |
 | harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
@@ -136,6 +137,14 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq prepare leads | - | prepare Leads Agent | `harnessiq/cli/platform_commands.py` |
 | harnessiq prepare linkedin | - | prepare LinkedIn Job Applier | `harnessiq/cli/platform_commands.py` |
 | harnessiq prepare prospecting | - | prepare Google Maps Prospecting | `harnessiq/cli/platform_commands.py` |
+
+## `harnessiq prompts`
+
+| Command | Description | Source |
+| --- | --- | --- |
+| harnessiq prompts list | List bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
+| harnessiq prompts show | Render one bundled master prompt as JSON | `harnessiq/cli/master_prompts/commands.py` |
+| harnessiq prompts text | Print the raw prompt text for one prompt | `harnessiq/cli/master_prompts/commands.py` |
 
 ## `harnessiq prospecting`
 
