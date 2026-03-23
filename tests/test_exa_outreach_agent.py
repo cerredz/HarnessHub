@@ -19,7 +19,9 @@ from harnessiq.shared.tools import (
     EXA_OUTREACH_LOG_EMAIL_SENT,
     EXA_OUTREACH_LOG_LEAD,
     EXA_REQUEST,
+    RegisteredTool,
     ToolCall,
+    ToolDefinition,
 )
 
 
@@ -146,6 +148,22 @@ class TestExaOutreachAgentConstruction:
 
 
 class TestAvailableTools:
+    def test_custom_tools_are_added_to_the_agent_surface(self, tmp_path):
+        custom_tool = RegisteredTool(
+            definition=ToolDefinition(
+                key="custom.outreach_helper",
+                name="outreach_helper",
+                description="Custom helper.",
+                input_schema={"type": "object", "properties": {}, "required": [], "additionalProperties": False},
+            ),
+            handler=lambda arguments: {"ok": True, "arguments": arguments},
+        )
+        agent = _make_agent(tmp_path, tools=(custom_tool,))
+
+        keys = {tool.key for tool in agent.available_tools()}
+
+        assert "custom.outreach_helper" in keys
+
     def test_exa_request_tool_present(self, tmp_path):
         agent = _make_agent(tmp_path)
         keys = {tool.key for tool in agent.available_tools()}

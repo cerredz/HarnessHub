@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import os
 import re
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
+
+from harnessiq.shared.harness_manifest import HarnessManifest
 
 
 def add_agent_options(
@@ -106,18 +109,160 @@ def emit_json(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True, default=_json_default))
 
 
+def add_manifest_parameter_options(
+    parser: argparse.ArgumentParser,
+    *,
+    manifest: HarnessManifest,
+    scope: str,
+) -> None:
+    """Register manifest-driven CLI flags for one parameter scope."""
+    specs = _manifest_parameter_specs(manifest, scope=scope)
+    for spec in specs:
+        help_parts = [spec.description]
+        if spec.default is not None:
+            help_parts.append(f"Default: {spec.default!r}.")
+        if spec.choices:
+            help_parts.append(f"Choices: {', '.join(repr(choice) for choice in spec.choices)}.")
+        parser.add_argument(
+            f"--{spec.key.replace('_', '-')}",
+            dest=_manifest_option_dest(scope, spec.key),
+            default=None,
+            help=" ".join(help_parts),
+        )
+
+    if _manifest_scope_is_open_ended(manifest, scope=scope):
+        parser.add_argument(
+            f"--{scope}-param",
+            action="append",
+            default=[],
+            metavar="KEY=VALUE",
+            help=(
+                f"Provide additional open-ended {scope} parameters as KEY=VALUE pairs. "
+                "Values are parsed as JSON when possible."
+            ),
+        )
+
+
+def format_manifest_parameter_keys(
+    manifest: HarnessManifest,
+    *,
+    scope: str,
+) -> str:
+    """Return a comma-delimited key list for one manifest parameter scope."""
+    if scope == "runtime":
+        keys = manifest.runtime_parameter_names
+    elif scope == "custom":
+        keys = manifest.custom_parameter_names
+    else:
+        raise ValueError(f"Unsupported manifest parameter scope '{scope}'.")
+    return ", ".join(keys)
+
+
+def parse_manifest_parameter_assignments(
+    assignments: Sequence[str],
+    *,
+    manifest: HarnessManifest,
+    scope: str,
+) -> dict[str, Any]:
+    """Parse CLI assignments and coerce them using a harness manifest."""
+    parsed = parse_generic_assignments(assignments)
+    if scope == "runtime":
+        return manifest.coerce_runtime_parameters(parsed)
+    if scope == "custom":
+        return manifest.coerce_custom_parameters(parsed)
+    raise ValueError(f"Unsupported manifest parameter scope '{scope}'.")
+
+
+def collect_manifest_parameter_values(
+    args: argparse.Namespace,
+    *,
+    manifest: HarnessManifest,
+    scope: str,
+) -> dict[str, Any]:
+    """Collect manifest-driven parameter values from parsed argparse state."""
+    values: dict[str, Any] = {}
+    for spec in _manifest_parameter_specs(manifest, scope=scope):
+        option_value = getattr(args, _manifest_option_dest(scope, spec.key), None)
+        if option_value is None:
+            continue
+        values[spec.key] = option_value
+    assignment_values = getattr(args, f"{scope}_param", ())
+    if assignment_values:
+        values.update(parse_manifest_parameter_assignments(assignment_values, manifest=manifest, scope=scope))
+    if not values:
+        return {}
+    if scope == "runtime":
+        return manifest.coerce_runtime_parameters(values)
+    if scope == "custom":
+        return manifest.coerce_custom_parameters(values)
+    raise ValueError(f"Unsupported manifest parameter scope '{scope}'.")
+
+
+def load_factory(spec: str):
+    """Import a callable from ``module:attribute`` notation."""
+    module_name, separator, attribute_path = spec.partition(":")
+    if not separator or not module_name or not attribute_path:
+        raise ValueError(f"Factory import paths must use the form module:callable. Received '{spec}'.")
+    module = importlib.import_module(module_name)
+    target: Any = module
+    for attribute_name in attribute_path.split("."):
+        target = getattr(target, attribute_name)
+    if not callable(target):
+        raise TypeError(f"Imported object '{spec}' is not callable.")
+    return target
+
+
+def resolve_repo_root(path: str | Path) -> Path:
+    """Resolve the nearest repo root for a CLI path, falling back to the path itself."""
+    resolved = Path(path).expanduser().resolve()
+    for candidate in (resolved, *resolved.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return resolved
+
+
 def _json_default(value: Any) -> Any:
     if isinstance(value, Path):
         return os.fspath(value)
     return str(value)
 
 
+def _manifest_parameter_specs(
+    manifest: HarnessManifest,
+    *,
+    scope: str,
+):
+    if scope == "runtime":
+        return manifest.runtime_parameters
+    if scope == "custom":
+        return manifest.custom_parameters
+    raise ValueError(f"Unsupported manifest parameter scope '{scope}'.")
+
+
+def _manifest_scope_is_open_ended(manifest: HarnessManifest, *, scope: str) -> bool:
+    if scope == "runtime":
+        return manifest.runtime_parameters_open_ended
+    if scope == "custom":
+        return manifest.custom_parameters_open_ended
+    raise ValueError(f"Unsupported manifest parameter scope '{scope}'.")
+
+
+def _manifest_option_dest(scope: str, key: str) -> str:
+    return f"{scope}_param__{key}"
+
+
 __all__ = [
     "add_agent_options",
+    "add_manifest_parameter_options",
     "add_text_or_file_options",
+    "collect_manifest_parameter_values",
     "emit_json",
+    "format_manifest_parameter_keys",
+    "load_factory",
+    "parse_manifest_parameter_assignments",
     "parse_generic_assignments",
     "parse_scalar",
+    "resolve_repo_root",
     "resolve_memory_path",
     "resolve_text_argument",
     "slugify_agent_name",

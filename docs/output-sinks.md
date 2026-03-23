@@ -25,6 +25,28 @@ runtime_config = AgentRuntimeConfig(
 )
 ```
 
+Custom sink types can also be registered once and then resolved through the same builder path as built-ins:
+
+```python
+from harnessiq.utils import build_output_sinks, register_output_sink
+
+
+class WarehouseSink:
+    def __init__(self, table: str) -> None:
+        self.table = table
+
+    def on_run_complete(self, entry) -> None:
+        print(self.table, entry.run_id)
+
+
+register_output_sink(
+    "warehouse",
+    lambda config: WarehouseSink(table=str(config["table"])),
+)
+
+sinks = build_output_sinks(sink_specs=("warehouse:table=agent_runs",))
+```
+
 Global CLI injection:
 
 ```bash
@@ -50,6 +72,8 @@ harnessiq linkedin run --agent candidate-a \
 - `ConfluenceSink`: create a Confluence page per run
 - `SupabaseSink`: insert a row into a Supabase table
 - `LinearSink`: create one or more Linear issues from a run
+
+Use `list_output_sink_types()` to inspect the full set of built-in plus custom-registered sink names.
 
 ## Global Connections
 

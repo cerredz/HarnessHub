@@ -36,9 +36,13 @@ from harnessiq.utils.ledger_sinks import (
     ObsidianSink,
     SlackSink,
     SupabaseSink,
+    build_output_sink,
     build_output_sinks,
     build_sink_from_connection,
     build_sink_from_spec,
+    list_output_sink_types,
+    register_output_sink,
+    unregister_output_sink,
 )
 
 __all__ = [
@@ -60,6 +64,7 @@ __all__ = [
     "SlackSink",
     "SupabaseSink",
     "build_ledger_report",
+    "build_output_sink",
     "build_output_sinks",
     "build_sink_from_connection",
     "build_sink_from_spec",
@@ -72,5 +77,8 @@ __all__ = [
     "new_run_id",
     "parse_relative_duration",
     "parse_sink_spec",
+    "list_output_sink_types",
+    "register_output_sink",
     "render_ledger_report",
+    "unregister_output_sink",
 ]

@@ -15,24 +15,23 @@ from harnessiq.cli.common import (
     add_agent_options,
     add_text_or_file_options,
     emit_json,
-    parse_generic_assignments,
+    format_manifest_parameter_keys,
+    parse_manifest_parameter_assignments,
     resolve_memory_path,
     resolve_text_argument,
     split_assignment,
 )
-from harnessiq.shared.leads import LeadICP, LeadRunConfig, LeadsMemoryStore, LeadsStorageBackend
-
-SUPPORTED_LEADS_RUNTIME_PARAMETERS = (
-    "max_tokens",
-    "reset_threshold",
-    "prune_search_interval",
-    "prune_token_limit",
-    "search_summary_every",
-    "search_tail_size",
-    "max_leads_per_icp",
+from harnessiq.shared.leads import (
+    LEADS_HARNESS_MANIFEST,
+    RUNTIME_PARAMETERS_FILENAME,
+    LeadICP,
+    LeadRunConfig,
+    LeadsMemoryStore,
+    LeadsStorageBackend,
 )
+
+SUPPORTED_LEADS_RUNTIME_PARAMETERS = LEADS_HARNESS_MANIFEST.runtime_parameter_names
 _RUN_CONFIG_KEYS = frozenset({"search_summary_every", "search_tail_size", "max_leads_per_icp"})
-_RUNTIME_PARAMETERS_FILENAME = "runtime_parameters.json"
 
 
 def register_leads_commands(
@@ -88,7 +87,10 @@ def register_leads_commands(
         action="append",
         default=[],
         metavar="KEY=VALUE",
-        help=f"Persist a leads runtime/config parameter. Supported keys: {', '.join(SUPPORTED_LEADS_RUNTIME_PARAMETERS)}.",
+        help=(
+            "Persist a leads runtime/config parameter. Supported keys: "
+            f"{format_manifest_parameter_keys(LEADS_HARNESS_MANIFEST, scope='runtime')}."
+        ),
     )
     configure_parser.set_defaults(command_handler=_handle_configure)
 
@@ -186,7 +188,11 @@ def _handle_configure(args: argparse.Namespace) -> int:
         config_payload["platforms"] = [_normalize_platform_name(value) for value in args.platform]
         updated.append("platforms")
 
-    normalized_parameters = normalize_leads_runtime_parameters(parse_generic_assignments(args.runtime_param))
+    normalized_parameters = parse_manifest_parameter_assignments(
+        args.runtime_param,
+        manifest=LEADS_HARNESS_MANIFEST,
+        scope="runtime",
+    )
     for key, value in normalized_parameters.items():
         if key in _RUN_CONFIG_KEYS:
             config_payload[key] = value
@@ -228,7 +234,11 @@ def _handle_run(args: argparse.Namespace) -> int:
     _ensure_runtime_parameters_file(store.memory_path)
     seed_langsmith_environment(Path(args.memory_root).expanduser())
     run_config = store.read_run_config()
-    overrides = normalize_leads_runtime_parameters(parse_generic_assignments(args.runtime_param))
+    overrides = parse_manifest_parameter_assignments(
+        args.runtime_param,
+        manifest=LEADS_HARNESS_MANIFEST,
+        scope="runtime",
+    )
     effective_run_config = _apply_run_config_overrides(run_config, overrides)
 
     runtime_parameters = _read_runtime_parameters(store.memory_path)
@@ -329,7 +339,7 @@ def _read_run_config_payload(store: LeadsMemoryStore) -> dict[str, Any]:
 
 
 def _runtime_parameters_path(memory_path: Path) -> Path:
-    return memory_path / _RUNTIME_PARAMETERS_FILENAME
+    return memory_path / RUNTIME_PARAMETERS_FILENAME
 
 
 def _ensure_runtime_parameters_file(memory_path: Path) -> None:
@@ -405,50 +415,7 @@ def _normalize_platform_name(value: str) -> str:
 
 
 def normalize_leads_runtime_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
-    normalized: dict[str, Any] = {}
-    coercers = {
-        "max_tokens": _coerce_int,
-        "reset_threshold": _coerce_float,
-        "prune_search_interval": _coerce_optional_int,
-        "prune_token_limit": _coerce_optional_int,
-        "search_summary_every": _coerce_int,
-        "search_tail_size": _coerce_int,
-        "max_leads_per_icp": _coerce_optional_int,
-    }
-    for key, value in parameters.items():
-        if key not in coercers:
-            raise ValueError(
-                f"Unsupported leads runtime parameter '{key}'. "
-                f"Supported: {', '.join(sorted(coercers))}."
-            )
-        normalized[key] = coercers[key](value)
-    return normalized
-
-
-def _coerce_int(value: Any) -> int:
-    if isinstance(value, bool):
-        raise ValueError("Boolean values are not valid integer runtime parameters.")
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str) and value.strip():
-        return int(value)
-    raise ValueError("Runtime parameter must be an integer.")
-
-
-def _coerce_optional_int(value: Any) -> int | None:
-    if value is None or value == "":
-        return None
-    return _coerce_int(value)
-
-
-def _coerce_float(value: Any) -> float:
-    if isinstance(value, bool):
-        raise ValueError("Boolean values are not valid float runtime parameters.")
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str) and value.strip():
-        return float(value)
-    raise ValueError("Runtime parameter must be a float.")
+    return LEADS_HARNESS_MANIFEST.coerce_runtime_parameters(parameters)
 
 
 __all__ = [

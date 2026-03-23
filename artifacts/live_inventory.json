@@ -1,0 +1,3083 @@
+{
+  "cli": {
+    "commands": [
+      {
+        "aliases": [],
+        "command": "harnessiq connect",
+        "help": "Configure a global output sink connection",
+        "segments": [
+          "connect"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq connect confluence",
+        "help": "Configure a global confluence sink",
+        "segments": [
+          "connect",
+          "confluence"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq connect discord",
+        "help": "Configure a global discord sink",
+        "segments": [
+          "connect",
+          "discord"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq connect linear",
+        "help": "Configure a global linear sink",
+        "segments": [
+          "connect",
+          "linear"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq connect notion",
+        "help": "Configure a global notion sink",
+        "segments": [
+          "connect",
+          "notion"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq connect obsidian",
+        "help": "Configure a global obsidian sink",
+        "segments": [
+          "connect",
+          "obsidian"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq connect slack",
+        "help": "Configure a global slack sink",
+        "segments": [
+          "connect",
+          "slack"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq connect supabase",
+        "help": "Configure a global supabase sink",
+        "segments": [
+          "connect",
+          "supabase"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq connections",
+        "help": "Inspect or manage configured sink connections",
+        "segments": [
+          "connections"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq connections list",
+        "help": "List configured sink connections",
+        "segments": [
+          "connections",
+          "list"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq connections remove",
+        "help": "Remove a configured sink connection",
+        "segments": [
+          "connections",
+          "remove"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq connections test",
+        "help": "Validate that a sink connection can be constructed",
+        "segments": [
+          "connections",
+          "test"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials",
+        "help": "Manage persisted harness credential bindings",
+        "segments": [
+          "credentials"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials bind",
+        "help": "Bind harness credentials",
+        "segments": [
+          "credentials",
+          "bind"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [
+          "outreach"
+        ],
+        "command": "harnessiq credentials bind exa_outreach",
+        "help": "bind Exa Outreach",
+        "segments": [
+          "credentials",
+          "bind",
+          "exa_outreach"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials bind instagram",
+        "help": "bind Instagram Keyword Discovery",
+        "segments": [
+          "credentials",
+          "bind",
+          "instagram"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials bind knowt",
+        "help": "bind Knowt Content Creator",
+        "segments": [
+          "credentials",
+          "bind",
+          "knowt"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials bind leads",
+        "help": "bind Leads Agent",
+        "segments": [
+          "credentials",
+          "bind",
+          "leads"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials bind linkedin",
+        "help": "bind LinkedIn Job Applier",
+        "segments": [
+          "credentials",
+          "bind",
+          "linkedin"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials bind prospecting",
+        "help": "bind Google Maps Prospecting",
+        "segments": [
+          "credentials",
+          "bind",
+          "prospecting"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials show",
+        "help": "Show harness credentials",
+        "segments": [
+          "credentials",
+          "show"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [
+          "outreach"
+        ],
+        "command": "harnessiq credentials show exa_outreach",
+        "help": "show Exa Outreach",
+        "segments": [
+          "credentials",
+          "show",
+          "exa_outreach"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials show instagram",
+        "help": "show Instagram Keyword Discovery",
+        "segments": [
+          "credentials",
+          "show",
+          "instagram"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials show knowt",
+        "help": "show Knowt Content Creator",
+        "segments": [
+          "credentials",
+          "show",
+          "knowt"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials show leads",
+        "help": "show Leads Agent",
+        "segments": [
+          "credentials",
+          "show",
+          "leads"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials show linkedin",
+        "help": "show LinkedIn Job Applier",
+        "segments": [
+          "credentials",
+          "show",
+          "linkedin"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials show prospecting",
+        "help": "show Google Maps Prospecting",
+        "segments": [
+          "credentials",
+          "show",
+          "prospecting"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials test",
+        "help": "Test harness credentials",
+        "segments": [
+          "credentials",
+          "test"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [
+          "outreach"
+        ],
+        "command": "harnessiq credentials test exa_outreach",
+        "help": "test Exa Outreach",
+        "segments": [
+          "credentials",
+          "test",
+          "exa_outreach"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials test instagram",
+        "help": "test Instagram Keyword Discovery",
+        "segments": [
+          "credentials",
+          "test",
+          "instagram"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials test knowt",
+        "help": "test Knowt Content Creator",
+        "segments": [
+          "credentials",
+          "test",
+          "knowt"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials test leads",
+        "help": "test Leads Agent",
+        "segments": [
+          "credentials",
+          "test",
+          "leads"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials test linkedin",
+        "help": "test LinkedIn Job Applier",
+        "segments": [
+          "credentials",
+          "test",
+          "linkedin"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials test prospecting",
+        "help": "test Google Maps Prospecting",
+        "segments": [
+          "credentials",
+          "test",
+          "prospecting"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq export",
+        "help": "Export ledger entries in a structured format",
+        "segments": [
+          "export"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq inspect",
+        "help": "Inspect one harness manifest and generated CLI surface",
+        "segments": [
+          "inspect"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [
+          "outreach"
+        ],
+        "command": "harnessiq inspect exa_outreach",
+        "help": "inspect Exa Outreach",
+        "segments": [
+          "inspect",
+          "exa_outreach"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq inspect instagram",
+        "help": "inspect Instagram Keyword Discovery",
+        "segments": [
+          "inspect",
+          "instagram"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq inspect knowt",
+        "help": "inspect Knowt Content Creator",
+        "segments": [
+          "inspect",
+          "knowt"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq inspect leads",
+        "help": "inspect Leads Agent",
+        "segments": [
+          "inspect",
+          "leads"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq inspect linkedin",
+        "help": "inspect LinkedIn Job Applier",
+        "segments": [
+          "inspect",
+          "linkedin"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq inspect prospecting",
+        "help": "inspect Google Maps Prospecting",
+        "segments": [
+          "inspect",
+          "prospecting"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq instagram",
+        "help": "Manage and run the Instagram keyword discovery agent",
+        "segments": [
+          "instagram"
+        ],
+        "source_file": "harnessiq/cli/instagram/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq instagram configure",
+        "help": "Persist ICPs, identity, prompt text, and runtime parameters for the Instagram agent",
+        "segments": [
+          "instagram",
+          "configure"
+        ],
+        "source_file": "harnessiq/cli/instagram/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq instagram get-emails",
+        "help": "Return all persisted discovered emails for the configured Instagram agent",
+        "segments": [
+          "instagram",
+          "get-emails"
+        ],
+        "source_file": "harnessiq/cli/instagram/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq instagram prepare",
+        "help": "Create or refresh an Instagram agent memory folder",
+        "segments": [
+          "instagram",
+          "prepare"
+        ],
+        "source_file": "harnessiq/cli/instagram/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq instagram run",
+        "help": "Run the Instagram keyword discovery agent from persisted memory",
+        "segments": [
+          "instagram",
+          "run"
+        ],
+        "source_file": "harnessiq/cli/instagram/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq instagram show",
+        "help": "Render the current Instagram agent state as JSON",
+        "segments": [
+          "instagram",
+          "show"
+        ],
+        "source_file": "harnessiq/cli/instagram/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq leads",
+        "help": "Manage and run the leads discovery agent",
+        "segments": [
+          "leads"
+        ],
+        "source_file": "harnessiq/cli/leads/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq leads configure",
+        "help": "Write company background, ICPs, platforms, and leads runtime configuration",
+        "segments": [
+          "leads",
+          "configure"
+        ],
+        "source_file": "harnessiq/cli/leads/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq leads prepare",
+        "help": "Create or refresh a leads agent memory folder",
+        "segments": [
+          "leads",
+          "prepare"
+        ],
+        "source_file": "harnessiq/cli/leads/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq leads run",
+        "help": "Run the leads SDK agent from persisted CLI state",
+        "segments": [
+          "leads",
+          "run"
+        ],
+        "source_file": "harnessiq/cli/leads/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq leads show",
+        "help": "Render the current leads agent state as JSON",
+        "segments": [
+          "leads",
+          "show"
+        ],
+        "source_file": "harnessiq/cli/leads/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq linkedin",
+        "help": "Manage and run the LinkedIn agent",
+        "segments": [
+          "linkedin"
+        ],
+        "source_file": "harnessiq/cli/linkedin/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq linkedin configure",
+        "help": "Write LinkedIn memory inputs, custom parameters, and managed files",
+        "segments": [
+          "linkedin",
+          "configure"
+        ],
+        "source_file": "harnessiq/cli/linkedin/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq linkedin init-browser",
+        "help": "Open a browser, wait for LinkedIn login, and save the session for future runs",
+        "segments": [
+          "linkedin",
+          "init-browser"
+        ],
+        "source_file": "harnessiq/cli/linkedin/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq linkedin prepare",
+        "help": "Create or refresh a LinkedIn agent memory folder",
+        "segments": [
+          "linkedin",
+          "prepare"
+        ],
+        "source_file": "harnessiq/cli/linkedin/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq linkedin run",
+        "help": "Run the LinkedIn SDK agent from persisted CLI state",
+        "segments": [
+          "linkedin",
+          "run"
+        ],
+        "source_file": "harnessiq/cli/linkedin/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq linkedin show",
+        "help": "Render the current LinkedIn CLI-managed state as JSON",
+        "segments": [
+          "linkedin",
+          "show"
+        ],
+        "source_file": "harnessiq/cli/linkedin/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq logs",
+        "help": "Inspect the local audit ledger",
+        "segments": [
+          "logs"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq outreach",
+        "help": "Manage and run the ExaOutreach agent",
+        "segments": [
+          "outreach"
+        ],
+        "source_file": "harnessiq/cli/exa_outreach/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq outreach configure",
+        "help": "Write outreach agent search query, identity, runtime params, and additional prompt",
+        "segments": [
+          "outreach",
+          "configure"
+        ],
+        "source_file": "harnessiq/cli/exa_outreach/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq outreach prepare",
+        "help": "Create or refresh an outreach agent memory folder",
+        "segments": [
+          "outreach",
+          "prepare"
+        ],
+        "source_file": "harnessiq/cli/exa_outreach/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq outreach run",
+        "help": "Run the ExaOutreach agent from persisted CLI state",
+        "segments": [
+          "outreach",
+          "run"
+        ],
+        "source_file": "harnessiq/cli/exa_outreach/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq outreach show",
+        "help": "Render the current outreach agent state as JSON",
+        "segments": [
+          "outreach",
+          "show"
+        ],
+        "source_file": "harnessiq/cli/exa_outreach/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prepare",
+        "help": "Prepare and persist generic config for a harness",
+        "segments": [
+          "prepare"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [
+          "outreach"
+        ],
+        "command": "harnessiq prepare exa_outreach",
+        "help": "prepare Exa Outreach",
+        "segments": [
+          "prepare",
+          "exa_outreach"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prepare instagram",
+        "help": "prepare Instagram Keyword Discovery",
+        "segments": [
+          "prepare",
+          "instagram"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prepare knowt",
+        "help": "prepare Knowt Content Creator",
+        "segments": [
+          "prepare",
+          "knowt"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prepare leads",
+        "help": "prepare Leads Agent",
+        "segments": [
+          "prepare",
+          "leads"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prepare linkedin",
+        "help": "prepare LinkedIn Job Applier",
+        "segments": [
+          "prepare",
+          "linkedin"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prepare prospecting",
+        "help": "prepare Google Maps Prospecting",
+        "segments": [
+          "prepare",
+          "prospecting"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prospecting",
+        "help": "Manage and run the Google Maps prospecting agent",
+        "segments": [
+          "prospecting"
+        ],
+        "source_file": "harnessiq/cli/prospecting/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prospecting configure",
+        "help": "Persist company description, prompts, and parameters for the prospecting agent",
+        "segments": [
+          "prospecting",
+          "configure"
+        ],
+        "source_file": "harnessiq/cli/prospecting/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prospecting init-browser",
+        "help": "Open a persistent browser session and save it for Google Maps prospecting runs",
+        "segments": [
+          "prospecting",
+          "init-browser"
+        ],
+        "source_file": "harnessiq/cli/prospecting/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prospecting prepare",
+        "help": "Create or refresh a Google Maps prospecting memory folder",
+        "segments": [
+          "prospecting",
+          "prepare"
+        ],
+        "source_file": "harnessiq/cli/prospecting/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prospecting run",
+        "help": "Run the Google Maps prospecting agent from persisted memory",
+        "segments": [
+          "prospecting",
+          "run"
+        ],
+        "source_file": "harnessiq/cli/prospecting/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prospecting show",
+        "help": "Render the current prospecting agent state as JSON",
+        "segments": [
+          "prospecting",
+          "show"
+        ],
+        "source_file": "harnessiq/cli/prospecting/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq report",
+        "help": "Build a cross-agent report from the local ledger",
+        "segments": [
+          "report"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq run",
+        "help": "Run a harness through the platform-first CLI",
+        "segments": [
+          "run"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [
+          "outreach"
+        ],
+        "command": "harnessiq run exa_outreach",
+        "help": "run Exa Outreach",
+        "segments": [
+          "run",
+          "exa_outreach"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq run instagram",
+        "help": "run Instagram Keyword Discovery",
+        "segments": [
+          "run",
+          "instagram"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq run knowt",
+        "help": "run Knowt Content Creator",
+        "segments": [
+          "run",
+          "knowt"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq run leads",
+        "help": "run Leads Agent",
+        "segments": [
+          "run",
+          "leads"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq run linkedin",
+        "help": "run LinkedIn Job Applier",
+        "segments": [
+          "run",
+          "linkedin"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq run prospecting",
+        "help": "run Google Maps Prospecting",
+        "segments": [
+          "run",
+          "prospecting"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq show",
+        "help": "Show persisted platform config and harness state",
+        "segments": [
+          "show"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [
+          "outreach"
+        ],
+        "command": "harnessiq show exa_outreach",
+        "help": "show Exa Outreach",
+        "segments": [
+          "show",
+          "exa_outreach"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq show instagram",
+        "help": "show Instagram Keyword Discovery",
+        "segments": [
+          "show",
+          "instagram"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq show knowt",
+        "help": "show Knowt Content Creator",
+        "segments": [
+          "show",
+          "knowt"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq show leads",
+        "help": "show Leads Agent",
+        "segments": [
+          "show",
+          "leads"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq show linkedin",
+        "help": "show LinkedIn Job Applier",
+        "segments": [
+          "show",
+          "linkedin"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq show prospecting",
+        "help": "show Google Maps Prospecting",
+        "segments": [
+          "show",
+          "prospecting"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      }
+    ],
+    "direct_subcommands": {
+      "connect": [
+        {
+          "aliases": [],
+          "command": "harnessiq connect confluence",
+          "help": "Configure a global confluence sink",
+          "segments": [
+            "connect",
+            "confluence"
+          ],
+          "source_file": "harnessiq/cli/ledger/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq connect discord",
+          "help": "Configure a global discord sink",
+          "segments": [
+            "connect",
+            "discord"
+          ],
+          "source_file": "harnessiq/cli/ledger/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq connect linear",
+          "help": "Configure a global linear sink",
+          "segments": [
+            "connect",
+            "linear"
+          ],
+          "source_file": "harnessiq/cli/ledger/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq connect notion",
+          "help": "Configure a global notion sink",
+          "segments": [
+            "connect",
+            "notion"
+          ],
+          "source_file": "harnessiq/cli/ledger/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq connect obsidian",
+          "help": "Configure a global obsidian sink",
+          "segments": [
+            "connect",
+            "obsidian"
+          ],
+          "source_file": "harnessiq/cli/ledger/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq connect slack",
+          "help": "Configure a global slack sink",
+          "segments": [
+            "connect",
+            "slack"
+          ],
+          "source_file": "harnessiq/cli/ledger/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq connect supabase",
+          "help": "Configure a global supabase sink",
+          "segments": [
+            "connect",
+            "supabase"
+          ],
+          "source_file": "harnessiq/cli/ledger/commands.py"
+        }
+      ],
+      "connections": [
+        {
+          "aliases": [],
+          "command": "harnessiq connections list",
+          "help": "List configured sink connections",
+          "segments": [
+            "connections",
+            "list"
+          ],
+          "source_file": "harnessiq/cli/ledger/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq connections remove",
+          "help": "Remove a configured sink connection",
+          "segments": [
+            "connections",
+            "remove"
+          ],
+          "source_file": "harnessiq/cli/ledger/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq connections test",
+          "help": "Validate that a sink connection can be constructed",
+          "segments": [
+            "connections",
+            "test"
+          ],
+          "source_file": "harnessiq/cli/ledger/commands.py"
+        }
+      ],
+      "credentials": [
+        {
+          "aliases": [],
+          "command": "harnessiq credentials bind",
+          "help": "Bind harness credentials",
+          "segments": [
+            "credentials",
+            "bind"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [
+            "outreach"
+          ],
+          "command": "harnessiq credentials bind exa_outreach",
+          "help": "bind Exa Outreach",
+          "segments": [
+            "credentials",
+            "bind",
+            "exa_outreach"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials bind instagram",
+          "help": "bind Instagram Keyword Discovery",
+          "segments": [
+            "credentials",
+            "bind",
+            "instagram"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials bind knowt",
+          "help": "bind Knowt Content Creator",
+          "segments": [
+            "credentials",
+            "bind",
+            "knowt"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials bind leads",
+          "help": "bind Leads Agent",
+          "segments": [
+            "credentials",
+            "bind",
+            "leads"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials bind linkedin",
+          "help": "bind LinkedIn Job Applier",
+          "segments": [
+            "credentials",
+            "bind",
+            "linkedin"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials bind prospecting",
+          "help": "bind Google Maps Prospecting",
+          "segments": [
+            "credentials",
+            "bind",
+            "prospecting"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials show",
+          "help": "Show harness credentials",
+          "segments": [
+            "credentials",
+            "show"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [
+            "outreach"
+          ],
+          "command": "harnessiq credentials show exa_outreach",
+          "help": "show Exa Outreach",
+          "segments": [
+            "credentials",
+            "show",
+            "exa_outreach"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials show instagram",
+          "help": "show Instagram Keyword Discovery",
+          "segments": [
+            "credentials",
+            "show",
+            "instagram"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials show knowt",
+          "help": "show Knowt Content Creator",
+          "segments": [
+            "credentials",
+            "show",
+            "knowt"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials show leads",
+          "help": "show Leads Agent",
+          "segments": [
+            "credentials",
+            "show",
+            "leads"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials show linkedin",
+          "help": "show LinkedIn Job Applier",
+          "segments": [
+            "credentials",
+            "show",
+            "linkedin"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials show prospecting",
+          "help": "show Google Maps Prospecting",
+          "segments": [
+            "credentials",
+            "show",
+            "prospecting"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials test",
+          "help": "Test harness credentials",
+          "segments": [
+            "credentials",
+            "test"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [
+            "outreach"
+          ],
+          "command": "harnessiq credentials test exa_outreach",
+          "help": "test Exa Outreach",
+          "segments": [
+            "credentials",
+            "test",
+            "exa_outreach"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials test instagram",
+          "help": "test Instagram Keyword Discovery",
+          "segments": [
+            "credentials",
+            "test",
+            "instagram"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials test knowt",
+          "help": "test Knowt Content Creator",
+          "segments": [
+            "credentials",
+            "test",
+            "knowt"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials test leads",
+          "help": "test Leads Agent",
+          "segments": [
+            "credentials",
+            "test",
+            "leads"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials test linkedin",
+          "help": "test LinkedIn Job Applier",
+          "segments": [
+            "credentials",
+            "test",
+            "linkedin"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq credentials test prospecting",
+          "help": "test Google Maps Prospecting",
+          "segments": [
+            "credentials",
+            "test",
+            "prospecting"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        }
+      ],
+      "inspect": [
+        {
+          "aliases": [
+            "outreach"
+          ],
+          "command": "harnessiq inspect exa_outreach",
+          "help": "inspect Exa Outreach",
+          "segments": [
+            "inspect",
+            "exa_outreach"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq inspect instagram",
+          "help": "inspect Instagram Keyword Discovery",
+          "segments": [
+            "inspect",
+            "instagram"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq inspect knowt",
+          "help": "inspect Knowt Content Creator",
+          "segments": [
+            "inspect",
+            "knowt"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq inspect leads",
+          "help": "inspect Leads Agent",
+          "segments": [
+            "inspect",
+            "leads"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq inspect linkedin",
+          "help": "inspect LinkedIn Job Applier",
+          "segments": [
+            "inspect",
+            "linkedin"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq inspect prospecting",
+          "help": "inspect Google Maps Prospecting",
+          "segments": [
+            "inspect",
+            "prospecting"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        }
+      ],
+      "instagram": [
+        {
+          "aliases": [],
+          "command": "harnessiq instagram configure",
+          "help": "Persist ICPs, identity, prompt text, and runtime parameters for the Instagram agent",
+          "segments": [
+            "instagram",
+            "configure"
+          ],
+          "source_file": "harnessiq/cli/instagram/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq instagram get-emails",
+          "help": "Return all persisted discovered emails for the configured Instagram agent",
+          "segments": [
+            "instagram",
+            "get-emails"
+          ],
+          "source_file": "harnessiq/cli/instagram/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq instagram prepare",
+          "help": "Create or refresh an Instagram agent memory folder",
+          "segments": [
+            "instagram",
+            "prepare"
+          ],
+          "source_file": "harnessiq/cli/instagram/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq instagram run",
+          "help": "Run the Instagram keyword discovery agent from persisted memory",
+          "segments": [
+            "instagram",
+            "run"
+          ],
+          "source_file": "harnessiq/cli/instagram/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq instagram show",
+          "help": "Render the current Instagram agent state as JSON",
+          "segments": [
+            "instagram",
+            "show"
+          ],
+          "source_file": "harnessiq/cli/instagram/commands.py"
+        }
+      ],
+      "leads": [
+        {
+          "aliases": [],
+          "command": "harnessiq leads configure",
+          "help": "Write company background, ICPs, platforms, and leads runtime configuration",
+          "segments": [
+            "leads",
+            "configure"
+          ],
+          "source_file": "harnessiq/cli/leads/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq leads prepare",
+          "help": "Create or refresh a leads agent memory folder",
+          "segments": [
+            "leads",
+            "prepare"
+          ],
+          "source_file": "harnessiq/cli/leads/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq leads run",
+          "help": "Run the leads SDK agent from persisted CLI state",
+          "segments": [
+            "leads",
+            "run"
+          ],
+          "source_file": "harnessiq/cli/leads/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq leads show",
+          "help": "Render the current leads agent state as JSON",
+          "segments": [
+            "leads",
+            "show"
+          ],
+          "source_file": "harnessiq/cli/leads/commands.py"
+        }
+      ],
+      "linkedin": [
+        {
+          "aliases": [],
+          "command": "harnessiq linkedin configure",
+          "help": "Write LinkedIn memory inputs, custom parameters, and managed files",
+          "segments": [
+            "linkedin",
+            "configure"
+          ],
+          "source_file": "harnessiq/cli/linkedin/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq linkedin init-browser",
+          "help": "Open a browser, wait for LinkedIn login, and save the session for future runs",
+          "segments": [
+            "linkedin",
+            "init-browser"
+          ],
+          "source_file": "harnessiq/cli/linkedin/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq linkedin prepare",
+          "help": "Create or refresh a LinkedIn agent memory folder",
+          "segments": [
+            "linkedin",
+            "prepare"
+          ],
+          "source_file": "harnessiq/cli/linkedin/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq linkedin run",
+          "help": "Run the LinkedIn SDK agent from persisted CLI state",
+          "segments": [
+            "linkedin",
+            "run"
+          ],
+          "source_file": "harnessiq/cli/linkedin/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq linkedin show",
+          "help": "Render the current LinkedIn CLI-managed state as JSON",
+          "segments": [
+            "linkedin",
+            "show"
+          ],
+          "source_file": "harnessiq/cli/linkedin/commands.py"
+        }
+      ],
+      "outreach": [
+        {
+          "aliases": [],
+          "command": "harnessiq outreach configure",
+          "help": "Write outreach agent search query, identity, runtime params, and additional prompt",
+          "segments": [
+            "outreach",
+            "configure"
+          ],
+          "source_file": "harnessiq/cli/exa_outreach/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq outreach prepare",
+          "help": "Create or refresh an outreach agent memory folder",
+          "segments": [
+            "outreach",
+            "prepare"
+          ],
+          "source_file": "harnessiq/cli/exa_outreach/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq outreach run",
+          "help": "Run the ExaOutreach agent from persisted CLI state",
+          "segments": [
+            "outreach",
+            "run"
+          ],
+          "source_file": "harnessiq/cli/exa_outreach/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq outreach show",
+          "help": "Render the current outreach agent state as JSON",
+          "segments": [
+            "outreach",
+            "show"
+          ],
+          "source_file": "harnessiq/cli/exa_outreach/commands.py"
+        }
+      ],
+      "prepare": [
+        {
+          "aliases": [
+            "outreach"
+          ],
+          "command": "harnessiq prepare exa_outreach",
+          "help": "prepare Exa Outreach",
+          "segments": [
+            "prepare",
+            "exa_outreach"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq prepare instagram",
+          "help": "prepare Instagram Keyword Discovery",
+          "segments": [
+            "prepare",
+            "instagram"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq prepare knowt",
+          "help": "prepare Knowt Content Creator",
+          "segments": [
+            "prepare",
+            "knowt"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq prepare leads",
+          "help": "prepare Leads Agent",
+          "segments": [
+            "prepare",
+            "leads"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq prepare linkedin",
+          "help": "prepare LinkedIn Job Applier",
+          "segments": [
+            "prepare",
+            "linkedin"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq prepare prospecting",
+          "help": "prepare Google Maps Prospecting",
+          "segments": [
+            "prepare",
+            "prospecting"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        }
+      ],
+      "prospecting": [
+        {
+          "aliases": [],
+          "command": "harnessiq prospecting configure",
+          "help": "Persist company description, prompts, and parameters for the prospecting agent",
+          "segments": [
+            "prospecting",
+            "configure"
+          ],
+          "source_file": "harnessiq/cli/prospecting/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq prospecting init-browser",
+          "help": "Open a persistent browser session and save it for Google Maps prospecting runs",
+          "segments": [
+            "prospecting",
+            "init-browser"
+          ],
+          "source_file": "harnessiq/cli/prospecting/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq prospecting prepare",
+          "help": "Create or refresh a Google Maps prospecting memory folder",
+          "segments": [
+            "prospecting",
+            "prepare"
+          ],
+          "source_file": "harnessiq/cli/prospecting/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq prospecting run",
+          "help": "Run the Google Maps prospecting agent from persisted memory",
+          "segments": [
+            "prospecting",
+            "run"
+          ],
+          "source_file": "harnessiq/cli/prospecting/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq prospecting show",
+          "help": "Render the current prospecting agent state as JSON",
+          "segments": [
+            "prospecting",
+            "show"
+          ],
+          "source_file": "harnessiq/cli/prospecting/commands.py"
+        }
+      ],
+      "run": [
+        {
+          "aliases": [
+            "outreach"
+          ],
+          "command": "harnessiq run exa_outreach",
+          "help": "run Exa Outreach",
+          "segments": [
+            "run",
+            "exa_outreach"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq run instagram",
+          "help": "run Instagram Keyword Discovery",
+          "segments": [
+            "run",
+            "instagram"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq run knowt",
+          "help": "run Knowt Content Creator",
+          "segments": [
+            "run",
+            "knowt"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq run leads",
+          "help": "run Leads Agent",
+          "segments": [
+            "run",
+            "leads"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq run linkedin",
+          "help": "run LinkedIn Job Applier",
+          "segments": [
+            "run",
+            "linkedin"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq run prospecting",
+          "help": "run Google Maps Prospecting",
+          "segments": [
+            "run",
+            "prospecting"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        }
+      ],
+      "show": [
+        {
+          "aliases": [
+            "outreach"
+          ],
+          "command": "harnessiq show exa_outreach",
+          "help": "show Exa Outreach",
+          "segments": [
+            "show",
+            "exa_outreach"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq show instagram",
+          "help": "show Instagram Keyword Discovery",
+          "segments": [
+            "show",
+            "instagram"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq show knowt",
+          "help": "show Knowt Content Creator",
+          "segments": [
+            "show",
+            "knowt"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq show leads",
+          "help": "show Leads Agent",
+          "segments": [
+            "show",
+            "leads"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq show linkedin",
+          "help": "show LinkedIn Job Applier",
+          "segments": [
+            "show",
+            "linkedin"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq show prospecting",
+          "help": "show Google Maps Prospecting",
+          "segments": [
+            "show",
+            "prospecting"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        }
+      ]
+    },
+    "top_level": [
+      {
+        "aliases": [],
+        "command": "harnessiq connect",
+        "help": "Configure a global output sink connection",
+        "segments": [
+          "connect"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq connections",
+        "help": "Inspect or manage configured sink connections",
+        "segments": [
+          "connections"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq credentials",
+        "help": "Manage persisted harness credential bindings",
+        "segments": [
+          "credentials"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq export",
+        "help": "Export ledger entries in a structured format",
+        "segments": [
+          "export"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq inspect",
+        "help": "Inspect one harness manifest and generated CLI surface",
+        "segments": [
+          "inspect"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq instagram",
+        "help": "Manage and run the Instagram keyword discovery agent",
+        "segments": [
+          "instagram"
+        ],
+        "source_file": "harnessiq/cli/instagram/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq leads",
+        "help": "Manage and run the leads discovery agent",
+        "segments": [
+          "leads"
+        ],
+        "source_file": "harnessiq/cli/leads/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq linkedin",
+        "help": "Manage and run the LinkedIn agent",
+        "segments": [
+          "linkedin"
+        ],
+        "source_file": "harnessiq/cli/linkedin/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq logs",
+        "help": "Inspect the local audit ledger",
+        "segments": [
+          "logs"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq outreach",
+        "help": "Manage and run the ExaOutreach agent",
+        "segments": [
+          "outreach"
+        ],
+        "source_file": "harnessiq/cli/exa_outreach/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prepare",
+        "help": "Prepare and persist generic config for a harness",
+        "segments": [
+          "prepare"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prospecting",
+        "help": "Manage and run the Google Maps prospecting agent",
+        "segments": [
+          "prospecting"
+        ],
+        "source_file": "harnessiq/cli/prospecting/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq report",
+        "help": "Build a cross-agent report from the local ledger",
+        "segments": [
+          "report"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq run",
+        "help": "Run a harness through the platform-first CLI",
+        "segments": [
+          "run"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq show",
+        "help": "Show persisted platform config and harness state",
+        "segments": [
+          "show"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      }
+    ]
+  },
+  "counts": {
+    "command_paths": 101,
+    "harnesses": 6,
+    "model_providers": 4,
+    "service_provider_packages": 25,
+    "sink_types": 8,
+    "test_modules": 71,
+    "tool_only_external_surfaces": 1,
+    "top_level_commands": 15
+  },
+  "harnesses": [
+    {
+      "agent_name": "exa_outreach",
+      "class_name": "ExaOutreachAgent",
+      "cli_adapter_path": "harnessiq.cli.platform_adapters:ExaOutreachHarnessCliAdapter",
+      "cli_command": "outreach",
+      "custom_parameters": [],
+      "default_memory_root": "memory/outreach",
+      "display_name": "Exa Outreach",
+      "manifest_id": "exa_outreach",
+      "memory_files": [
+        {
+          "description": "Persisted query configuration and runtime overrides.",
+          "format": "json",
+          "key": "query_config",
+          "kind": "file",
+          "relative_path": "query_config.json"
+        },
+        {
+          "description": "Override for the outreach system identity.",
+          "format": "text",
+          "key": "agent_identity",
+          "kind": "file",
+          "relative_path": "agent_identity.txt"
+        },
+        {
+          "description": "Additional free-form prompt data.",
+          "format": "text",
+          "key": "additional_prompt",
+          "kind": "file",
+          "relative_path": "additional_prompt.txt"
+        },
+        {
+          "description": "Per-run outreach logs.",
+          "format": "directory",
+          "key": "runs",
+          "kind": "directory",
+          "relative_path": "runs"
+        }
+      ],
+      "module_path": "harnessiq.agents.exa_outreach",
+      "output_fields": [
+        "emails_sent",
+        "leads_found",
+        "search_query"
+      ],
+      "prompt_path": "harnessiq/agents/exa_outreach/prompts/master_prompt.md",
+      "provider_families": [
+        "exa",
+        "resend"
+      ],
+      "runtime_parameters": [
+        {
+          "description": "Maximum model context budget for the harness.",
+          "key": "max_tokens",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Fraction of max_tokens that triggers a reset.",
+          "key": "reset_threshold",
+          "nullable": false,
+          "value_type": "number"
+        }
+      ],
+      "source_file": "harnessiq/shared/exa_outreach.py"
+    },
+    {
+      "agent_name": "instagram_keyword_discovery",
+      "class_name": "InstagramKeywordDiscoveryAgent",
+      "cli_adapter_path": "harnessiq.cli.platform_adapters:InstagramHarnessCliAdapter",
+      "cli_command": "instagram",
+      "custom_parameters": [],
+      "default_memory_root": "memory/instagram",
+      "display_name": "Instagram Keyword Discovery",
+      "manifest_id": "instagram",
+      "memory_files": [
+        {
+          "description": "Persisted ICP descriptions.",
+          "format": "json",
+          "key": "icp_profiles",
+          "kind": "file",
+          "relative_path": "icp_profiles.json"
+        },
+        {
+          "description": "Durable Instagram search history.",
+          "format": "json",
+          "key": "search_history",
+          "kind": "file",
+          "relative_path": "search_history.json"
+        },
+        {
+          "description": "Persisted deduplicated leads and emails.",
+          "format": "json",
+          "key": "lead_database",
+          "kind": "file",
+          "relative_path": "lead_database.json"
+        },
+        {
+          "description": "Persisted typed runtime overrides.",
+          "format": "json",
+          "key": "runtime_parameters",
+          "kind": "file",
+          "relative_path": "runtime_parameters.json"
+        },
+        {
+          "description": "Override for the Instagram system identity.",
+          "format": "text",
+          "key": "agent_identity",
+          "kind": "file",
+          "relative_path": "agent_identity.txt"
+        },
+        {
+          "description": "Additional free-form prompt data.",
+          "format": "text",
+          "key": "additional_prompt",
+          "kind": "file",
+          "relative_path": "additional_prompt.txt"
+        }
+      ],
+      "module_path": "harnessiq.agents.instagram",
+      "output_fields": [
+        "emails",
+        "leads",
+        "search_history"
+      ],
+      "prompt_path": "harnessiq/agents/instagram/prompts/master_prompt.md",
+      "provider_families": [
+        "playwright"
+      ],
+      "runtime_parameters": [
+        {
+          "description": "Maximum model context budget for the harness.",
+          "key": "max_tokens",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Number of recent leads kept in prompt context.",
+          "key": "recent_result_window",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Number of recent searches kept in prompt context.",
+          "key": "recent_search_window",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Fraction of max_tokens that triggers a reset.",
+          "key": "reset_threshold",
+          "nullable": false,
+          "value_type": "number"
+        },
+        {
+          "description": "Maximum results requested from the search backend.",
+          "key": "search_result_limit",
+          "nullable": false,
+          "value_type": "integer"
+        }
+      ],
+      "source_file": "harnessiq/shared/instagram.py"
+    },
+    {
+      "agent_name": "knowt_content_creator",
+      "class_name": "KnowtAgent",
+      "cli_adapter_path": "harnessiq.cli.platform_adapters:KnowtHarnessCliAdapter",
+      "cli_command": null,
+      "custom_parameters": [],
+      "default_memory_root": "memory/knowt",
+      "display_name": "Knowt Content Creator",
+      "manifest_id": "knowt",
+      "memory_files": [
+        {
+          "description": "Current generated script.",
+          "format": "markdown",
+          "key": "current_script",
+          "kind": "file",
+          "relative_path": "current_script.md"
+        },
+        {
+          "description": "Current generated avatar description.",
+          "format": "markdown",
+          "key": "current_avatar_description",
+          "kind": "file",
+          "relative_path": "current_avatar_description.md"
+        },
+        {
+          "description": "Append-only creation pipeline log.",
+          "format": "jsonl",
+          "key": "creation_log",
+          "kind": "file",
+          "relative_path": "creation_log.jsonl"
+        }
+      ],
+      "module_path": "harnessiq.agents.knowt",
+      "output_fields": [
+        "avatar_description",
+        "creation_log",
+        "script"
+      ],
+      "prompt_path": "harnessiq/agents/knowt/prompts/master_prompt.md",
+      "provider_families": [
+        "creatify"
+      ],
+      "runtime_parameters": [
+        {
+          "description": "Maximum model context budget for the harness.",
+          "key": "max_tokens",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Fraction of max_tokens that triggers a reset.",
+          "key": "reset_threshold",
+          "nullable": false,
+          "value_type": "number"
+        }
+      ],
+      "source_file": "harnessiq/shared/knowt.py"
+    },
+    {
+      "agent_name": "leads_agent",
+      "class_name": "LeadsAgent",
+      "cli_adapter_path": "harnessiq.cli.platform_adapters:LeadsHarnessCliAdapter",
+      "cli_command": "leads",
+      "custom_parameters": [],
+      "default_memory_root": "memory/leads",
+      "display_name": "Leads Agent",
+      "manifest_id": "leads",
+      "memory_files": [
+        {
+          "description": "Durable lead-run configuration.",
+          "format": "json",
+          "key": "run_config",
+          "kind": "file",
+          "relative_path": "run_config.json"
+        },
+        {
+          "description": "Durable rotating-run progress state.",
+          "format": "json",
+          "key": "run_state",
+          "kind": "file",
+          "relative_path": "run_state.json"
+        },
+        {
+          "description": "Persisted typed runtime overrides.",
+          "format": "json",
+          "key": "runtime_parameters",
+          "kind": "file",
+          "relative_path": "runtime_parameters.json"
+        },
+        {
+          "description": "Per-ICP durable state files.",
+          "format": "json",
+          "key": "icp_states",
+          "kind": "file",
+          "relative_path": "icps/*.json"
+        },
+        {
+          "description": "Storage backend root for saved leads and run artifacts.",
+          "format": "directory",
+          "key": "lead_storage",
+          "kind": "directory",
+          "relative_path": "lead_storage"
+        },
+        {
+          "description": "Persisted deduplicated saved leads.",
+          "format": "json",
+          "key": "saved_leads",
+          "kind": "file",
+          "relative_path": "lead_storage/saved_leads.json"
+        }
+      ],
+      "module_path": "harnessiq.agents.leads",
+      "output_fields": [
+        "icp_states",
+        "run_config",
+        "run_state",
+        "saved_leads"
+      ],
+      "prompt_path": "harnessiq/agents/leads/prompts/master_prompt.md",
+      "provider_families": [
+        "apollo",
+        "arcads",
+        "arxiv",
+        "attio",
+        "coresignal",
+        "creatify",
+        "exa",
+        "expandi",
+        "inboxapp",
+        "instantly",
+        "leadiq",
+        "lemlist",
+        "lusha",
+        "outreach",
+        "paperclip",
+        "peopledatalabs",
+        "phantombuster",
+        "proxycurl",
+        "resend",
+        "salesforge",
+        "serper",
+        "smartlead",
+        "snovio",
+        "zerobounce",
+        "zoominfo"
+      ],
+      "runtime_parameters": [
+        {
+          "description": "Maximum model context budget for the harness.",
+          "key": "max_tokens",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Fraction of max_tokens that triggers a reset.",
+          "key": "reset_threshold",
+          "nullable": false,
+          "value_type": "number"
+        },
+        {
+          "description": "Progress interval that triggers deterministic pruning.",
+          "key": "prune_search_interval",
+          "nullable": true,
+          "value_type": "integer"
+        },
+        {
+          "description": "Optional token cap that triggers pruning.",
+          "key": "prune_token_limit",
+          "nullable": true,
+          "value_type": "integer"
+        },
+        {
+          "description": "Number of searches between automatic summary compaction.",
+          "key": "search_summary_every",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Number of recent searches preserved in prompt context.",
+          "key": "search_tail_size",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Optional per-ICP lead cap.",
+          "key": "max_leads_per_icp",
+          "nullable": true,
+          "value_type": "integer"
+        }
+      ],
+      "source_file": "harnessiq/shared/leads.py"
+    },
+    {
+      "agent_name": "linkedin_job_applier",
+      "class_name": "LinkedInJobApplierAgent",
+      "cli_adapter_path": "harnessiq.cli.platform_adapters:LinkedInHarnessCliAdapter",
+      "cli_command": "linkedin",
+      "custom_parameters": [],
+      "default_memory_root": "memory/linkedin",
+      "display_name": "LinkedIn Job Applier",
+      "manifest_id": "linkedin",
+      "memory_files": [
+        {
+          "description": "Durable job preference prompt block.",
+          "format": "markdown",
+          "key": "job_preferences",
+          "kind": "file",
+          "relative_path": "job_preferences.md"
+        },
+        {
+          "description": "Durable user profile prompt block.",
+          "format": "markdown",
+          "key": "user_profile",
+          "kind": "file",
+          "relative_path": "user_profile.md"
+        },
+        {
+          "description": "Override for the LinkedIn system identity.",
+          "format": "markdown",
+          "key": "agent_identity",
+          "kind": "file",
+          "relative_path": "agent_identity.md"
+        },
+        {
+          "description": "Persisted typed runtime overrides.",
+          "format": "json",
+          "key": "runtime_parameters",
+          "kind": "file",
+          "relative_path": "runtime_parameters.json"
+        },
+        {
+          "description": "Open-ended user custom parameter payload.",
+          "format": "json",
+          "key": "custom_parameters",
+          "kind": "file",
+          "relative_path": "custom_parameters.json"
+        },
+        {
+          "description": "Additional free-form prompt data.",
+          "format": "markdown",
+          "key": "additional_prompt",
+          "kind": "file",
+          "relative_path": "additional_prompt.md"
+        },
+        {
+          "description": "Append-only job application records.",
+          "format": "jsonl",
+          "key": "applied_jobs",
+          "kind": "file",
+          "relative_path": "applied_jobs.jsonl"
+        },
+        {
+          "description": "Append-only semantic action log.",
+          "format": "jsonl",
+          "key": "action_log",
+          "kind": "file",
+          "relative_path": "action_log.jsonl"
+        },
+        {
+          "description": "Index of CLI-managed memory files.",
+          "format": "json",
+          "key": "managed_files_index",
+          "kind": "file",
+          "relative_path": "managed_files.json"
+        },
+        {
+          "description": "Durable imported or inline-managed files.",
+          "format": "directory",
+          "key": "managed_files",
+          "kind": "directory",
+          "relative_path": "managed_files"
+        },
+        {
+          "description": "Persisted screenshots captured during browser runs.",
+          "format": "directory",
+          "key": "screenshots",
+          "kind": "directory",
+          "relative_path": "screenshots"
+        }
+      ],
+      "module_path": "harnessiq.agents.linkedin",
+      "output_fields": [
+        "jobs_applied",
+        "managed_files",
+        "recent_actions"
+      ],
+      "prompt_path": "harnessiq/agents/linkedin/prompts/master_prompt.md",
+      "provider_families": [
+        "playwright"
+      ],
+      "runtime_parameters": [
+        {
+          "description": "Maximum model context budget for the harness.",
+          "key": "max_tokens",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Fraction of max_tokens that triggers a reset.",
+          "key": "reset_threshold",
+          "nullable": false,
+          "value_type": "number"
+        },
+        {
+          "description": "Number of recent actions injected into context.",
+          "key": "action_log_window",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Initial LinkedIn jobs URL used by the harness.",
+          "key": "linkedin_start_url",
+          "nullable": false,
+          "value_type": "string"
+        },
+        {
+          "description": "Whether pause events should emit notifications.",
+          "key": "notify_on_pause",
+          "nullable": false,
+          "value_type": "boolean"
+        },
+        {
+          "description": "Optional webhook URL for pause notifications.",
+          "key": "pause_webhook",
+          "nullable": true,
+          "value_type": "string"
+        }
+      ],
+      "source_file": "harnessiq/shared/linkedin.py"
+    },
+    {
+      "agent_name": "google_maps_prospecting",
+      "class_name": "GoogleMapsProspectingAgent",
+      "cli_adapter_path": "harnessiq.cli.platform_adapters:ProspectingHarnessCliAdapter",
+      "cli_command": "prospecting",
+      "custom_parameters": [
+        {
+          "description": "Minimum score required to qualify a lead.",
+          "key": "qualification_threshold",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Search count cadence for search-history summarization.",
+          "key": "summarize_at_x",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Maximum Google Maps searches per run.",
+          "key": "max_searches_per_run",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Maximum listings evaluated per search.",
+          "key": "max_listings_per_search",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Whether website inspection is enabled.",
+          "key": "website_inspect_enabled",
+          "nullable": false,
+          "value_type": "boolean"
+        },
+        {
+          "description": "Record type emitted to output sinks.",
+          "key": "sink_record_type",
+          "nullable": false,
+          "value_type": "string"
+        },
+        {
+          "description": "System prompt used for deterministic company evaluation.",
+          "key": "eval_system_prompt",
+          "nullable": false,
+          "value_type": "string"
+        }
+      ],
+      "default_memory_root": "memory/prospecting",
+      "display_name": "Google Maps Prospecting",
+      "manifest_id": "prospecting",
+      "memory_files": [
+        {
+          "description": "Durable company targeting description.",
+          "format": "markdown",
+          "key": "company_description",
+          "kind": "file",
+          "relative_path": "company_description.md"
+        },
+        {
+          "description": "Override for the prospecting system identity.",
+          "format": "markdown",
+          "key": "agent_identity",
+          "kind": "file",
+          "relative_path": "agent_identity.md"
+        },
+        {
+          "description": "Additional free-form prompt data.",
+          "format": "markdown",
+          "key": "additional_prompt",
+          "kind": "file",
+          "relative_path": "additional_prompt.md"
+        },
+        {
+          "description": "Persisted typed runtime overrides.",
+          "format": "json",
+          "key": "runtime_parameters",
+          "kind": "file",
+          "relative_path": "runtime_parameters.json"
+        },
+        {
+          "description": "Persisted typed custom parameters.",
+          "format": "json",
+          "key": "custom_parameters",
+          "kind": "file",
+          "relative_path": "custom_parameters.json"
+        },
+        {
+          "description": "Durable run state for search progress and resets.",
+          "format": "json",
+          "key": "state",
+          "kind": "file",
+          "relative_path": "prospecting_state.json"
+        },
+        {
+          "description": "Append-only qualified lead records.",
+          "format": "jsonl",
+          "key": "qualified_leads",
+          "kind": "file",
+          "relative_path": "qualified_leads.jsonl"
+        },
+        {
+          "description": "Persistent browser session directory.",
+          "format": "directory",
+          "key": "browser_data",
+          "kind": "directory",
+          "relative_path": "browser-data"
+        }
+      ],
+      "module_path": "harnessiq.agents.prospecting",
+      "output_fields": [
+        "company_description",
+        "counts",
+        "qualified_leads",
+        "searches_completed",
+        "summary"
+      ],
+      "prompt_path": "harnessiq/agents/prospecting/prompts/master_prompt.md",
+      "provider_families": [
+        "playwright"
+      ],
+      "runtime_parameters": [
+        {
+          "description": "Maximum model context budget for the harness.",
+          "key": "max_tokens",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Fraction of max_tokens that triggers a reset.",
+          "key": "reset_threshold",
+          "nullable": false,
+          "value_type": "number"
+        }
+      ],
+      "source_file": "harnessiq/shared/prospecting.py"
+    }
+  ],
+  "key_files": [
+    {
+      "description": "Typed manifest primitives for runtime/custom parameters, durable memory entries, provider families, and output schemas.",
+      "path": "harnessiq/shared/harness_manifest.py"
+    },
+    {
+      "description": "Registry of the built-in harness manifests in deterministic order.",
+      "path": "harnessiq/shared/harness_manifests.py"
+    },
+    {
+      "description": "Root argparse entrypoint that wires every top-level command family into `harnessiq`.",
+      "path": "harnessiq/cli/main.py"
+    },
+    {
+      "description": "Platform-first CLI roots that synthesize manifest-driven prepare/show/run/inspect and credential management commands.",
+      "path": "harnessiq/cli/platform_commands.py"
+    },
+    {
+      "description": "Harness-specific adapter layer that turns manifest metadata into platform CLI behavior.",
+      "path": "harnessiq/cli/platform_adapters.py"
+    },
+    {
+      "description": "Provider-tool catalog metadata used by the toolset lookup layer.",
+      "path": "harnessiq/toolset/catalog_provider.py"
+    },
+    {
+      "description": "Built-in tool registry composition for the base runtime surface.",
+      "path": "harnessiq/tools/builtin.py"
+    },
+    {
+      "description": "Built-in output sink registration plus sink-construction helpers.",
+      "path": "harnessiq/utils/ledger_sinks.py"
+    },
+    {
+      "description": "AST-driven repository docs generator that keeps README and architecture artifacts aligned with live source.",
+      "path": "scripts/sync_repo_docs.py"
+    }
+  ],
+  "package_layout": [
+    {
+      "children": [
+        "base",
+        "email",
+        "exa_outreach",
+        "instagram",
+        "knowt",
+        "leads",
+        "linkedin",
+        "prospecting"
+      ],
+      "description": "Shared runtime bases plus the concrete harness packages exported by the SDK.",
+      "path": "harnessiq/agents/"
+    },
+    {
+      "children": [
+        "exa_outreach",
+        "instagram",
+        "leads",
+        "ledger",
+        "linkedin",
+        "prospecting"
+      ],
+      "description": "Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations.",
+      "path": "harnessiq/cli/"
+    },
+    {
+      "children": [],
+      "description": "Environment loading, credential binding, and provider-credential spec models.",
+      "path": "harnessiq/config/"
+    },
+    {
+      "children": [],
+      "description": "Concrete external runtime adapters such as Playwright backends and model factories.",
+      "path": "harnessiq/integrations/"
+    },
+    {
+      "children": [
+        "prompts"
+      ],
+      "description": "Packaged prompt assets and prompt registry helpers.",
+      "path": "harnessiq/master_prompts/"
+    },
+    {
+      "children": [
+        "anthropic",
+        "apollo",
+        "arcads",
+        "arxiv",
+        "attio",
+        "coresignal",
+        "creatify",
+        "exa",
+        "expandi",
+        "gemini",
+        "google_drive",
+        "grok",
+        "inboxapp",
+        "instantly",
+        "leadiq",
+        "lemlist",
+        "lusha",
+        "openai",
+        "outreach",
+        "paperclip",
+        "peopledatalabs",
+        "phantombuster",
+        "playwright",
+        "proxycurl",
+        "salesforge",
+        "serper",
+        "smartlead",
+        "snovio",
+        "zerobounce",
+        "zoominfo"
+      ],
+      "description": "Model-provider adapters, external service clients, output-sink transport clients, and Playwright runtime support.",
+      "path": "harnessiq/providers/"
+    },
+    {
+      "children": [],
+      "description": "Shared manifests, durable memory stores, operation metadata, and package-wide types/constants.",
+      "path": "harnessiq/shared/"
+    },
+    {
+      "children": [
+        "apollo",
+        "arcads",
+        "arxiv",
+        "attio",
+        "coresignal",
+        "creatify",
+        "eval",
+        "exa",
+        "expandi",
+        "google_drive",
+        "inboxapp",
+        "instagram",
+        "instantly",
+        "knowt",
+        "leadiq",
+        "leads",
+        "lemlist",
+        "lusha",
+        "outreach",
+        "paperclip",
+        "peopledatalabs",
+        "phantombuster",
+        "prospecting",
+        "proxycurl",
+        "reasoning",
+        "salesforge",
+        "search",
+        "serper",
+        "smartlead",
+        "snovio",
+        "zerobounce",
+        "zoominfo"
+      ],
+      "description": "Built-in tool families, provider-backed tool factories, and domain-specific helper tools.",
+      "path": "harnessiq/tools/"
+    },
+    {
+      "children": [],
+      "description": "Static tool catalog plus registration and lookup helpers for reusable tool composition.",
+      "path": "harnessiq/toolset/"
+    },
+    {
+      "children": [],
+      "description": "Agent instance storage, ledger export/report helpers, and built-in output sink implementations.",
+      "path": "harnessiq/utils/"
+    }
+  ],
+  "providers": {
+    "model_providers": [
+      {
+        "family": "anthropic",
+        "provider_path": "harnessiq/providers/anthropic/"
+      },
+      {
+        "family": "openai",
+        "provider_path": "harnessiq/providers/openai/"
+      },
+      {
+        "family": "grok",
+        "provider_path": "harnessiq/providers/grok/"
+      },
+      {
+        "family": "gemini",
+        "provider_path": "harnessiq/providers/gemini/"
+      }
+    ],
+    "service_providers": [
+      {
+        "catalog_path": "harnessiq/shared/apollo.py",
+        "family": "apollo",
+        "operations": 13,
+        "provider_path": "harnessiq/providers/apollo",
+        "tool_path": "harnessiq/tools/apollo/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/arcads.py",
+        "family": "arcads",
+        "operations": 10,
+        "provider_path": "harnessiq/providers/arcads",
+        "tool_path": "harnessiq/tools/arcads/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/arxiv.py",
+        "family": "arxiv",
+        "operations": 4,
+        "provider_path": "harnessiq/providers/arxiv",
+        "tool_path": "harnessiq/tools/arxiv/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/attio.py",
+        "family": "attio",
+        "operations": 7,
+        "provider_path": "harnessiq/providers/attio",
+        "tool_path": "harnessiq/tools/attio/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/coresignal.py",
+        "family": "coresignal",
+        "operations": 9,
+        "provider_path": "harnessiq/providers/coresignal",
+        "tool_path": "harnessiq/tools/coresignal/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/creatify.py",
+        "family": "creatify",
+        "operations": 58,
+        "provider_path": "harnessiq/providers/creatify",
+        "tool_path": "harnessiq/tools/creatify/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/exa.py",
+        "family": "exa",
+        "operations": 15,
+        "provider_path": "harnessiq/providers/exa",
+        "tool_path": "harnessiq/tools/exa/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/expandi.py",
+        "family": "expandi",
+        "operations": 22,
+        "provider_path": "harnessiq/providers/expandi",
+        "tool_path": "harnessiq/tools/expandi/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/google_drive.py",
+        "family": "google_drive",
+        "operations": 3,
+        "provider_path": "harnessiq/providers/google_drive",
+        "tool_path": "harnessiq/tools/google_drive/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/inboxapp.py",
+        "family": "inboxapp",
+        "operations": 9,
+        "provider_path": "harnessiq/providers/inboxapp",
+        "tool_path": "harnessiq/tools/inboxapp/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/instantly.py",
+        "family": "instantly",
+        "operations": 75,
+        "provider_path": "harnessiq/providers/instantly",
+        "tool_path": "harnessiq/tools/instantly/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/leadiq.py",
+        "family": "leadiq",
+        "operations": 12,
+        "provider_path": "harnessiq/providers/leadiq",
+        "tool_path": "harnessiq/tools/leadiq/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/lemlist.py",
+        "family": "lemlist",
+        "operations": 34,
+        "provider_path": "harnessiq/providers/lemlist",
+        "tool_path": "harnessiq/tools/lemlist/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/lusha.py",
+        "family": "lusha",
+        "operations": 40,
+        "provider_path": "harnessiq/providers/lusha",
+        "tool_path": "harnessiq/tools/lusha/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/outreach.py",
+        "family": "outreach",
+        "operations": 65,
+        "provider_path": "harnessiq/providers/outreach",
+        "tool_path": "harnessiq/tools/outreach/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/paperclip.py",
+        "family": "paperclip",
+        "operations": 48,
+        "provider_path": "harnessiq/providers/paperclip",
+        "tool_path": "harnessiq/tools/paperclip/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/peopledatalabs.py",
+        "family": "peopledatalabs",
+        "operations": 11,
+        "provider_path": "harnessiq/providers/peopledatalabs",
+        "tool_path": "harnessiq/tools/peopledatalabs/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/phantombuster.py",
+        "family": "phantombuster",
+        "operations": 15,
+        "provider_path": "harnessiq/providers/phantombuster",
+        "tool_path": "harnessiq/tools/phantombuster/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/proxycurl.py",
+        "family": "proxycurl",
+        "operations": 11,
+        "provider_path": "harnessiq/providers/proxycurl",
+        "tool_path": "harnessiq/tools/proxycurl/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/salesforge.py",
+        "family": "salesforge",
+        "operations": 22,
+        "provider_path": "harnessiq/providers/salesforge",
+        "tool_path": "harnessiq/tools/salesforge/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/serper.py",
+        "family": "serper",
+        "operations": 10,
+        "provider_path": "harnessiq/providers/serper",
+        "tool_path": "harnessiq/tools/serper/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/smartlead.py",
+        "family": "smartlead",
+        "operations": 48,
+        "provider_path": "harnessiq/providers/smartlead",
+        "tool_path": "harnessiq/tools/smartlead/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/snovio.py",
+        "family": "snovio",
+        "operations": 23,
+        "provider_path": "harnessiq/providers/snovio",
+        "tool_path": "harnessiq/tools/snovio/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/zerobounce.py",
+        "family": "zerobounce",
+        "operations": 22,
+        "provider_path": "harnessiq/providers/zerobounce",
+        "tool_path": "harnessiq/tools/zerobounce/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/zoominfo.py",
+        "family": "zoominfo",
+        "operations": 12,
+        "provider_path": "harnessiq/providers/zoominfo",
+        "tool_path": "harnessiq/tools/zoominfo/operations.py"
+      }
+    ],
+    "sink_types": [
+      "confluence",
+      "discord",
+      "jsonl",
+      "linear",
+      "notion",
+      "obsidian",
+      "slack",
+      "supabase"
+    ],
+    "tool_only_surfaces": [
+      {
+        "catalog_path": "harnessiq/shared/resend_catalog.py",
+        "family": "resend",
+        "operations": 64,
+        "tool_path": "harnessiq/tools/resend.py"
+      }
+    ]
+  },
+  "tests": {
+    "count": 71,
+    "groups": [
+      {
+        "count": 10,
+        "examples": [
+          "test_agent_instances.py",
+          "test_agents_base.py",
+          "test_email_agent.py"
+        ],
+        "name": "agents"
+      },
+      {
+        "count": 7,
+        "examples": [
+          "test_exa_outreach_cli.py",
+          "test_instagram_cli.py",
+          "test_leads_cli.py"
+        ],
+        "name": "cli"
+      },
+      {
+        "count": 1,
+        "examples": [
+          "test_output_sinks.py"
+        ],
+        "name": "ledger"
+      },
+      {
+        "count": 30,
+        "examples": [
+          "test_anthropic_provider.py",
+          "test_apollo_provider.py",
+          "test_arcads_provider.py"
+        ],
+        "name": "providers"
+      },
+      {
+        "count": 12,
+        "examples": [
+          "test_cli_common.py",
+          "test_config_loader.py",
+          "test_credentials_config.py"
+        ],
+        "name": "support"
+      },
+      {
+        "count": 11,
+        "examples": [
+          "test_context_compaction_tools.py",
+          "test_general_tools.py",
+          "test_knowt_tools.py"
+        ],
+        "name": "tools"
+      }
+    ]
+  },
+  "top_level_directories": [
+    {
+      "description": "Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable.",
+      "kind": "generated/cache",
+      "name": ".harnessiq",
+      "path": ".harnessiq/"
+    },
+    {
+      "description": "Test runner cache; generated, not part of the source of truth.",
+      "kind": "generated/cache",
+      "name": ".pytest_cache",
+      "path": ".pytest_cache/"
+    },
+    {
+      "description": "Generated and curated repository reference artifacts.",
+      "kind": "repo docs",
+      "name": "artifacts",
+      "path": "artifacts/"
+    },
+    {
+      "description": "Setuptools build output; generated, not part of the live source tree.",
+      "kind": "generated/cache",
+      "name": "build",
+      "path": "build/"
+    },
+    {
+      "description": "Focused usage and architecture notes for the package.",
+      "kind": "repo docs",
+      "name": "docs",
+      "path": "docs/"
+    },
+    {
+      "description": "Live SDK package source.",
+      "kind": "source",
+      "name": "harnessiq",
+      "path": "harnessiq/"
+    },
+    {
+      "description": "Packaging metadata emitted by local builds.",
+      "kind": "generated/cache",
+      "name": "harnessiq.egg-info",
+      "path": "harnessiq.egg-info/"
+    },
+    {
+      "description": "Task artifacts plus durable agent runtime state; not part of the shipped package.",
+      "kind": "local state",
+      "name": "memory",
+      "path": "memory/"
+    },
+    {
+      "description": "Repository maintenance and generation scripts.",
+      "kind": "repo tooling",
+      "name": "scripts",
+      "path": "scripts/"
+    },
+    {
+      "description": "Legacy or generated residue in this checkout; not the authoritative package source.",
+      "kind": "generated/cache",
+      "name": "src",
+      "path": "src/"
+    },
+    {
+      "description": "unittest coverage for runtime, CLI, providers, and tools.",
+      "kind": "source",
+      "name": "tests",
+      "path": "tests/"
+    }
+  ]
+}

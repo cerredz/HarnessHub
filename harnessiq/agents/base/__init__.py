@@ -12,6 +12,8 @@ from harnessiq.agents.base.agent import (
     AgentToolExecutor,
     AgentTranscriptEntry,
     BaseAgent,
+    json_parameter_section,
+    render_json_parameter_content,
     estimate_text_tokens,
 )
 
@@ -27,5 +29,7 @@ __all__ = [
     "AgentToolExecutor",
     "AgentTranscriptEntry",
     "BaseAgent",
+    "json_parameter_section",
+    "render_json_parameter_content",
     "estimate_text_tokens",
 ]

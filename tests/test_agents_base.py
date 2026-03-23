@@ -13,7 +13,9 @@ from harnessiq.agents import (
     AgentParameterSection,
     AgentPauseSignal,
     AgentRuntimeConfig,
+    AgentTranscriptEntry,
     BaseAgent,
+    json_parameter_section,
 )
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.shared.tools import CONTROL_PAUSE_FOR_HUMAN, HEAVY_COMPACTION, RegisteredTool, ToolCall, ToolDefinition
@@ -484,6 +486,29 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(payload[0]["parameters"], [])
         self.assertEqual(payload[0]["function"]["module"], __name__)
         self.assertEqual(payload[0]["function"]["qualname"], "_echo_handler")
+
+    def test_build_context_window_includes_parameters_and_transcript_entries(self) -> None:
+        agent = _InspectableAgent(model=_FakeModel([]), tool_executor=ToolRegistry([]))
+        agent.refresh_parameters()
+        agent._transcript.extend(
+            [
+                AgentTranscriptEntry(entry_type="assistant", content="hello"),
+                AgentTranscriptEntry(entry_type="tool_result", content='session.echo\n{"echoed": "hello"}'),
+            ]
+        )
+
+        context_window = agent.build_context_window()
+
+        self.assertEqual(context_window[0]["kind"], "parameter")
+        self.assertEqual(context_window[0]["label"], "State")
+        self.assertEqual(context_window[1]["kind"], "message")
+        self.assertEqual(context_window[2]["kind"], "tool_result")
+
+    def test_json_parameter_section_renders_sorted_json_content(self) -> None:
+        section = json_parameter_section("State", {"b": 2, "a": 1})
+
+        self.assertEqual(section.title, "State")
+        self.assertEqual(section.content, '{\n  "a": 1,\n  "b": 2\n}')
 
 
 if __name__ == "__main__":

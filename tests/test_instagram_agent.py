@@ -16,7 +16,7 @@ from harnessiq.agents import (
 )
 from harnessiq.shared.agents import AgentRuntimeConfig
 from harnessiq.shared.instagram import InstagramLeadRecord, InstagramSearchExecution, InstagramSearchRecord
-from harnessiq.shared.tools import ToolCall
+from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
 
 _LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
 
@@ -74,6 +74,26 @@ def _build_execution(keyword: str = "fitness coach") -> InstagramSearchExecution
 
 
 class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
+    def test_custom_tools_are_added_to_the_agent_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            custom_tool = RegisteredTool(
+                definition=ToolDefinition(
+                    key="custom.instagram_helper",
+                    name="instagram_helper",
+                    description="Custom helper.",
+                    input_schema={"type": "object", "properties": {}, "required": [], "additionalProperties": False},
+                ),
+                handler=lambda arguments: {"ok": True, "arguments": arguments},
+            )
+            agent = InstagramKeywordDiscoveryAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                search_backend=_FakeSearchBackend(_build_execution()),
+                memory_path=temp_dir,
+                tools=(custom_tool,),
+            )
+
+            self.assertIn("custom.instagram_helper", {tool.key for tool in agent.available_tools()})
+
     def test_run_bootstraps_memory_files_and_parameter_order(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])

@@ -10,7 +10,7 @@ from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntim
 from harnessiq.shared.agents import merge_agent_runtime_config
 from harnessiq.shared.email import DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
-from harnessiq.tools.registry import ToolRegistry
+from harnessiq.tools.registry import create_tool_registry
 from harnessiq.tools.resend import ResendClient, ResendCredentials, build_resend_operation_catalog, create_resend_tools
 
 
@@ -24,6 +24,7 @@ class BaseEmailAgent(BaseAgent, ABC):
         model: AgentModel,
         config: EmailAgentConfig,
         email_tools: Iterable[RegisteredTool] = (),
+        tools: Sequence[RegisteredTool] | None = None,
         resend_client: ResendClient | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
@@ -33,14 +34,13 @@ class BaseEmailAgent(BaseAgent, ABC):
         self._config = config
         self._resend_client = resend_client or ResendClient(credentials=config.resend_credentials)
 
-        tool_registry = ToolRegistry(
-            _merge_tools(
-                create_resend_tools(
-                    client=self._resend_client,
-                    allowed_operations=self._config.allowed_resend_operations,
-                ),
-                tuple(email_tools),
-            )
+        tool_registry = create_tool_registry(
+            create_resend_tools(
+                client=self._resend_client,
+                allowed_operations=self._config.allowed_resend_operations,
+            ),
+            tuple(email_tools),
+            tuple(tools or ()),
         )
         runtime_config = AgentRuntimeConfig(
             max_tokens=self._config.max_tokens,
@@ -149,17 +149,6 @@ def _render_resend_credentials(config: EmailAgentConfig) -> str:
 
 def _summarize_tool(tool: ToolDefinition) -> str:
     return tool.description.splitlines()[0]
-
-
-def _merge_tools(*tool_groups: Iterable[RegisteredTool]) -> tuple[RegisteredTool, ...]:
-    ordered_keys: list[str] = []
-    merged: dict[str, RegisteredTool] = {}
-    for tool_group in tool_groups:
-        for tool in tool_group:
-            if tool.key not in merged:
-                ordered_keys.append(tool.key)
-            merged[tool.key] = tool
-    return tuple(merged[key] for key in ordered_keys)
 
 
 __all__ = [
