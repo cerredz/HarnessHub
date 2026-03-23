@@ -47,6 +47,14 @@ class MasterPromptRegistry:
         """Return all registered master prompts sorted by key."""
         return sorted(self._load_all().values(), key=lambda p: p.key)
 
+    def keys(self) -> list[str]:
+        """Return all registered prompt keys sorted alphabetically."""
+        return [prompt.key for prompt in self.list()]
+
+    def has(self, key: str) -> bool:
+        """Return whether a prompt with the given key exists."""
+        return key in self._load_all()
+
     def get(self, key: str) -> MasterPrompt:
         """Return the master prompt with the given key.
 

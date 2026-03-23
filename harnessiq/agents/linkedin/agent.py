@@ -17,6 +17,7 @@ from harnessiq.shared.agents import (
     AgentParameterSection,
     AgentPauseSignal,
     AgentRuntimeConfig,
+    json_parameter_section,
 )
 from harnessiq.shared.linkedin import (
     DEFAULT_AGENT_IDENTITY,
@@ -33,7 +34,7 @@ from harnessiq.shared.linkedin import (
     normalize_linkedin_runtime_parameters,
 )
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
-from harnessiq.tools.registry import ToolRegistry
+from harnessiq.tools.registry import create_tool_registry
 
 # Default memory location: the `memory/` folder inside this agent's subdirectory.
 # Users can override this by passing an explicit `memory_path` argument.
@@ -52,6 +53,7 @@ class LinkedInJobApplierAgent(BaseAgent):
         model: AgentModel,
         memory_path: str | Path | None = None,
         browser_tools: Iterable[RegisteredTool] = (),
+        tools: Sequence[RegisteredTool] | None = None,
         screenshot_persistor: ScreenshotPersistor | None = None,
         max_tokens: int = DEFAULT_AGENT_MAX_TOKENS,
         reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD,
@@ -100,7 +102,7 @@ class LinkedInJobApplierAgent(BaseAgent):
         super().__init__(
             name="linkedin_job_applier",
             model=model,
-            tool_executor=ToolRegistry(create_linkedin_browser_stub_tools()),
+            tool_executor=create_tool_registry(create_linkedin_browser_stub_tools()),
             runtime_config=merged_runtime_config,
             memory_path=self._candidate_memory_path,
             repo_root=_find_repo_root(self._candidate_memory_path),
@@ -119,12 +121,11 @@ class LinkedInJobApplierAgent(BaseAgent):
             memory_path=resolved_memory_path,
             action_log_window=self._config.action_log_window,
         )
-        self._tool_executor = ToolRegistry(
-            _merge_tools(
-                create_linkedin_browser_stub_tools(),
-                self._build_internal_tools(),
-                tuple(browser_tools),
-            )
+        self._tool_executor = create_tool_registry(
+            create_linkedin_browser_stub_tools(),
+            self._build_internal_tools(),
+            tuple(browser_tools),
+            tuple(tools or ()),
         )
 
     def build_instance_payload(self) -> dict[str, Any]:
@@ -153,6 +154,7 @@ class LinkedInJobApplierAgent(BaseAgent):
         model: AgentModel,
         memory_path: str | Path | None = None,
         browser_tools: Iterable[RegisteredTool] = (),
+        tools: Sequence[RegisteredTool] | None = None,
         screenshot_persistor: ScreenshotPersistor | None = None,
         runtime_overrides: Mapping[str, Any] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
@@ -167,6 +169,7 @@ class LinkedInJobApplierAgent(BaseAgent):
             model=model,
             memory_path=resolved_path,
             browser_tools=browser_tools,
+            tools=tools,
             screenshot_persistor=screenshot_persistor,
             runtime_config=runtime_config,
             **normalize_linkedin_runtime_parameters(runtime_parameters),
@@ -209,16 +212,16 @@ class LinkedInJobApplierAgent(BaseAgent):
         ]
         runtime_parameters = self._memory_store.read_runtime_parameters()
         if runtime_parameters:
-            sections.append(AgentParameterSection(title="Runtime Parameters", content=_json_block(runtime_parameters)))
+            sections.append(json_parameter_section("Runtime Parameters", runtime_parameters))
         custom_parameters = self._memory_store.read_custom_parameters()
         if custom_parameters:
-            sections.append(AgentParameterSection(title="Custom Parameters", content=_json_block(custom_parameters)))
+            sections.append(json_parameter_section("Custom Parameters", custom_parameters))
         additional_prompt = self._memory_store.read_additional_prompt()
         if additional_prompt:
             sections.append(AgentParameterSection(title="Additional Prompt Data", content=additional_prompt))
         managed_files = [entry.as_dict() for entry in self._memory_store.read_managed_files()]
         if managed_files:
-            sections.append(AgentParameterSection(title="Managed Files", content=_json_block(managed_files)))
+            sections.append(json_parameter_section("Managed Files", managed_files))
         return tuple(sections)
 
     def build_ledger_outputs(self) -> dict[str, Any]:
@@ -591,17 +594,6 @@ def _unavailable_browser_handler(tool_name: str):
     return handler
 
 
-def _merge_tools(*tool_groups: Iterable[RegisteredTool]) -> tuple[RegisteredTool, ...]:
-    ordered_keys: list[str] = []
-    merged: dict[str, RegisteredTool] = {}
-    for tool_group in tool_groups:
-        for tool in tool_group:
-            if tool.key not in merged:
-                ordered_keys.append(tool.key)
-            merged[tool.key] = tool
-    return tuple(merged[key] for key in ordered_keys)
-
-
 def _tool_definition(
     *,
     key: str,
@@ -630,9 +622,6 @@ def _or_placeholder(value: str, placeholder: str) -> str:
 def _sanitize_label(label: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", label).strip("-")
     return cleaned or "screenshot"
-
-def _json_block(payload: Any) -> str:
-    return json.dumps(payload, indent=2, sort_keys=True)
 
 
 def _relative_path_text(path: Path, root: Path) -> str:

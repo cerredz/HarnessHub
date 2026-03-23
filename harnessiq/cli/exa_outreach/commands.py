@@ -12,16 +12,17 @@ from harnessiq.cli.common import (
     add_agent_options,
     add_text_or_file_options,
     emit_json,
-    parse_generic_assignments,
+    format_manifest_parameter_keys,
+    parse_manifest_parameter_assignments,
     resolve_memory_path,
     resolve_text_argument,
 )
 from harnessiq.cli._langsmith import seed_langsmith_environment
 from harnessiq.agents import AgentRuntimeConfig
-from harnessiq.shared.exa_outreach import ExaOutreachMemoryStore
+from harnessiq.shared.exa_outreach import EXA_OUTREACH_HARNESS_MANIFEST, ExaOutreachMemoryStore
 from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
-SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS = ("max_tokens", "reset_threshold")
+SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS = EXA_OUTREACH_HARNESS_MANIFEST.runtime_parameter_names
 
 
 def register_exa_outreach_commands(
@@ -62,7 +63,7 @@ def register_exa_outreach_commands(
         metavar="KEY=VALUE",
         help=(
             f"Persist a runtime parameter. Supported keys: "
-            f"{', '.join(SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS)}."
+            f"{format_manifest_parameter_keys(EXA_OUTREACH_HARNESS_MANIFEST, scope='runtime')}."
         ),
     )
     configure_parser.set_defaults(command_handler=_handle_configure)
@@ -294,7 +295,11 @@ def _load_store(args: argparse.Namespace) -> ExaOutreachMemoryStore:
 
 
 def _parse_runtime_assignments(assignments: Sequence[str]) -> dict[str, Any]:
-    return normalize_exa_outreach_runtime_parameters(parse_generic_assignments(assignments))
+    return parse_manifest_parameter_assignments(
+        assignments,
+        manifest=EXA_OUTREACH_HARNESS_MANIFEST,
+        scope="runtime",
+    )
 
 
 def _optional_string(value: Any) -> str | None:
@@ -352,6 +357,8 @@ def _print_run_summary(store: ExaOutreachMemoryStore, run_id: str) -> None:
 
 
 def _build_runtime_config(sink_specs: Sequence[str]) -> AgentRuntimeConfig:
+    if not sink_specs:
+        return AgentRuntimeConfig()
     connections = ConnectionsConfigStore().load().enabled_connections()
     return AgentRuntimeConfig(
         output_sinks=build_output_sinks(connections=connections, sink_specs=sink_specs),
@@ -360,39 +367,7 @@ def _build_runtime_config(sink_specs: Sequence[str]) -> AgentRuntimeConfig:
 
 def normalize_exa_outreach_runtime_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
     """Validate and type-coerce outreach runtime parameters."""
-    normalized: dict[str, Any] = {}
-    coercers = {
-        "max_tokens": _coerce_int,
-        "reset_threshold": _coerce_float,
-    }
-    for key, value in parameters.items():
-        if key not in coercers:
-            raise ValueError(
-                f"Unsupported outreach runtime parameter '{key}'. "
-                f"Supported: {', '.join(sorted(coercers))}."
-            )
-        normalized[key] = coercers[key](value)
-    return normalized
-
-
-def _coerce_int(value: Any) -> int:
-    if isinstance(value, bool):
-        raise ValueError("Boolean values are not valid integer runtime parameters.")
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str) and value.strip():
-        return int(value)
-    raise ValueError("Runtime parameter must be an integer.")
-
-
-def _coerce_float(value: Any) -> float:
-    if isinstance(value, bool):
-        raise ValueError("Boolean values are not valid float runtime parameters.")
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str) and value.strip():
-        return float(value)
-    raise ValueError("Runtime parameter must be a float.")
+    return EXA_OUTREACH_HARNESS_MANIFEST.coerce_runtime_parameters(parameters)
 
 
 __all__ = [

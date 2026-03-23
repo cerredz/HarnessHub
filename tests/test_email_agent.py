@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection, BaseEmailAgent, EmailAgentConfig
-from harnessiq.shared.tools import ToolCall
+from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
 from harnessiq.tools import RESEND_REQUEST, ResendClient, ResendCredentials
 
 
@@ -27,6 +27,7 @@ class _TestEmailAgent(BaseEmailAgent):
         resend_credentials: ResendCredentials,
         allowed_resend_operations: tuple[str, ...] | None = None,
         resend_client: ResendClient | None = None,
+        tools: tuple[RegisteredTool, ...] = (),
     ) -> None:
         super().__init__(
             name="test_email_agent",
@@ -36,6 +37,7 @@ class _TestEmailAgent(BaseEmailAgent):
                 allowed_resend_operations=allowed_resend_operations,
             ),
             resend_client=resend_client,
+            tools=tools,
         )
 
     def email_objective(self) -> str:
@@ -121,6 +123,25 @@ class BaseEmailAgentTests(unittest.TestCase):
             model.requests[0].tools[0].input_schema["properties"]["operation"]["enum"],
             ["send_email", "list_domains"],
         )
+
+    def test_email_agent_accepts_additive_custom_tools(self) -> None:
+        credentials = ResendCredentials(api_key="re_test_1234567890")
+        custom_tool = RegisteredTool(
+            definition=ToolDefinition(
+                key="custom.email_helper",
+                name="email_helper",
+                description="Custom helper.",
+                input_schema={"type": "object", "properties": {}, "required": [], "additionalProperties": False},
+            ),
+            handler=lambda arguments: {"ok": True, "arguments": arguments},
+        )
+        agent = _TestEmailAgent(
+            model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+            resend_credentials=credentials,
+            tools=(custom_tool,),
+        )
+
+        self.assertIn("custom.email_helper", {tool.key for tool in agent.available_tools()})
 
 
 if __name__ == "__main__":

@@ -15,19 +15,18 @@ from harnessiq.cli.common import (
     add_agent_options,
     add_text_or_file_options,
     emit_json,
-    parse_generic_assignments,
+    format_manifest_parameter_keys,
+    parse_manifest_parameter_assignments,
     resolve_memory_path,
     resolve_text_argument,
 )
-from harnessiq.shared.instagram import InstagramMemoryStore, normalize_instagram_runtime_parameters
-
-SUPPORTED_INSTAGRAM_RUNTIME_PARAMETERS = (
-    "max_tokens",
-    "recent_result_window",
-    "recent_search_window",
-    "reset_threshold",
-    "search_result_limit",
+from harnessiq.shared.instagram import (
+    INSTAGRAM_HARNESS_MANIFEST,
+    InstagramMemoryStore,
+    normalize_instagram_runtime_parameters,
 )
+
+SUPPORTED_INSTAGRAM_RUNTIME_PARAMETERS = INSTAGRAM_HARNESS_MANIFEST.runtime_parameter_names
 
 _DEFAULT_SEARCH_BACKEND_FACTORY = "harnessiq.integrations.instagram_playwright:create_search_backend"
 
@@ -80,7 +79,7 @@ def register_instagram_commands(
         metavar="KEY=VALUE",
         help=(
             f"Persist a runtime parameter. Supported keys: "
-            f"{', '.join(SUPPORTED_INSTAGRAM_RUNTIME_PARAMETERS)}."
+            f"{format_manifest_parameter_keys(INSTAGRAM_HARNESS_MANIFEST, scope='runtime')}."
         ),
     )
     configure_parser.set_defaults(command_handler=_handle_configure)
@@ -280,7 +279,11 @@ def _resolve_icp_input(inline_values: Sequence[str], file_value: str | None) -> 
 
 
 def _parse_runtime_assignments(assignments: Sequence[str]) -> dict[str, Any]:
-    return normalize_instagram_runtime_parameters(parse_generic_assignments(assignments))
+    return parse_manifest_parameter_assignments(
+        assignments,
+        manifest=INSTAGRAM_HARNESS_MANIFEST,
+        scope="runtime",
+    )
 
 
 def _build_summary(store: InstagramMemoryStore) -> dict[str, Any]:

@@ -1,10 +1,54 @@
-"""Tests for the master_prompts module — registry, loading, and public API."""
+"""Tests for the master_prompts module - registry, loading, and public API."""
 
 from __future__ import annotations
 
 import unittest
 
-from harnessiq.master_prompts import MasterPrompt, MasterPromptRegistry, get_prompt, get_prompt_text, list_prompts
+from harnessiq.master_prompts import (
+    MasterPrompt,
+    MasterPromptRegistry,
+    get_prompt,
+    get_prompt_text,
+    has_prompt,
+    list_prompt_keys,
+    list_prompts,
+)
+
+
+EXPECTED_PROMPT_KEYS = {
+    "autonomous_execution_loop",
+    "create_github_execution_issues",
+    "create_jira_execution_tickets",
+    "create_linear_execution_tickets",
+    "create_master_prompts",
+    "implement_and_critique_solutions",
+    "parallel_problem_decomposition",
+    "spawn_specialized_subagents",
+}
+
+EXPECTED_PROMPT_KEYS = {
+    "create_master_prompts",
+    "create_tickets",
+    "phased_code_review",
+    "surgical_bugfix",
+}
+REQUIRED_PROMPT_SECTIONS = (
+    "Identity",
+    "Goal",
+    "Checklist",
+    "Things Not To Do",
+    "Success Criteria",
+    "Artifacts",
+    "Inputs",
+)
+
+
+EXPECTED_PROMPT_KEYS = (
+    "create_master_prompts",
+    "create_tickets",
+    "phased_code_review",
+    "surgical_bugfix",
+)
 
 
 EXPECTED_PROMPT_KEYS = {
@@ -34,12 +78,12 @@ class MasterPromptDataclassTests(unittest.TestCase):
 
 
 class MasterPromptRegistryTests(unittest.TestCase):
-    def test_list_returns_at_least_one_prompt(self) -> None:
+    def test_list_returns_expected_prompt_count_or_more(self) -> None:
         registry = MasterPromptRegistry()
 
         prompts = registry.list()
 
-        self.assertGreater(len(prompts), 0)
+        self.assertGreaterEqual(len(prompts), len(EXPECTED_PROMPT_KEYS))
 
     def test_list_returns_master_prompt_instances(self) -> None:
         registry = MasterPromptRegistry()
@@ -79,21 +123,53 @@ class MasterPromptRegistryTests(unittest.TestCase):
         self.assertIsInstance(text, str)
         self.assertTrue(len(text) > 0)
 
+    def test_keys_returns_sorted_prompt_keys(self) -> None:
+        registry = MasterPromptRegistry()
+
+        keys = registry.keys()
+
+        self.assertEqual(keys, sorted(keys))
+        self.assertTrue(EXPECTED_PROMPT_KEYS.issubset(set(keys)))
+
+    def test_has_returns_true_for_known_key(self) -> None:
+        registry = MasterPromptRegistry()
+
+        self.assertTrue(registry.has("create_master_prompts"))
+        self.assertFalse(registry.has("this_key_does_not_exist"))
+
     def test_registry_caches_after_first_load(self) -> None:
         registry = MasterPromptRegistry()
         first = registry.list()
         second = registry.list()
 
-        # Same object identity — cache was used
         self.assertIs(registry._cache, registry._cache)
         self.assertEqual([p.key for p in first], [p.key for p in second])
 
-    def test_expected_prompt_keys_are_bundled(self) -> None:
+    def test_list_returns_expected_bundled_prompt_keys(self) -> None:
         registry = MasterPromptRegistry()
 
         keys = {prompt.key for prompt in registry.list()}
 
-        self.assertTrue(EXPECTED_PROMPT_KEYS.issubset(keys))
+        self.assertEqual(keys, EXPECTED_PROMPT_KEYS)
+
+
+class BundledMasterPromptStructureTests(unittest.TestCase):
+    def test_all_bundled_prompts_are_non_empty(self) -> None:
+        registry = MasterPromptRegistry()
+
+        for prompt in registry.list():
+            with self.subTest(prompt=prompt.key):
+                self.assertTrue(prompt.title.strip())
+                self.assertTrue(prompt.description.strip())
+                self.assertTrue(prompt.prompt.strip())
+
+    def test_all_bundled_prompts_include_core_seven_section_structure(self) -> None:
+        registry = MasterPromptRegistry()
+
+        for prompt in registry.list():
+            with self.subTest(prompt=prompt.key):
+                for section_name in REQUIRED_PROMPT_SECTIONS:
+                    self.assertIn(section_name, prompt.prompt)
 
 
 class CreateMasterPromptsPromptTests(unittest.TestCase):
@@ -115,8 +191,6 @@ class CreateMasterPromptsPromptTests(unittest.TestCase):
         self.assertTrue(self.prompt.prompt.strip())
 
     def test_prompt_text_contains_identity_section_markers(self) -> None:
-        # The prompt encodes the full seven-section master prompt structure.
-        # Verify key structural markers are present.
         text = self.prompt.prompt
         self.assertIn("Identity", text)
         self.assertIn("Goal", text)
@@ -126,34 +200,30 @@ class CreateMasterPromptsPromptTests(unittest.TestCase):
         self.assertEqual(self.prompt.key, "create_master_prompts")
 
 
-class BundledMasterPromptCatalogTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.prompts = MasterPromptRegistry().list()
+class BundledPromptStructureTests(unittest.TestCase):
+    def test_all_expected_prompts_are_non_empty(self) -> None:
+        registry = MasterPromptRegistry()
 
-    def test_all_expected_prompts_have_required_fields(self) -> None:
-        relevant = [prompt for prompt in self.prompts if prompt.key in EXPECTED_PROMPT_KEYS]
-        self.assertEqual({prompt.key for prompt in relevant}, EXPECTED_PROMPT_KEYS)
-        for prompt in relevant:
-            with self.subTest(prompt=prompt.key):
+        for key in EXPECTED_PROMPT_KEYS:
+            with self.subTest(key=key):
+                prompt = registry.get(key)
                 self.assertTrue(prompt.title.strip())
                 self.assertTrue(prompt.description.strip())
                 self.assertTrue(prompt.prompt.strip())
 
-    def test_all_expected_prompts_contain_master_prompt_sections(self) -> None:
-        required_markers = (
-            "Identity",
-            "Goal",
-            "Checklist",
-            "Things Not To Do",
-            "Success Criteria",
-            "Artifacts",
-            "Inputs",
-        )
-        relevant = [prompt for prompt in self.prompts if prompt.key in EXPECTED_PROMPT_KEYS]
-        for prompt in relevant:
-            with self.subTest(prompt=prompt.key):
-                for marker in required_markers:
-                    self.assertIn(marker, prompt.prompt)
+    def test_all_expected_prompts_include_core_section_markers(self) -> None:
+        registry = MasterPromptRegistry()
+
+        for key in EXPECTED_PROMPT_KEYS:
+            with self.subTest(key=key):
+                text = registry.get(key).prompt
+                self.assertIn("Identity", text)
+                self.assertIn("Goal", text)
+                self.assertIn("Checklist", text)
+                self.assertIn("Things Not To Do", text)
+                self.assertIn("Success Criteria", text)
+                self.assertIn("Artifacts", text)
+                self.assertIn("Inputs", text)
 
 
 class ModuleLevelAPITests(unittest.TestCase):
@@ -180,16 +250,39 @@ class ModuleLevelAPITests(unittest.TestCase):
         prompts = list_prompts()
 
         self.assertIsInstance(prompts, list)
-        self.assertGreater(len(prompts), 0)
-        for p in prompts:
-            self.assertIsInstance(p, MasterPrompt)
+        self.assertGreaterEqual(len(prompts), len(EXPECTED_PROMPT_KEYS))
+        for prompt in prompts:
+            self.assertIsInstance(prompt, MasterPrompt)
+
+    def test_list_prompts_returns_expected_bundled_keys(self) -> None:
+        prompts = list_prompts()
+
+        self.assertEqual({prompt.key for prompt in prompts}, EXPECTED_PROMPT_KEYS)
+
+    def test_every_expected_prompt_key_is_retrievable_via_public_api(self) -> None:
+        for prompt_key in EXPECTED_PROMPT_KEYS:
+            with self.subTest(prompt=prompt_key):
+                prompt = get_prompt(prompt_key)
+                prompt_text = get_prompt_text(prompt_key)
+
+                self.assertEqual(prompt.key, prompt_key)
+                self.assertEqual(prompt_text, prompt.prompt)
+
+    def test_list_prompt_keys_returns_sorted_keys(self) -> None:
+        keys = list_prompt_keys()
+
+        self.assertEqual(keys, sorted(keys))
+        self.assertTrue(EXPECTED_PROMPT_KEYS.issubset(set(keys)))
+
+    def test_has_prompt_reports_presence(self) -> None:
+        self.assertTrue(has_prompt("create_master_prompts"))
+        self.assertFalse(has_prompt("nonexistent_key_xyz"))
 
     def test_module_level_api_uses_shared_registry(self) -> None:
-        # Both calls should return equal objects (same underlying data).
-        p1 = get_prompt("create_master_prompts")
-        p2 = get_prompt("create_master_prompts")
+        prompt_one = get_prompt("create_master_prompts")
+        prompt_two = get_prompt("create_master_prompts")
 
-        self.assertEqual(p1, p2)
+        self.assertEqual(prompt_one, prompt_two)
 
 
 class LazyTopLevelImportTests(unittest.TestCase):
