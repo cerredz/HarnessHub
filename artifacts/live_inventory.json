@@ -740,6 +740,45 @@
       },
       {
         "aliases": [],
+        "command": "harnessiq prompts",
+        "help": "Inspect bundled master prompts",
+        "segments": [
+          "prompts"
+        ],
+        "source_file": "harnessiq/cli/master_prompts/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prompts list",
+        "help": "List bundled master prompts",
+        "segments": [
+          "prompts",
+          "list"
+        ],
+        "source_file": "harnessiq/cli/master_prompts/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prompts show",
+        "help": "Render one bundled master prompt as JSON",
+        "segments": [
+          "prompts",
+          "show"
+        ],
+        "source_file": "harnessiq/cli/master_prompts/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq prompts text",
+        "help": "Print the raw prompt text for one prompt",
+        "segments": [
+          "prompts",
+          "text"
+        ],
+        "source_file": "harnessiq/cli/master_prompts/commands.py"
+      },
+      {
+        "aliases": [],
         "command": "harnessiq prospecting",
         "help": "Manage and run the Google Maps prospecting agent",
         "segments": [
@@ -1606,6 +1645,38 @@
           "source_file": "harnessiq/cli/platform_commands.py"
         }
       ],
+      "prompts": [
+        {
+          "aliases": [],
+          "command": "harnessiq prompts list",
+          "help": "List bundled master prompts",
+          "segments": [
+            "prompts",
+            "list"
+          ],
+          "source_file": "harnessiq/cli/master_prompts/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq prompts show",
+          "help": "Render one bundled master prompt as JSON",
+          "segments": [
+            "prompts",
+            "show"
+          ],
+          "source_file": "harnessiq/cli/master_prompts/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq prompts text",
+          "help": "Print the raw prompt text for one prompt",
+          "segments": [
+            "prompts",
+            "text"
+          ],
+          "source_file": "harnessiq/cli/master_prompts/commands.py"
+        }
+      ],
       "prospecting": [
         {
           "aliases": [],
@@ -1889,6 +1960,15 @@
       },
       {
         "aliases": [],
+        "command": "harnessiq prompts",
+        "help": "Inspect bundled master prompts",
+        "segments": [
+          "prompts"
+        ],
+        "source_file": "harnessiq/cli/master_prompts/commands.py"
+      },
+      {
+        "aliases": [],
         "command": "harnessiq prospecting",
         "help": "Manage and run the Google Maps prospecting agent",
         "segments": [
@@ -1926,20 +2006,38 @@
     ]
   },
   "counts": {
-    "command_paths": 101,
+    "command_paths": 105,
     "harnesses": 6,
     "model_providers": 4,
     "service_provider_packages": 25,
     "sink_types": 8,
-    "test_modules": 71,
+    "test_modules": 77,
     "tool_only_external_surfaces": 1,
-    "top_level_commands": 15
+    "top_level_commands": 16
   },
+  "focused_subpackages": [
+    {
+      "description": "Manifest-driven platform CLI adapter package with one module per harness plus shared adapter primitives.",
+      "path": "harnessiq/cli/adapters/"
+    },
+    {
+      "description": "Shared helper modules for adapter store loading, payload shaping, factory resolution, and session-directory setup.",
+      "path": "harnessiq/cli/adapters/utils/"
+    },
+    {
+      "description": "Focused provider-credential spec package split into catalog, models, builders, and masking helpers.",
+      "path": "harnessiq/config/provider_credentials/"
+    },
+    {
+      "description": "Manifest coercion, validation, and registry helpers extracted from the public shared manifest modules.",
+      "path": "harnessiq/utils/harness_manifest/"
+    }
+  ],
   "harnesses": [
     {
       "agent_name": "exa_outreach",
       "class_name": "ExaOutreachAgent",
-      "cli_adapter_path": "harnessiq.cli.platform_adapters:ExaOutreachHarnessCliAdapter",
+      "cli_adapter_path": "harnessiq.cli.adapters.exa_outreach:ExaOutreachHarnessCliAdapter",
       "cli_command": "outreach",
       "custom_parameters": [],
       "default_memory_root": "memory/outreach",
@@ -2005,7 +2103,7 @@
     {
       "agent_name": "instagram_keyword_discovery",
       "class_name": "InstagramKeywordDiscoveryAgent",
-      "cli_adapter_path": "harnessiq.cli.platform_adapters:InstagramHarnessCliAdapter",
+      "cli_adapter_path": "harnessiq.cli.adapters.instagram:InstagramHarnessCliAdapter",
       "cli_command": "instagram",
       "custom_parameters": [],
       "default_memory_root": "memory/instagram",
@@ -2102,7 +2200,7 @@
     {
       "agent_name": "knowt_content_creator",
       "class_name": "KnowtAgent",
-      "cli_adapter_path": "harnessiq.cli.platform_adapters:KnowtHarnessCliAdapter",
+      "cli_adapter_path": "harnessiq.cli.adapters.knowt:KnowtHarnessCliAdapter",
       "cli_command": null,
       "custom_parameters": [],
       "default_memory_root": "memory/knowt",
@@ -2160,7 +2258,7 @@
     {
       "agent_name": "leads_agent",
       "class_name": "LeadsAgent",
-      "cli_adapter_path": "harnessiq.cli.platform_adapters:LeadsHarnessCliAdapter",
+      "cli_adapter_path": "harnessiq.cli.adapters.leads:LeadsHarnessCliAdapter",
       "cli_command": "leads",
       "custom_parameters": [],
       "default_memory_root": "memory/leads",
@@ -2294,7 +2392,7 @@
     {
       "agent_name": "linkedin_job_applier",
       "class_name": "LinkedInJobApplierAgent",
-      "cli_adapter_path": "harnessiq.cli.platform_adapters:LinkedInHarnessCliAdapter",
+      "cli_adapter_path": "harnessiq.cli.adapters.linkedin:LinkedInHarnessCliAdapter",
       "cli_command": "linkedin",
       "custom_parameters": [],
       "default_memory_root": "memory/linkedin",
@@ -2432,7 +2530,7 @@
     {
       "agent_name": "google_maps_prospecting",
       "class_name": "GoogleMapsProspectingAgent",
-      "cli_adapter_path": "harnessiq.cli.platform_adapters:ProspectingHarnessCliAdapter",
+      "cli_adapter_path": "harnessiq.cli.adapters.prospecting:ProspectingHarnessCliAdapter",
       "cli_command": "prospecting",
       "custom_parameters": [
         {
@@ -2586,8 +2684,8 @@
       "path": "harnessiq/cli/platform_commands.py"
     },
     {
-      "description": "Harness-specific adapter layer that turns manifest metadata into platform CLI behavior.",
-      "path": "harnessiq/cli/platform_adapters.py"
+      "description": "Abstract adapter hooks and shared store-backed adapter behavior for the platform-first CLI.",
+      "path": "harnessiq/cli/adapters/base.py"
     },
     {
       "description": "Provider-tool catalog metadata used by the toolset lookup layer.",
@@ -2609,32 +2707,41 @@
   "package_layout": [
     {
       "children": [
+        "apollo",
         "base",
         "email",
+        "exa",
         "exa_outreach",
         "instagram",
+        "instantly",
         "knowt",
         "leads",
         "linkedin",
-        "prospecting"
+        "outreach",
+        "prospecting",
+        "provider_base"
       ],
       "description": "Shared runtime bases plus the concrete harness packages exported by the SDK.",
       "path": "harnessiq/agents/"
     },
     {
       "children": [
+        "adapters",
         "exa_outreach",
         "instagram",
         "leads",
         "ledger",
         "linkedin",
+        "master_prompts",
         "prospecting"
       ],
       "description": "Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations.",
       "path": "harnessiq/cli/"
     },
     {
-      "children": [],
+      "children": [
+        "provider_credentials"
+      ],
       "description": "Environment loading, credential binding, and provider-credential spec models.",
       "path": "harnessiq/config/"
     },
@@ -2735,7 +2842,9 @@
       "path": "harnessiq/toolset/"
     },
     {
-      "children": [],
+      "children": [
+        "harness_manifest"
+      ],
       "description": "Agent instance storage, ledger export/report helpers, and built-in output sink implementations.",
       "path": "harnessiq/utils/"
     }
@@ -2819,7 +2928,7 @@
       {
         "catalog_path": "harnessiq/shared/google_drive.py",
         "family": "google_drive",
-        "operations": 3,
+        "operations": 10,
         "provider_path": "harnessiq/providers/google_drive",
         "tool_path": "harnessiq/tools/google_drive/operations.py"
       },
@@ -2956,19 +3065,19 @@
     ]
   },
   "tests": {
-    "count": 71,
+    "count": 77,
     "groups": [
       {
-        "count": 10,
+        "count": 15,
         "examples": [
           "test_agent_instances.py",
           "test_agents_base.py",
-          "test_email_agent.py"
+          "test_apollo_agent.py"
         ],
         "name": "agents"
       },
       {
-        "count": 7,
+        "count": 8,
         "examples": [
           "test_exa_outreach_cli.py",
           "test_instagram_cli.py",
@@ -3014,12 +3123,6 @@
   },
   "top_level_directories": [
     {
-      "description": "Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable.",
-      "kind": "generated/cache",
-      "name": ".harnessiq",
-      "path": ".harnessiq/"
-    },
-    {
       "description": "Test runner cache; generated, not part of the source of truth.",
       "kind": "generated/cache",
       "name": ".pytest_cache",
@@ -3030,12 +3133,6 @@
       "kind": "repo docs",
       "name": "artifacts",
       "path": "artifacts/"
-    },
-    {
-      "description": "Setuptools build output; generated, not part of the live source tree.",
-      "kind": "generated/cache",
-      "name": "build",
-      "path": "build/"
     },
     {
       "description": "Focused usage and architecture notes for the package.",
@@ -3050,12 +3147,6 @@
       "path": "harnessiq/"
     },
     {
-      "description": "Packaging metadata emitted by local builds.",
-      "kind": "generated/cache",
-      "name": "harnessiq.egg-info",
-      "path": "harnessiq.egg-info/"
-    },
-    {
       "description": "Task artifacts plus durable agent runtime state; not part of the shipped package.",
       "kind": "local state",
       "name": "memory",
@@ -3066,12 +3157,6 @@
       "kind": "repo tooling",
       "name": "scripts",
       "path": "scripts/"
-    },
-    {
-      "description": "Legacy or generated residue in this checkout; not the authoritative package source.",
-      "kind": "generated/cache",
-      "name": "src",
-      "path": "src/"
     },
     {
       "description": "unittest coverage for runtime, CLI, providers, and tools.",

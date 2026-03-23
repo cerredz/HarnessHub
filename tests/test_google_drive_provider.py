@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import Mock
 
 from harnessiq.providers.google_drive import (
     FOLDER_MIME_TYPE,
@@ -47,7 +48,21 @@ class GoogleDriveCredentialsTests(unittest.TestCase):
 class GoogleDriveOperationCatalogTests(unittest.TestCase):
     def test_catalog_contains_expected_operations(self) -> None:
         names = [operation.name for operation in build_google_drive_operation_catalog()]
-        self.assertEqual(names, ["ensure_folder", "find_file", "upsert_json_file"])
+        self.assertEqual(
+            names,
+            [
+                "ensure_folder",
+                "list_files",
+                "find_file",
+                "get_file",
+                "upsert_json_file",
+                "copy_file",
+                "move_file",
+                "create_shortcut",
+                "list_permissions",
+                "create_permission",
+            ],
+        )
 
     def test_unknown_operation_raises(self) -> None:
         with self.assertRaises(ValueError):
@@ -95,6 +110,25 @@ class GoogleDriveClientTests(unittest.TestCase):
         result = client.find_file(name="job.json")
 
         self.assertEqual(result["id"], "a")
+
+    def test_list_files_rejects_non_positive_page_size(self) -> None:
+        client = self._make_client()
+
+        with self.assertRaises(ValueError):
+            client.list_files(page_size=0)
+
+    def test_get_file_returns_metadata_object(self) -> None:
+        client = self._make_client(
+            request_executor=lambda method, url, **kwargs: {
+                "id": "file-1",
+                "name": "job.json",
+                "mimeType": JSON_MIME_TYPE,
+            }
+        )
+
+        result = client.get_file("file-1")
+
+        self.assertEqual(result["id"], "file-1")
 
     def test_ensure_folder_reuses_existing_folder(self) -> None:
         client = self._make_client(
@@ -157,6 +191,98 @@ class GoogleDriveClientTests(unittest.TestCase):
         self.assertTrue(result["created"])
         self.assertEqual(multipart_calls[0]["method"], "POST")
 
+    def test_copy_file_posts_to_copy_endpoint(self) -> None:
+        calls: list[dict[str, object]] = []
+
+        def fake_request(method: str, url: str, **kwargs: object) -> dict[str, object]:
+            calls.append({"method": method, "url": url, **kwargs})
+            return {"id": "copy-1", "name": "job copy.json", "mimeType": JSON_MIME_TYPE}
+
+        result = self._make_client(request_executor=fake_request).copy_file("file-1", name="job copy.json")
+
+        self.assertEqual(result["id"], "copy-1")
+        self.assertEqual(calls[0]["method"], "POST")
+        self.assertIn("/copy", str(calls[0]["url"]))
+
+    def test_move_file_uses_current_parents_when_clearing_existing(self) -> None:
+        calls: list[dict[str, object]] = []
+
+        def fake_request(method: str, url: str, **kwargs: object) -> dict[str, object]:
+            calls.append({"method": method, "url": url, **kwargs})
+            if method == "GET":
+                return {"id": "file-1", "parents": ["folder-1"]}
+            return {"id": "file-1", "name": "job.json", "parents": ["folder-2"], "mimeType": JSON_MIME_TYPE}
+
+        result = self._make_client(request_executor=fake_request).move_file("file-1", new_parent_id="folder-2")
+
+        self.assertEqual(result["parents"], ["folder-2"])
+        self.assertEqual(calls[-1]["method"], "PATCH")
+        self.assertIn("addParents=folder-2", str(calls[-1]["url"]))
+        self.assertIn("removeParents=folder-1", str(calls[-1]["url"]))
+
+    def test_move_file_does_not_remove_destination_parent(self) -> None:
+        calls: list[dict[str, object]] = []
+
+        def fake_request(method: str, url: str, **kwargs: object) -> dict[str, object]:
+            calls.append({"method": method, "url": url, **kwargs})
+            if method == "GET":
+                return {"id": "file-1", "parents": ["folder-2"]}
+            return {"id": "file-1", "name": "job.json", "parents": ["folder-2"], "mimeType": JSON_MIME_TYPE}
+
+        self._make_client(request_executor=fake_request).move_file("file-1", new_parent_id="folder-2")
+
+        self.assertNotIn("removeParents=folder-2", str(calls[-1]["url"]))
+
+    def test_create_shortcut_posts_shortcut_metadata(self) -> None:
+        calls: list[dict[str, object]] = []
+
+        def fake_request(method: str, url: str, **kwargs: object) -> dict[str, object]:
+            calls.append({"method": method, "url": url, **kwargs})
+            return {
+                "id": "shortcut-1",
+                "name": "Shortcut",
+                "mimeType": "application/vnd.google-apps.shortcut",
+            }
+
+        result = self._make_client(request_executor=fake_request).create_shortcut(
+            target_file_id="file-1",
+            name="Shortcut",
+        )
+
+        self.assertEqual(result["id"], "shortcut-1")
+        self.assertEqual(calls[0]["json_body"]["shortcutDetails"]["targetId"], "file-1")
+
+    def test_list_permissions_returns_sorted_permissions(self) -> None:
+        client = self._make_client(
+            request_executor=lambda method, url, **kwargs: {
+                "permissions": [
+                    {"id": "b", "role": "writer", "type": "user"},
+                    {"id": "a", "role": "commenter", "type": "user"},
+                ]
+            }
+        )
+
+        result = client.list_permissions("file-1")
+
+        self.assertEqual([item["id"] for item in result], ["a", "b"])
+
+    def test_create_permission_posts_permission_payload(self) -> None:
+        calls: list[dict[str, object]] = []
+
+        def fake_request(method: str, url: str, **kwargs: object) -> dict[str, object]:
+            calls.append({"method": method, "url": url, **kwargs})
+            return {"id": "perm-1", "role": "writer", "type": "user"}
+
+        result = self._make_client(request_executor=fake_request).create_permission(
+            "file-1",
+            permission={"type": "user", "role": "writer", "emailAddress": "a@example.com"},
+            send_notification_email=False,
+        )
+
+        self.assertEqual(result["id"], "perm-1")
+        self.assertEqual(calls[0]["json_body"]["emailAddress"], "a@example.com")
+        self.assertIn("sendNotificationEmail=False", str(calls[0]["url"]))
+
 
 class GoogleDriveToolsTests(unittest.TestCase):
     def test_create_google_drive_tools_returns_registerable_tuple(self) -> None:
@@ -188,6 +314,49 @@ class GoogleDriveToolsTests(unittest.TestCase):
         tools = create_google_drive_tools(credentials=credentials, allowed_operations=["ensure_folder"])
         enum_values = tools[0].definition.input_schema["properties"]["operation"]["enum"]
         self.assertEqual(enum_values, ["ensure_folder"])
+
+    def test_tool_handler_executes_copy_file(self) -> None:
+        client = Mock()
+        client.copy_file.return_value = {"id": "copy-1"}
+        registry = ToolRegistry(create_google_drive_tools(client=client))
+
+        result = registry.execute(
+            GOOGLE_DRIVE_REQUEST,
+            {"operation": "copy_file", "payload": {"file_id": "file-1", "name": "job copy.json"}},
+        )
+
+        self.assertEqual(result.output["operation"], "copy_file")
+        client.copy_file.assert_called_once_with("file-1", name="job copy.json", parent_id=None)
+
+    def test_tool_handler_executes_create_permission(self) -> None:
+        client = Mock()
+        client.create_permission.return_value = {"id": "perm-1"}
+        registry = ToolRegistry(create_google_drive_tools(client=client))
+
+        result = registry.execute(
+            GOOGLE_DRIVE_REQUEST,
+            {
+                "operation": "create_permission",
+                "payload": {
+                    "file_id": "file-1",
+                    "type": "user",
+                    "role": "writer",
+                    "email_address": "a@example.com",
+                    "send_notification_email": False,
+                },
+            },
+        )
+
+        self.assertEqual(result.output["operation"], "create_permission")
+        client.create_permission.assert_called_once_with(
+            "file-1",
+            permission={
+                "type": "user",
+                "role": "writer",
+                "emailAddress": "a@example.com",
+            },
+            send_notification_email=False,
+        )
 
     def _make_client_for_tools(self) -> GoogleDriveClient:
         credentials = GoogleDriveCredentials(client_id="cid", client_secret="secret", refresh_token="refresh")

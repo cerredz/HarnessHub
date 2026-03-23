@@ -16,6 +16,8 @@ from harnessiq.shared.providers import (
     GOOGLE_DRIVE_UPLOAD_FILES_PATH as DRIVE_UPLOAD_FILES_PATH,
 )
 
+SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut"
+
 
 def build_bearer_headers(
     access_token: str,
@@ -38,4 +40,25 @@ def files_url(
     path = DRIVE_UPLOAD_FILES_PATH if upload else DRIVE_FILES_PATH
     if file_id:
         path = f"{path}/{quote(file_id, safe='')}"
+    return join_url(base_url, path, query=query)
+
+
+def file_action_url(
+    base_url: str,
+    *,
+    file_id: str,
+    action: str,
+    query: Mapping[str, str | int | float | bool] | None = None,
+) -> str:
+    path = f"{DRIVE_FILES_PATH}/{quote(file_id, safe='')}/{quote(action, safe='')}"
+    return join_url(base_url, path, query=query)
+
+
+def permissions_url(
+    base_url: str,
+    *,
+    file_id: str,
+    query: Mapping[str, str | int | float | bool] | None = None,
+) -> str:
+    path = f"{DRIVE_FILES_PATH}/{quote(file_id, safe='')}/permissions"
     return join_url(base_url, path, query=query)
