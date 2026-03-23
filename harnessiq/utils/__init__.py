@@ -1,6 +1,7 @@
 """Agent-agnostic utilities shared across the harnessiq package."""
 
 from harnessiq.utils.agent_ids import (
+    build_agent_instance_dirname,
     build_agent_instance_id,
     build_default_instance_name,
     fingerprint_agent_payload,
@@ -77,6 +78,7 @@ __all__ = [
     "SlackSink",
     "StorageBackend",
     "SupabaseSink",
+    "build_agent_instance_dirname",
     "build_agent_instance_id",
     "build_default_instance_name",
     "build_ledger_report",

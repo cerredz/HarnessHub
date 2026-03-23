@@ -10,7 +10,7 @@ from typing import Any
 from harnessiq.shared.agents import AgentContextEntry, AgentContextWindow
 from harnessiq.shared.tools import PROMPT_CREATE_SYSTEM_PROMPT, RegisteredTool, ToolArguments, ToolDefinition
 
-_ALLOWED_CONTEXT_KINDS = frozenset({"parameter", "message", "tool_call", "tool_result", "summary"})
+_ALLOWED_CONTEXT_KINDS = frozenset({"parameter", "message", "assistant", "tool_call", "tool_result", "summary", "context"})
 _CONTEXT_WINDOW_PROPERTY: dict[str, object] = {
     "type": "array",
     "description": "An ordered list of normalized agent context entries.",
@@ -205,7 +205,7 @@ def _render_context_window(
 
 def _render_recent_entry(entry: AgentContextEntry, *, max_entry_chars: int) -> str:
     kind = entry["kind"]
-    if kind == "message":
+    if kind in {"message", "assistant"}:
         role = entry.get("role", "assistant")
         return f"- Message ({role}): {_preview(entry.get('content', ''), max_chars=max_entry_chars)}"
     if kind == "tool_call":
@@ -216,6 +216,9 @@ def _render_recent_entry(entry: AgentContextEntry, *, max_entry_chars: int) -> s
         tool_key = entry.get("tool_key", "tool")
         output = entry.get("output", entry.get("content", ""))
         return f"- Tool result ({tool_key}): {_preview(output, max_chars=max_entry_chars)}"
+    if kind == "context":
+        label = entry.get("label", "Context")
+        return f"- Context ({label}): {_preview(entry.get('content', ''), max_chars=max_entry_chars)}"
     return f"- Summary: {_preview(entry.get('content', ''), max_chars=max_entry_chars)}"
 
 

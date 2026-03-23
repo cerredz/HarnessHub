@@ -15,6 +15,8 @@ from harnessiq.agents.base.agent import (
     json_parameter_section,
     render_json_parameter_content,
     estimate_text_tokens,
+    json_parameter_section,
+    render_json_parameter_content,
 )
 
 __all__ = [
@@ -32,4 +34,6 @@ __all__ = [
     "json_parameter_section",
     "render_json_parameter_content",
     "estimate_text_tokens",
+    "json_parameter_section",
+    "render_json_parameter_content",
 ]

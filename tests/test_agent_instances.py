@@ -8,6 +8,7 @@ from pathlib import Path
 
 from harnessiq.utils import (
     AgentInstanceStore,
+    build_agent_instance_dirname,
     build_agent_instance_id,
     build_default_instance_name,
     fingerprint_agent_payload,
@@ -40,6 +41,14 @@ class AgentInstanceStoreTests(unittest.TestCase):
 
             self.assertEqual(first.instance_id, second.instance_id)
             self.assertEqual(first.memory_path, second.memory_path)
+            self.assertEqual(
+                first.memory_path,
+                Path(temp_dir)
+                / "memory"
+                / "agents"
+                / "linkedin_job_applier"
+                / build_agent_instance_dirname(first.instance_id),
+            )
             self.assertEqual(len(store.list_instances(agent_name="linkedin_job_applier")), 1)
             self.assertTrue((Path(temp_dir) / "memory" / "agent_instances.json").exists())
 
@@ -69,6 +78,26 @@ class AgentInstanceStoreTests(unittest.TestCase):
             self.assertEqual(record.memory_path, explicit_memory_path)
             reloaded = store.get(record.instance_id)
             self.assertEqual(reloaded.memory_path, explicit_memory_path)
+
+    def test_store_migrates_legacy_default_memory_path_to_filesystem_safe_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = AgentInstanceStore(repo_root=temp_dir)
+            payload = {"query": "staff platform"}
+            record = store.resolve(agent_name="linkedin_job_applier", payload=payload)
+            legacy_path = Path(temp_dir) / "memory" / "agents" / "linkedin_job_applier" / record.instance_id
+            migrated_catalog = store.load().upsert(record.with_updates(memory_path=legacy_path))
+            store.save(migrated_catalog)
+
+            reloaded = store.resolve(agent_name="linkedin_job_applier", payload=dict(payload))
+
+            self.assertEqual(
+                reloaded.memory_path,
+                Path(temp_dir)
+                / "memory"
+                / "agents"
+                / "linkedin_job_applier"
+                / build_agent_instance_dirname(record.instance_id),
+            )
 
 
 if __name__ == "__main__":

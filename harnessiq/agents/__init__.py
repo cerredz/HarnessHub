@@ -14,6 +14,8 @@ from harnessiq.shared.agents import (
     json_parameter_section,
     render_json_parameter_content,
     estimate_text_tokens,
+    json_parameter_section,
+    render_json_parameter_content,
 )
 from harnessiq.shared.harness_manifests import (
     HARNESS_MANIFESTS,
@@ -131,6 +133,7 @@ __all__ = [
     "create_linkedin_browser_stub_tools",
     "estimate_text_tokens",
     "fingerprint_agent_payload",
+    "json_parameter_section",
     "get_harness_manifest",
     "json_parameter_section",
     "list_harness_manifests",

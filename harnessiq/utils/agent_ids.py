@@ -40,6 +40,18 @@ def build_agent_instance_id(agent_name: str, payload: Mapping[str, Any] | None) 
     return f"{normalized_name}::{fingerprint[:16]}"
 
 
+def build_agent_instance_dirname(instance_id: str) -> str:
+    """Return a filesystem-safe directory name for a stable ``instance_id``."""
+    normalized = instance_id.strip()
+    if not normalized:
+        raise ValueError("instance_id must not be blank.")
+    collapsed = normalized.replace("::", "__")
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", collapsed).strip("-")
+    if not cleaned:
+        raise ValueError("instance_id must contain at least one filesystem-safe character.")
+    return cleaned
+
+
 def build_default_instance_name(
     agent_name: str,
     payload: Mapping[str, Any] | None,
@@ -71,6 +83,7 @@ def _normalize_value(value: Any) -> Any:
 
 
 __all__ = [
+    "build_agent_instance_dirname",
     "build_agent_instance_id",
     "build_default_instance_name",
     "fingerprint_agent_payload",

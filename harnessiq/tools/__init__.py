@@ -118,6 +118,7 @@ from .context_compaction import (
     remove_tool_result_entries,
     summarize_and_log_compact,
 )
+from .context import create_context_tools
 from .filesystem import (
     append_text_file,
     copy_path,
@@ -307,6 +308,7 @@ __all__ = [
     "count_by_field",
     "create_browser_tools",
     "create_builtin_registry",
+    "create_context_tools",
     "create_tool_registry",
     "create_context_compaction_tools",
     "create_filesystem_tools",

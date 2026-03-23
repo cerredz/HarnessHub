@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from harnessiq.utils.agent_ids import (
+    build_agent_instance_dirname,
     build_agent_instance_id,
     build_default_instance_name,
     fingerprint_agent_payload,
@@ -202,20 +203,28 @@ class AgentInstanceStore:
         catalog = self.load()
         existing = catalog.maybe_get(instance_id)
         timestamp = _utcnow()
-
-        if existing is not None:
-            updated = existing.with_updates(
-                instance_name=instance_name.strip() if instance_name and instance_name.strip() else None,
-                updated_at=timestamp,
-            )
-            self.save(catalog.upsert(updated))
-            return updated
-
         resolved_memory_path = self._resolve_memory_path(
             agent_name=normalized_agent_name,
             instance_id=instance_id,
             memory_path=memory_path,
         )
+
+        if existing is not None:
+            migrated_memory_path: Path | None = None
+            if (
+                memory_path is None
+                and existing.memory_path == self._legacy_default_memory_path(agent_name=normalized_agent_name, instance_id=instance_id)
+                and existing.memory_path != resolved_memory_path
+            ):
+                migrated_memory_path = resolved_memory_path
+            updated = existing.with_updates(
+                instance_name=instance_name.strip() if instance_name and instance_name.strip() else None,
+                memory_path=migrated_memory_path,
+                updated_at=timestamp,
+            )
+            self.save(catalog.upsert(updated))
+            return updated
+
         resolved_instance_name = instance_name.strip() if instance_name and instance_name.strip() else build_default_instance_name(
             normalized_agent_name,
             normalized_payload,
@@ -246,11 +255,19 @@ class AgentInstanceStore:
         memory_path: str | Path | None,
     ) -> Path:
         if memory_path is None:
-            return self.default_instances_root / normalize_agent_name(agent_name) / instance_id
+            return self.default_instances_root / normalize_agent_name(agent_name) / build_agent_instance_dirname(instance_id)
         candidate = Path(memory_path).expanduser()
         if not candidate.is_absolute():
             return self.repo_root / candidate
         return candidate
+
+    def _legacy_default_memory_path(
+        self,
+        *,
+        agent_name: str,
+        instance_id: str,
+    ) -> Path:
+        return self.default_instances_root / normalize_agent_name(agent_name) / instance_id
 
 
 def _serialize_path(path: Path, *, repo_root: Path) -> str:

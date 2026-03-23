@@ -18,10 +18,18 @@ from harnessiq.agents import (
     json_parameter_section,
 )
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
-from harnessiq.shared.tools import CONTROL_PAUSE_FOR_HUMAN, HEAVY_COMPACTION, RegisteredTool, ToolCall, ToolDefinition
+from harnessiq.shared.tools import (
+    CONTEXT_INJECT_ASSISTANT_NOTE,
+    CONTEXT_PARAM_INJECT_SECTION,
+    CONTROL_PAUSE_FOR_HUMAN,
+    HEAVY_COMPACTION,
+    RegisteredTool,
+    ToolCall,
+    ToolDefinition,
+)
 from harnessiq.tools import create_context_compaction_tools, create_general_purpose_tools
 from harnessiq.tools.registry import ToolRegistry
-from harnessiq.utils import LedgerEntry
+from harnessiq.utils import LedgerEntry, build_agent_instance_dirname
 
 _LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
 
@@ -196,7 +204,13 @@ class BaseAgentTests(unittest.TestCase):
             self.assertEqual(first.instance_record.memory_path, second.instance_record.memory_path)
             self.assertEqual(
                 first.memory_path.resolve(),
-                (Path(temp_dir) / "memory" / "agents" / "inspectable_agent" / first.instance_id).resolve(),
+                (
+                    Path(temp_dir)
+                    / "memory"
+                    / "agents"
+                    / "inspectable_agent"
+                    / build_agent_instance_dirname(first.instance_id)
+                ).resolve(),
             )
 
     def test_run_wraps_agent_and_tool_execution_in_tracing_helpers(self) -> None:
@@ -488,6 +502,98 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(payload[0]["function"]["qualname"], "_echo_handler")
 
     def test_build_context_window_includes_parameters_and_transcript_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = _InspectableAgent(
+                model=_FakeModel([]),
+                tool_executor=ToolRegistry([]),
+                repo_root=temp_dir,
+            )
+            agent.refresh_parameters()
+            agent._transcript.extend(
+                [
+                    AgentTranscriptEntry(entry_type="assistant", content="hello"),
+                    AgentTranscriptEntry(entry_type="tool_result", content='session.echo\n{"echoed": "hello"}'),
+                ]
+            )
+
+            context_window = agent.build_context_window()
+
+            self.assertEqual(context_window[0]["kind"], "parameter")
+            self.assertEqual(context_window[0]["label"], "State")
+            self.assertEqual(context_window[1]["kind"], "assistant")
+            self.assertEqual(context_window[2]["kind"], "tool_result")
+
+    def test_enable_context_tools_applies_injection_result_without_recording_tool_result(self) -> None:
+        registry = ToolRegistry([])
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Inject a reminder note.",
+                    tool_calls=(
+                        ToolCall(
+                            tool_key=CONTEXT_INJECT_ASSISTANT_NOTE,
+                            arguments={"content": "Focus on the active objective.", "note_type": "plan"},
+                        ),
+                    ),
+                    should_continue=True,
+                ),
+                AgentModelResponse(
+                    assistant_message="Finished.",
+                    should_continue=False,
+                ),
+            ]
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = _InspectableAgent(model=model, tool_executor=registry, repo_root=temp_dir)
+            agent.enable_context_tools()
+
+            result = agent.run(max_cycles=3)
+
+            self.assertEqual(result.status, "completed")
+            self.assertEqual(len(model.requests), 2)
+            transcript = model.requests[1].transcript
+            self.assertEqual(len(transcript), 3)
+            self.assertEqual(transcript[0].entry_type, "assistant")
+            self.assertEqual(transcript[1].entry_type, "tool_call")
+            self.assertEqual(transcript[2].entry_type, "assistant")
+            self.assertIn("[PLAN]", transcript[2].content)
+
+    def test_enable_context_tools_records_group4_results_and_refreshes_parameters(self) -> None:
+        registry = ToolRegistry([])
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Inject a runtime section.",
+                    tool_calls=(
+                        ToolCall(
+                            tool_key=CONTEXT_PARAM_INJECT_SECTION,
+                            arguments={
+                                "section_label": "Runtime Note",
+                                "content": "This section was injected mid-run.",
+                                "position": "last",
+                            },
+                        ),
+                    ),
+                    should_continue=True,
+                ),
+                AgentModelResponse(
+                    assistant_message="Finished.",
+                    should_continue=False,
+                ),
+            ]
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = _InspectableAgent(model=model, tool_executor=registry, repo_root=temp_dir)
+            agent.enable_context_tools()
+
+            result = agent.run(max_cycles=3)
+
+            self.assertEqual(result.status, "completed")
+            self.assertEqual(len(model.requests), 2)
+            second_request = model.requests[1]
+            self.assertEqual(second_request.parameter_sections[-1].title, "Runtime Note")
+            self.assertEqual(second_request.parameter_sections[-1].content, "This section was injected mid-run.")
+            self.assertEqual([entry.entry_type for entry in second_request.transcript], ["assistant", "tool_call", "tool_result"])
         agent = _InspectableAgent(model=_FakeModel([]), tool_executor=ToolRegistry([]))
         agent.refresh_parameters()
         agent._transcript.extend(
