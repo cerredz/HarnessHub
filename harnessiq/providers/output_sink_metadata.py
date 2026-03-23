@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-_KNOWN_MODEL_PROVIDER_NAMES = (
+_known_model_provider_names = (
     "openai",
     "anthropic",
     "grok",
@@ -18,7 +18,7 @@ _KNOWN_MODEL_PROVIDER_NAMES = (
     "slack",
     "discord",
 )
-_KNOWN_CLIENT_PROVIDER_NAMES = (
+_known_client_provider_names = (
     "openai",
     "anthropic",
     "grok",
@@ -68,7 +68,7 @@ def _extract_provider_name(model: Any) -> str | None:
             return candidate
 
     module = type(model).__module__.lower()
-    for name in _KNOWN_MODEL_PROVIDER_NAMES:
+    for name in _known_model_provider_names:
         if name in module:
             return name
 
@@ -76,7 +76,7 @@ def _extract_provider_name(model: Any) -> str | None:
     if client is None:
         return None
     client_module = type(client).__module__.lower()
-    for name in _KNOWN_CLIENT_PROVIDER_NAMES:
+    for name in _known_client_provider_names:
         if name in client_module:
             return name
     return None

@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 import inspect
 from collections import Counter
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Any
 
@@ -26,6 +26,7 @@ from harnessiq.shared.tools import (
     RegisteredTool,
     ToolDefinition,
 )
+from harnessiq.tools.registry import merge_tools
 from harnessiq.toolset.catalog import PROVIDER_FACTORY_MAP
 
 
@@ -59,7 +60,7 @@ def create_leads_tools(
         current_run_id=current_run_id,
         refresh_parameters=refresh_parameters,
     )
-    return _merge_tools(external_tools, internal_tools)
+    return merge_tools(external_tools, internal_tools)
 
 
 def _build_internal_tools(
@@ -283,19 +284,6 @@ def _build_provider_tools(
             )
         resolved_tools.extend(factory(**kwargs))
     return tuple(resolved_tools)
-
-
-def _merge_tools(*tool_groups: Iterable[RegisteredTool]) -> tuple[RegisteredTool, ...]:
-    ordered_keys: list[str] = []
-    merged: dict[str, RegisteredTool] = {}
-    for tool_group in tool_groups:
-        for tool in tool_group:
-            if tool.key not in merged:
-                ordered_keys.append(tool.key)
-            merged[tool.key] = tool
-    return tuple(merged[key] for key in ordered_keys)
-
-
 def _tool_definition(
     *,
     key: str,

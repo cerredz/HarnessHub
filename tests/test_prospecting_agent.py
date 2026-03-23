@@ -9,6 +9,7 @@ from pathlib import Path
 from harnessiq.agents.prospecting.agent import GoogleMapsProspectingAgent
 from harnessiq.shared.agents import AgentModelRequest, AgentModelResponse
 from harnessiq.shared.prospecting import ProspectingMemoryStore
+from harnessiq.shared.tools import RegisteredTool, ToolDefinition
 
 
 class _FakeModel:
@@ -33,6 +34,27 @@ def _runner(system_prompt, sections, label):  # noqa: ANN001
 
 
 class GoogleMapsProspectingAgentTests(unittest.TestCase):
+    def test_custom_tools_are_added_to_the_agent_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            custom_tool = RegisteredTool(
+                definition=ToolDefinition(
+                    key="custom.prospecting_helper",
+                    name="prospecting_helper",
+                    description="Custom helper.",
+                    input_schema={"type": "object", "properties": {}, "required": [], "additionalProperties": False},
+                ),
+                handler=lambda arguments: {"ok": True, "arguments": arguments},
+            )
+            agent = GoogleMapsProspectingAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                memory_path=temp_dir,
+                company_description="Owner-operated dental practices in New Jersey",
+                tools=(custom_tool,),
+                json_subcall_runner=_runner,
+            )
+
+            self.assertIn("custom.prospecting_helper", {tool.key for tool in agent.available_tools()})
+
     def test_run_bootstraps_memory_files_and_parameter_sections(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])

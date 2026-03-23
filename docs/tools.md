@@ -17,13 +17,31 @@ print(normalized.output)
 You can also compose your own registry from selected tool families:
 
 ```python
-from harnessiq.tools import ToolRegistry, create_filesystem_tools, create_general_purpose_tools
+from harnessiq.tools import create_filesystem_tools, create_general_purpose_tools, create_tool_registry
 
-registry = ToolRegistry(
-    [
-        *create_general_purpose_tools(),
-        *create_filesystem_tools(),
-    ]
+registry = create_tool_registry(
+    create_general_purpose_tools(),
+    create_filesystem_tools(),
+)
+```
+
+For custom tools, the ergonomic path is `harnessiq.toolset.define_tool()` plus an additive `tools=` injection into a concrete harness:
+
+```python
+from harnessiq.agents import LinkedInJobApplierAgent
+from harnessiq.toolset import define_tool
+
+resume_tool = define_tool(
+    key="custom.resume_summary",
+    description="Summarize the candidate resume before applying.",
+    parameters={},
+    handler=lambda arguments: {"summary": "Staff-level platform engineer."},
+)
+
+agent = LinkedInJobApplierAgent(
+    model=model,
+    browser_tools=my_browser_tools,
+    tools=(resume_tool,),
 )
 ```
 

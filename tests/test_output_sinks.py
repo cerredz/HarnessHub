@@ -27,9 +27,13 @@ from harnessiq.utils import (
     ObsidianSink,
     SlackSink,
     SupabaseSink,
+    build_output_sink,
     build_output_sinks,
+    list_output_sink_types,
     load_ledger_entries,
     parse_sink_spec,
+    register_output_sink,
+    unregister_output_sink,
 )
 
 
@@ -131,6 +135,36 @@ class OutputSinkTests(unittest.TestCase):
         sinks = build_output_sinks(sink_specs=("slack:https://hooks.example",))
         self.assertEqual(len(sinks), 1)
         self.assertEqual(type(sinks[0]).__name__, "SlackSink")
+
+    def test_custom_sink_types_can_be_registered_and_built(self) -> None:
+        class CustomSink:
+            def __init__(self, prefix: str) -> None:
+                self.prefix = prefix
+
+            def on_run_complete(self, entry: LedgerEntry) -> None:
+                del entry
+
+        sink_type = "custom_test_sink"
+        register_output_sink(
+            sink_type,
+            lambda config: CustomSink(prefix=str(config["prefix"])),
+        )
+        try:
+            self.assertIn(sink_type, list_output_sink_types())
+            direct = build_output_sink(sink_type, {"prefix": "alpha"})
+            built = build_output_sinks(sink_specs=(f"{sink_type}:prefix=beta",))
+
+            self.assertIsInstance(direct, CustomSink)
+            self.assertEqual(direct.prefix, "alpha")
+            self.assertEqual(len(built), 1)
+            self.assertIsInstance(built[0], CustomSink)
+            self.assertEqual(built[0].prefix, "beta")
+        finally:
+            unregister_output_sink(sink_type)
+
+    def test_register_output_sink_rejects_builtin_collision(self) -> None:
+        with self.assertRaisesRegex(ValueError, "reserved for a built-in"):
+            register_output_sink("slack", lambda config: SlackSink(webhook_url=str(config["webhook_url"])))
 
 
 if __name__ == "__main__":
