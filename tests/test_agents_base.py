@@ -523,6 +523,26 @@ class BaseAgentTests(unittest.TestCase):
             self.assertEqual(context_window[1]["kind"], "assistant")
             self.assertEqual(context_window[2]["kind"], "tool_result")
 
+    def test_context_tools_are_not_bound_until_explicitly_enabled(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = _InspectableAgent(
+                model=_FakeModel([]),
+                tool_executor=ToolRegistry([]),
+                repo_root=temp_dir,
+            )
+
+            self.assertNotIn(
+                CONTEXT_INJECT_ASSISTANT_NOTE,
+                {definition.key for definition in agent.available_tools()},
+            )
+
+            agent.enable_context_tools()
+
+            self.assertIn(
+                CONTEXT_INJECT_ASSISTANT_NOTE,
+                {definition.key for definition in agent.available_tools()},
+            )
+
     def test_enable_context_tools_applies_injection_result_without_recording_tool_result(self) -> None:
         registry = ToolRegistry([])
         model = _FakeModel(
@@ -594,21 +614,6 @@ class BaseAgentTests(unittest.TestCase):
             self.assertEqual(second_request.parameter_sections[-1].title, "Runtime Note")
             self.assertEqual(second_request.parameter_sections[-1].content, "This section was injected mid-run.")
             self.assertEqual([entry.entry_type for entry in second_request.transcript], ["assistant", "tool_call", "tool_result"])
-        agent = _InspectableAgent(model=_FakeModel([]), tool_executor=ToolRegistry([]))
-        agent.refresh_parameters()
-        agent._transcript.extend(
-            [
-                AgentTranscriptEntry(entry_type="assistant", content="hello"),
-                AgentTranscriptEntry(entry_type="tool_result", content='session.echo\n{"echoed": "hello"}'),
-            ]
-        )
-
-        context_window = agent.build_context_window()
-
-        self.assertEqual(context_window[0]["kind"], "parameter")
-        self.assertEqual(context_window[0]["label"], "State")
-        self.assertEqual(context_window[1]["kind"], "message")
-        self.assertEqual(context_window[2]["kind"], "tool_result")
 
     def test_json_parameter_section_renders_sorted_json_content(self) -> None:
         section = json_parameter_section("State", {"b": 2, "a": 1})

@@ -66,6 +66,7 @@ from harnessiq.shared.tools import (
     RegisteredTool,
     ToolDefinition,
 )
+from .binding import BoundContextToolExecutor
 
 _ALLOWED_CONTEXT_KINDS = frozenset(
     {
@@ -121,11 +122,11 @@ def create_context_tools(
         run_model_subcall=run_model_subcall,
     )
 
-    from .injection import create_context_injection_tools
-    from .parameter import create_context_parameter_tools
-    from .selective import create_context_selective_tools
-    from .structural import create_context_structural_tools
-    from .summarization import create_context_summarization_tools
+    from .definitions.injection import create_context_injection_tools
+    from .definitions.parameter import create_context_parameter_tools
+    from .definitions.selective import create_context_selective_tools
+    from .definitions.structural import create_context_structural_tools
+    from .definitions.summarization import create_context_summarization_tools
 
     return (
         *create_context_summarization_tools(runtime),
@@ -383,6 +384,7 @@ __all__ = [
     "CONTEXT_SUMMARIZE_STATE_SNAPSHOT",
     "CONTEXT_TOOL_KEYS",
     "CONTEXT_TRANSCRIPT_INJECTION_TOOL_KEYS",
+    "BoundContextToolExecutor",
     "ContextToolRuntime",
     "apply_memory_refresh",
     "build_tool_definition",
