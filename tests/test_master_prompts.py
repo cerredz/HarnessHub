@@ -4,7 +4,27 @@ from __future__ import annotations
 
 import unittest
 
-from harnessiq.master_prompts import MasterPrompt, MasterPromptRegistry, get_prompt, get_prompt_text, list_prompts
+from harnessiq.master_prompts import (
+    MasterPrompt,
+    MasterPromptRegistry,
+    get_prompt,
+    get_prompt_text,
+    has_prompt,
+    list_prompt_keys,
+    list_prompts,
+)
+
+
+EXPECTED_PROMPT_KEYS = {
+    "autonomous_execution_loop",
+    "create_github_execution_issues",
+    "create_jira_execution_tickets",
+    "create_linear_execution_tickets",
+    "create_master_prompts",
+    "implement_and_critique_solutions",
+    "parallel_problem_decomposition",
+    "spawn_specialized_subagents",
+}
 
 EXPECTED_PROMPT_KEYS = {
     "create_master_prompts",
@@ -92,6 +112,20 @@ class MasterPromptRegistryTests(unittest.TestCase):
 
         self.assertIsInstance(text, str)
         self.assertTrue(len(text) > 0)
+
+    def test_keys_returns_sorted_prompt_keys(self) -> None:
+        registry = MasterPromptRegistry()
+
+        keys = registry.keys()
+
+        self.assertEqual(keys, sorted(keys))
+        self.assertTrue(EXPECTED_PROMPT_KEYS.issubset(set(keys)))
+
+    def test_has_returns_true_for_known_key(self) -> None:
+        registry = MasterPromptRegistry()
+
+        self.assertTrue(registry.has("create_master_prompts"))
+        self.assertFalse(registry.has("this_key_does_not_exist"))
 
     def test_registry_caches_after_first_load(self) -> None:
         registry = MasterPromptRegistry()
@@ -223,6 +257,16 @@ class ModuleLevelAPITests(unittest.TestCase):
 
                 self.assertEqual(prompt.key, prompt_key)
                 self.assertEqual(prompt_text, prompt.prompt)
+
+    def test_list_prompt_keys_returns_sorted_keys(self) -> None:
+        keys = list_prompt_keys()
+
+        self.assertEqual(keys, sorted(keys))
+        self.assertTrue(EXPECTED_PROMPT_KEYS.issubset(set(keys)))
+
+    def test_has_prompt_reports_presence(self) -> None:
+        self.assertTrue(has_prompt("create_master_prompts"))
+        self.assertFalse(has_prompt("nonexistent_key_xyz"))
 
     def test_module_level_api_uses_shared_registry(self) -> None:
         prompt_one = get_prompt("create_master_prompts")

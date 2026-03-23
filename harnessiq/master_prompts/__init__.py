@@ -6,7 +6,13 @@ and passed directly to a model.
 
 Basic usage::
 
-    from harnessiq.master_prompts import get_prompt, list_prompts, get_prompt_text
+    from harnessiq.master_prompts import (
+        get_prompt,
+        get_prompt_text,
+        has_prompt,
+        list_prompt_keys,
+        list_prompts,
+    )
 
     # Retrieve a full MasterPrompt record
     prompt = get_prompt("create_master_prompts")
@@ -16,6 +22,10 @@ Basic usage::
 
     # Retrieve just the raw prompt string for injection
     system_prompt_text = get_prompt_text("create_master_prompts")
+
+    # Discover prompt keys without loading prompt text manually
+    print(list_prompt_keys())
+    print(has_prompt("create_master_prompts"))
 
     # List all available master prompts
     for p in list_prompts():
@@ -74,10 +84,22 @@ def list_prompts() -> list[MasterPrompt]:
     return _get_registry().list()
 
 
+def list_prompt_keys() -> list[str]:
+    """Return all registered prompt keys sorted alphabetically."""
+    return _get_registry().keys()
+
+
+def has_prompt(key: str) -> bool:
+    """Return whether a bundled prompt with the given key exists."""
+    return _get_registry().has(key)
+
+
 __all__ = [
     "MasterPrompt",
     "MasterPromptRegistry",
     "get_prompt",
     "get_prompt_text",
+    "has_prompt",
+    "list_prompt_keys",
     "list_prompts",
 ]
