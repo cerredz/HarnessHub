@@ -37,3 +37,6 @@ include = ["harnessiq*"]
 
 [tool.setuptools.package-data]
 "harnessiq.master_prompts.prompts" = ["*.json"]
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"

@@ -153,6 +153,30 @@ class AgentParameterSection:
         return f"## {self.title}\n{self.content}".rstrip()
 
 
+def render_json_parameter_content(
+    payload: Any,
+    *,
+    indent: int = 2,
+    sort_keys: bool = True,
+) -> str:
+    """Render JSON payloads for durable parameter sections."""
+    return json.dumps(payload, indent=indent, sort_keys=sort_keys, default=str)
+
+
+def json_parameter_section(
+    title: str,
+    payload: Any,
+    *,
+    indent: int = 2,
+    sort_keys: bool = True,
+) -> AgentParameterSection:
+    """Return an ``AgentParameterSection`` backed by JSON content."""
+    return AgentParameterSection(
+        title=title,
+        content=render_json_parameter_content(payload, indent=indent, sort_keys=sort_keys),
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class AgentTranscriptEntry:
     """A single rolling transcript entry managed by the harness."""
@@ -267,6 +291,8 @@ __all__ = [
     "DEFAULT_AGENT_PRUNE_PROGRESS_INTERVAL",
     "DEFAULT_AGENT_PRUNE_TOKEN_LIMIT",
     "DEFAULT_AGENT_RESET_THRESHOLD",
+    "json_parameter_section",
     "merge_agent_runtime_config",
+    "render_json_parameter_content",
     "estimate_text_tokens",
 ]

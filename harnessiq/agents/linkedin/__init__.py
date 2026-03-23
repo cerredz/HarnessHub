@@ -8,6 +8,7 @@ from harnessiq.agents.linkedin.agent import (
 from harnessiq.shared.linkedin import (
     ActionLogEntry,
     JobApplicationRecord,
+    LINKEDIN_HARNESS_MANIFEST,
     LinkedInAgentConfig,
     LinkedInManagedFile,
     LinkedInMemoryStore,
@@ -29,6 +30,7 @@ except ImportError:  # pragma: no cover - optional provider surface may be unava
 __all__ = [
     "ActionLogEntry",
     "JobApplicationRecord",
+    "LINKEDIN_HARNESS_MANIFEST",
     "LinkedInAgentConfig",
     "LinkedInManagedFile",
     "LinkedInJobApplierAgent",

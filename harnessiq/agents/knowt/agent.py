@@ -22,7 +22,7 @@ from harnessiq.shared.knowt import (
 from harnessiq.shared.tools import RegisteredTool
 from harnessiq.tools.knowt import create_knowt_tools
 from harnessiq.tools.reasoning import create_injectable_reasoning_tools
-from harnessiq.tools.registry import ToolRegistry
+from harnessiq.tools.registry import create_tool_registry
 
 if TYPE_CHECKING:
     from harnessiq.providers.creatify.client import CreatifyClient, CreatifyCredentials
@@ -64,7 +64,7 @@ class KnowtAgent(BaseAgent):
         self._memory_store = KnowtMemoryStore(memory_path=self._config.memory_path)
         self._memory_store.prepare()
 
-        resolved_tools: tuple[RegisteredTool, ...] = tuple(tools) if tools is not None else (
+        default_tools: tuple[RegisteredTool, ...] = (
             *create_injectable_reasoning_tools(),
             *create_knowt_tools(
                 memory_store=self._memory_store,
@@ -72,7 +72,7 @@ class KnowtAgent(BaseAgent):
                 creatify_credentials=creatify_credentials,
             ),
         )
-        tool_registry = ToolRegistry(resolved_tools)
+        tool_registry = create_tool_registry(default_tools, tools or ())
         super().__init__(
             name="knowt_content_creator",
             model=model,
