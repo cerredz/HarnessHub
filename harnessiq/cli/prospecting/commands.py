@@ -14,11 +14,13 @@ from harnessiq.cli.common import (
     add_agent_options,
     add_text_or_file_options,
     emit_json,
-    parse_generic_assignments,
+    format_manifest_parameter_keys,
+    parse_manifest_parameter_assignments,
     resolve_memory_path,
     resolve_text_argument,
 )
 from harnessiq.shared.prospecting import (
+    PROSPECTING_HARNESS_MANIFEST,
     SUPPORTED_PROSPECTING_CUSTOM_PARAMETERS,
     SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS,
     normalize_prospecting_custom_parameters,
@@ -73,7 +75,7 @@ def register_prospecting_commands(
         metavar="KEY=VALUE",
         help=(
             "Persist a prospecting runtime parameter. Supported keys: "
-            f"{', '.join(SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS)}."
+            f"{format_manifest_parameter_keys(PROSPECTING_HARNESS_MANIFEST, scope='runtime')}."
         ),
     )
     configure_parser.add_argument(
@@ -83,7 +85,7 @@ def register_prospecting_commands(
         metavar="KEY=VALUE",
         help=(
             "Persist a prospecting custom parameter. Supported keys: "
-            f"{', '.join(SUPPORTED_PROSPECTING_CUSTOM_PARAMETERS)}."
+            f"{format_manifest_parameter_keys(PROSPECTING_HARNESS_MANIFEST, scope='custom')}."
         ),
     )
     configure_parser.set_defaults(command_handler=_handle_configure)
@@ -319,11 +321,19 @@ def _load_store(args: argparse.Namespace) -> ProspectingMemoryStore:
 
 
 def _parse_runtime_assignments(assignments: Sequence[str]) -> dict[str, Any]:
-    return normalize_prospecting_runtime_parameters(parse_generic_assignments(assignments))
+    return parse_manifest_parameter_assignments(
+        assignments,
+        manifest=PROSPECTING_HARNESS_MANIFEST,
+        scope="runtime",
+    )
 
 
 def _parse_custom_assignments(assignments: Sequence[str]) -> dict[str, Any]:
-    return normalize_prospecting_custom_parameters(parse_generic_assignments(assignments))
+    return parse_manifest_parameter_assignments(
+        assignments,
+        manifest=PROSPECTING_HARNESS_MANIFEST,
+        scope="custom",
+    )
 
 
 def _build_summary(store: ProspectingMemoryStore) -> dict[str, Any]:
@@ -343,6 +353,8 @@ def _build_summary(store: ProspectingMemoryStore) -> dict[str, Any]:
 
 
 def _build_runtime_config(sink_specs: Sequence[str]) -> AgentRuntimeConfig:
+    if not sink_specs:
+        return AgentRuntimeConfig()
     connections = ConnectionsConfigStore().load().enabled_connections()
     return AgentRuntimeConfig(
         output_sinks=build_output_sinks(connections=connections, sink_specs=sink_specs),

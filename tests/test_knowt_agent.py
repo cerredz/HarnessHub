@@ -229,7 +229,7 @@ class TestKnowtAgentInjection(unittest.TestCase):
         agent = KnowtAgent(model=self.model, memory_path=self.tmp, max_tokens=10_000, config=config)
         self.assertEqual(agent.config.max_tokens, 55_000)
 
-    def test_injected_tools_replace_defaults(self) -> None:
+    def test_injected_tools_are_added_to_defaults(self) -> None:
         from harnessiq.shared.tools import RegisteredTool, ToolDefinition
         stub = RegisteredTool(
             definition=ToolDefinition(
@@ -243,7 +243,7 @@ class TestKnowtAgentInjection(unittest.TestCase):
         agent = KnowtAgent(model=self.model, memory_path=self.tmp, tools=[stub])
         keys = {t.key for t in agent.available_tools()}
         self.assertIn("custom.stub", keys)
-        self.assertNotIn(REASON_BRAINSTORM, keys)
+        self.assertIn(REASON_BRAINSTORM, keys)
 
     def test_memory_path_exposed_on_base_agent(self) -> None:
         agent = KnowtAgent(model=self.model, memory_path=self.tmp)

@@ -97,3 +97,20 @@ def create_builtin_registry() -> ToolRegistry:
     from .builtin import BUILTIN_TOOLS
 
     return ToolRegistry(BUILTIN_TOOLS)
+
+
+def merge_tools(*tool_groups: Iterable[RegisteredTool]) -> tuple[RegisteredTool, ...]:
+    """Merge ordered tool groups while allowing later groups to override keys."""
+    ordered_keys: list[str] = []
+    merged: dict[str, RegisteredTool] = {}
+    for tool_group in tool_groups:
+        for tool in tool_group:
+            if tool.key not in merged:
+                ordered_keys.append(tool.key)
+            merged[tool.key] = tool
+    return tuple(merged[key] for key in ordered_keys)
+
+
+def create_tool_registry(*tool_groups: Iterable[RegisteredTool]) -> ToolRegistry:
+    """Create a registry from one or more ordered tool groups."""
+    return ToolRegistry(merge_tools(*tool_groups))

@@ -24,6 +24,8 @@ from harnessiq.shared.agents import (
     AgentRuntimeConfig,
     AgentToolExecutor,
     AgentTranscriptEntry,
+    json_parameter_section,
+    render_json_parameter_content,
     estimate_text_tokens,
 )
 from harnessiq.shared.tools import HEAVY_COMPACTION, LOG_COMPACTION, REMOVE_TOOL_RESULTS, REMOVE_TOOLS
@@ -542,7 +544,7 @@ class BaseAgent(ABC):
             return AgentTranscriptEntry(entry_type="summary", content=content)
         raise ValueError(f"Unsupported context entry kind '{kind}'.")
 
-def _transcript_entry_to_context_entry(self, entry: AgentTranscriptEntry) -> AgentContextEntry:
+    def _transcript_entry_to_context_entry(self, entry: AgentTranscriptEntry) -> AgentContextEntry:
         if entry.entry_type == "assistant":
             return {"kind": "message", "role": "assistant", "content": entry.content}
         if entry.entry_type == "tool_call":
@@ -579,5 +581,7 @@ __all__ = [
     "AgentToolExecutor",
     "AgentTranscriptEntry",
     "BaseAgent",
+    "json_parameter_section",
+    "render_json_parameter_content",
     "estimate_text_tokens",
 ]

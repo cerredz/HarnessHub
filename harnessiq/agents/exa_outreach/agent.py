@@ -14,6 +14,7 @@ from harnessiq.shared.agents import (
     AgentModel,
     AgentParameterSection,
     AgentRuntimeConfig,
+    json_parameter_section,
 )
 from harnessiq.shared.exa_outreach import (
     DEFAULT_AGENT_IDENTITY,
@@ -36,7 +37,7 @@ from harnessiq.shared.tools import (
     RegisteredTool,
     ToolDefinition,
 )
-from harnessiq.tools.registry import ToolRegistry
+from harnessiq.tools.registry import create_tool_registry
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
@@ -63,6 +64,7 @@ class ExaOutreachAgent(BaseAgent):
         resend_client: Any | None = None,
         allowed_resend_operations: tuple[str, ...] | None = None,
         allowed_exa_operations: tuple[str, ...] | None = None,
+        tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         # Store all params needed by build_instance_payload() before calling super().__init__().
@@ -81,22 +83,22 @@ class ExaOutreachAgent(BaseAgent):
 
         # Current run ID - assigned in prepare() before the loop starts.
         self._current_run_id: str | None = None
+        self._search_only = search_only
 
-        tool_registry = ToolRegistry(
-            _merge_tools(
-                _create_exa_tools(
-                    credentials=exa_credentials,
-                    client=exa_client,
-                    allowed_operations=allowed_exa_operations
-                    or ("search", "get_contents", "search_and_contents"),
-                ),
-                _create_resend_tools(
-                    credentials=resend_credentials if not search_only else None,
-                    client=resend_client if not search_only else None,
-                    allowed_operations=allowed_resend_operations,
-                ),
-                self._build_internal_tools(),
-            )
+        tool_registry = create_tool_registry(
+            _create_exa_tools(
+                credentials=exa_credentials,
+                client=exa_client,
+                allowed_operations=allowed_exa_operations
+                or ("search", "get_contents", "search_and_contents"),
+            ),
+            _create_resend_tools(
+                credentials=resend_credentials if not search_only else None,
+                client=resend_client if not search_only else None,
+                allowed_operations=allowed_resend_operations,
+            ),
+            self._build_internal_tools(),
+            tuple(tools or ()),
         )
         runtime_config = AgentRuntimeConfig(
             max_tokens=max_tokens,
@@ -229,12 +231,7 @@ class ExaOutreachAgent(BaseAgent):
 
         sections: list[AgentParameterSection] = []
         if not self._config.search_only:
-            templates_json = json.dumps(
-                [template.as_dict() for template in self._config.email_data],
-                indent=2,
-                sort_keys=True,
-            )
-            sections.append(AgentParameterSection(title="Email Templates", content=templates_json))
+            sections.append(json_parameter_section("Email Templates", [template.as_dict() for template in self._config.email_data]))
         sections.extend(
             (
                 AgentParameterSection(title="Search Query", content=query_content),
@@ -319,7 +316,7 @@ class ExaOutreachAgent(BaseAgent):
                 handler=self._handle_log_lead,
             ),
         ]
-        if self._config.search_only:
+        if self._search_only:
             return tuple(tools)
 
         tools[0:0] = [
@@ -481,17 +478,6 @@ def _tool_definition(
             "additionalProperties": False,
         },
     )
-
-
-def _merge_tools(*tool_groups: Iterable[RegisteredTool]) -> tuple[RegisteredTool, ...]:
-    ordered_keys: list[str] = []
-    merged: dict[str, RegisteredTool] = {}
-    for tool_group in tool_groups:
-        for tool in tool_group:
-            if tool.key not in merged:
-                ordered_keys.append(tool.key)
-            merged[tool.key] = tool
-    return tuple(merged[key] for key in ordered_keys)
 
 
 def _coerce_email_data(

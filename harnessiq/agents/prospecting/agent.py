@@ -15,6 +15,7 @@ from harnessiq.shared.agents import (
     AgentModelRequest,
     AgentParameterSection,
     AgentRuntimeConfig,
+    json_parameter_section,
 )
 from harnessiq.shared.prospecting import (
     DEFAULT_AGENT_IDENTITY,
@@ -47,7 +48,7 @@ from harnessiq.tools import (
     create_evaluate_company_tool,
     create_search_or_summarize_tool,
 )
-from harnessiq.tools.registry import ToolRegistry
+from harnessiq.tools.registry import create_tool_registry
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
@@ -75,6 +76,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
         website_inspect_enabled: bool = DEFAULT_WEBSITE_INSPECT_ENABLED,
         sink_record_type: str = DEFAULT_SINK_RECORD_TYPE,
         eval_system_prompt: str = DEFAULT_EVAL_SYSTEM_PROMPT,
+        tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
         json_subcall_runner: JsonSubcallRunner | None = None,
     ) -> None:
@@ -106,13 +108,12 @@ class GoogleMapsProspectingAgent(BaseAgent):
         self._initial_company_description = company_description.strip() if company_description else ""
         self._json_subcall_runner = json_subcall_runner
 
-        tool_registry = ToolRegistry(
-            _merge_tools(
-                _create_browser_stub_tools(),
-                tuple(browser_tools),
-                self._build_public_tools(),
-                self._build_internal_tools(),
-            )
+        tool_registry = create_tool_registry(
+            _create_browser_stub_tools(),
+            tuple(browser_tools),
+            self._build_public_tools(),
+            self._build_internal_tools(),
+            tuple(tools or ()),
         )
         runtime_config = AgentRuntimeConfig(
             max_tokens=max_tokens,
@@ -162,6 +163,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
         browser_tools: Iterable[RegisteredTool] = (),
         runtime_overrides: Mapping[str, Any] | None = None,
         custom_overrides: Mapping[str, Any] | None = None,
+        tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
         json_subcall_runner: JsonSubcallRunner | None = None,
     ) -> "GoogleMapsProspectingAgent":
@@ -181,6 +183,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
             memory_path=resolved_path,
             browser_tools=browser_tools,
             company_description=store.read_company_description(),
+            tools=tools,
             runtime_config=runtime_config,
             json_subcall_runner=json_subcall_runner,
             **normalized_runtime,
@@ -261,54 +264,34 @@ class GoogleMapsProspectingAgent(BaseAgent):
                 title="Company Description",
                 content=self._memory_store.read_company_description() or DEFAULT_COMPANY_DESCRIPTION,
             ),
-            AgentParameterSection(
-                title="Run State",
-                content=json.dumps(
-                    {
-                        "run_id": state.run_id,
-                        "run_status": state.run_status,
-                        "last_completed_search_index": state.last_completed_search_index,
-                        "searches_summarized_through": state.searches_summarized_through,
-                        "search_history_summary": state.search_history_summary,
-                        "current_search_in_progress": (
-                            state.current_search_in_progress.as_dict()
-                            if state.current_search_in_progress is not None
-                            else None
-                        ),
-                        "qualified_leads_posted": state.qualified_leads_posted,
-                        "disqualified_leads_count": state.disqualified_leads_count,
-                        "session_reset_count": state.session_reset_count,
-                        "error_log": list(state.error_log[-10:]),
-                    },
-                    indent=2,
-                    sort_keys=True,
-                ),
+            json_parameter_section(
+                "Run State",
+                {
+                    "run_id": state.run_id,
+                    "run_status": state.run_status,
+                    "last_completed_search_index": state.last_completed_search_index,
+                    "searches_summarized_through": state.searches_summarized_through,
+                    "search_history_summary": state.search_history_summary,
+                    "current_search_in_progress": (
+                        state.current_search_in_progress.as_dict()
+                        if state.current_search_in_progress is not None
+                        else None
+                    ),
+                    "qualified_leads_posted": state.qualified_leads_posted,
+                    "disqualified_leads_count": state.disqualified_leads_count,
+                    "session_reset_count": state.session_reset_count,
+                    "error_log": list(state.error_log[-10:]),
+                },
             ),
-            AgentParameterSection(
-                title="Recent Completed Searches",
-                content=json.dumps(recent_searches, indent=2, sort_keys=True),
-            ),
-            AgentParameterSection(
-                title="Recent Qualified Leads",
-                content=json.dumps(recent_leads, indent=2, sort_keys=True),
-            ),
+            json_parameter_section("Recent Completed Searches", recent_searches),
+            json_parameter_section("Recent Qualified Leads", recent_leads),
         ]
         runtime_parameters = self._memory_store.read_runtime_parameters()
         if runtime_parameters:
-            sections.append(
-                AgentParameterSection(
-                    title="Runtime Parameters",
-                    content=json.dumps(runtime_parameters, indent=2, sort_keys=True),
-                )
-            )
+            sections.append(json_parameter_section("Runtime Parameters", runtime_parameters))
         custom_parameters = self._memory_store.read_custom_parameters()
         if custom_parameters:
-            sections.append(
-                AgentParameterSection(
-                    title="Custom Parameters",
-                    content=json.dumps(custom_parameters, indent=2, sort_keys=True),
-                )
-            )
+            sections.append(json_parameter_section("Custom Parameters", custom_parameters))
         return tuple(sections)
 
     def build_ledger_outputs(self) -> dict[str, Any]:
@@ -677,17 +660,6 @@ def _resolve_memory_path(memory_path: str | Path | None) -> Path:
     if memory_path is None:
         return _DEFAULT_MEMORY_PATH
     return Path(memory_path)
-
-
-def _merge_tools(*tool_groups: Iterable[RegisteredTool]) -> tuple[RegisteredTool, ...]:
-    ordered_keys: list[str] = []
-    merged: dict[str, RegisteredTool] = {}
-    for tool_group in tool_groups:
-        for tool in tool_group:
-            if tool.key not in merged:
-                ordered_keys.append(tool.key)
-            merged[tool.key] = tool
-    return tuple(merged[key] for key in ordered_keys)
 
 
 def _create_browser_stub_tools() -> tuple[RegisteredTool, ...]:

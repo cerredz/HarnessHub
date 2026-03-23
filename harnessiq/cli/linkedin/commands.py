@@ -16,16 +16,17 @@ from harnessiq.cli.common import (
     add_agent_options,
     add_text_or_file_options,
     emit_json,
+    format_manifest_parameter_keys,
     parse_generic_assignments,
+    parse_manifest_parameter_assignments,
     resolve_memory_path,
     resolve_text_argument,
     split_assignment,
 )
 from harnessiq.shared.agents import AgentRuntimeConfig
 from harnessiq.agents.linkedin import (
-    SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS,
     JobApplicationRecord,
-    normalize_linkedin_runtime_parameters,
+    LINKEDIN_HARNESS_MANIFEST,
 )
 from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
@@ -63,7 +64,10 @@ def register_linkedin_commands(subparsers: argparse._SubParsersAction[argparse.A
         action="append",
         default=[],
         metavar="KEY=VALUE",
-        help=f"Persist a LinkedIn runtime parameter. Supported keys: {', '.join(SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS)}.",
+        help=(
+            "Persist a LinkedIn runtime parameter. Supported keys: "
+            f"{format_manifest_parameter_keys(LINKEDIN_HARNESS_MANIFEST, scope='runtime')}."
+        ),
     )
     configure_parser.add_argument(
         "--custom-param",
@@ -310,7 +314,11 @@ def _load_store(args: argparse.Namespace) -> LinkedInMemoryStore:
 
 
 def _parse_runtime_assignments(assignments: Sequence[str]) -> dict[str, Any]:
-    return normalize_linkedin_runtime_parameters(parse_generic_assignments(assignments))
+    return parse_manifest_parameter_assignments(
+        assignments,
+        manifest=LINKEDIN_HARNESS_MANIFEST,
+        scope="runtime",
+    )
 
 
 def _optional_string(value: Any) -> str | None:
@@ -331,6 +339,8 @@ def _build_summary(store: LinkedInMemoryStore) -> dict[str, Any]:
 
 
 def _build_runtime_config(sink_specs: Sequence[str]) -> AgentRuntimeConfig:
+    if not sink_specs:
+        return AgentRuntimeConfig()
     connections = ConnectionsConfigStore().load().enabled_connections()
     return AgentRuntimeConfig(
         output_sinks=build_output_sinks(connections=connections, sink_specs=sink_specs),

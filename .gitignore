@@ -13,6 +13,8 @@ dist/
 venv/
 Lib/
 Scripts/
+!scripts/
+!scripts/sync_repo_docs.py
 
 # Tool and runtime directories
 .claude/
@@ -25,5 +27,4 @@ Scripts/
 harnessiq/agents/linkedin/credentials.py
 
 # Generated artifacts
-artifacts/commands.md
 harnessiq/providers/apollo/credentials.py

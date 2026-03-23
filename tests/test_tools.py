@@ -90,11 +90,30 @@ from harnessiq.tools.registry import (
     ToolValidationError,
     UnknownToolError,
     create_builtin_registry,
+    create_tool_registry,
+    merge_tools,
 )
 
 
 def _constant_handler(arguments: dict[str, object]) -> dict[str, object]:
     return {"arguments": arguments}
+
+
+def _tool(key: str, marker: str) -> RegisteredTool:
+    return RegisteredTool(
+        definition=ToolDefinition(
+            key=key,
+            name=key.rsplit(".", 1)[-1],
+            description=f"{marker} tool",
+            input_schema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": False,
+            },
+        ),
+        handler=lambda arguments: {"marker": marker, "arguments": arguments},
+    )
 
 
 class ToolRegistryTests(unittest.TestCase):
@@ -293,6 +312,21 @@ class ToolRegistryTests(unittest.TestCase):
         )
         self.assertEqual(payload["function"]["module"], __name__)
         self.assertEqual(payload["function"]["qualname"], "_constant_handler")
+
+    def test_merge_tools_preserves_first_position_and_allows_later_override(self) -> None:
+        first = _tool("custom.alpha", "first")
+        replacement = _tool("custom.alpha", "replacement")
+        second = _tool("custom.beta", "second")
+
+        merged = merge_tools((first,), (replacement, second))
+
+        self.assertEqual(tuple(tool.key for tool in merged), ("custom.alpha", "custom.beta"))
+        self.assertEqual(merged[0].execute({}).output["marker"], "replacement")
+
+    def test_create_tool_registry_accepts_multiple_tool_groups(self) -> None:
+        registry = create_tool_registry((_tool("custom.alpha", "alpha"),), (_tool("custom.beta", "beta"),))
+
+        self.assertEqual(registry.keys(), ("custom.alpha", "custom.beta"))
 
 
 if __name__ == "__main__":
