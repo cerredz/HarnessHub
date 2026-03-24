@@ -37,6 +37,13 @@ include = ["harnessiq*"]
 
 [tool.setuptools.package-data]
 "harnessiq.master_prompts.prompts" = ["*.json"]
+"harnessiq.agents.exa_outreach" = ["prompts/*.md"]
+"harnessiq.agents.instagram" = ["prompts/*.md"]
+"harnessiq.agents.knowt" = ["prompts/*.md"]
+"harnessiq.agents.leads" = ["prompts/*.md"]
+"harnessiq.agents.linkedin" = ["prompts/*.md"]
+"harnessiq.agents.prospecting" = ["prompts/*.md"]
+"harnessiq.agents.research_sweep" = ["prompts/*.md"]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
