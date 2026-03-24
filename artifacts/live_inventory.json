@@ -3131,6 +3131,7 @@
     {
       "children": [
         "adapters",
+        "commands",
         "exa_outreach",
         "instagram",
         "leads",
