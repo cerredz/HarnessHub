@@ -57,6 +57,13 @@ PROVIDER_ENTRIES: tuple[ToolEntry, ...] = (
         requires_credentials=False,
     ),
     ToolEntry(
+        key="browser_use.request",
+        name="browser_use_request",
+        description="Execute authenticated Browser Use Cloud browser automation API operations.",
+        family="browser_use",
+        requires_credentials=True,
+    ),
+    ToolEntry(
         key="coresignal.request",
         name="coresignal_request",
         description="Execute authenticated Coresignal professional network data API operations.",
@@ -215,6 +222,7 @@ PROVIDER_FACTORY_MAP: dict[str, tuple[str, str]] = {
     "apollo": ("harnessiq.tools.apollo", "create_apollo_tools"),
     "arcads": ("harnessiq.tools.arcads", "create_arcads_tools"),
     "arxiv": ("harnessiq.tools.arxiv", "create_arxiv_tools"),
+    "browser_use": ("harnessiq.tools.browser_use", "create_browser_use_tools"),
     "coresignal": ("harnessiq.tools.coresignal", "create_coresignal_tools"),
     "creatify": ("harnessiq.tools.creatify", "create_creatify_tools"),
     "exa": ("harnessiq.tools.exa", "create_exa_tools"),

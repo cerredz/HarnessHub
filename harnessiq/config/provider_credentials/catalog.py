@@ -8,6 +8,7 @@ from harnessiq.shared.credentials import (
     ApolloCredentials,
     ArcadsCredentials,
     AttioCredentials,
+    BrowserUseCredentials,
     CoreSignalCredentials,
     CreatifyCredentials,
     ExaCredentials,
@@ -58,6 +59,12 @@ PROVIDER_CREDENTIAL_SPECS = MappingProxyType(
             description="Attio API credentials.",
             fields=(ProviderCredentialFieldSpec("api_key", "Attio API key."),),
             builder=build_dataclass_credential_builder(AttioCredentials),
+        ),
+        "browser_use": ProviderCredentialSpec(
+            family="browser_use",
+            description="Browser Use Cloud API credentials.",
+            fields=(ProviderCredentialFieldSpec("api_key", "Browser Use API key."),),
+            builder=build_dataclass_credential_builder(BrowserUseCredentials),
         ),
         "coresignal": ProviderCredentialSpec(
             family="coresignal",

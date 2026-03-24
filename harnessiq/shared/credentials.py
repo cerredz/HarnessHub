@@ -9,6 +9,7 @@ from harnessiq.shared.providers import (
     APOLLO_DEFAULT_BASE_URL,
     ARCADS_DEFAULT_BASE_URL,
     ATTIO_DEFAULT_BASE_URL,
+    BROWSER_USE_DEFAULT_BASE_URL,
     CREATIFY_DEFAULT_BASE_URL,
     EXA_DEFAULT_BASE_URL,
     EXPANDI_DEFAULT_BASE_URL,
@@ -185,6 +186,36 @@ class AttioCredentials:
             raise ValueError("Attio base_url must not be blank.")
         if self.timeout_seconds <= 0:
             raise ValueError("Attio timeout_seconds must be greater than zero.")
+
+    def masked_api_key(self) -> str:
+        key = self.api_key
+        if len(key) <= 4:
+            return "*" * len(key)
+        return f"{key[:3]}{'*' * max(1, len(key) - 7)}{key[-4:]}"
+
+    def as_redacted_dict(self) -> dict[str, object]:
+        return {
+            "api_key_masked": self.masked_api_key(),
+            "base_url": self.base_url,
+            "timeout_seconds": self.timeout_seconds,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class BrowserUseCredentials:
+    """Runtime credentials for the Browser Use Cloud API."""
+
+    api_key: str
+    base_url: str = BROWSER_USE_DEFAULT_BASE_URL
+    timeout_seconds: float = 60.0
+
+    def __post_init__(self) -> None:
+        if not self.api_key.strip():
+            raise ValueError("Browser Use api_key must not be blank.")
+        if not self.base_url.strip():
+            raise ValueError("Browser Use base_url must not be blank.")
+        if self.timeout_seconds <= 0:
+            raise ValueError("Browser Use timeout_seconds must be greater than zero.")
 
     def masked_api_key(self) -> str:
         key = self.api_key
@@ -582,6 +613,7 @@ __all__ = [
     "ApolloCredentials",
     "ArcadsCredentials",
     "AttioCredentials",
+    "BrowserUseCredentials",
     "CoreSignalCredentials",
     "CreatifyCredentials",
     "ExaCredentials",

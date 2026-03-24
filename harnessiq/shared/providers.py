@@ -34,6 +34,7 @@ APOLLO_DEFAULT_BASE_URL = "https://api.apollo.io/api/v1"
 ARCADS_DEFAULT_BASE_URL = "https://external-api.arcads.ai"
 ARXIV_DEFAULT_BASE_URL = "https://export.arxiv.org"
 ATTIO_DEFAULT_BASE_URL = "https://api.attio.com/v2"
+BROWSER_USE_DEFAULT_BASE_URL = "https://api.browser-use.com/api/v2"
 CORESIGNAL_DEFAULT_BASE_URL = "https://api.coresignal.com/cdapi/v2"
 CREATIFY_DEFAULT_BASE_URL = "https://api.creatify.ai"
 EXA_DEFAULT_BASE_URL = "https://api.exa.ai"
@@ -75,6 +76,7 @@ __all__ = [
     "ARCADS_DEFAULT_BASE_URL",
     "ARXIV_DEFAULT_BASE_URL",
     "ATTIO_DEFAULT_BASE_URL",
+    "BROWSER_USE_DEFAULT_BASE_URL",
     "CORESIGNAL_DEFAULT_BASE_URL",
     "CREATIFY_DEFAULT_BASE_URL",
     "EXA_DEFAULT_BASE_URL",

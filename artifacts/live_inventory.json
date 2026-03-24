@@ -2009,9 +2009,9 @@
     "command_paths": 105,
     "harnesses": 6,
     "model_providers": 4,
-    "service_provider_packages": 25,
+    "service_provider_packages": 26,
     "sink_types": 8,
-    "test_modules": 77,
+    "test_modules": 79,
     "tool_only_external_surfaces": 1,
     "top_level_commands": 16
   },
@@ -2321,6 +2321,7 @@
         "arcads",
         "arxiv",
         "attio",
+        "browser_use",
         "coresignal",
         "creatify",
         "exa",
@@ -2764,6 +2765,7 @@
         "arcads",
         "arxiv",
         "attio",
+        "browser_use",
         "coresignal",
         "creatify",
         "exa",
@@ -2804,6 +2806,8 @@
         "arcads",
         "arxiv",
         "attio",
+        "browser_use",
+        "context",
         "coresignal",
         "creatify",
         "eval",
@@ -2896,6 +2900,13 @@
         "operations": 7,
         "provider_path": "harnessiq/providers/attio",
         "tool_path": "harnessiq/tools/attio/operations.py"
+      },
+      {
+        "catalog_path": "harnessiq/shared/browser_use.py",
+        "family": "browser_use",
+        "operations": 43,
+        "provider_path": "harnessiq/providers/browser_use",
+        "tool_path": "harnessiq/tools/browser_use/operations.py"
       },
       {
         "catalog_path": "harnessiq/shared/coresignal.py",
@@ -3065,7 +3076,7 @@
     ]
   },
   "tests": {
-    "count": 77,
+    "count": 79,
     "groups": [
       {
         "count": 15,
@@ -3093,7 +3104,7 @@
         "name": "ledger"
       },
       {
-        "count": 30,
+        "count": 31,
         "examples": [
           "test_anthropic_provider.py",
           "test_apollo_provider.py",
@@ -3111,11 +3122,11 @@
         "name": "support"
       },
       {
-        "count": 11,
+        "count": 12,
         "examples": [
           "test_context_compaction_tools.py",
-          "test_general_tools.py",
-          "test_knowt_tools.py"
+          "test_context_window_tools.py",
+          "test_general_tools.py"
         ],
         "name": "tools"
       }
@@ -3123,16 +3134,34 @@
   },
   "top_level_directories": [
     {
+      "description": "Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable.",
+      "kind": "generated/cache",
+      "name": ".harnessiq",
+      "path": ".harnessiq/"
+    },
+    {
       "description": "Test runner cache; generated, not part of the source of truth.",
       "kind": "generated/cache",
       "name": ".pytest_cache",
       "path": ".pytest_cache/"
     },
     {
+      "description": "Repository directory not yet classified in the generated file index.",
+      "kind": "other",
+      "name": ".worktrees",
+      "path": ".worktrees/"
+    },
+    {
       "description": "Generated and curated repository reference artifacts.",
       "kind": "repo docs",
       "name": "artifacts",
       "path": "artifacts/"
+    },
+    {
+      "description": "Setuptools build output; generated, not part of the live source tree.",
+      "kind": "generated/cache",
+      "name": "build",
+      "path": "build/"
     },
     {
       "description": "Focused usage and architecture notes for the package.",
@@ -3147,6 +3176,12 @@
       "path": "harnessiq/"
     },
     {
+      "description": "Packaging metadata emitted by local builds.",
+      "kind": "generated/cache",
+      "name": "harnessiq.egg-info",
+      "path": "harnessiq.egg-info/"
+    },
+    {
       "description": "Task artifacts plus durable agent runtime state; not part of the shipped package.",
       "kind": "local state",
       "name": "memory",
@@ -3157,6 +3192,12 @@
       "kind": "repo tooling",
       "name": "scripts",
       "path": "scripts/"
+    },
+    {
+      "description": "Legacy or generated residue in this checkout; not the authoritative package source.",
+      "kind": "generated/cache",
+      "name": "src",
+      "path": "src/"
     },
     {
       "description": "unittest coverage for runtime, CLI, providers, and tools.",

@@ -12,10 +12,10 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Top-level CLI commands | 16 |
 | Registered CLI command paths | 105 |
 | Model providers | 4 |
-| Service provider packages | 25 |
+| Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 8 |
-| Test modules | 77 |
+| Test modules | 79 |
 
 ## Codebase Standards
 
@@ -31,12 +31,17 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Kind | Responsibility |
 | --- | --- | --- |
+| `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
 | `.pytest_cache/` | generated/cache | Test runner cache; generated, not part of the source of truth. |
+| `.worktrees/` | other | Repository directory not yet classified in the generated file index. |
 | `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
+| `build/` | generated/cache | Setuptools build output; generated, not part of the live source tree. |
 | `docs/` | repo docs | Focused usage and architecture notes for the package. |
 | `harnessiq/` | source | Live SDK package source. |
+| `harnessiq.egg-info/` | generated/cache | Packaging metadata emitted by local builds. |
 | `memory/` | local state | Task artifacts plus durable agent runtime state; not part of the shipped package. |
 | `scripts/` | repo tooling | Repository maintenance and generation scripts. |
+| `src/` | generated/cache | Legacy or generated residue in this checkout; not the authoritative package source. |
 | `tests/` | source | unittest coverage for runtime, CLI, providers, and tools. |
 
 ## Package Layout
@@ -48,9 +53,9 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | `harnessiq/config/` | provider_credentials | Environment loading, credential binding, and provider-credential spec models. |
 | `harnessiq/integrations/` | - | Concrete external runtime adapters such as Playwright backends and model factories. |
 | `harnessiq/master_prompts/` | prompts | Packaged prompt assets and prompt registry helpers. |
-| `harnessiq/providers/` | anthropic, apollo, arcads, arxiv, attio, coresignal, creatify, exa, expandi, gemini, google_drive, grok, inboxapp, instantly, leadiq, lemlist, lusha, openai, outreach, paperclip, peopledatalabs, phantombuster, playwright, proxycurl, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | Model-provider adapters, external service clients, output-sink transport clients, and Playwright runtime support. |
+| `harnessiq/providers/` | anthropic, apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, gemini, google_drive, grok, inboxapp, instantly, leadiq, lemlist, lusha, openai, outreach, paperclip, peopledatalabs, phantombuster, playwright, proxycurl, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | Model-provider adapters, external service clients, output-sink transport clients, and Playwright runtime support. |
 | `harnessiq/shared/` | - | Shared manifests, durable memory stores, operation metadata, and package-wide types/constants. |
-| `harnessiq/tools/` | apollo, arcads, arxiv, attio, coresignal, creatify, eval, exa, expandi, google_drive, inboxapp, instagram, instantly, knowt, leadiq, leads, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, prospecting, proxycurl, reasoning, salesforge, search, serper, smartlead, snovio, zerobounce, zoominfo | Built-in tool families, provider-backed tool factories, and domain-specific helper tools. |
+| `harnessiq/tools/` | apollo, arcads, arxiv, attio, browser_use, context, coresignal, creatify, eval, exa, expandi, google_drive, inboxapp, instagram, instantly, knowt, leadiq, leads, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, prospecting, proxycurl, reasoning, salesforge, search, serper, smartlead, snovio, zerobounce, zoominfo | Built-in tool families, provider-backed tool factories, and domain-specific helper tools. |
 | `harnessiq/toolset/` | - | Static tool catalog plus registration and lookup helpers for reusable tool composition. |
 | `harnessiq/utils/` | harness_manifest | Agent instance storage, ledger export/report helpers, and built-in output sink implementations. |
 
@@ -84,7 +89,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | exa_outreach | Exa Outreach | `harnessiq.agents.exa_outreach:ExaOutreachAgent` | `memory/outreach` | max_tokens, reset_threshold | - | query_config.json, agent_identity.txt, additional_prompt.txt, runs | exa, resend | emails_sent, leads_found, search_query |
 | instagram | Instagram Keyword Discovery | `harnessiq.agents.instagram:InstagramKeywordDiscoveryAgent` | `memory/instagram` | max_tokens, recent_result_window, recent_search_window, reset_threshold, search_result_limit | - | icp_profiles.json, search_history.json, lead_database.json, runtime_parameters.json, agent_identity.txt, additional_prompt.txt | playwright | emails, leads, search_history |
 | knowt | Knowt Content Creator | `harnessiq.agents.knowt:KnowtAgent` | `memory/knowt` | max_tokens, reset_threshold | - | current_script.md, current_avatar_description.md, creation_log.jsonl | creatify | avatar_description, creation_log, script |
-| leads | Leads Agent | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | run_config.json, run_state.json, runtime_parameters.json, icps/*.json, lead_storage, lead_storage/saved_leads.json | apollo, arcads, arxiv, attio, coresignal, creatify, exa, expandi, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | icp_states, run_config, run_state, saved_leads |
+| leads | Leads Agent | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | run_config.json, run_state.json, runtime_parameters.json, icps/*.json, lead_storage, lead_storage/saved_leads.json | apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | icp_states, run_config, run_state, saved_leads |
 | linkedin | LinkedIn Job Applier | `harnessiq.agents.linkedin:LinkedInJobApplierAgent` | `memory/linkedin` | max_tokens, reset_threshold, action_log_window, linkedin_start_url, notify_on_pause, pause_webhook | - | job_preferences.md, user_profile.md, agent_identity.md, runtime_parameters.json, custom_parameters.json, additional_prompt.md, applied_jobs.jsonl, action_log.jsonl, managed_files.json, managed_files, screenshots | playwright | jobs_applied, managed_files, recent_actions |
 | prospecting | Google Maps Prospecting | `harnessiq.agents.prospecting:GoogleMapsProspectingAgent` | `memory/prospecting` | max_tokens, reset_threshold | qualification_threshold, summarize_at_x, max_searches_per_run, max_listings_per_search, website_inspect_enabled, sink_record_type, eval_system_prompt | company_description.md, agent_identity.md, additional_prompt.md, runtime_parameters.json, custom_parameters.json, prospecting_state.json, qualified_leads.jsonl, browser-data | playwright | company_description, counts, qualified_leads, searches_completed, summary |
 
@@ -128,6 +133,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | arcads | 10 | `harnessiq/providers/arcads` | `harnessiq/tools/arcads/operations.py` | `harnessiq/shared/arcads.py` |
 | arxiv | 4 | `harnessiq/providers/arxiv` | `harnessiq/tools/arxiv/operations.py` | `harnessiq/shared/arxiv.py` |
 | attio | 7 | `harnessiq/providers/attio` | `harnessiq/tools/attio/operations.py` | `harnessiq/shared/attio.py` |
+| browser_use | 43 | `harnessiq/providers/browser_use` | `harnessiq/tools/browser_use/operations.py` | `harnessiq/shared/browser_use.py` |
 | coresignal | 9 | `harnessiq/providers/coresignal` | `harnessiq/tools/coresignal/operations.py` | `harnessiq/shared/coresignal.py` |
 | creatify | 58 | `harnessiq/providers/creatify` | `harnessiq/tools/creatify/operations.py` | `harnessiq/shared/creatify.py` |
 | exa | 15 | `harnessiq/providers/exa` | `harnessiq/tools/exa/operations.py` | `harnessiq/shared/exa.py` |
@@ -171,13 +177,13 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 ## Test Surface
 
-`tests/` currently contains 77 test modules. The table below groups them by dominant responsibility.
+`tests/` currently contains 79 test modules. The table below groups them by dominant responsibility.
 
 | Area | Count | Examples |
 | --- | --- | --- |
 | agents | 15 | `tests/test_agent_instances.py`, `tests/test_agents_base.py`, `tests/test_apollo_agent.py` |
 | cli | 8 | `tests/test_exa_outreach_cli.py`, `tests/test_instagram_cli.py`, `tests/test_leads_cli.py` |
 | ledger | 1 | `tests/test_output_sinks.py` |
-| providers | 30 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
+| providers | 31 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
 | support | 12 | `tests/test_cli_common.py`, `tests/test_config_loader.py`, `tests/test_credentials_config.py` |
-| tools | 11 | `tests/test_context_compaction_tools.py`, `tests/test_general_tools.py`, `tests/test_knowt_tools.py` |
+| tools | 12 | `tests/test_context_compaction_tools.py`, `tests/test_context_window_tools.py`, `tests/test_general_tools.py` |

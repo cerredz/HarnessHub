@@ -151,6 +151,7 @@ BROWSER_GET_TEXT = "browser.get_text"
 BROWSER_FIND_ELEMENT = "browser.find_element"
 BROWSER_GET_CURRENT_URL = "browser.get_current_url"
 BROWSER_EXTRACT_CONTENT = "browser.extract_content"
+BROWSER_USE_REQUEST = "browser_use.request"
 EVALUATE_COMPANY = "eval.evaluate_company"
 SEARCH_OR_SUMMARIZE = "search.search_or_summarize"
 
@@ -431,6 +432,7 @@ __all__ = [
     "BROWSER_SELECT_OPTION",
     "BROWSER_TYPE",
     "BROWSER_UPLOAD_FILE",
+    "BROWSER_USE_REQUEST",
     "BROWSER_VIEW_HTML",
     "BROWSER_WAIT_FOR_ELEMENT",
     "CONTROL_PAUSE_FOR_HUMAN",

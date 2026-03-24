@@ -34,10 +34,10 @@ print(result.output)
 | Top-level CLI commands | 16 |
 | Registered CLI command paths | 105 |
 | Model providers | 4 |
-| Service provider packages | 25 |
+| Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 8 |
-| Test modules | 77 |
+| Test modules | 79 |
 
 ## Agent Matrix
 
@@ -46,13 +46,13 @@ print(result.output)
 | Exa Outreach | `outreach` | `harnessiq.agents.exa_outreach:ExaOutreachAgent` | `memory/outreach` | max_tokens, reset_threshold | - | exa, resend |
 | Instagram Keyword Discovery | `instagram` | `harnessiq.agents.instagram:InstagramKeywordDiscoveryAgent` | `memory/instagram` | max_tokens, recent_result_window, recent_search_window, reset_threshold, search_result_limit | - | playwright |
 | Knowt Content Creator | - | `harnessiq.agents.knowt:KnowtAgent` | `memory/knowt` | max_tokens, reset_threshold | - | creatify |
-| Leads Agent | `leads` | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | apollo, arcads, arxiv, attio, coresignal, creatify, exa, expandi, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo |
+| Leads Agent | `leads` | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo |
 | LinkedIn Job Applier | `linkedin` | `harnessiq.agents.linkedin:LinkedInJobApplierAgent` | `memory/linkedin` | max_tokens, reset_threshold, action_log_window, linkedin_start_url, notify_on_pause, pause_webhook | - | playwright |
 | Google Maps Prospecting | `prospecting` | `harnessiq.agents.prospecting:GoogleMapsProspectingAgent` | `memory/prospecting` | max_tokens, reset_threshold | qualification_threshold, summarize_at_x, max_searches_per_run, max_listings_per_search, website_inspect_enabled, sink_record_type, eval_system_prompt | playwright |
 
 ## Provider Surface
 
-Harnessiq currently ships 4 model-provider adapters, 25 service provider packages under `harnessiq/providers/`, and 1 tool-only external service surface outside the provider package tree.
+Harnessiq currently ships 4 model-provider adapters, 26 service provider packages under `harnessiq/providers/`, and 1 tool-only external service surface outside the provider package tree.
 
 ### Model Providers
 
@@ -71,6 +71,7 @@ Harnessiq currently ships 4 model-provider adapters, 25 service provider package
 | arcads | 10 | `harnessiq/providers/arcads` | `harnessiq/tools/arcads/operations.py` |
 | arxiv | 4 | `harnessiq/providers/arxiv` | `harnessiq/tools/arxiv/operations.py` |
 | attio | 7 | `harnessiq/providers/attio` | `harnessiq/tools/attio/operations.py` |
+| browser_use | 43 | `harnessiq/providers/browser_use` | `harnessiq/tools/browser_use/operations.py` |
 | coresignal | 9 | `harnessiq/providers/coresignal` | `harnessiq/tools/coresignal/operations.py` |
 | creatify | 58 | `harnessiq/providers/creatify` | `harnessiq/tools/creatify/operations.py` |
 | exa | 15 | `harnessiq/providers/exa` | `harnessiq/tools/exa/operations.py` |

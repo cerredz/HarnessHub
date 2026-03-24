@@ -280,6 +280,12 @@ class TestListTools:
         assert entries["creatify.request"].family == "creatify"
         assert entries["creatify.request"].requires_credentials is True
 
+    def test_browser_use_entry_has_correct_family(self):
+        entries = {e.key: e for e in list_tools()}
+        assert "browser_use.request" in entries
+        assert entries["browser_use.request"].family == "browser_use"
+        assert entries["browser_use.request"].requires_credentials is True
+
     def test_all_provider_families_in_catalog(self):
         entries = {e.key: e for e in list_tools()}
         for family in PROVIDER_FACTORY_MAP:
