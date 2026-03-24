@@ -148,8 +148,12 @@ class InstagramCliTests(unittest.TestCase):
 
             with (
                 patch(
+                    "harnessiq.cli.common.load_factory",
+                    return_value=lambda: MagicMock(),
+                ),
+                patch(
                     "harnessiq.cli.instagram.commands._load_factory",
-                    side_effect=[lambda: MagicMock(), lambda: object()],
+                    return_value=lambda: object(),
                 ),
                 patch(
                     "harnessiq.agents.instagram.InstagramKeywordDiscoveryAgent.from_memory",
@@ -218,8 +222,12 @@ class InstagramCliTests(unittest.TestCase):
             with (
                 patch.dict(os.environ, {}, clear=True),
                 patch(
+                    "harnessiq.cli.common.load_factory",
+                    return_value=_recording_model_factory,
+                ),
+                patch(
                     "harnessiq.cli.instagram.commands._load_factory",
-                    side_effect=[_recording_model_factory, lambda: object()],
+                    return_value=lambda: object(),
                 ),
                 patch(
                     "harnessiq.agents.instagram.InstagramKeywordDiscoveryAgent.from_memory",

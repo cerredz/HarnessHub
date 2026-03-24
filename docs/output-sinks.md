@@ -65,7 +65,7 @@ Per-run CLI injection:
 
 ```bash
 harnessiq linkedin run --agent candidate-a \
-  --model-factory tests.test_linkedin_cli:create_static_model \
+  --model openai:gpt-5.4 \
   --sink "obsidian:vault_path=C:/Users/me/Vault,note_folder=Runs"
 ```
 

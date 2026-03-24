@@ -26,6 +26,13 @@ from .harness_profiles import (
     HarnessProfileStore,
     build_harness_credential_binding_name,
 )
+from .model_profiles import (
+    DEFAULT_MODEL_PROFILES_FILENAME,
+    ModelProfile,
+    ModelProfileCatalog,
+    ModelProfileStore,
+    ReasoningEffort,
+)
 from .loader import CredentialLoader
 from .models import ProviderCredentialConfig
 
@@ -41,14 +48,19 @@ __all__ = [
     "DEFAULT_CREDENTIALS_CONFIG_FILENAME",
     "DEFAULT_ENV_FILENAME",
     "DEFAULT_HARNESS_PROFILE_FILENAME",
+    "DEFAULT_MODEL_PROFILES_FILENAME",
     "DotEnvFileNotFoundError",
     "HarnessProfile",
     "HarnessProfileStore",
     "MissingEnvironmentVariableError",
+    "ModelProfile",
+    "ModelProfileCatalog",
+    "ModelProfileStore",
     "PROVIDER_CREDENTIAL_SPECS",
     "ProviderCredentialConfig",
     "ProviderCredentialFieldSpec",
     "ProviderCredentialSpec",
+    "ReasoningEffort",
     "ResolvedAgentCredentials",
     "build_harness_credential_binding_name",
     "get_provider_credential_spec",
