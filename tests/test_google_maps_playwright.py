@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 
 from harnessiq.integrations.google_maps_playwright import PlaywrightGoogleMapsSession
+from harnessiq.tools.browser import build_browser_tool_definitions
 
 
 class _FakeKeyboard:
@@ -106,6 +107,16 @@ class _FakePage:
 
 
 class GoogleMapsPlaywrightTests(unittest.TestCase):
+    def test_build_tools_binds_all_shared_browser_handlers(self) -> None:
+        session = PlaywrightGoogleMapsSession()
+        session._page = _FakePage()  # type: ignore[attr-defined]
+
+        tools = session.build_tools()
+
+        self.assertEqual(len(tools), len(build_browser_tool_definitions()))
+        registry = {tool.definition.name: tool for tool in tools}
+        self.assertEqual(registry["get_current_url"].execute({}).output["url"], session.page.url)
+
     def test_extract_modes_return_structured_content(self) -> None:
         session = PlaywrightGoogleMapsSession()
         session._page = _FakePage()  # type: ignore[attr-defined]
