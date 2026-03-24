@@ -174,16 +174,25 @@ The implementation lives in:
 ```text
 harnessiq/tools/context/
     __init__.py
-    summarization.py
-    structural.py
-    selective.py
-    parameter.py
-    injection.py
+    binding.py
+    definitions/
+        summarization.py
+        structural.py
+        selective.py
+        parameter.py
+        injection.py
+    executors/
+        summarization.py
+        structural.py
+        selective.py
+        parameter.py
+        injection.py
 ```
 
 Shared runtime pieces:
 
 - Tool keys are defined in `harnessiq/shared/tools.py`.
+- `BoundContextToolExecutor` lives in `harnessiq/tools/context/binding.py`.
 - BaseAgent context-window support lives in `harnessiq/agents/base/agent.py`.
 - The normalized context and runtime-state dataclasses live in
   `harnessiq/shared/agents.py`.

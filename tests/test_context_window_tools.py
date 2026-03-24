@@ -163,6 +163,17 @@ class ContextWindowToolsTests(unittest.TestCase):
         self.assertIn(checkpoint_key, self.runtime.state.checkpoints)
         self.assertEqual(result.output["context_window"], context_window_before)
 
+    def test_injection_tool_descriptions_are_multi_sentence(self) -> None:
+        injection_definitions = [
+            definition
+            for definition in self.registry.definitions()
+            if definition.key.startswith("context.inject.")
+        ]
+
+        self.assertEqual(len(injection_definitions), 8)
+        for definition in injection_definitions:
+            self.assertGreaterEqual(definition.description.count("."), 3)
+
 
 if __name__ == "__main__":
     unittest.main()
