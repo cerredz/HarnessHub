@@ -217,6 +217,19 @@
         "source_file": "harnessiq/cli/platform_commands.py"
       },
       {
+        "aliases": [
+          "research-sweep"
+        ],
+        "command": "harnessiq credentials bind research_sweep",
+        "help": "bind Research Sweep",
+        "segments": [
+          "credentials",
+          "bind",
+          "research_sweep"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
         "aliases": [],
         "command": "harnessiq credentials show",
         "help": "Show harness credentials",
@@ -291,6 +304,19 @@
           "credentials",
           "show",
           "prospecting"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [
+          "research-sweep"
+        ],
+        "command": "harnessiq credentials show research_sweep",
+        "help": "show Research Sweep",
+        "segments": [
+          "credentials",
+          "show",
+          "research_sweep"
         ],
         "source_file": "harnessiq/cli/platform_commands.py"
       },
@@ -373,6 +399,19 @@
         "source_file": "harnessiq/cli/platform_commands.py"
       },
       {
+        "aliases": [
+          "research-sweep"
+        ],
+        "command": "harnessiq credentials test research_sweep",
+        "help": "test Research Sweep",
+        "segments": [
+          "credentials",
+          "test",
+          "research_sweep"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
         "aliases": [],
         "command": "harnessiq export",
         "help": "Export ledger entries in a structured format",
@@ -449,6 +488,18 @@
         "segments": [
           "inspect",
           "prospecting"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [
+          "research-sweep"
+        ],
+        "command": "harnessiq inspect research_sweep",
+        "help": "inspect Research Sweep",
+        "segments": [
+          "inspect",
+          "research_sweep"
         ],
         "source_file": "harnessiq/cli/platform_commands.py"
       },
@@ -749,6 +800,18 @@
         "source_file": "harnessiq/cli/platform_commands.py"
       },
       {
+        "aliases": [
+          "research-sweep"
+        ],
+        "command": "harnessiq prepare research_sweep",
+        "help": "prepare Research Sweep",
+        "segments": [
+          "prepare",
+          "research_sweep"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
         "aliases": [],
         "command": "harnessiq prompts",
         "help": "Inspect bundled master prompts",
@@ -857,6 +920,55 @@
       },
       {
         "aliases": [],
+        "command": "harnessiq research-sweep",
+        "help": "Manage and run the ResearchSweepAgent harness",
+        "segments": [
+          "research-sweep"
+        ],
+        "source_file": "harnessiq/cli/research_sweep/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq research-sweep configure",
+        "help": "Persist the research query, prompt text, and parameters for the research sweep harness",
+        "segments": [
+          "research-sweep",
+          "configure"
+        ],
+        "source_file": "harnessiq/cli/research_sweep/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq research-sweep prepare",
+        "help": "Create or refresh a research sweep memory folder",
+        "segments": [
+          "research-sweep",
+          "prepare"
+        ],
+        "source_file": "harnessiq/cli/research_sweep/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq research-sweep run",
+        "help": "Run the ResearchSweepAgent from persisted memory",
+        "segments": [
+          "research-sweep",
+          "run"
+        ],
+        "source_file": "harnessiq/cli/research_sweep/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq research-sweep show",
+        "help": "Render the current research sweep harness state as JSON",
+        "segments": [
+          "research-sweep",
+          "show"
+        ],
+        "source_file": "harnessiq/cli/research_sweep/commands.py"
+      },
+      {
+        "aliases": [],
         "command": "harnessiq run",
         "help": "Run a harness through the platform-first CLI",
         "segments": [
@@ -923,6 +1035,18 @@
         "segments": [
           "run",
           "prospecting"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [
+          "research-sweep"
+        ],
+        "command": "harnessiq run research_sweep",
+        "help": "run Research Sweep",
+        "segments": [
+          "run",
+          "research_sweep"
         ],
         "source_file": "harnessiq/cli/platform_commands.py"
       },
@@ -994,6 +1118,18 @@
         "segments": [
           "show",
           "prospecting"
+        ],
+        "source_file": "harnessiq/cli/platform_commands.py"
+      },
+      {
+        "aliases": [
+          "research-sweep"
+        ],
+        "command": "harnessiq show research_sweep",
+        "help": "show Research Sweep",
+        "segments": [
+          "show",
+          "research_sweep"
         ],
         "source_file": "harnessiq/cli/platform_commands.py"
       }
@@ -1193,6 +1329,19 @@
           "source_file": "harnessiq/cli/platform_commands.py"
         },
         {
+          "aliases": [
+            "research-sweep"
+          ],
+          "command": "harnessiq credentials bind research_sweep",
+          "help": "bind Research Sweep",
+          "segments": [
+            "credentials",
+            "bind",
+            "research_sweep"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
           "aliases": [],
           "command": "harnessiq credentials show",
           "help": "Show harness credentials",
@@ -1267,6 +1416,19 @@
             "credentials",
             "show",
             "prospecting"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [
+            "research-sweep"
+          ],
+          "command": "harnessiq credentials show research_sweep",
+          "help": "show Research Sweep",
+          "segments": [
+            "credentials",
+            "show",
+            "research_sweep"
           ],
           "source_file": "harnessiq/cli/platform_commands.py"
         },
@@ -1347,6 +1509,19 @@
             "prospecting"
           ],
           "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [
+            "research-sweep"
+          ],
+          "command": "harnessiq credentials test research_sweep",
+          "help": "test Research Sweep",
+          "segments": [
+            "credentials",
+            "test",
+            "research_sweep"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
         }
       ],
       "inspect": [
@@ -1409,6 +1584,18 @@
           "segments": [
             "inspect",
             "prospecting"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [
+            "research-sweep"
+          ],
+          "command": "harnessiq inspect research_sweep",
+          "help": "inspect Research Sweep",
+          "segments": [
+            "inspect",
+            "research_sweep"
           ],
           "source_file": "harnessiq/cli/platform_commands.py"
         }
@@ -1663,6 +1850,18 @@
             "prospecting"
           ],
           "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [
+            "research-sweep"
+          ],
+          "command": "harnessiq prepare research_sweep",
+          "help": "prepare Research Sweep",
+          "segments": [
+            "prepare",
+            "research_sweep"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
         }
       ],
       "prompts": [
@@ -1749,6 +1948,48 @@
           "source_file": "harnessiq/cli/prospecting/commands.py"
         }
       ],
+      "research-sweep": [
+        {
+          "aliases": [],
+          "command": "harnessiq research-sweep configure",
+          "help": "Persist the research query, prompt text, and parameters for the research sweep harness",
+          "segments": [
+            "research-sweep",
+            "configure"
+          ],
+          "source_file": "harnessiq/cli/research_sweep/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq research-sweep prepare",
+          "help": "Create or refresh a research sweep memory folder",
+          "segments": [
+            "research-sweep",
+            "prepare"
+          ],
+          "source_file": "harnessiq/cli/research_sweep/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq research-sweep run",
+          "help": "Run the ResearchSweepAgent from persisted memory",
+          "segments": [
+            "research-sweep",
+            "run"
+          ],
+          "source_file": "harnessiq/cli/research_sweep/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq research-sweep show",
+          "help": "Render the current research sweep harness state as JSON",
+          "segments": [
+            "research-sweep",
+            "show"
+          ],
+          "source_file": "harnessiq/cli/research_sweep/commands.py"
+        }
+      ],
       "run": [
         {
           "aliases": [
@@ -1809,6 +2050,18 @@
           "segments": [
             "run",
             "prospecting"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [
+            "research-sweep"
+          ],
+          "command": "harnessiq run research_sweep",
+          "help": "run Research Sweep",
+          "segments": [
+            "run",
+            "research_sweep"
           ],
           "source_file": "harnessiq/cli/platform_commands.py"
         }
@@ -1873,6 +2126,18 @@
           "segments": [
             "show",
             "prospecting"
+          ],
+          "source_file": "harnessiq/cli/platform_commands.py"
+        },
+        {
+          "aliases": [
+            "research-sweep"
+          ],
+          "command": "harnessiq show research_sweep",
+          "help": "show Research Sweep",
+          "segments": [
+            "show",
+            "research_sweep"
           ],
           "source_file": "harnessiq/cli/platform_commands.py"
         }
@@ -2007,6 +2272,15 @@
       },
       {
         "aliases": [],
+        "command": "harnessiq research-sweep",
+        "help": "Manage and run the ResearchSweepAgent harness",
+        "segments": [
+          "research-sweep"
+        ],
+        "source_file": "harnessiq/cli/research_sweep/commands.py"
+      },
+      {
+        "aliases": [],
         "command": "harnessiq run",
         "help": "Run a harness through the platform-first CLI",
         "segments": [
@@ -2026,15 +2300,14 @@
     ]
   },
   "counts": {
-    "command_paths": 106,
-    "harnesses": 6,
+    "command_paths": 125,
+    "harnesses": 7,
     "model_providers": 4,
     "service_provider_packages": 26,
     "sink_types": 9,
-    "sink_types": 8,
-    "test_modules": 80,
+    "test_modules": 82,
     "tool_only_external_surfaces": 1,
-    "top_level_commands": 16
+    "top_level_commands": 17
   },
   "focused_subpackages": [
     {
@@ -2705,6 +2978,95 @@
       ],
       "runtime_parameters_open_ended": false,
       "source_file": "harnessiq/shared/prospecting.py"
+    },
+    {
+      "agent_name": "research_sweep_agent",
+      "class_name": "ResearchSweepAgent",
+      "cli_adapter_path": "harnessiq.cli.adapters.research_sweep:ResearchSweepHarnessCliAdapter",
+      "cli_command": "research-sweep",
+      "custom_parameters": [
+        {
+          "description": "Research query executed across the canonical nine-site sweep.",
+          "key": "query",
+          "nullable": false,
+          "value_type": "string"
+        },
+        {
+          "description": "Comma-delimited Serper operations allowed for this harness. Must resolve to search,scholar.",
+          "key": "allowed_serper_operations",
+          "nullable": false,
+          "value_type": "string"
+        }
+      ],
+      "custom_parameters_open_ended": false,
+      "default_memory_root": "memory/research_sweep",
+      "display_name": "Research Sweep",
+      "manifest_id": "research_sweep",
+      "memory_files": [
+        {
+          "description": "Configured research query used to seed the sweep.",
+          "format": "text",
+          "key": "query",
+          "kind": "file",
+          "relative_path": "query.txt"
+        },
+        {
+          "description": "Optional free-form prompt text appended to the static master prompt.",
+          "format": "markdown",
+          "key": "additional_prompt",
+          "kind": "file",
+          "relative_path": "additional_prompt.md"
+        },
+        {
+          "description": "Persisted typed runtime overrides for the research sweep harness.",
+          "format": "json",
+          "key": "runtime_parameters",
+          "kind": "file",
+          "relative_path": "runtime_parameters.json"
+        },
+        {
+          "description": "Persisted typed custom parameters for the research sweep harness.",
+          "format": "json",
+          "key": "custom_parameters",
+          "kind": "file",
+          "relative_path": "custom_parameters.json"
+        },
+        {
+          "description": "Durable context runtime state backing the Research Sweep Memory schema and final report.",
+          "format": "json",
+          "key": "context_runtime_state",
+          "kind": "file",
+          "relative_path": "context_runtime_state.json"
+        }
+      ],
+      "module_path": "harnessiq.agents.research_sweep",
+      "output_fields": [
+        "all_sites_empty",
+        "continuation_pointer",
+        "final_report",
+        "query",
+        "site_results"
+      ],
+      "prompt_path": "harnessiq/agents/research_sweep/prompts/master_prompt.md",
+      "provider_families": [
+        "serper"
+      ],
+      "runtime_parameters": [
+        {
+          "description": "Maximum model context budget for the research sweep harness.",
+          "key": "max_tokens",
+          "nullable": false,
+          "value_type": "integer"
+        },
+        {
+          "description": "Fraction of max_tokens that triggers an automatic transcript reset.",
+          "key": "reset_threshold",
+          "nullable": false,
+          "value_type": "number"
+        }
+      ],
+      "runtime_parameters_open_ended": false,
+      "source_file": "harnessiq/shared/research_sweep.py"
     }
   ],
   "key_files": [
@@ -2760,7 +3122,8 @@
         "linkedin",
         "outreach",
         "prospecting",
-        "provider_base"
+        "provider_base",
+        "research_sweep"
       ],
       "description": "Shared runtime bases plus the concrete harness packages exported by the SDK.",
       "path": "harnessiq/agents/"
@@ -2774,7 +3137,8 @@
         "ledger",
         "linkedin",
         "master_prompts",
-        "prospecting"
+        "prospecting",
+        "research_sweep"
       ],
       "description": "Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations.",
       "path": "harnessiq/cli/"
@@ -3117,10 +3481,10 @@
     ]
   },
   "tests": {
-    "count": 80,
+    "count": 82,
     "groups": [
       {
-        "count": 15,
+        "count": 16,
         "examples": [
           "test_agent_instances.py",
           "test_agents_base.py",
@@ -3129,7 +3493,7 @@
         "name": "agents"
       },
       {
-        "count": 8,
+        "count": 9,
         "examples": [
           "test_exa_outreach_cli.py",
           "test_instagram_cli.py",
@@ -3193,6 +3557,12 @@
       "path": "artifacts/"
     },
     {
+      "description": "Setuptools build output; generated, not part of the live source tree.",
+      "kind": "generated/cache",
+      "name": "build",
+      "path": "build/"
+    },
+    {
       "description": "Focused usage and architecture notes for the package.",
       "kind": "repo docs",
       "name": "docs",
@@ -3203,6 +3573,12 @@
       "kind": "source",
       "name": "harnessiq",
       "path": "harnessiq/"
+    },
+    {
+      "description": "Packaging metadata emitted by local builds.",
+      "kind": "generated/cache",
+      "name": "harnessiq.egg-info",
+      "path": "harnessiq.egg-info/"
     },
     {
       "description": "Task artifacts plus durable agent runtime state; not part of the shipped package.",

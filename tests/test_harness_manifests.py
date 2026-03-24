@@ -10,6 +10,7 @@ from harnessiq.shared.exa_outreach import EXA_OUTREACH_HARNESS_MANIFEST
 from harnessiq.shared.instagram import INSTAGRAM_HARNESS_MANIFEST
 from harnessiq.shared.leads import LEADS_HARNESS_MANIFEST
 from harnessiq.shared.linkedin import LINKEDIN_HARNESS_MANIFEST
+from harnessiq.shared.research_sweep import RESEARCH_SWEEP_HARNESS_MANIFEST
 
 
 class HarnessManifestRegistryTests(unittest.TestCase):
@@ -17,11 +18,12 @@ class HarnessManifestRegistryTests(unittest.TestCase):
         self.assertIs(get_harness_manifest("linkedin"), LINKEDIN_HARNESS_MANIFEST)
         self.assertIs(get_harness_manifest("linkedin_job_applier"), LINKEDIN_HARNESS_MANIFEST)
         self.assertIs(get_harness_manifest("outreach"), EXA_OUTREACH_HARNESS_MANIFEST)
+        self.assertIs(get_harness_manifest("research-sweep"), RESEARCH_SWEEP_HARNESS_MANIFEST)
 
     def test_registry_contains_all_built_in_manifests(self) -> None:
         self.assertEqual(
             set(HARNESS_MANIFESTS),
-            {"exa_outreach", "instagram", "knowt", "leads", "linkedin", "prospecting"},
+            {"exa_outreach", "instagram", "knowt", "leads", "linkedin", "prospecting", "research_sweep"},
         )
         for manifest in HARNESS_MANIFESTS.values():
             self.assertTrue(manifest.memory_files)

@@ -30,15 +30,14 @@ print(result.output)
 
 | Metric | Count |
 | --- | --- |
-| Concrete harness manifests | 6 |
-| Top-level CLI commands | 16 |
-| Registered CLI command paths | 106 |
+| Concrete harness manifests | 7 |
+| Top-level CLI commands | 17 |
+| Registered CLI command paths | 125 |
 | Model providers | 4 |
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 9 |
-| Built-in sink types | 8 |
-| Test modules | 80 |
+| Test modules | 82 |
 
 ## Agent Matrix
 
@@ -50,6 +49,7 @@ print(result.output)
 | Leads Agent | `leads` | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo |
 | LinkedIn Job Applier | `linkedin` | `harnessiq.agents.linkedin:LinkedInJobApplierAgent` | `memory/linkedin` | max_tokens, reset_threshold, action_log_window, linkedin_start_url, notify_on_pause, pause_webhook | open-ended | playwright |
 | Google Maps Prospecting | `prospecting` | `harnessiq.agents.prospecting:GoogleMapsProspectingAgent` | `memory/prospecting` | max_tokens, reset_threshold | qualification_threshold, summarize_at_x, max_searches_per_run, max_listings_per_search, website_inspect_enabled, sink_record_type, eval_system_prompt | playwright |
+| Research Sweep | `research-sweep` | `harnessiq.agents.research_sweep:ResearchSweepAgent` | `memory/research_sweep` | max_tokens, reset_threshold | query, allowed_serper_operations | serper |
 
 ## Provider Surface
 
@@ -111,18 +111,19 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings |
 | harnessiq export | - | Export ledger entries in a structured format |
-| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Inspect one harness manifest and generated CLI surface |
+| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Inspect one harness manifest and generated CLI surface |
 | harnessiq instagram | configure, get-emails, prepare, run, show | Manage and run the Instagram keyword discovery agent |
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent |
 | harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent |
 | harnessiq logs | - | Inspect the local audit ledger |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent |
-| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Prepare and persist generic config for a harness |
+| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Prepare and persist generic config for a harness |
 | harnessiq prompts | list, show, text | Inspect bundled master prompts |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent |
 | harnessiq report | - | Build a cross-agent report from the local ledger |
-| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Run a harness through the platform-first CLI |
-| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Show persisted platform config and harness state |
+| harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness |
+| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Run a harness through the platform-first CLI |
+| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Show persisted platform config and harness state |
 
 ## Repo Docs
 

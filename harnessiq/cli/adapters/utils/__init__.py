@@ -10,6 +10,7 @@ from .stores import (
     load_leads_store,
     load_linkedin_store,
     load_prospecting_store,
+    load_research_sweep_store,
 )
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "load_linkedin_store",
     "load_optional_iterable_factory",
     "load_prospecting_store",
+    "load_research_sweep_store",
     "optional_string",
     "read_json_object",
     "result_payload",

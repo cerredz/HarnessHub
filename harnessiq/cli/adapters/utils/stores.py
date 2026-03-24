@@ -10,6 +10,7 @@ from harnessiq.shared.knowt import KnowtMemoryStore
 from harnessiq.shared.leads import LeadsMemoryStore
 from harnessiq.shared.linkedin import LinkedInMemoryStore
 from harnessiq.shared.prospecting import ProspectingMemoryStore
+from harnessiq.shared.research_sweep import ResearchSweepMemoryStore
 
 
 def load_linkedin_store(memory_path: Path) -> LinkedInMemoryStore:
@@ -54,6 +55,13 @@ def load_exa_store(memory_path: Path) -> ExaOutreachMemoryStore:
     return store
 
 
+def load_research_sweep_store(memory_path: Path) -> ResearchSweepMemoryStore:
+    """Build and prepare the research sweep memory store for one adapter operation."""
+    store = ResearchSweepMemoryStore(memory_path=memory_path)
+    store.prepare()
+    return store
+
+
 __all__ = [
     "load_exa_store",
     "load_instagram_store",
@@ -61,4 +69,5 @@ __all__ = [
     "load_leads_store",
     "load_linkedin_store",
     "load_prospecting_store",
+    "load_research_sweep_store",
 ]

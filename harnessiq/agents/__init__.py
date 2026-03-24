@@ -66,6 +66,7 @@ from .instagram import InstagramKeywordDiscoveryAgent
 from harnessiq.shared.instagram import InstagramMemoryStore
 from .knowt import KnowtAgent
 from .leads import LeadsAgent
+from .research_sweep import ResearchSweepAgent
 from .linkedin import (
     LinkedInJobApplierAgent,
     build_linkedin_browser_tool_definitions,
@@ -119,6 +120,7 @@ __all__ = [
     "KnowtAgent",
     "KnowtMemoryStore",
     "LeadsAgent",
+    "ResearchSweepAgent",
     "EmailAgentConfig",
     "ExaAgentConfig",
     "InstantlyAgentConfig",

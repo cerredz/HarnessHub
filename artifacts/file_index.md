@@ -8,14 +8,14 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Metric | Count |
 | --- | --- |
-| Concrete harness manifests | 6 |
-| Top-level CLI commands | 16 |
-| Registered CLI command paths | 106 |
+| Concrete harness manifests | 7 |
+| Top-level CLI commands | 17 |
+| Registered CLI command paths | 125 |
 | Model providers | 4 |
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 9 |
-| Test modules | 80 |
+| Test modules | 82 |
 
 ## Codebase Standards
 
@@ -31,9 +31,13 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Kind | Responsibility |
 | --- | --- | --- |
+| `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
+| `.pytest_cache/` | generated/cache | Test runner cache; generated, not part of the source of truth. |
 | `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
+| `build/` | generated/cache | Setuptools build output; generated, not part of the live source tree. |
 | `docs/` | repo docs | Focused usage and architecture notes for the package. |
 | `harnessiq/` | source | Live SDK package source. |
+| `harnessiq.egg-info/` | generated/cache | Packaging metadata emitted by local builds. |
 | `memory/` | local state | Task artifacts plus durable agent runtime state; not part of the shipped package. |
 | `scripts/` | repo tooling | Repository maintenance and generation scripts. |
 | `tests/` | source | unittest coverage for runtime, CLI, providers, and tools. |
@@ -42,8 +46,8 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Live Subpackages | Responsibility |
 | --- | --- | --- |
-| `harnessiq/agents/` | apollo, base, email, exa, exa_outreach, instagram, instantly, knowt, leads, linkedin, outreach, prospecting, provider_base | Shared runtime bases plus the concrete harness packages exported by the SDK. |
-| `harnessiq/cli/` | adapters, exa_outreach, instagram, leads, ledger, linkedin, master_prompts, prospecting | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
+| `harnessiq/agents/` | apollo, base, email, exa, exa_outreach, instagram, instantly, knowt, leads, linkedin, outreach, prospecting, provider_base, research_sweep | Shared runtime bases plus the concrete harness packages exported by the SDK. |
+| `harnessiq/cli/` | adapters, exa_outreach, instagram, leads, ledger, linkedin, master_prompts, prospecting, research_sweep | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
 | `harnessiq/config/` | provider_credentials | Environment loading, credential binding, and provider-credential spec models. |
 | `harnessiq/integrations/` | - | Concrete external runtime adapters such as Playwright backends and model factories. |
 | `harnessiq/master_prompts/` | prompts | Packaged prompt assets and prompt registry helpers. |
@@ -86,6 +90,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | leads | Leads Agent | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | run_config.json, run_state.json, runtime_parameters.json, icps/*.json, lead_storage, lead_storage/saved_leads.json | apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | icp_states, run_config, run_state, saved_leads |
 | linkedin | LinkedIn Job Applier | `harnessiq.agents.linkedin:LinkedInJobApplierAgent` | `memory/linkedin` | max_tokens, reset_threshold, action_log_window, linkedin_start_url, notify_on_pause, pause_webhook | open-ended | job_preferences.md, user_profile.md, agent_identity.md, runtime_parameters.json, custom_parameters.json, additional_prompt.md, applied_jobs.jsonl, action_log.jsonl, managed_files.json, managed_files, screenshots | playwright | jobs_applied, managed_files, recent_actions |
 | prospecting | Google Maps Prospecting | `harnessiq.agents.prospecting:GoogleMapsProspectingAgent` | `memory/prospecting` | max_tokens, reset_threshold | qualification_threshold, summarize_at_x, max_searches_per_run, max_listings_per_search, website_inspect_enabled, sink_record_type, eval_system_prompt | company_description.md, agent_identity.md, additional_prompt.md, runtime_parameters.json, custom_parameters.json, prospecting_state.json, qualified_leads.jsonl, browser-data | playwright | company_description, counts, qualified_leads, searches_completed, summary |
+| research_sweep | Research Sweep | `harnessiq.agents.research_sweep:ResearchSweepAgent` | `memory/research_sweep` | max_tokens, reset_threshold | query, allowed_serper_operations | query.txt, additional_prompt.md, runtime_parameters.json, custom_parameters.json, context_runtime_state.json | serper | all_sites_empty, continuation_pointer, final_report, query, site_results |
 
 ## CLI Architecture
 
@@ -95,18 +100,19 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections | `harnessiq/cli/ledger/commands.py` |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings | `harnessiq/cli/platform_commands.py` |
 | harnessiq export | - | Export ledger entries in a structured format | `harnessiq/cli/ledger/commands.py` |
-| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Inspect one harness manifest and generated CLI surface | `harnessiq/cli/platform_commands.py` |
+| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Inspect one harness manifest and generated CLI surface | `harnessiq/cli/platform_commands.py` |
 | harnessiq instagram | configure, get-emails, prepare, run, show | Manage and run the Instagram keyword discovery agent | `harnessiq/cli/instagram/commands.py` |
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent | `harnessiq/cli/leads/commands.py` |
 | harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent | `harnessiq/cli/linkedin/commands.py` |
 | harnessiq logs | - | Inspect the local audit ledger | `harnessiq/cli/ledger/commands.py` |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent | `harnessiq/cli/exa_outreach/commands.py` |
-| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
+| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
 | harnessiq prompts | list, show, text | Inspect bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent | `harnessiq/cli/prospecting/commands.py` |
 | harnessiq report | - | Build a cross-agent report from the local ledger | `harnessiq/cli/ledger/commands.py` |
-| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
-| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
+| harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness | `harnessiq/cli/research_sweep/commands.py` |
+| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
+| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
 
 ## Provider Surfaces
 
@@ -172,12 +178,12 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 ## Test Surface
 
-`tests/` currently contains 80 test modules. The table below groups them by dominant responsibility.
+`tests/` currently contains 82 test modules. The table below groups them by dominant responsibility.
 
 | Area | Count | Examples |
 | --- | --- | --- |
-| agents | 15 | `tests/test_agent_instances.py`, `tests/test_agents_base.py`, `tests/test_apollo_agent.py` |
-| cli | 8 | `tests/test_exa_outreach_cli.py`, `tests/test_instagram_cli.py`, `tests/test_leads_cli.py` |
+| agents | 16 | `tests/test_agent_instances.py`, `tests/test_agents_base.py`, `tests/test_apollo_agent.py` |
+| cli | 9 | `tests/test_exa_outreach_cli.py`, `tests/test_instagram_cli.py`, `tests/test_leads_cli.py` |
 | ledger | 1 | `tests/test_output_sinks.py` |
 | providers | 31 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
 | support | 13 | `tests/test_cli_common.py`, `tests/test_cli_environment.py`, `tests/test_config_loader.py` |

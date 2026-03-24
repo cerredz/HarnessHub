@@ -6,8 +6,8 @@ This artifact is generated from the live `harnessiq/cli/` source tree by `python
 
 | Metric | Count |
 | --- | --- |
-| Top-level commands | 16 |
-| Registered command paths | 106 |
+| Top-level commands | 17 |
+| Registered command paths | 125 |
 
 Alias paths are included in the registered command total. Canonical commands list aliases where they exist.
 
@@ -19,18 +19,19 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections | `harnessiq/cli/ledger/commands.py` |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings | `harnessiq/cli/platform_commands.py` |
 | harnessiq export | - | Export ledger entries in a structured format | `harnessiq/cli/ledger/commands.py` |
-| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Inspect one harness manifest and generated CLI surface | `harnessiq/cli/platform_commands.py` |
+| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Inspect one harness manifest and generated CLI surface | `harnessiq/cli/platform_commands.py` |
 | harnessiq instagram | configure, get-emails, prepare, run, show | Manage and run the Instagram keyword discovery agent | `harnessiq/cli/instagram/commands.py` |
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent | `harnessiq/cli/leads/commands.py` |
 | harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent | `harnessiq/cli/linkedin/commands.py` |
 | harnessiq logs | - | Inspect the local audit ledger | `harnessiq/cli/ledger/commands.py` |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent | `harnessiq/cli/exa_outreach/commands.py` |
-| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
+| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
 | harnessiq prompts | list, show, text | Inspect bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent | `harnessiq/cli/prospecting/commands.py` |
 | harnessiq report | - | Build a cross-agent report from the local ledger | `harnessiq/cli/ledger/commands.py` |
-| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
-| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
+| harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness | `harnessiq/cli/research_sweep/commands.py` |
+| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
+| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
 
 ## `harnessiq connect`
 
@@ -64,6 +65,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq credentials bind leads | - | bind Leads Agent | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials bind linkedin | - | bind LinkedIn Job Applier | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials bind prospecting | - | bind Google Maps Prospecting | `harnessiq/cli/platform_commands.py` |
+| harnessiq credentials bind research_sweep | research-sweep | bind Research Sweep | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials show | - | Show harness credentials | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials show exa_outreach | outreach | show Exa Outreach | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials show instagram | - | show Instagram Keyword Discovery | `harnessiq/cli/platform_commands.py` |
@@ -71,6 +73,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq credentials show leads | - | show Leads Agent | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials show linkedin | - | show LinkedIn Job Applier | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials show prospecting | - | show Google Maps Prospecting | `harnessiq/cli/platform_commands.py` |
+| harnessiq credentials show research_sweep | research-sweep | show Research Sweep | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials test | - | Test harness credentials | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials test exa_outreach | outreach | test Exa Outreach | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials test instagram | - | test Instagram Keyword Discovery | `harnessiq/cli/platform_commands.py` |
@@ -78,6 +81,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq credentials test leads | - | test Leads Agent | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials test linkedin | - | test LinkedIn Job Applier | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials test prospecting | - | test Google Maps Prospecting | `harnessiq/cli/platform_commands.py` |
+| harnessiq credentials test research_sweep | research-sweep | test Research Sweep | `harnessiq/cli/platform_commands.py` |
 
 ## `harnessiq inspect`
 
@@ -89,6 +93,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq inspect leads | - | inspect Leads Agent | `harnessiq/cli/platform_commands.py` |
 | harnessiq inspect linkedin | - | inspect LinkedIn Job Applier | `harnessiq/cli/platform_commands.py` |
 | harnessiq inspect prospecting | - | inspect Google Maps Prospecting | `harnessiq/cli/platform_commands.py` |
+| harnessiq inspect research_sweep | research-sweep | inspect Research Sweep | `harnessiq/cli/platform_commands.py` |
 
 ## `harnessiq instagram`
 
@@ -138,6 +143,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq prepare leads | - | prepare Leads Agent | `harnessiq/cli/platform_commands.py` |
 | harnessiq prepare linkedin | - | prepare LinkedIn Job Applier | `harnessiq/cli/platform_commands.py` |
 | harnessiq prepare prospecting | - | prepare Google Maps Prospecting | `harnessiq/cli/platform_commands.py` |
+| harnessiq prepare research_sweep | research-sweep | prepare Research Sweep | `harnessiq/cli/platform_commands.py` |
 
 ## `harnessiq prompts`
 
@@ -157,6 +163,15 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq prospecting run | Run the Google Maps prospecting agent from persisted memory | `harnessiq/cli/prospecting/commands.py` |
 | harnessiq prospecting show | Render the current prospecting agent state as JSON | `harnessiq/cli/prospecting/commands.py` |
 
+## `harnessiq research-sweep`
+
+| Command | Description | Source |
+| --- | --- | --- |
+| harnessiq research-sweep configure | Persist the research query, prompt text, and parameters for the research sweep harness | `harnessiq/cli/research_sweep/commands.py` |
+| harnessiq research-sweep prepare | Create or refresh a research sweep memory folder | `harnessiq/cli/research_sweep/commands.py` |
+| harnessiq research-sweep run | Run the ResearchSweepAgent from persisted memory | `harnessiq/cli/research_sweep/commands.py` |
+| harnessiq research-sweep show | Render the current research sweep harness state as JSON | `harnessiq/cli/research_sweep/commands.py` |
+
 ## `harnessiq run`
 
 | Command | Aliases | Description | Source |
@@ -167,6 +182,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq run leads | - | run Leads Agent | `harnessiq/cli/platform_commands.py` |
 | harnessiq run linkedin | - | run LinkedIn Job Applier | `harnessiq/cli/platform_commands.py` |
 | harnessiq run prospecting | - | run Google Maps Prospecting | `harnessiq/cli/platform_commands.py` |
+| harnessiq run research_sweep | research-sweep | run Research Sweep | `harnessiq/cli/platform_commands.py` |
 
 ## `harnessiq show`
 
@@ -178,3 +194,4 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq show leads | - | show Leads Agent | `harnessiq/cli/platform_commands.py` |
 | harnessiq show linkedin | - | show LinkedIn Job Applier | `harnessiq/cli/platform_commands.py` |
 | harnessiq show prospecting | - | show Google Maps Prospecting | `harnessiq/cli/platform_commands.py` |
+| harnessiq show research_sweep | research-sweep | show Research Sweep | `harnessiq/cli/platform_commands.py` |
