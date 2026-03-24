@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -17,6 +16,7 @@ SHARED_DIR = HARNESSIQ_DIR / "shared"
 TOOLS_DIR = HARNESSIQ_DIR / "tools"
 UTILS_DIR = HARNESSIQ_DIR / "utils"
 TESTS_DIR = ROOT / "tests"
+LEGACY_OUTPUTS = (ARTIFACTS_DIR / "live_inventory.json",)
 
 
 TOP_LEVEL_DIRECTORY_DESCRIPTIONS = {
@@ -1250,6 +1250,8 @@ def expected_outputs() -> dict[Path, str]:
 
 
 def write_outputs(outputs: dict[Path, str]) -> None:
+    for legacy_path in LEGACY_OUTPUTS:
+        legacy_path.unlink(missing_ok=True)
     for path, content in outputs.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
@@ -1260,6 +1262,9 @@ def check_outputs(outputs: dict[Path, str]) -> list[str]:
     for path, content in outputs.items():
         if not path.exists() or path.read_text(encoding="utf-8") != content:
             drifted.append(relative_path(path))
+    for legacy_path in LEGACY_OUTPUTS:
+        if legacy_path.exists():
+            drifted.append(relative_path(legacy_path))
     return drifted
 
 

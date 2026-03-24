@@ -31,9 +31,9 @@ python -m pytest tests/test_docs_sync.py
 Observed result:
 
 ```text
-collected 6 items
-tests\test_docs_sync.py ......                                           [100%]
-============================= 6 passed in 15.51s ==============================
+collected 8 items
+tests\test_docs_sync.py ........                                         [100%]
+============================= 8 passed in 17.19s ==============================
 ```
 
 ## Stage 4 — Integration & Contract Tests
@@ -71,5 +71,5 @@ Acceptance criteria status:
 - Deleted `artifacts/live_inventory.json` from the repository.
 - Stopped generating and documenting the artifact from `scripts/sync_repo_docs.py`.
 - Removed the README Repo Docs reference.
-- Added regression coverage for the generator output contract.
+- Added regression coverage for the generator output contract, including stale legacy-artifact detection and cleanup.
 - Verified docs-sync passes on the updated output set.
