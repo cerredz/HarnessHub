@@ -1,3 +1,3 @@
-1. `ticket-1` Seed repo-local CLI environment before adapter and factory initialization. Issue: #245 https://github.com/cerredz/HarnessHub/issues/245
+1. `ticket-1` Seed repo-local CLI environment before adapter and factory initialization. Implemented in PR #246 https://github.com/cerredz/HarnessHub/pull/246
 
 Dependency order: `ticket-1`
