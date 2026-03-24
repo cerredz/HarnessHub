@@ -2305,7 +2305,7 @@
     "model_providers": 4,
     "service_provider_packages": 26,
     "sink_types": 9,
-    "test_modules": 82,
+    "test_modules": 84,
     "tool_only_external_surfaces": 1,
     "top_level_commands": 17
   },
@@ -3481,7 +3481,7 @@
     ]
   },
   "tests": {
-    "count": 82,
+    "count": 84,
     "groups": [
       {
         "count": 16,
@@ -3518,7 +3518,7 @@
         "name": "providers"
       },
       {
-        "count": 13,
+        "count": 15,
         "examples": [
           "test_cli_common.py",
           "test_cli_environment.py",

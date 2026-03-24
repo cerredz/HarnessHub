@@ -37,7 +37,7 @@ print(result.output)
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 9 |
-| Test modules | 82 |
+| Test modules | 84 |
 
 ## Agent Matrix
 
