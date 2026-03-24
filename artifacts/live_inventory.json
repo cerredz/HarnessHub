@@ -2011,7 +2011,7 @@
     "model_providers": 4,
     "service_provider_packages": 26,
     "sink_types": 8,
-    "test_modules": 79,
+    "test_modules": 80,
     "tool_only_external_surfaces": 1,
     "top_level_commands": 16
   },
@@ -2040,6 +2040,7 @@
       "cli_adapter_path": "harnessiq.cli.adapters.exa_outreach:ExaOutreachHarnessCliAdapter",
       "cli_command": "outreach",
       "custom_parameters": [],
+      "custom_parameters_open_ended": false,
       "default_memory_root": "memory/outreach",
       "display_name": "Exa Outreach",
       "manifest_id": "exa_outreach",
@@ -2098,6 +2099,7 @@
           "value_type": "number"
         }
       ],
+      "runtime_parameters_open_ended": false,
       "source_file": "harnessiq/shared/exa_outreach.py"
     },
     {
@@ -2106,6 +2108,7 @@
       "cli_adapter_path": "harnessiq.cli.adapters.instagram:InstagramHarnessCliAdapter",
       "cli_command": "instagram",
       "custom_parameters": [],
+      "custom_parameters_open_ended": true,
       "default_memory_root": "memory/instagram",
       "display_name": "Instagram Keyword Discovery",
       "manifest_id": "instagram",
@@ -2137,6 +2140,13 @@
           "key": "runtime_parameters",
           "kind": "file",
           "relative_path": "runtime_parameters.json"
+        },
+        {
+          "description": "Open-ended user custom parameter payload.",
+          "format": "json",
+          "key": "custom_parameters",
+          "kind": "file",
+          "relative_path": "custom_parameters.json"
         },
         {
           "description": "Override for the Instagram system identity.",
@@ -2195,6 +2205,7 @@
           "value_type": "integer"
         }
       ],
+      "runtime_parameters_open_ended": false,
       "source_file": "harnessiq/shared/instagram.py"
     },
     {
@@ -2203,6 +2214,7 @@
       "cli_adapter_path": "harnessiq.cli.adapters.knowt:KnowtHarnessCliAdapter",
       "cli_command": null,
       "custom_parameters": [],
+      "custom_parameters_open_ended": false,
       "default_memory_root": "memory/knowt",
       "display_name": "Knowt Content Creator",
       "manifest_id": "knowt",
@@ -2253,6 +2265,7 @@
           "value_type": "number"
         }
       ],
+      "runtime_parameters_open_ended": false,
       "source_file": "harnessiq/shared/knowt.py"
     },
     {
@@ -2261,6 +2274,7 @@
       "cli_adapter_path": "harnessiq.cli.adapters.leads:LeadsHarnessCliAdapter",
       "cli_command": "leads",
       "custom_parameters": [],
+      "custom_parameters_open_ended": false,
       "default_memory_root": "memory/leads",
       "display_name": "Leads Agent",
       "manifest_id": "leads",
@@ -2388,6 +2402,7 @@
           "value_type": "integer"
         }
       ],
+      "runtime_parameters_open_ended": false,
       "source_file": "harnessiq/shared/leads.py"
     },
     {
@@ -2396,6 +2411,7 @@
       "cli_adapter_path": "harnessiq.cli.adapters.linkedin:LinkedInHarnessCliAdapter",
       "cli_command": "linkedin",
       "custom_parameters": [],
+      "custom_parameters_open_ended": true,
       "default_memory_root": "memory/linkedin",
       "display_name": "LinkedIn Job Applier",
       "manifest_id": "linkedin",
@@ -2526,6 +2542,7 @@
           "value_type": "string"
         }
       ],
+      "runtime_parameters_open_ended": false,
       "source_file": "harnessiq/shared/linkedin.py"
     },
     {
@@ -2577,6 +2594,7 @@
           "value_type": "string"
         }
       ],
+      "custom_parameters_open_ended": false,
       "default_memory_root": "memory/prospecting",
       "display_name": "Google Maps Prospecting",
       "manifest_id": "prospecting",
@@ -2664,6 +2682,7 @@
           "value_type": "number"
         }
       ],
+      "runtime_parameters_open_ended": false,
       "source_file": "harnessiq/shared/prospecting.py"
     }
   ],
@@ -3076,7 +3095,7 @@
     ]
   },
   "tests": {
-    "count": 79,
+    "count": 80,
     "groups": [
       {
         "count": 15,
@@ -3113,11 +3132,11 @@
         "name": "providers"
       },
       {
-        "count": 12,
+        "count": 13,
         "examples": [
           "test_cli_common.py",
-          "test_config_loader.py",
-          "test_credentials_config.py"
+          "test_cli_environment.py",
+          "test_config_loader.py"
         ],
         "name": "support"
       },
@@ -3146,22 +3165,10 @@
       "path": ".pytest_cache/"
     },
     {
-      "description": "Repository directory not yet classified in the generated file index.",
-      "kind": "other",
-      "name": ".worktrees",
-      "path": ".worktrees/"
-    },
-    {
       "description": "Generated and curated repository reference artifacts.",
       "kind": "repo docs",
       "name": "artifacts",
       "path": "artifacts/"
-    },
-    {
-      "description": "Setuptools build output; generated, not part of the live source tree.",
-      "kind": "generated/cache",
-      "name": "build",
-      "path": "build/"
     },
     {
       "description": "Focused usage and architecture notes for the package.",
@@ -3176,12 +3183,6 @@
       "path": "harnessiq/"
     },
     {
-      "description": "Packaging metadata emitted by local builds.",
-      "kind": "generated/cache",
-      "name": "harnessiq.egg-info",
-      "path": "harnessiq.egg-info/"
-    },
-    {
       "description": "Task artifacts plus durable agent runtime state; not part of the shipped package.",
       "kind": "local state",
       "name": "memory",
@@ -3192,12 +3193,6 @@
       "kind": "repo tooling",
       "name": "scripts",
       "path": "scripts/"
-    },
-    {
-      "description": "Legacy or generated residue in this checkout; not the authoritative package source.",
-      "kind": "generated/cache",
-      "name": "src",
-      "path": "src/"
     },
     {
       "description": "unittest coverage for runtime, CLI, providers, and tools.",

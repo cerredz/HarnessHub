@@ -24,6 +24,8 @@ from harnessiq.shared.instagram import (
     InstagramKeywordAgentConfig,
     InstagramMemoryStore,
     InstagramSearchBackend,
+    normalize_instagram_custom_parameters,
+    resolve_instagram_icp_profiles,
 )
 from harnessiq.shared.tools import INSTAGRAM_SEARCH_KEYWORD, RegisteredTool, ToolCall, ToolResult
 from harnessiq.toolset import get_tool
@@ -50,6 +52,8 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         recent_search_window: int = DEFAULT_RECENT_SEARCH_WINDOW,
         recent_result_window: int = DEFAULT_RECENT_RESULT_WINDOW,
         search_result_limit: int = DEFAULT_SEARCH_RESULT_LIMIT,
+        custom_parameters: Mapping[str, Any] | None = None,
+        persist_icp_descriptions: bool = True,
         tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
@@ -61,6 +65,8 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         normalized_icps = _normalize_icp_descriptions(icp_descriptions)
         self._search_backend = search_backend
         self._initial_icp_descriptions = normalized_icps
+        self._custom_parameters = dict(custom_parameters or {})
+        self._persist_icp_descriptions = persist_icp_descriptions
         self._payload_max_tokens = max_tokens
         self._payload_reset_threshold = reset_threshold
         self._payload_recent_search_window = recent_search_window
@@ -127,6 +133,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         search_backend: InstagramSearchBackend,
         memory_path: str | Path | None = None,
         runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
         tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> "InstagramKeywordDiscoveryAgent":
@@ -136,14 +143,20 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         runtime_parameters = store.read_runtime_parameters()
         if runtime_overrides:
             runtime_parameters.update(runtime_overrides)
+        custom_parameters = store.read_custom_parameters()
+        if custom_overrides:
+            custom_parameters.update(custom_overrides)
         from harnessiq.shared.instagram import normalize_instagram_runtime_parameters
 
         normalized = normalize_instagram_runtime_parameters(runtime_parameters)
+        normalized_custom = normalize_instagram_custom_parameters(custom_parameters)
         return cls(
             model=model,
             search_backend=search_backend,
             memory_path=resolved_path,
-            icp_descriptions=store.read_icp_profiles(),
+            icp_descriptions=resolve_instagram_icp_profiles(store.read_icp_profiles(), normalized_custom),
+            custom_parameters=normalized_custom,
+            persist_icp_descriptions=False,
             tools=tools,
             runtime_config=runtime_config,
             **normalized,
@@ -151,7 +164,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
 
     def prepare(self) -> None:
         self._memory_store.prepare()
-        if self._initial_icp_descriptions:
+        if self._persist_icp_descriptions and self._initial_icp_descriptions:
             self._memory_store.write_icp_profiles(self._initial_icp_descriptions)
 
     def run(self, *, max_cycles: int | None = None):
@@ -187,16 +200,22 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         return prompt
 
     def load_parameter_sections(self) -> Sequence[AgentParameterSection]:
-        icp_profiles = self._memory_store.read_icp_profiles()
+        icp_profiles = list(self._initial_icp_descriptions)
         recent_searches = ", ".join(
             record.keyword
             for record in self._memory_store.read_recent_searches(self._config.recent_search_window)
             if record.keyword
         )
-        return (
+        sections: list[AgentParameterSection] = [
             json_parameter_section("ICP Profiles", icp_profiles),
             AgentParameterSection(title="Recent Searches", content=recent_searches),
-        )
+        ]
+        prompt_custom_parameters = {
+            key: value for key, value in self._custom_parameters.items() if key != "icp_profiles"
+        }
+        if prompt_custom_parameters:
+            sections.append(json_parameter_section("Custom Parameters", prompt_custom_parameters))
+        return tuple(sections)
 
     def build_instance_payload(self) -> dict[str, Any]:
         return _build_instagram_instance_payload(
@@ -207,6 +226,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             recent_search_window=self._payload_recent_search_window,
             recent_result_window=self._payload_recent_result_window,
             search_result_limit=self._payload_search_result_limit,
+            custom_parameters=self._custom_parameters,
         )
 
     def get_emails(self) -> tuple[str, ...]:
@@ -254,6 +274,7 @@ def _build_instagram_instance_payload(
     recent_search_window: int,
     recent_result_window: int,
     search_result_limit: int,
+    custom_parameters: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "icp_descriptions": list(icp_descriptions),
@@ -265,15 +286,25 @@ def _build_instagram_instance_payload(
             "search_result_limit": search_result_limit,
         },
     }
+    if custom_parameters:
+        payload["custom_parameters"] = dict(custom_parameters)
     if memory_path is not None:
         payload["memory_path"] = str(memory_path)
     if memory_path is None or not memory_path.exists():
         return payload
 
     store = InstagramMemoryStore(memory_path=memory_path)
-    payload["icp_descriptions"] = store.read_icp_profiles()
+    resolved_custom_parameters = (
+        dict(custom_parameters) if custom_parameters is not None else store.read_custom_parameters()
+    )
+    payload["icp_descriptions"] = resolve_instagram_icp_profiles(
+        store.read_icp_profiles(),
+        resolved_custom_parameters,
+    )
     payload["agent_identity"] = _read_optional_text(store.agent_identity_path)
     payload["additional_prompt"] = _read_optional_text(store.additional_prompt_path)
+    if resolved_custom_parameters:
+        payload["custom_parameters"] = resolved_custom_parameters
     return payload
 
 

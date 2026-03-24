@@ -475,6 +475,12 @@ def parse_harness_manifest(manifest_name: str, source_path: Path) -> dict[str, A
         ),
         "runtime_parameters": parse_parameter_specs(keyword_map.get("runtime_parameters"), constants),
         "custom_parameters": parse_parameter_specs(keyword_map.get("custom_parameters"), constants),
+        "runtime_parameters_open_ended": bool(
+            eval_simple(keyword_map["runtime_parameters_open_ended"], constants)
+        ) if "runtime_parameters_open_ended" in keyword_map else False,
+        "custom_parameters_open_ended": bool(
+            eval_simple(keyword_map["custom_parameters_open_ended"], constants)
+        ) if "custom_parameters_open_ended" in keyword_map else False,
         "memory_files": parse_memory_specs(keyword_map.get("memory_files"), constants),
         "provider_families": [str(value) for value in provider_families],
         "output_fields": parse_output_fields(keyword_map.get("output_schema"), constants),
@@ -924,8 +930,14 @@ def render_readme(inventory: dict[str, Any]) -> str:
                 f"`{harness['cli_command']}`" if harness["cli_command"] else "-",
                 f"`{harness['module_path']}:{harness['class_name']}`",
                 f"`{harness['default_memory_root']}`",
-                [item["key"] for item in harness["runtime_parameters"]],
-                [item["key"] for item in harness["custom_parameters"]],
+                format_parameter_surface(
+                    harness["runtime_parameters"],
+                    open_ended=harness.get("runtime_parameters_open_ended", False),
+                ),
+                format_parameter_surface(
+                    harness["custom_parameters"],
+                    open_ended=harness.get("custom_parameters_open_ended", False),
+                ),
                 harness["provider_families"],
             ]
         )
@@ -1105,8 +1117,14 @@ def render_file_index(inventory: dict[str, Any]) -> str:
                 harness["display_name"],
                 f"`{harness['module_path']}:{harness['class_name']}`",
                 f"`{harness['default_memory_root']}`",
-                [item["key"] for item in harness["runtime_parameters"]],
-                [item["key"] for item in harness["custom_parameters"]],
+                format_parameter_surface(
+                    harness["runtime_parameters"],
+                    open_ended=harness.get("runtime_parameters_open_ended", False),
+                ),
+                format_parameter_surface(
+                    harness["custom_parameters"],
+                    open_ended=harness.get("custom_parameters_open_ended", False),
+                ),
                 [item["relative_path"] for item in harness["memory_files"]],
                 harness["provider_families"],
                 harness["output_fields"],
@@ -1210,6 +1228,21 @@ def render_file_index(inventory: dict[str, Any]) -> str:
 
 def render_inventory_json(inventory: dict[str, Any]) -> str:
     return json.dumps(inventory, indent=2, sort_keys=True) + "\n"
+
+
+def format_parameter_surface(
+    parameters: list[dict[str, Any]],
+    *,
+    open_ended: bool,
+) -> list[str] | str:
+    keys = [item["key"] for item in parameters]
+    if keys and open_ended:
+        return [*keys, "open-ended"]
+    if keys:
+        return keys
+    if open_ended:
+        return "open-ended"
+    return "-"
 
 
 def expected_outputs() -> dict[Path, str]:

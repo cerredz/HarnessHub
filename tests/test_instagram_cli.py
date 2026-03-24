@@ -81,11 +81,14 @@ class InstagramCliTests(unittest.TestCase):
                         "ugc skincare creators",
                         "--runtime-param",
                         "search_result_limit=3",
+                        "--custom-param",
+                        'target_segment="micro-creators"',
                     ]
                 )
             self.assertEqual(result, 0)
             payload = json.loads("".join(call.args[0] for call in mock_write.call_args_list))
             self.assertEqual(payload["icp_profiles"], ["fitness creators", "ugc skincare creators"])
+            self.assertEqual(payload["custom_parameters"]["target_segment"], "micro-creators")
             self.assertEqual(payload["runtime_parameters"]["search_result_limit"], 3)
 
     def test_show_returns_counts(self) -> None:
@@ -151,7 +154,7 @@ class InstagramCliTests(unittest.TestCase):
                 patch(
                     "harnessiq.agents.instagram.InstagramKeywordDiscoveryAgent.from_memory",
                     return_value=mock_agent,
-                ),
+                ) as patched_from_memory,
                 patch("sys.stdout.write") as mock_write,
             ):
                 result = _run(
@@ -164,6 +167,10 @@ class InstagramCliTests(unittest.TestCase):
                         temp_dir,
                         "--model-factory",
                         "mod:model",
+                        "--custom-param",
+                        'target_segment="micro-creators"',
+                        "--icp",
+                        "fitness creators",
                     ]
                 )
 
@@ -171,6 +178,13 @@ class InstagramCliTests(unittest.TestCase):
             payload = json.loads("".join(call.args[0] for call in mock_write.call_args_list))
             self.assertEqual(payload["email_count"], 1)
             self.assertEqual(payload["result"]["cycles_completed"], 2)
+            self.assertEqual(
+                patched_from_memory.call_args.kwargs["custom_overrides"],
+                {
+                    "icp_profiles": ["fitness creators"],
+                    "target_segment": "micro-creators",
+                },
+            )
 
     def test_run_seeds_langsmith_environment_from_repo_env(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
