@@ -55,13 +55,22 @@ Inspect the current managed state:
 harnessiq linkedin show --agent candidate-a --memory-root ./memory/linkedin
 ```
 
+Persist a reusable model profile once:
+
+```bash
+harnessiq models add \
+  --name work \
+  --model grok:grok-4-1-fast-reasoning \
+  --reasoning-effort high
+```
+
 Run the agent from persisted state:
 
 ```bash
 harnessiq linkedin run \
   --agent candidate-a \
   --memory-root ./memory/linkedin \
-  --model-factory myproject.factories:create_linkedin_model \
+  --profile work \
   --browser-tools-factory myproject.factories:create_linkedin_browser_tools \
   --max-cycles 5
 ```
@@ -71,4 +80,4 @@ Runtime notes:
 - Each `--agent` value maps to its own managed memory folder under `--memory-root`.
 - Imported files are copied into managed storage and recorded with their original source paths.
 - The CLI persists agent-aligned runtime params, arbitrary custom key/value data, and free-form prompt text.
-- The SDK does not currently ship a provider-backed `AgentModel` adapter, so `run` expects an importable factory that returns a compatible model object.
+- `run` accepts `--model provider:model_name`, `--profile <name>`, or the legacy `--model-factory module:callable` surface.

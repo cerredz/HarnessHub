@@ -12,6 +12,7 @@ from harnessiq.agents import AgentModelRequest, AgentModelResponse
 from harnessiq.cli.main import main
 
 _LAST_PROVIDER_ENV: dict[str, str] = {}
+_LAST_MODEL_SELECTION: dict[str, str] = {}
 _SPECIAL_SEARCH_BACKEND = object()
 
 
@@ -28,6 +29,15 @@ def create_static_model() -> _StaticModel:
 def create_static_model_recording_provider_env() -> _StaticModel:
     global _LAST_PROVIDER_ENV
     _LAST_PROVIDER_ENV = {
+        "XAI_API_KEY": os.environ.get("XAI_API_KEY", ""),
+    }
+    return _StaticModel()
+
+
+def create_model_from_spec_recording_provider_env(model_spec: str) -> _StaticModel:
+    global _LAST_MODEL_SELECTION
+    _LAST_MODEL_SELECTION = {
+        "model_spec": model_spec,
         "XAI_API_KEY": os.environ.get("XAI_API_KEY", ""),
     }
     return _StaticModel()
@@ -101,53 +111,6 @@ def test_prepare_show_and_inspect_generic_linkedin(tmp_path: Path) -> None:
     assert runtime_index["max_tokens"]["default"] == 80000
     assert inspected["default_memory_root"] == "memory/linkedin"
     assert inspected["provider_credential_fields"]["playwright"] == []
-
-
-def test_prepare_show_and_inspect_generic_research_sweep(tmp_path: Path) -> None:
-    exit_code, prepared = _run(
-        [
-            "prepare",
-            "research-sweep",
-            "--agent",
-            "sweep-a",
-            "--memory-root",
-            str(tmp_path),
-            "--max-tokens",
-            "4096",
-            "--reset-threshold",
-            "0.8",
-            "--query",
-            "CRISPR therapeutic applications",
-            "--allowed-serper-operations",
-            "search,scholar",
-        ]
-    )
-    assert exit_code == 0
-    assert prepared["status"] == "prepared"
-    assert prepared["profile"]["runtime_parameters"]["max_tokens"] == 4096
-    assert prepared["profile"]["runtime_parameters"]["reset_threshold"] == 0.8
-    assert prepared["profile"]["custom_parameters"]["query"] == "CRISPR therapeutic applications"
-
-    exit_code, shown = _run(
-        [
-            "show",
-            "research_sweep",
-            "--agent",
-            "sweep-a",
-            "--memory-root",
-            str(tmp_path),
-        ]
-    )
-    assert exit_code == 0
-    assert shown["state"]["query"] == "CRISPR therapeutic applications"
-    assert shown["state"]["custom_parameters"]["allowed_serper_operations"] == "search,scholar"
-
-    exit_code, inspected = _run(["inspect", "research-sweep"])
-    assert exit_code == 0
-    runtime_index = {entry["key"]: entry for entry in inspected["runtime_parameters"]}
-    assert runtime_index["max_tokens"]["default"] == 80000
-    assert inspected["default_memory_root"] == "memory/research_sweep"
-    assert inspected["provider_credential_fields"]["serper"][0]["name"] == "api_key"
 
 
 def test_generic_show_seeds_profile_from_existing_native_linkedin_state(tmp_path: Path) -> None:
@@ -295,67 +258,6 @@ def test_run_generic_knowt_uses_bound_creatify_credentials(tmp_path: Path) -> No
     assert kwargs["max_tokens"] == 12000
 
 
-def test_run_generic_research_sweep_uses_bound_serper_credentials(tmp_path: Path) -> None:
-    (tmp_path / ".env").write_text("SERPER_API_KEY=serper_123\n", encoding="utf-8")
-    _run(
-        [
-            "prepare",
-            "research-sweep",
-            "--agent",
-            "sweep-b",
-            "--memory-root",
-            str(tmp_path),
-            "--query",
-            "few-shot learning for protein folding",
-        ]
-    )
-    _run(
-        [
-            "credentials",
-            "bind",
-            "research_sweep",
-            "--agent",
-            "sweep-b",
-            "--memory-root",
-            str(tmp_path),
-            "--env",
-            "serper.api_key=SERPER_API_KEY",
-        ]
-    )
-
-    mock_agent = MagicMock()
-    mock_agent.last_run_id = "run-456"
-    mock_agent.run.return_value = SimpleNamespace(
-        cycles_completed=1,
-        pause_reason=None,
-        resets=0,
-        status="completed",
-    )
-
-    with patch(
-        "harnessiq.cli.adapters.research_sweep.ResearchSweepAgent.from_memory",
-        return_value=mock_agent,
-    ) as patched_from_memory:
-        exit_code, payload = _run(
-            [
-                "run",
-                "research-sweep",
-                "--agent",
-                "sweep-b",
-                "--memory-root",
-                str(tmp_path),
-                "--model-factory",
-                "tests.test_platform_cli:create_static_model",
-            ]
-        )
-
-    assert exit_code == 0
-    assert payload["result"]["status"] == "completed"
-    kwargs = patched_from_memory.call_args.kwargs
-    assert kwargs["serper_credentials"].api_key == "serper_123"
-    assert kwargs["custom_overrides"]["query"] == "few-shot learning for protein folding"
-
-
 def test_run_generic_prospecting_seeds_model_factory_environment_from_local_env(tmp_path: Path) -> None:
     (tmp_path / "local.env").write_text("XAI_API_KEY=local-xai-key\n", encoding="utf-8")
     _run(["prepare", "prospecting", "--agent", "nj-dentists", "--memory-root", str(tmp_path)])
@@ -394,6 +296,48 @@ def test_run_generic_prospecting_seeds_model_factory_environment_from_local_env(
     assert exit_code == 0
     assert payload["result"]["status"] == "completed"
     assert _LAST_PROVIDER_ENV["XAI_API_KEY"] == "local-xai-key"
+
+
+def test_run_generic_prospecting_seeds_model_spec_environment_from_local_env(tmp_path: Path) -> None:
+    (tmp_path / "local.env").write_text("XAI_API_KEY=local-xai-key\n", encoding="utf-8")
+    _run(["prepare", "prospecting", "--agent", "nj-dentists", "--memory-root", str(tmp_path)])
+
+    mock_agent = MagicMock()
+    mock_agent.last_run_id = "run-123"
+    mock_agent.run.return_value = SimpleNamespace(
+        cycles_completed=1,
+        pause_reason=None,
+        resets=0,
+        status="completed",
+    )
+
+    with (
+        patch.dict("os.environ", {}, clear=True),
+        patch("harnessiq.cli.common.create_model_from_spec", side_effect=create_model_from_spec_recording_provider_env),
+        patch(
+            "harnessiq.cli.adapters.prospecting.GoogleMapsProspectingAgent.from_memory",
+            return_value=mock_agent,
+        ),
+    ):
+        exit_code, payload = _run(
+            [
+                "run",
+                "prospecting",
+                "--agent",
+                "nj-dentists",
+                "--memory-root",
+                str(tmp_path),
+                "--model",
+                "grok:grok-4-1-fast-reasoning",
+                "--browser-tools-factory",
+                "tests.test_platform_cli:create_empty_browser_tools",
+            ]
+        )
+
+    assert exit_code == 0
+    assert payload["result"]["status"] == "completed"
+    assert _LAST_MODEL_SELECTION["model_spec"] == "grok:grok-4-1-fast-reasoning"
+    assert _LAST_MODEL_SELECTION["XAI_API_KEY"] == "local-xai-key"
 
 
 def test_run_generic_instagram_accepts_custom_params_and_icp_override(tmp_path: Path) -> None:

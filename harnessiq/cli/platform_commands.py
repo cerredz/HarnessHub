@@ -14,11 +14,11 @@ from harnessiq.cli.adapters import HarnessAdapterContext
 from harnessiq.cli.common import (
     add_agent_options,
     add_manifest_parameter_options,
+    add_model_selection_options,
     collect_manifest_parameter_values,
     emit_json,
     load_factory,
-    parse_generic_assignments,
-    parse_manifest_parameter_assignments,
+    resolve_agent_model_from_args,
     resolve_memory_path,
     resolve_repo_root,
 )
@@ -167,16 +167,7 @@ def _register_manifest_subcommands(
         elif command == "show":
             parser.set_defaults(command_handler=_handle_show, manifest_id=manifest.manifest_id)
         elif command == "run":
-            parser.add_argument(
-                "--resume",
-                action="store_true",
-                default=False,
-                help="Reuse the most recent persisted run payload for this harness/profile.",
-            )
-            parser.add_argument(
-                "--model-factory",
-                help="Import path in the form module:callable that returns an AgentModel instance.",
-            )
+            add_model_selection_options(parser)
             parser.add_argument(
                 "--sink",
                 action="append",
@@ -350,10 +341,8 @@ def _execute_run(
     run_request: _ResolvedRunRequest,
 ) -> int:
     seed_cli_environment(context.repo_root)
-    model = load_factory(run_request.model_factory)()
-    if not hasattr(model, "generate_turn"):
-        raise TypeError("Model factory must return an object that implements generate_turn(request).")
-    runtime_config = _build_runtime_config(run_request.sink_specs)
+    model = resolve_agent_model_from_args(args)
+    runtime_config = _build_runtime_config(args.sink)
     payload = _base_payload(context)
     payload["resume"] = {
         "adapter_arguments": dict(run_request.adapter_arguments),

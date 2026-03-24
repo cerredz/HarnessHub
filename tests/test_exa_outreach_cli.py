@@ -356,9 +356,12 @@ class TestRunCommand:
 
         with (
             patch(
+                "harnessiq.cli.common.load_factory",
+                return_value=lambda: mock_model,
+            ),
+            patch(
                 "harnessiq.cli.exa_outreach.commands._load_factory",
                 side_effect=[
-                    lambda: mock_model,
                     lambda: mock_exa_creds,
                     lambda: mock_resend_creds,
                     lambda: mock_email_data,
@@ -395,14 +398,19 @@ class TestRunCommand:
 
         mock_model_no_generate = object()
 
-        with patch(
-            "harnessiq.cli.exa_outreach.commands._load_factory",
-            side_effect=[
-                lambda: mock_model_no_generate,
-                lambda: MagicMock(),
-                lambda: MagicMock(),
-                lambda: [],
-            ],
+        with (
+            patch(
+                "harnessiq.cli.common.load_factory",
+                return_value=lambda: mock_model_no_generate,
+            ),
+            patch(
+                "harnessiq.cli.exa_outreach.commands._load_factory",
+                side_effect=[
+                    lambda: MagicMock(),
+                    lambda: MagicMock(),
+                    lambda: [],
+                ],
+            ),
         ):
             with pytest.raises(TypeError, match="generate_turn"):
                 _run([
@@ -421,14 +429,19 @@ class TestRunCommand:
 
         mock_model = MagicMock()
 
-        with patch(
-            "harnessiq.cli.exa_outreach.commands._load_factory",
-            side_effect=[
-                lambda: mock_model,
-                lambda: MagicMock(),
-                lambda: MagicMock(),
-                lambda: "not-a-list",
-            ],
+        with (
+            patch(
+                "harnessiq.cli.common.load_factory",
+                return_value=lambda: mock_model,
+            ),
+            patch(
+                "harnessiq.cli.exa_outreach.commands._load_factory",
+                side_effect=[
+                    lambda: MagicMock(),
+                    lambda: MagicMock(),
+                    lambda: "not-a-list",
+                ],
+            ),
         ):
             with pytest.raises(TypeError, match="list"):
                 _run([

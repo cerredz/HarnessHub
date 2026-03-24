@@ -13,10 +13,12 @@ from harnessiq.agents import AgentRuntimeConfig, GoogleMapsProspectingAgent, Pro
 from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.common import (
     add_agent_options,
+    add_model_selection_options,
     add_text_or_file_options,
     emit_json,
     format_manifest_parameter_keys,
     parse_manifest_parameter_assignments,
+    resolve_agent_model_from_args,
     resolve_memory_path,
     resolve_text_argument,
 )
@@ -114,11 +116,7 @@ def register_prospecting_commands(
         memory_root_default="memory/prospecting",
         memory_root_help="Root directory that holds per-agent prospecting memory folders.",
     )
-    run_parser.add_argument(
-        "--model-factory",
-        required=True,
-        help="Import path in the form module:callable that returns an AgentModel instance.",
-    )
+    add_model_selection_options(run_parser)
     run_parser.add_argument(
         "--browser-tools-factory",
         default=_DEFAULT_BROWSER_TOOLS_FACTORY,
@@ -247,9 +245,7 @@ def _handle_run(args: argparse.Namespace) -> int:
     if "HARNESSIQ_PROSPECTING_SESSION_DIR" not in os.environ:
         os.environ["HARNESSIQ_PROSPECTING_SESSION_DIR"] = str(store.browser_data_dir.resolve())
 
-    model = _load_factory(args.model_factory)()
-    if not hasattr(model, "generate_turn"):
-        raise TypeError("Model factory must return an object that implements generate_turn(request).")
+    model = resolve_agent_model_from_args(args)
 
     created_tools = _load_factory(args.browser_tools_factory)()
     if created_tools is None:

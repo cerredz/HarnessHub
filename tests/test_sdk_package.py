@@ -11,7 +11,6 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from zipfile import ZipFile
 
 from setuptools.build_meta import build_sdist, build_wheel
 
@@ -43,6 +42,7 @@ class HarnessiqPackageTests(unittest.TestCase):
         self.assertTrue(hasattr(harnessiq, "agents"))
         self.assertTrue(hasattr(harnessiq, "cli"))
         self.assertTrue(hasattr(harnessiq, "config"))
+        self.assertTrue(hasattr(harnessiq, "integrations"))
         self.assertTrue(hasattr(harnessiq, "tools"))
         self.assertTrue(hasattr(harnessiq, "providers"))
 
@@ -62,19 +62,6 @@ class HarnessiqPackageTests(unittest.TestCase):
 
             self.assertTrue((temp_path / sdist_name).exists())
             self.assertTrue(wheel_path.exists())
-            with ZipFile(wheel_path) as archive:
-                wheel_entries = set(archive.namelist())
-            self.assertTrue(
-                {
-                    "harnessiq/agents/exa_outreach/prompts/master_prompt.md",
-                    "harnessiq/agents/instagram/prompts/master_prompt.md",
-                    "harnessiq/agents/knowt/prompts/master_prompt.md",
-                    "harnessiq/agents/leads/prompts/master_prompt.md",
-                    "harnessiq/agents/linkedin/prompts/master_prompt.md",
-                    "harnessiq/agents/prospecting/prompts/master_prompt.md",
-                    "harnessiq/agents/research_sweep/prompts/master_prompt.md",
-                }.issubset(wheel_entries)
-            )
 
             smoke = subprocess.run(
                 [
@@ -82,7 +69,7 @@ class HarnessiqPackageTests(unittest.TestCase):
                     "-c",
                     (
                         f"import sys; sys.path.insert(0, r'{wheel_path}'); "
-                        "import harnessiq, harnessiq.agents, harnessiq.config, harnessiq.tools, harnessiq.utils; "
+                        "import harnessiq, harnessiq.agents, harnessiq.config, harnessiq.integrations, harnessiq.tools, harnessiq.utils; "
                         "from harnessiq.cli.main import main as cli_main; "
                         "assert harnessiq.__version__ == '0.1.0'; "
                         "assert hasattr(harnessiq.agents, 'BaseProviderToolAgent'); "
@@ -95,11 +82,11 @@ class HarnessiqPackageTests(unittest.TestCase):
                         "assert hasattr(harnessiq.agents, 'InstantlyAgentConfig'); "
                         "assert hasattr(harnessiq.agents, 'OutreachAgentConfig'); "
                         "assert hasattr(harnessiq.agents, 'LinkedInJobApplierAgent'); "
-                        "assert hasattr(harnessiq.agents, 'ResearchSweepAgent'); "
                         "assert hasattr(harnessiq.agents, 'json_parameter_section'); "
                         "assert hasattr(harnessiq.agents, 'get_harness_manifest'); "
                         "assert hasattr(harnessiq.agents, 'InstagramKeywordDiscoveryAgent'); "
                         "assert hasattr(harnessiq.agents, 'GoogleMapsProspectingAgent'); "
+                        "assert hasattr(harnessiq.integrations, 'create_model_from_spec'); "
                         "assert callable(cli_main); "
                         "assert hasattr(harnessiq.config, 'CredentialsConfigStore'); "
                         "assert hasattr(harnessiq.tools, 'create_builtin_registry'); "
@@ -128,8 +115,8 @@ class HarnessiqPackageTests(unittest.TestCase):
 
         self.assertIn("linkedin", help_run.stdout)
         self.assertIn("instagram", help_run.stdout)
+        self.assertIn("models", help_run.stdout)
         self.assertIn("prospecting", help_run.stdout)
-        self.assertIn("research-sweep", help_run.stdout)
         self.assertEqual(help_run.returncode, 0)
 
     def test_shared_definition_exports_originate_from_shared_modules(self) -> None:

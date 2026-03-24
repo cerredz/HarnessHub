@@ -6,8 +6,8 @@ This artifact is generated from the live `harnessiq/cli/` source tree by `python
 
 | Metric | Count |
 | --- | --- |
-| Top-level commands | 17 |
-| Registered command paths | 125 |
+| Top-level commands | 18 |
+| Registered command paths | 128 |
 
 Alias paths are included in the registered command total. Canonical commands list aliases where they exist.
 
@@ -24,6 +24,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent | `harnessiq/cli/leads/commands.py` |
 | harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent | `harnessiq/cli/linkedin/commands.py` |
 | harnessiq logs | - | Inspect the local audit ledger | `harnessiq/cli/ledger/commands.py` |
+| harnessiq models | add, list | Manage reusable provider-backed model profiles | `harnessiq/cli/models/commands.py` |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent | `harnessiq/cli/exa_outreach/commands.py` |
 | harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
 | harnessiq prompts | list, show, text | Inspect bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
@@ -123,6 +124,13 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq linkedin prepare | Create or refresh a LinkedIn agent memory folder | `harnessiq/cli/linkedin/commands.py` |
 | harnessiq linkedin run | Run the LinkedIn SDK agent from persisted CLI state | `harnessiq/cli/linkedin/commands.py` |
 | harnessiq linkedin show | Render the current LinkedIn CLI-managed state as JSON | `harnessiq/cli/linkedin/commands.py` |
+
+## `harnessiq models`
+
+| Command | Description | Source |
+| --- | --- | --- |
+| harnessiq models add | Add or update a persisted model profile | `harnessiq/cli/models/commands.py` |
+| harnessiq models list | List persisted model profiles | `harnessiq/cli/models/commands.py` |
 
 ## `harnessiq outreach`
 

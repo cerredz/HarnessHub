@@ -13,10 +13,12 @@ from harnessiq.agents import LeadsAgent
 from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.common import (
     add_agent_options,
+    add_model_selection_options,
     add_text_or_file_options,
     emit_json,
     format_manifest_parameter_keys,
     parse_manifest_parameter_assignments,
+    resolve_agent_model_from_args,
     resolve_memory_path,
     resolve_text_argument,
     split_assignment,
@@ -110,11 +112,7 @@ def register_leads_commands(
         memory_root_default="memory/leads",
         memory_root_help="Root directory that holds per-agent leads memory folders.",
     )
-    run_parser.add_argument(
-        "--model-factory",
-        required=True,
-        help="Import path in the form module:callable that returns an AgentModel instance.",
-    )
+    add_model_selection_options(run_parser)
     run_parser.add_argument(
         "--provider-tools-factory",
         help="Optional import path in the form module:callable that returns an iterable of provider tools.",
@@ -244,9 +242,7 @@ def _handle_run(args: argparse.Namespace) -> int:
     runtime_parameters = _read_runtime_parameters(store.memory_path)
     runtime_parameters.update({key: value for key, value in overrides.items() if key not in _RUN_CONFIG_KEYS})
 
-    model = _load_factory(args.model_factory)()
-    if not hasattr(model, "generate_turn"):
-        raise TypeError("Model factory must return an object that implements generate_turn(request).")
+    model = resolve_agent_model_from_args(args)
 
     tools = None
     if args.provider_tools_factory:
