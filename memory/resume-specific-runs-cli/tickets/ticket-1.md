@@ -2,6 +2,8 @@ Title: Add historical run selection to platform-first resume flows
 
 Issue URL: https://github.com/cerredz/HarnessHub/issues/258
 
+PR URL: https://github.com/cerredz/HarnessHub/pull/259
+
 Intent:
 Extend platform-first resume so a user can resume a specific prior run for a configured harness profile instead of only the latest run.
 
