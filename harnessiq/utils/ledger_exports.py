@@ -11,9 +11,10 @@ from io import StringIO
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from harnessiq.shared.instagram import INSTAGRAM_HARNESS_MANIFEST, build_instagram_lead_export_rows
 from harnessiq.utils.ledger_connections import default_ledger_path
 from harnessiq.utils.ledger_models import LedgerEntry, _isoformat_z, parse_relative_duration
+
+_INSTAGRAM_AGENT_NAME = "instagram_keyword_discovery"
 
 
 def load_ledger_entries(path: Path | str | None = None) -> list[LedgerEntry]:
@@ -143,11 +144,13 @@ def _maybe_export_instagram_lead_rows(
     *,
     flatten_outputs: bool,
 ) -> list[dict[str, Any]] | None:
-    if not flatten_outputs or entry.agent_name != INSTAGRAM_HARNESS_MANIFEST.agent_name:
+    if not flatten_outputs or entry.agent_name != _INSTAGRAM_AGENT_NAME:
         return None
     leads = entry.outputs.get("leads")
     if not isinstance(leads, list):
         return None
+    from harnessiq.shared.instagram import build_instagram_lead_export_rows
+
     rows: list[dict[str, Any]] = []
     for lead in leads:
         if not isinstance(lead, Mapping):

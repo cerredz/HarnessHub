@@ -54,6 +54,33 @@ def _entry() -> LedgerEntry:
     )
 
 
+def _instagram_entry() -> LedgerEntry:
+    return LedgerEntry(
+        run_id="run-instagram",
+        agent_name="instagram_keyword_discovery",
+        started_at=datetime(2026, 3, 19, 3, 0, tzinfo=timezone.utc),
+        finished_at=datetime(2026, 3, 19, 3, 5, tzinfo=timezone.utc),
+        status="completed",
+        reset_count=0,
+        outputs={
+            "emails": ["creator@example.com", "team@example.com"],
+            "leads": [
+                {
+                    "emails": ["creator@example.com", "team@example.com"],
+                    "found_at": "2026-03-19T03:01:00Z",
+                    "snippet": "creator@example.com team@example.com",
+                    "source_keyword": "fitness creator",
+                    "source_url": "https://www.instagram.com/creator-a/",
+                    "title": "Creator A",
+                }
+            ],
+            "search_history": [],
+        },
+        tags=["instagram"],
+        metadata={"provider": "grok", "model_name": "grok-4-1-fast"},
+    )
+
+
 class OutputSinkTests(unittest.TestCase):
     def test_provider_output_sink_facades_preserve_public_imports(self) -> None:
         self.assertIs(GoogleSheetsClient, ProviderGoogleSheetsClient)
@@ -165,6 +192,35 @@ class OutputSinkTests(unittest.TestCase):
         header_index = {name: index for index, name in enumerate(updated_header)}
         self.assertEqual(appended_values[0][header_index["company"]], "Stripe")
         self.assertEqual(appended_values[0][header_index["title"]], "Staff Engineer")
+
+    def test_google_sheets_sink_renders_instagram_leads_as_simple_rows(self) -> None:
+        client = MagicMock()
+        client.get_values.return_value = [["run_id", "agent_name", "status", "source_url", "emails"]]
+        sink = GoogleSheetsSink(
+            client_id="cid",
+            client_secret="secret",
+            refresh_token="refresh",
+            spreadsheet_id="sheet-123",
+            explode_field="outputs.leads",
+            client=client,
+        )
+
+        sink.on_run_complete(_instagram_entry())
+
+        updated_header = client.update_values.call_args.kwargs["values"][0]
+        self.assertEqual(updated_header, ["name", "instagram_url", "email_address", "username"])
+        appended_values = client.append_values.call_args.kwargs["values"]
+        self.assertEqual(len(appended_values), 2)
+        self.assertNotIn("run_id", updated_header)
+        header_index = {name: index for index, name in enumerate(updated_header)}
+        self.assertEqual(appended_values[0][header_index["name"]], "Creator A")
+        self.assertEqual(
+            appended_values[0][header_index["instagram_url"]],
+            "https://www.instagram.com/creator-a/",
+        )
+        self.assertEqual(appended_values[0][header_index["email_address"]], "creator@example.com")
+        self.assertEqual(appended_values[0][header_index["username"]], "creator-a")
+        self.assertEqual(appended_values[1][header_index["email_address"]], "team@example.com")
 
     def test_parse_sink_spec_and_build_output_sinks_support_runtime_injection(self) -> None:
         sink_type, config = parse_sink_spec("obsidian:vault_path=C:/vault,note_folder=Runs")

@@ -16,6 +16,7 @@ from harnessiq.agents import (
 )
 from harnessiq.shared.agents import AgentRuntimeConfig
 from harnessiq.shared.instagram import InstagramLeadRecord, InstagramSearchExecution, InstagramSearchRecord
+from harnessiq.shared.instagram import build_instagram_lead_export_rows
 from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
 
 _LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
@@ -215,6 +216,36 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
             self.assertEqual(outputs["emails"], ["creator@example.com"])
             self.assertEqual(outputs["search_history"][0]["keyword"], "fitness coach")
             self.assertEqual(outputs["leads"][0]["source_url"], "https://www.instagram.com/creator-a/")
+
+    def test_build_instagram_lead_export_rows_explodes_one_row_per_email(self) -> None:
+        lead = InstagramLeadRecord(
+            source_url="https://www.instagram.com/creator-a/",
+            source_keyword="fitness coach",
+            found_at="2026-03-19T00:00:00Z",
+            emails=("creator@example.com", "team@example.com"),
+            title="",
+            snippet="creator@example.com team@example.com",
+        )
+
+        rows = build_instagram_lead_export_rows(lead)
+
+        self.assertEqual(
+            rows,
+            [
+                {
+                    "name": "creator-a",
+                    "instagram_url": "https://www.instagram.com/creator-a/",
+                    "email_address": "creator@example.com",
+                    "username": "creator-a",
+                },
+                {
+                    "name": "creator-a",
+                    "instagram_url": "https://www.instagram.com/creator-a/",
+                    "email_address": "team@example.com",
+                    "username": "creator-a",
+                },
+            ],
+        )
 
     def test_get_emails_returns_unique_persisted_values(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

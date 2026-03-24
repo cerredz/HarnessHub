@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import io
 import json
 import tempfile
@@ -90,6 +91,73 @@ class LedgerCLITests(unittest.TestCase):
             with redirect_stdout(output):
                 main(["report", "--format", "markdown", "--ledger-path", str(ledger_path)])
             self.assertIn("HarnessIQ Run Report", output.getvalue())
+
+    def test_export_csv_flattens_instagram_runs_to_simple_lead_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger_path = Path(temp_dir, "runs.jsonl")
+            ledger_path.write_text(
+                json.dumps(
+                    {
+                        "agent_name": "instagram_keyword_discovery",
+                        "finished_at": "2026-03-19T03:05:00Z",
+                        "metadata": {"provider": "grok"},
+                        "outputs": {
+                            "emails": ["creator@example.com", "team@example.com"],
+                            "leads": [
+                                {
+                                    "emails": ["creator@example.com", "team@example.com"],
+                                    "found_at": "2026-03-19T03:01:00Z",
+                                    "snippet": "creator@example.com team@example.com",
+                                    "source_keyword": "fitness creator",
+                                    "source_url": "https://www.instagram.com/creator-a/",
+                                    "title": "Creator A",
+                                }
+                            ],
+                            "search_history": [],
+                        },
+                        "reset_count": 0,
+                        "run_id": "run-instagram",
+                        "started_at": "2026-03-19T03:00:00Z",
+                        "status": "completed",
+                        "tags": ["instagram"],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            output = io.StringIO()
+            with redirect_stdout(output):
+                main(
+                    [
+                        "export",
+                        "--format",
+                        "csv",
+                        "--flatten-outputs",
+                        "--ledger-path",
+                        str(ledger_path),
+                    ]
+                )
+
+            rows = list(csv.DictReader(io.StringIO(output.getvalue())))
+            self.assertEqual(len(rows), 2)
+            self.assertEqual(
+                rows,
+                [
+                    {
+                        "name": "Creator A",
+                        "instagram_url": "https://www.instagram.com/creator-a/",
+                        "email_address": "creator@example.com",
+                        "username": "creator-a",
+                    },
+                    {
+                        "name": "Creator A",
+                        "instagram_url": "https://www.instagram.com/creator-a/",
+                        "email_address": "team@example.com",
+                        "username": "creator-a",
+                    },
+                ],
+            )
 
     def test_linkedin_run_accepts_per_run_sink_override(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
