@@ -15,7 +15,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 9 |
-| Test modules | 85 |
+| Test modules | 86 |
 
 ## Codebase Standards
 
@@ -179,7 +179,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 ## Test Surface
 
-`tests/` currently contains 85 test modules. The table below groups them by dominant responsibility.
+`tests/` currently contains 86 test modules. The table below groups them by dominant responsibility.
 
 | Area | Count | Examples |
 | --- | --- | --- |
@@ -187,5 +187,5 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | cli | 9 | `tests/test_exa_outreach_cli.py`, `tests/test_instagram_cli.py`, `tests/test_leads_cli.py` |
 | ledger | 1 | `tests/test_output_sinks.py` |
 | providers | 31 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
-| support | 15 | `tests/test_cli_common.py`, `tests/test_cli_environment.py`, `tests/test_config_loader.py` |
+| support | 16 | `tests/test_cli_common.py`, `tests/test_cli_environment.py`, `tests/test_config_loader.py` |
 | tools | 12 | `tests/test_context_compaction_tools.py`, `tests/test_context_window_tools.py`, `tests/test_general_tools.py` |

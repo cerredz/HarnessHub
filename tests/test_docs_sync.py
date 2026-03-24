@@ -46,6 +46,11 @@ class DocsSyncTests(unittest.TestCase):
             )
         self.assertIn("Generated docs are in sync.", completed.stdout)
 
+    def test_expected_outputs_omit_live_inventory_artifact(self) -> None:
+        outputs = self.sync_repo_docs.expected_outputs()
+        self.assertNotIn(ROOT / "artifacts" / "live_inventory.json", outputs)
+        self.assertNotIn("artifacts/live_inventory.json", outputs[ROOT / "README.md"])
+
     def test_inventory_includes_platform_first_cli_roots(self) -> None:
         inventory = self.sync_repo_docs.build_inventory()
         top_level_commands = {entry["command"] for entry in inventory["cli"]["top_level"]}

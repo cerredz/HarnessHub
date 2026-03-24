@@ -155,7 +155,6 @@ README_DOC_LINKS = [
     ("docs/leads-agent.md", "Leads harness memory model and CLI workflow."),
     ("artifacts/file_index.md", "Generated architecture map for the live repository."),
     ("artifacts/commands.md", "Generated CLI command catalog."),
-    ("artifacts/live_inventory.json", "Machine-readable source of truth for generated repo docs."),
 ]
 
 
@@ -1226,10 +1225,6 @@ def render_file_index(inventory: dict[str, Any]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def render_inventory_json(inventory: dict[str, Any]) -> str:
-    return json.dumps(inventory, indent=2, sort_keys=True) + "\n"
-
-
 def format_parameter_surface(
     parameters: list[dict[str, Any]],
     *,
@@ -1248,7 +1243,6 @@ def format_parameter_surface(
 def expected_outputs() -> dict[Path, str]:
     inventory = build_inventory()
     return {
-        ARTIFACTS_DIR / "live_inventory.json": render_inventory_json(inventory),
         ARTIFACTS_DIR / "commands.md": render_commands_artifact(inventory),
         ARTIFACTS_DIR / "file_index.md": render_file_index(inventory),
         ROOT / "README.md": render_readme(inventory).rstrip() + "\n",
