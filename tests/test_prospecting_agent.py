@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from harnessiq.agents.prospecting.agent import GoogleMapsProspectingAgent
-from harnessiq.shared.agents import AgentModelRequest, AgentModelResponse
+from harnessiq.shared.agents import AgentModelRequest, AgentModelResponse, AgentRuntimeConfig
 from harnessiq.shared.prospecting import ProspectingMemoryStore
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
 
@@ -98,14 +98,7 @@ class GoogleMapsProspectingAgentTests(unittest.TestCase):
             )
             planning = agent.tool_executor.execute(
                 "search.search_or_summarize",
-                {
-                    "company_description": "Owner-operated dental practices in New Jersey",
-                    "searches_completed": [],
-                    "search_history_summary": None,
-                    "searches_summarized_through": 0,
-                    "summarize_at_x": 10,
-                    "last_completed_search_index": -1,
-                },
+                {},
             )
             saved = agent.tool_executor.execute(
                 "prospecting.save_qualified_lead",
@@ -162,6 +155,65 @@ class GoogleMapsProspectingAgentTests(unittest.TestCase):
             self.assertEqual(agent.config.max_searches_per_run, 5)
             self.assertFalse(agent.config.website_inspect_enabled)
             self.assertIn("HVAC companies", agent.load_parameter_sections()[0].content)
+
+    def test_load_parameter_sections_omit_runtime_and_custom_sections(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = ProspectingMemoryStore(memory_path=temp_dir)
+            store.prepare()
+            store.write_company_description("Owner-operated dental practices in New Jersey")
+            store.write_runtime_parameters({"max_tokens": 4096, "reset_threshold": 0.8})
+            store.write_custom_parameters({"max_searches_per_run": 12, "website_inspect_enabled": False})
+
+            agent = GoogleMapsProspectingAgent.from_memory(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                memory_path=temp_dir,
+                json_subcall_runner=_runner,
+            )
+
+            self.assertEqual(
+                [section.title for section in agent.load_parameter_sections()],
+                [
+                    "Company Description",
+                    "Run State",
+                    "Recent Completed Searches",
+                    "Recent Qualified Leads",
+                ],
+            )
+
+    def test_completed_run_with_active_search_stays_in_progress(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = GoogleMapsProspectingAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                memory_path=temp_dir,
+                company_description="Owner-operated dental practices in New Jersey",
+                json_subcall_runner=_runner,
+            )
+            agent.prepare()
+            agent.tool_executor.execute(
+                "prospecting.start_search",
+                {"index": 0, "query": "dentist", "location": "Edison NJ"},
+            )
+
+            result = agent.run(max_cycles=1)
+
+            self.assertEqual(result.status, "completed")
+            self.assertEqual(agent.memory_store.read_state().run_status, "in_progress")
+
+    def test_runtime_config_preserves_langsmith_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = GoogleMapsProspectingAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                memory_path=temp_dir,
+                company_description="Owner-operated dental practices in New Jersey",
+                runtime_config=AgentRuntimeConfig(
+                    langsmith_api_key="ls_test_sdk",
+                    langsmith_project="prospecting-project",
+                ),
+                json_subcall_runner=_runner,
+            )
+
+            self.assertEqual(agent.runtime_config.langsmith_api_key, "ls_test_sdk")
+            self.assertEqual(agent.runtime_config.langsmith_project, "prospecting-project")
 
 
 if __name__ == "__main__":

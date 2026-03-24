@@ -61,8 +61,6 @@ class ProspectingToolFactoryTests(unittest.TestCase):
         self.assertEqual(tool.key, EVALUATE_COMPANY)
         result = tool.execute(
             {
-                "company_description": "Dentists in New Jersey",
-                "eval_system_prompt": "Return JSON.",
                 "listing_data": {"name": "Edison Family Dental"},
             }
         )
@@ -75,20 +73,13 @@ class ProspectingToolFactoryTests(unittest.TestCase):
                 "action": "continued",
                 "next_query": "dentist",
                 "next_location": "Edison NJ",
-                "next_search_index": arguments["last_completed_search_index"] + 1,
+                "next_search_index": 0,
             }
         )
 
         self.assertEqual(tool.key, SEARCH_OR_SUMMARIZE)
         result = tool.execute(
-            {
-                "company_description": "Dentists in New Jersey",
-                "searches_completed": [],
-                "search_history_summary": None,
-                "searches_summarized_through": 0,
-                "summarize_at_x": 10,
-                "last_completed_search_index": -1,
-            }
+            {}
         )
         self.assertEqual(result.output["next_search_index"], 0)
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from typing import Any
 
 from harnessiq.providers.grok import GrokClient
@@ -146,11 +147,15 @@ class GrokAgentModel:
         for raw_call in raw_tool_calls:
             func = raw_call["function"]
             tool_name: str = func["name"]
-            # Map the tool name back to its registry key, falling back to a
-            # linkedin-namespaced key so unknown tools still attempt to execute.
-            tool_key = self._name_to_key.get(tool_name, f"linkedin.{tool_name}")
+            tool_key = self._resolve_tool_key(tool_name)
             arguments: dict[str, Any] = json.loads(func.get("arguments") or "{}")
             tool_calls.append(ToolCall(tool_key=tool_key, arguments=arguments))
+
+        if not tool_calls and content.strip():
+            salvaged_tool_calls, cleaned_content = self._parse_tool_calls_from_content(content)
+            if salvaged_tool_calls:
+                tool_calls = salvaged_tool_calls
+                content = cleaned_content
 
         finish_reason: str = choice.get("finish_reason") or "stop"
         should_continue = bool(tool_calls) or finish_reason == "tool_calls"
@@ -160,6 +165,38 @@ class GrokAgentModel:
             tool_calls=tuple(tool_calls),
             should_continue=should_continue,
         )
+
+    def _resolve_tool_key(self, tool_name: str) -> str:
+        if tool_name in self._name_to_key:
+            return self._name_to_key[tool_name]
+        if tool_name in self._name_to_key.values():
+            return tool_name
+        return f"tool.{tool_name}"
+
+    def _parse_tool_calls_from_content(self, content: str) -> tuple[list[ToolCall], str]:
+        text = content.strip()
+        if not text.startswith("[TOOL CALL]"):
+            return [], content
+
+        blocks = [block.strip() for block in re.split(r"\[TOOL CALL\]\s*", text) if block.strip()]
+        tool_calls: list[ToolCall] = []
+        for block in blocks:
+            tool_name, separator, arguments_text = block.partition("\n")
+            if not separator:
+                return [], content
+            try:
+                arguments = json.loads(arguments_text.strip() or "{}")
+            except json.JSONDecodeError:
+                return [], content
+            if not isinstance(arguments, dict):
+                return [], content
+            tool_calls.append(
+                ToolCall(
+                    tool_key=self._resolve_tool_key(tool_name.strip()),
+                    arguments=arguments,
+                )
+            )
+        return tool_calls, ""
 
 
 def create_grok_model() -> GrokAgentModel:

@@ -16,6 +16,7 @@ from harnessiq.shared.agents import (
     AgentParameterSection,
     AgentRuntimeConfig,
     json_parameter_section,
+    merge_agent_runtime_config,
 )
 from harnessiq.shared.prospecting import (
     DEFAULT_AGENT_IDENTITY,
@@ -42,7 +43,7 @@ from harnessiq.shared.prospecting import (
     normalize_prospecting_runtime_parameters,
     utcnow,
 )
-from harnessiq.shared.tools import RegisteredTool, SEARCH_OR_SUMMARIZE, ToolDefinition
+from harnessiq.shared.tools import RegisteredTool, SEARCH_OR_SUMMARIZE, ToolDefinition, ToolResult
 from harnessiq.tools import (
     build_browser_tool_definitions,
     create_evaluate_company_tool,
@@ -59,6 +60,16 @@ JsonSubcallRunner = Callable[[str, Sequence[AgentParameterSection], str], dict[s
 
 class GoogleMapsProspectingAgent(BaseAgent):
     """Concrete harness for Google Maps prospecting."""
+
+    _RESET_SAFE_TOOL_KEYS = frozenset(
+        {
+            SEARCH_OR_SUMMARIZE,
+            "prospecting.start_search",
+            "prospecting.record_listing_result",
+            "prospecting.save_qualified_lead",
+            "prospecting.complete_search",
+        }
+    )
 
     def __init__(
         self,
@@ -115,19 +126,15 @@ class GoogleMapsProspectingAgent(BaseAgent):
             self._build_internal_tools(),
             tuple(tools or ()),
         )
-        runtime_config = AgentRuntimeConfig(
-            max_tokens=max_tokens,
-            reset_threshold=reset_threshold,
-            output_sinks=runtime_config.output_sinks if runtime_config is not None else (),
-            include_default_output_sink=(
-                runtime_config.include_default_output_sink if runtime_config is not None else True
-            ),
-        )
         super().__init__(
             name="google_maps_prospecting",
             model=model,
             tool_executor=tool_registry,
-            runtime_config=runtime_config,
+            runtime_config=merge_agent_runtime_config(
+                runtime_config,
+                max_tokens=max_tokens,
+                reset_threshold=reset_threshold,
+            ),
             memory_path=self._candidate_memory_path,
             repo_root=_find_repo_root(self._candidate_memory_path),
         )
@@ -221,12 +228,21 @@ class GoogleMapsProspectingAgent(BaseAgent):
         except Exception:
             self._memory_store.update_state(run_status=RUN_STATUS_ERROR)
             raise
-        final_status = RUN_STATUS_COMPLETE if result.status == "completed" else RUN_STATUS_IN_PROGRESS
+        final_state = self._memory_store.read_state()
+        final_status = RUN_STATUS_IN_PROGRESS
+        if result.status == "completed" and final_state.current_search_in_progress is None:
+            final_status = RUN_STATUS_COMPLETE
+        elif result.status == "completed":
+            self._memory_store.append_error(
+                "Agent loop ended while a search was still marked in progress; preserving resumable state."
+            )
         self._memory_store.update_state(run_status=final_status)
         return result
 
     def reset_context(self) -> None:
-        super().reset_context()
+        self._transcript.clear()
+        self._reset_count += 1
+        self._expire_context_directives()
         self._memory_store.update_state(session_reset_count=self.reset_count)
         self.refresh_parameters()
 
@@ -257,9 +273,29 @@ class GoogleMapsProspectingAgent(BaseAgent):
 
     def load_parameter_sections(self) -> Sequence[AgentParameterSection]:
         state = self._memory_store.read_state()
-        recent_searches = [record.as_dict() for record in state.searches_completed[-10:]]
-        recent_leads = [record.as_dict() for record in self._memory_store.read_qualified_leads()[-10:]]
-        sections = [
+        recent_searches = [
+            {
+                "index": record.index,
+                "query": record.query,
+                "location": record.location,
+                "listings_found": record.listings_found,
+                "listings_evaluated": record.listings_evaluated,
+                "qualified_count": record.qualified_count,
+            }
+            for record in state.searches_completed[-10:]
+        ]
+        recent_leads = [
+            {
+                "business_name": record.business_name,
+                "maps_url": record.maps_url,
+                "website_url": record.website_url,
+                "score": record.score,
+                "search_index": record.search_index,
+                "search_query": record.search_query,
+            }
+            for record in self._memory_store.read_qualified_leads()[-10:]
+        ]
+        return (
             AgentParameterSection(
                 title="Company Description",
                 content=self._memory_store.read_company_description() or DEFAULT_COMPANY_DESCRIPTION,
@@ -267,32 +303,22 @@ class GoogleMapsProspectingAgent(BaseAgent):
             json_parameter_section(
                 "Run State",
                 {
-                    "run_id": state.run_id,
-                    "run_status": state.run_status,
                     "last_completed_search_index": state.last_completed_search_index,
-                    "searches_summarized_through": state.searches_summarized_through,
-                    "search_history_summary": state.search_history_summary,
                     "current_search_in_progress": (
                         state.current_search_in_progress.as_dict()
                         if state.current_search_in_progress is not None
                         else None
                     ),
+                    "searches_summarized_through": state.searches_summarized_through,
+                    "search_history_summary": state.search_history_summary,
                     "qualified_leads_posted": state.qualified_leads_posted,
                     "disqualified_leads_count": state.disqualified_leads_count,
                     "session_reset_count": state.session_reset_count,
-                    "error_log": list(state.error_log[-10:]),
                 },
             ),
             json_parameter_section("Recent Completed Searches", recent_searches),
             json_parameter_section("Recent Qualified Leads", recent_leads),
-        ]
-        runtime_parameters = self._memory_store.read_runtime_parameters()
-        if runtime_parameters:
-            sections.append(json_parameter_section("Runtime Parameters", runtime_parameters))
-        custom_parameters = self._memory_store.read_custom_parameters()
-        if custom_parameters:
-            sections.append(json_parameter_section("Custom Parameters", custom_parameters))
-        return tuple(sections)
+        )
 
     def build_ledger_outputs(self) -> dict[str, Any]:
         state = self._memory_store.read_state()
@@ -415,13 +441,16 @@ class GoogleMapsProspectingAgent(BaseAgent):
             self.refresh_parameters()
         return result
 
+    def _allow_auto_reset_after_tool_result(self, result: ToolResult) -> bool:
+        return result.tool_key in self._RESET_SAFE_TOOL_KEYS
+
     def _handle_evaluate_company(self, arguments: dict[str, Any]) -> dict[str, Any]:
         payload = self._run_json_subcall(
-            system_prompt=str(arguments["eval_system_prompt"]),
+            system_prompt=self._config.eval_system_prompt,
             sections=(
                 AgentParameterSection(
                     title="Company Description",
-                    content=str(arguments["company_description"]),
+                    content=self._memory_store.read_company_description() or DEFAULT_COMPANY_DESCRIPTION,
                 ),
                 AgentParameterSection(
                     title="Listing Data",
@@ -435,33 +464,26 @@ class GoogleMapsProspectingAgent(BaseAgent):
         return payload
 
     def _handle_search_or_summarize(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        del arguments
         state = self._memory_store.read_state()
-        next_index = int(arguments["last_completed_search_index"]) + 1
+        next_index = state.last_completed_search_index + 1
         if next_index >= self._config.max_searches_per_run:
             return {"action": "no_next_query", "reason": "max_searches_per_run_reached"}
 
-        searches_completed = [
-            SearchRecord.from_dict(item) if not isinstance(item, SearchRecord) else item
-            for item in arguments["searches_completed"]
-        ]
         unsummarized = [
             record
-            for record in searches_completed
-            if record.index > int(arguments["searches_summarized_through"])
+            for record in state.searches_completed
+            if record.index > state.searches_summarized_through
         ]
-        summary_text = (
-            str(arguments["search_history_summary"])
-            if arguments.get("search_history_summary") is not None
-            else None
-        )
+        summary_text = state.search_history_summary
         action = "continued"
-        if unsummarized and len(unsummarized) >= int(arguments["summarize_at_x"]):
+        if unsummarized and len(unsummarized) >= self._config.summarize_at_x:
             summary_payload = self._run_json_subcall(
                 system_prompt=SEARCH_SUMMARY_SYSTEM_PROMPT,
                 sections=(
                     AgentParameterSection(
                         title="Company Description",
-                        content=str(arguments["company_description"]),
+                        content=self._memory_store.read_company_description() or DEFAULT_COMPANY_DESCRIPTION,
                     ),
                     AgentParameterSection(title="Prior Summary", content=summary_text or "(none)"),
                     AgentParameterSection(
@@ -500,7 +522,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
             sections=(
                 AgentParameterSection(
                     title="Company Description",
-                    content=str(arguments["company_description"]),
+                    content=self._memory_store.read_company_description() or DEFAULT_COMPANY_DESCRIPTION,
                 ),
                 AgentParameterSection(
                     title="Search History Summary",
@@ -508,11 +530,15 @@ class GoogleMapsProspectingAgent(BaseAgent):
                 ),
                 AgentParameterSection(
                     title="Recent Searches",
-                    content=json.dumps([record.as_dict() for record in unsummarized[-10:]], indent=2, sort_keys=True),
+                    content=json.dumps(
+                        [record.as_dict() for record in state.searches_completed[-10:]],
+                        indent=2,
+                        sort_keys=True,
+                    ),
                 ),
                 AgentParameterSection(
                     title="Last Completed Search Index",
-                    content=str(arguments["last_completed_search_index"]),
+                    content=str(state.last_completed_search_index),
                 ),
             ),
             label="next_maps_query",

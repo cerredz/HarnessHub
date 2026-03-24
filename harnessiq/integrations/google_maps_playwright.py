@@ -18,15 +18,34 @@ _MAX_HTML_CHARS = 50_000
 _MAX_TEXT_CHARS = 20_000
 _SEARCH_RESULTS_SCRIPT = """
 elements => elements.map((element, index) => {
-  const text = (element.innerText || '').trim();
+  const container = element.closest('div.Nv2PK') || element.closest('div[role="article"]') || element.parentElement;
+  const text = ((container && container.innerText) || element.innerText || '').trim();
   const href = element.href || '';
-  const ratingMatch = text.match(/(\\d\\.\\d)/);
+  const ariaLabel = (element.getAttribute('aria-label') || '').trim();
+  const ratingNode = container ? container.querySelector('.MW4etd') : null;
+  const ratingText = ratingNode ? (ratingNode.textContent || '').trim() : '';
+  const ratingMatch = (ratingText || text).match(/(\\d\\.\\d)/);
   const reviewMatch = text.match(/([\\d,]+)\\s+reviews?/i);
-  const lines = text.split('\\n').map(line => line.trim()).filter(Boolean);
+  const lines = text
+    .split('\\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .filter(line => line !== 'Website' && line !== 'Directions');
+  const name = ariaLabel || lines[0] || '';
+  const detailLines = lines.filter(line => line !== name && line !== ratingText);
+  const primaryDetail = detailLines[0] || '';
+  const secondaryDetail = detailLines[1] || '';
+  const primaryParts = primaryDetail.split('?').map(part => part.trim()).filter(Boolean);
+  const secondaryParts = secondaryDetail.split('?').map(part => part.trim()).filter(Boolean);
+  const address = primaryParts.length > 1 ? primaryParts.slice(1).join(' ? ') : '';
+  const phoneCandidate = secondaryParts[secondaryParts.length - 1] || '';
   return {
     rank: index + 1,
-    name: lines[0] || '',
-    category: lines[1] || '',
+    name,
+    category: primaryParts[0] || '',
+    address,
+    status_text: secondaryParts[0] || '',
+    phone: /\\(?\\d{3}\\)?[-\\s]?\\d{3}[-\\s]?\\d{4}/.test(phoneCandidate) ? phoneCandidate : '',
     rating_text: ratingMatch ? ratingMatch[1] : '',
     review_count_text: reviewMatch ? reviewMatch[1] : '',
     maps_url: href,
@@ -252,11 +271,13 @@ class PlaywrightGoogleMapsSession:
                     "rank": int(entry.get("rank", len(results) + 1)),
                     "name": str(entry.get("name", "")).strip(),
                     "category": str(entry.get("category", "")).strip(),
+                    "address": str(entry.get("address", "")).strip(),
+                    "status_text": str(entry.get("status_text", "")).strip(),
+                    "phone": str(entry.get("phone", "")).strip(),
                     "rating": _safe_float(entry.get("rating_text")),
                     "review_count": review_count,
                     "maps_url": maps_url,
                     "top_competitor_review_count": review_count,
-                    "raw_text": str(entry.get("text", "")).strip(),
                 }
             )
             if len(results) >= max_items:
@@ -286,7 +307,6 @@ class PlaywrightGoogleMapsSession:
             "chain_indicator": _is_probable_chain(self._safe_title(self.page), website_url, page_text),
             "status": status,
             "closed": status in {"temporarily_closed", "permanently_closed"},
-            "raw_text": page_text[:5_000],
         }
         return details
 
@@ -311,7 +331,6 @@ class PlaywrightGoogleMapsSession:
             "link_count": int(metrics.get("linkCount", 0)),
             "has_nav": bool(metrics.get("hasNav")),
             "has_form": bool(metrics.get("hasForm")),
-            "text_sample": page_text[:2_000],
             "website_quality_assessment": assessment,
         }
 

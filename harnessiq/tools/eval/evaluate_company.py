@@ -19,21 +19,16 @@ def build_evaluate_company_tool_definition() -> ToolDefinition:
         input_schema={
             "type": "object",
             "properties": {
-                "company_description": {
-                    "type": "string",
-                    "description": "Natural-language description of the target company profile.",
-                },
-                "eval_system_prompt": {
-                    "type": "string",
-                    "description": "Full system prompt used by the evaluation engine.",
-                },
                 "listing_data": {
                     "type": "object",
-                    "description": "Structured extracted listing data.",
+                    "description": (
+                        "Structured extracted listing data. The harness injects the configured "
+                        "company description and evaluation prompt."
+                    ),
                     "additionalProperties": True,
                 },
             },
-            "required": ["company_description", "eval_system_prompt", "listing_data"],
+            "required": ["listing_data"],
             "additionalProperties": False,
         },
     )
