@@ -53,6 +53,20 @@ class _FakeSearchBackend:
         self.close_calls += 1
 
 
+class _FailingSearchBackend:
+    def __init__(self, message: str = "google blocked") -> None:
+        self.message = message
+        self.calls: list[tuple[str, int]] = []
+        self.close_calls = 0
+
+    def search_keyword(self, *, keyword: str, max_results: int) -> InstagramSearchExecution:
+        self.calls.append((keyword, max_results))
+        raise RuntimeError(self.message)
+
+    def close(self) -> None:
+        self.close_calls += 1
+
+
 def _build_execution(keyword: str = "fitness coach") -> InstagramSearchExecution:
     lead = InstagramLeadRecord(
         source_url="https://www.instagram.com/creator-a/",
@@ -149,13 +163,58 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
                 ["ICP Profiles", "Recent Searches"],
             )
             self.assertEqual(model.requests[1].parameter_sections[1].content, "fitness coach")
-            tool_results = [entry.content for entry in agent.transcript if entry.entry_type == "tool_result"]
-            self.assertEqual(len(tool_results), 1)
-            self.assertIn('"merge_summary"', tool_results[0])
-            self.assertNotIn('"query"', tool_results[0])
-            self.assertNotIn('"visited_urls"', tool_results[0])
+            self.assertEqual(model.requests[1].transcript, ())
+            self.assertFalse(any(entry.entry_type == "tool_call" for entry in agent.transcript))
+            self.assertFalse(any(entry.entry_type == "tool_result" for entry in agent.transcript))
+            self.assertFalse(any(entry.content == "(no assistant content)" for entry in agent.transcript))
             database = json.loads(Path(temp_dir, "lead_database.json").read_text(encoding="utf-8"))
             self.assertEqual(database["emails"], ["creator@example.com"])
+
+    def test_failed_search_attempt_still_updates_recent_searches_without_transcript_tool_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model = _FakeModel(
+                [
+                    AgentModelResponse(
+                        assistant_message="Search fitness coach.",
+                        tool_calls=(ToolCall(tool_key="instagram.search_keyword", arguments={"keyword": "fitness coach"}),),
+                        should_continue=True,
+                    ),
+                    AgentModelResponse(assistant_message="done", should_continue=False),
+                ]
+            )
+            backend = _FailingSearchBackend("Google blocked")
+            agent = InstagramKeywordDiscoveryAgent(
+                model=model,
+                search_backend=backend,
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators",),
+            )
+
+            result = agent.run(max_cycles=2)
+
+            self.assertEqual(result.status, "completed")
+            self.assertEqual(backend.calls, [("fitness coach", 5)])
+            self.assertEqual(len(model.requests), 2)
+            self.assertEqual(model.requests[1].parameter_sections[1].content, "fitness coach")
+            self.assertEqual(model.requests[1].transcript, ())
+            self.assertEqual(agent.get_search_history(), ())
+
+    def test_build_ledger_outputs_reads_persisted_instagram_memory(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = InstagramKeywordDiscoveryAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                search_backend=_FakeSearchBackend(_build_execution()),
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators",),
+            )
+            agent.prepare()
+
+            agent.tool_executor.execute("instagram.search_keyword", {"keyword": "fitness coach"})
+            outputs = agent.build_ledger_outputs()
+
+            self.assertEqual(outputs["emails"], ["creator@example.com"])
+            self.assertEqual(outputs["search_history"][0]["keyword"], "fitness coach")
+            self.assertEqual(outputs["leads"][0]["source_url"], "https://www.instagram.com/creator-a/")
 
     def test_get_emails_returns_unique_persisted_values(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

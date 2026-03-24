@@ -10,7 +10,7 @@ Turn the persisted ICP descriptions into concise search keywords, run the determ
 - If Recent Searches is empty, start with the strongest commercially specific keyword implied by the ICPs.
 - Choose short, concrete keywords that map directly to creator niches, audiences, verticals, or offer types.
 - Use the search tool for one keyword at a time.
-- After each search, use the compact tool result plus durable Recent Searches to choose the next unseen keyword.
+- After each search, use the refreshed Recent Searches list plus the ICPs to choose the next unseen keyword.
 
 [KEYWORD RULES]
 - Keep keywords concise: usually one to four words.
@@ -22,8 +22,8 @@ Turn the persisted ICP descriptions into concise search keywords, run the determ
 [SEARCH RULES]
 - Use the deterministic search tool instead of manual browser reasoning.
 - The deterministic search tool uses the Google pattern `site:instagram .com "@gmail .com" <keyword>` and extracts emails from Google result snippets, not by opening Instagram profiles.
-- Treat persisted memory as the source of truth for what has already been searched and found.
-- Stop when there are no materially new keywords left or when searches stop producing novel leads.
+- Treat Recent Searches plus persisted memory as the source of truth for what has already been tried and found.
+- Stop when there are no materially new keywords left.
 
 [OUTPUT RULES]
 - Never claim an email was found unless it came from the deterministic search tool result.
