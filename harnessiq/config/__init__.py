@@ -22,8 +22,13 @@ from .credentials import (
 )
 from .harness_profiles import (
     DEFAULT_HARNESS_PROFILE_FILENAME,
+    DEFAULT_HARNESS_PROFILE_INDEX_FILENAME,
     HarnessProfile,
+    HarnessProfileIndex,
+    HarnessProfileIndexRecord,
+    HarnessProfileIndexStore,
     HarnessProfileStore,
+    HarnessRunSnapshot,
     build_harness_credential_binding_name,
 )
 from .loader import CredentialLoader
@@ -41,9 +46,14 @@ __all__ = [
     "DEFAULT_CREDENTIALS_CONFIG_FILENAME",
     "DEFAULT_ENV_FILENAME",
     "DEFAULT_HARNESS_PROFILE_FILENAME",
+    "DEFAULT_HARNESS_PROFILE_INDEX_FILENAME",
     "DotEnvFileNotFoundError",
     "HarnessProfile",
+    "HarnessProfileIndex",
+    "HarnessProfileIndexRecord",
+    "HarnessProfileIndexStore",
     "HarnessProfileStore",
+    "HarnessRunSnapshot",
     "MissingEnvironmentVariableError",
     "PROVIDER_CREDENTIAL_SPECS",
     "ProviderCredentialConfig",
