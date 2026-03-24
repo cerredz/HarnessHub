@@ -7,6 +7,7 @@ import unittest
 from harnessiq.cli.common import parse_manifest_parameter_assignments
 from harnessiq.shared import HARNESS_MANIFESTS, get_harness_manifest
 from harnessiq.shared.exa_outreach import EXA_OUTREACH_HARNESS_MANIFEST
+from harnessiq.shared.instagram import INSTAGRAM_HARNESS_MANIFEST
 from harnessiq.shared.leads import LEADS_HARNESS_MANIFEST
 from harnessiq.shared.linkedin import LINKEDIN_HARNESS_MANIFEST
 
@@ -35,6 +36,13 @@ class HarnessManifestCoercionTests(unittest.TestCase):
         )
         self.assertEqual(payload["target_level"], "staff")
         self.assertTrue(payload["remote_only"])
+
+    def test_instagram_manifest_allows_open_ended_custom_parameters(self) -> None:
+        payload = INSTAGRAM_HARNESS_MANIFEST.coerce_custom_parameters(
+            {"icp_profiles": ["fitness creators"], "research_mode": True}
+        )
+        self.assertEqual(payload["icp_profiles"], ["fitness creators"])
+        self.assertTrue(payload["research_mode"])
 
     def test_leads_manifest_coerces_nullable_runtime_parameters(self) -> None:
         payload = LEADS_HARNESS_MANIFEST.coerce_runtime_parameters(

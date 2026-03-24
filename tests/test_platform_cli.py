@@ -36,6 +36,10 @@ def create_empty_browser_tools() -> tuple[object, ...]:
     return ()
 
 
+def create_instagram_search_backend() -> object:
+    return object()
+
+
 def _run(argv: list[str]) -> tuple[int, dict[str, object]]:
     stdout = io.StringIO()
     with redirect_stdout(stdout):
@@ -271,3 +275,46 @@ def test_run_generic_prospecting_seeds_model_factory_environment_from_local_env(
     assert exit_code == 0
     assert payload["result"]["status"] == "completed"
     assert _LAST_PROVIDER_ENV["XAI_API_KEY"] == "local-xai-key"
+
+
+def test_run_generic_instagram_accepts_custom_params_and_icp_override(tmp_path: Path) -> None:
+    _run(["prepare", "instagram", "--agent", "creator-a", "--memory-root", str(tmp_path)])
+
+    mock_agent = MagicMock()
+    mock_agent.get_emails.return_value = ("creator@example.com",)
+    mock_agent.run.return_value = SimpleNamespace(
+        cycles_completed=1,
+        pause_reason=None,
+        resets=0,
+        status="completed",
+    )
+
+    with patch(
+        "harnessiq.cli.adapters.instagram.InstagramKeywordDiscoveryAgent.from_memory",
+        return_value=mock_agent,
+    ) as patched_from_memory:
+        exit_code, payload = _run(
+            [
+                "run",
+                "instagram",
+                "--agent",
+                "creator-a",
+                "--memory-root",
+                str(tmp_path),
+                "--model-factory",
+                "tests.test_platform_cli:create_static_model",
+                "--search-backend-factory",
+                "tests.test_platform_cli:create_instagram_search_backend",
+                "--custom-param",
+                'target_segment="micro-creators"',
+                "--icp",
+                "fitness creators",
+            ]
+        )
+
+    assert exit_code == 0
+    assert payload["result"]["status"] == "completed"
+    assert patched_from_memory.call_args.kwargs["custom_overrides"] == {
+        "icp_profiles": ["fitness creators"],
+        "target_segment": "micro-creators",
+    }

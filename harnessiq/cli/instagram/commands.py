@@ -23,10 +23,13 @@ from harnessiq.cli.common import (
 from harnessiq.shared.instagram import (
     INSTAGRAM_HARNESS_MANIFEST,
     InstagramMemoryStore,
+    normalize_instagram_custom_parameters,
     normalize_instagram_runtime_parameters,
+    resolve_instagram_icp_profiles,
 )
 
 SUPPORTED_INSTAGRAM_RUNTIME_PARAMETERS = INSTAGRAM_HARNESS_MANIFEST.runtime_parameter_names
+SUPPORTED_INSTAGRAM_CUSTOM_PARAMETERS = INSTAGRAM_HARNESS_MANIFEST.custom_parameter_names
 
 _DEFAULT_SEARCH_BACKEND_FACTORY = "harnessiq.integrations.instagram_playwright:create_search_backend"
 
@@ -82,6 +85,13 @@ def register_instagram_commands(
             f"{format_manifest_parameter_keys(INSTAGRAM_HARNESS_MANIFEST, scope='runtime')}."
         ),
     )
+    configure_parser.add_argument(
+        "--custom-param",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Persist an Instagram custom parameter as KEY=VALUE. Values are parsed as JSON when possible.",
+    )
     configure_parser.set_defaults(command_handler=_handle_configure)
 
     show_parser = instagram_subparsers.add_parser(
@@ -125,6 +135,23 @@ def register_instagram_commands(
         default=[],
         metavar="KEY=VALUE",
         help="Override a persisted runtime parameter for this run only.",
+    )
+    run_parser.add_argument(
+        "--custom-param",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Override a persisted custom parameter for this run only.",
+    )
+    run_parser.add_argument(
+        "--icp",
+        action="append",
+        default=[],
+        help="One ICP description to use for this run. Repeat the flag to provide multiple ICPs.",
+    )
+    run_parser.add_argument(
+        "--icp-file",
+        help="Path to a JSON array or newline-delimited UTF-8 text file containing ICP descriptions for this run.",
     )
     run_parser.add_argument("--max-cycles", type=int, help="Optional max cycle count passed to agent.run().")
     run_parser.set_defaults(command_handler=_handle_run)
@@ -188,6 +215,13 @@ def _handle_configure(args: argparse.Namespace) -> int:
         store.write_runtime_parameters(current)
         updated.append("runtime_parameters")
 
+    custom_parameters = _parse_custom_assignments(args.custom_param)
+    if custom_parameters:
+        current_custom = store.read_custom_parameters()
+        current_custom.update(custom_parameters)
+        store.write_custom_parameters(current_custom)
+        updated.append("custom_parameters")
+
     payload = _build_summary(store)
     payload["status"] = "configured"
     payload["updated"] = updated
@@ -219,12 +253,17 @@ def _handle_run(args: argparse.Namespace) -> int:
 
     search_backend = _load_factory(args.search_backend_factory)()
     runtime_overrides = _parse_runtime_assignments(args.runtime_param)
+    custom_overrides = _parse_custom_assignments(args.custom_param)
+    icp_profiles = _resolve_icp_input(args.icp, args.icp_file)
+    if icp_profiles is not None:
+        custom_overrides["icp_profiles"] = icp_profiles
 
     agent = InstagramKeywordDiscoveryAgent.from_memory(
         model=model,
         search_backend=search_backend,
         memory_path=store.memory_path,
         runtime_overrides=runtime_overrides,
+        custom_overrides=custom_overrides,
     )
     result = agent.run(max_cycles=args.max_cycles)
     emit_json(
@@ -286,14 +325,24 @@ def _parse_runtime_assignments(assignments: Sequence[str]) -> dict[str, Any]:
     )
 
 
+def _parse_custom_assignments(assignments: Sequence[str]) -> dict[str, Any]:
+    return parse_manifest_parameter_assignments(
+        assignments,
+        manifest=INSTAGRAM_HARNESS_MANIFEST,
+        scope="custom",
+    )
+
+
 def _build_summary(store: InstagramMemoryStore) -> dict[str, Any]:
     search_history = store.read_search_history()
     lead_database = store.read_lead_database()
+    custom_parameters = store.read_custom_parameters()
     return {
         "additional_prompt": store.read_additional_prompt(),
         "agent_identity": store.read_agent_identity(),
+        "custom_parameters": custom_parameters,
         "email_count": len(lead_database.emails),
-        "icp_profiles": store.read_icp_profiles(),
+        "icp_profiles": resolve_instagram_icp_profiles(store.read_icp_profiles(), custom_parameters),
         "lead_count": len(lead_database.leads),
         "memory_path": str(store.memory_path.resolve()),
         "recent_searches": [record.as_dict() for record in search_history[-5:]],
@@ -321,7 +370,9 @@ def _print_help(parser: argparse.ArgumentParser) -> int:
 
 
 __all__ = [
+    "SUPPORTED_INSTAGRAM_CUSTOM_PARAMETERS",
     "SUPPORTED_INSTAGRAM_RUNTIME_PARAMETERS",
+    "normalize_instagram_custom_parameters",
     "normalize_instagram_runtime_parameters",
     "register_instagram_commands",
 ]

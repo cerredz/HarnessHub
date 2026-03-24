@@ -6,7 +6,7 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol, Sequence, runtime_checkable
+from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.shared.harness_manifest import HarnessManifest, HarnessMemoryFileSpec, HarnessParameterSpec
@@ -15,6 +15,7 @@ ICP_PROFILES_FILENAME = "icp_profiles.json"
 SEARCH_HISTORY_FILENAME = "search_history.json"
 LEAD_DATABASE_FILENAME = "lead_database.json"
 RUNTIME_PARAMETERS_FILENAME = "runtime_parameters.json"
+CUSTOM_PARAMETERS_FILENAME = "custom_parameters.json"
 AGENT_IDENTITY_FILENAME = "agent_identity.txt"
 ADDITIONAL_PROMPT_FILENAME = "additional_prompt.txt"
 INSTAGRAM_GOOGLE_SEARCH_URL = "https://www.google.com/search"
@@ -231,6 +232,10 @@ class InstagramMemoryStore:
         return self.memory_path / RUNTIME_PARAMETERS_FILENAME
 
     @property
+    def custom_parameters_path(self) -> Path:
+        return self.memory_path / CUSTOM_PARAMETERS_FILENAME
+
+    @property
     def agent_identity_path(self) -> Path:
         return self.memory_path / AGENT_IDENTITY_FILENAME
 
@@ -244,6 +249,7 @@ class InstagramMemoryStore:
         _ensure_json_file(self.search_history_path, [])
         _ensure_json_file(self.lead_database_path, InstagramLeadDatabase().as_dict())
         _ensure_json_file(self.runtime_parameters_path, {})
+        _ensure_json_file(self.custom_parameters_path, {})
         _ensure_text_file(self.agent_identity_path, DEFAULT_AGENT_IDENTITY)
         _ensure_text_file(self.additional_prompt_path, "")
 
@@ -340,6 +346,12 @@ class InstagramMemoryStore:
     def write_runtime_parameters(self, parameters: dict[str, Any]) -> None:
         _write_json(self.runtime_parameters_path, parameters)
 
+    def read_custom_parameters(self) -> dict[str, Any]:
+        return _read_json_file(self.custom_parameters_path, expected_type=dict)
+
+    def write_custom_parameters(self, parameters: Mapping[str, Any]) -> None:
+        _write_json(self.custom_parameters_path, dict(parameters))
+
     def read_agent_identity(self) -> str:
         return self.agent_identity_path.read_text(encoding="utf-8").strip()
 
@@ -381,6 +393,21 @@ def normalize_instagram_runtime_parameters(parameters: dict[str, Any]) -> dict[s
     return INSTAGRAM_HARNESS_MANIFEST.coerce_runtime_parameters(parameters)
 
 
+def normalize_instagram_custom_parameters(parameters: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate and normalize open-ended custom parameters for the Instagram agent."""
+    return INSTAGRAM_HARNESS_MANIFEST.coerce_custom_parameters(parameters)
+
+
+def resolve_instagram_icp_profiles(
+    stored_profiles: Sequence[str],
+    custom_parameters: Mapping[str, Any] | None = None,
+) -> list[str]:
+    """Resolve the effective ICP list, allowing custom parameters to override stored profiles."""
+    if custom_parameters and "icp_profiles" in custom_parameters:
+        return _coerce_icp_profiles_value(custom_parameters["icp_profiles"])
+    return _coerce_icp_profiles_value(stored_profiles)
+
+
 INSTAGRAM_HARNESS_MANIFEST = HarnessManifest(
     manifest_id="instagram",
     agent_name="instagram_keyword_discovery",
@@ -398,11 +425,13 @@ INSTAGRAM_HARNESS_MANIFEST = HarnessManifest(
         HarnessParameterSpec("reset_threshold", "number", "Fraction of max_tokens that triggers a reset.", default=DEFAULT_AGENT_RESET_THRESHOLD),
         HarnessParameterSpec("search_result_limit", "integer", "Maximum results requested from the search backend.", default=DEFAULT_SEARCH_RESULT_LIMIT),
     ),
+    custom_parameters_open_ended=True,
     memory_files=(
         HarnessMemoryFileSpec("icp_profiles", ICP_PROFILES_FILENAME, "Persisted ICP descriptions.", format="json"),
         HarnessMemoryFileSpec("search_history", SEARCH_HISTORY_FILENAME, "Durable Instagram search history.", format="json"),
         HarnessMemoryFileSpec("lead_database", LEAD_DATABASE_FILENAME, "Persisted deduplicated leads and emails.", format="json"),
         HarnessMemoryFileSpec("runtime_parameters", RUNTIME_PARAMETERS_FILENAME, "Persisted typed runtime overrides.", format="json"),
+        HarnessMemoryFileSpec("custom_parameters", CUSTOM_PARAMETERS_FILENAME, "Open-ended user custom parameter payload.", format="json"),
         HarnessMemoryFileSpec("agent_identity", AGENT_IDENTITY_FILENAME, "Override for the Instagram system identity.", format="text"),
         HarnessMemoryFileSpec("additional_prompt", ADDITIONAL_PROMPT_FILENAME, "Additional free-form prompt data.", format="text"),
     ),
@@ -470,6 +499,22 @@ def _read_json_file(path: Path, *, expected_type: type) -> Any:
     return payload
 
 
+def _coerce_icp_profiles_value(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        cleaned = value.strip()
+        return [cleaned] if cleaned else []
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        cleaned_values: list[str] = []
+        for item in value:
+            cleaned_item = str(item).strip()
+            if cleaned_item:
+                cleaned_values.append(cleaned_item)
+        return cleaned_values
+    raise ValueError("Instagram ICP profiles must be a string, null, or a JSON array of strings.")
+
+
 def _dedupe_emails(values: Sequence[str]) -> list[str]:
     seen: set[str] = set()
     result: list[str] = []
@@ -512,6 +557,7 @@ __all__ = [
     "DEFAULT_RECENT_RESULT_WINDOW",
     "DEFAULT_RECENT_SEARCH_WINDOW",
     "DEFAULT_SEARCH_RESULT_LIMIT",
+    "CUSTOM_PARAMETERS_FILENAME",
     "ICP_PROFILES_FILENAME",
     "INSTAGRAM_HARNESS_MANIFEST",
     "INSTAGRAM_GOOGLE_SEARCH_URL",
@@ -529,5 +575,7 @@ __all__ = [
     "build_instagram_google_fallback_query",
     "build_instagram_google_query",
     "extract_emails",
+    "normalize_instagram_custom_parameters",
     "normalize_instagram_runtime_parameters",
+    "resolve_instagram_icp_profiles",
 ]

@@ -111,6 +111,7 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
             self.assertTrue(Path(temp_dir, "search_history.json").exists())
             self.assertTrue(Path(temp_dir, "lead_database.json").exists())
             self.assertTrue(Path(temp_dir, "runtime_parameters.json").exists())
+            self.assertTrue(Path(temp_dir, "custom_parameters.json").exists())
             self.assertEqual(
                 [section.title for section in model.requests[0].parameter_sections],
                 ["ICP Profiles", "Recent Searches"],
@@ -249,6 +250,32 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
             self.assertEqual(agent.config.recent_result_window, 3)
             self.assertEqual(agent.config.search_result_limit, 2)
             self.assertIn("ugc skincare creators", agent.load_parameter_sections()[0].content)
+
+    def test_from_memory_uses_custom_icp_override_and_custom_parameter_section(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = InstagramMemoryStore(memory_path=temp_dir)
+            store.prepare()
+            store.write_icp_profiles(["fitness creators"])
+            store.write_custom_parameters({"research_mode": True})
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+
+            agent = InstagramKeywordDiscoveryAgent.from_memory(
+                model=model,
+                search_backend=_FakeSearchBackend(_build_execution("skincare")),
+                memory_path=temp_dir,
+                custom_overrides={
+                    "icp_profiles": ["ugc skincare creators"],
+                    "target_segment": "micro-creators",
+                },
+            )
+
+            sections = agent.load_parameter_sections()
+
+            self.assertEqual([section.title for section in sections], ["ICP Profiles", "Recent Searches", "Custom Parameters"])
+            self.assertIn("ugc skincare creators", sections[0].content)
+            self.assertIn("target_segment", sections[2].content)
+            self.assertIn("research_mode", sections[2].content)
+            self.assertNotIn("icp_profiles", sections[2].content)
 
     def test_agent_is_importable_from_harnessiq_agents(self) -> None:
         from harnessiq.agents import InstagramKeywordDiscoveryAgent as Imported
