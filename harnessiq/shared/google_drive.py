@@ -65,36 +65,94 @@ class GoogleDriveOperation:
     name: str
     category: str
     summary_text: str
+    payload_description: str
 
     def summary(self) -> str:
         return self.summary_text
 
+    def payload_summary(self) -> str:
+        return self.payload_description
+
+
+def _operation(
+    name: str,
+    category: str,
+    summary_text: str,
+    payload_description: str,
+) -> tuple[str, GoogleDriveOperation]:
+    """Build one catalog entry so operation metadata stays concise and consistent."""
+    return (
+        name,
+        GoogleDriveOperation(
+            name=name,
+            category=category,
+            summary_text=summary_text,
+            payload_description=payload_description,
+        ),
+    )
+
 
 _google_drive_catalog: OrderedDict[str, GoogleDriveOperation] = OrderedDict(
     (
-        (
+        _operation(
             "ensure_folder",
-            GoogleDriveOperation(
-                name="ensure_folder",
-                category="Folders",
-                summary_text="ensure_folder (create or reuse a named folder under an optional parent)",
-            ),
+            "Folders",
+            "ensure_folder (create or reuse a named folder under an optional parent)",
+            "{name, parent_id?}",
         ),
-        (
+        _operation(
+            "list_files",
+            "Lookup",
+            "list_files (list files by optional name, parent, MIME type, or raw Drive query)",
+            "{name?, parent_id?, mime_type?, query?, page_size?, include_trashed?}",
+        ),
+        _operation(
             "find_file",
-            GoogleDriveOperation(
-                name="find_file",
-                category="Lookup",
-                summary_text="find_file (find the first matching file by name, parent, and optional MIME type)",
-            ),
+            "Lookup",
+            "find_file (find the first matching file by name, parent, and optional MIME type)",
+            "{name, parent_id?, mime_type?}",
         ),
-        (
+        _operation(
+            "get_file",
+            "Lookup",
+            "get_file (fetch one file's metadata by id)",
+            "{file_id}",
+        ),
+        _operation(
             "upsert_json_file",
-            GoogleDriveOperation(
-                name="upsert_json_file",
-                category="Files",
-                summary_text="upsert_json_file (create or replace a JSON file under an optional parent folder)",
-            ),
+            "Files",
+            "upsert_json_file (create or replace a JSON file under an optional parent folder)",
+            "{name, parent_id?, payload}",
+        ),
+        _operation(
+            "copy_file",
+            "Files",
+            "copy_file (duplicate one Drive file, optionally renaming it or placing it in another folder)",
+            "{file_id, name?, parent_id?}",
+        ),
+        _operation(
+            "move_file",
+            "Files",
+            "move_file (move one file to a new folder and optionally rename it)",
+            "{file_id, new_parent_id?, remove_parent_ids?, clear_existing_parents?, name?}",
+        ),
+        _operation(
+            "create_shortcut",
+            "Shortcuts",
+            "create_shortcut (create a Drive shortcut that points at another file or folder)",
+            "{target_file_id, name?, parent_id?}",
+        ),
+        _operation(
+            "list_permissions",
+            "Permissions",
+            "list_permissions (list the current sharing permissions for a file)",
+            "{file_id}",
+        ),
+        _operation(
+            "create_permission",
+            "Permissions",
+            "create_permission (grant a new sharing permission to a file)",
+            "{file_id, type, role, email_address?, domain?, allow_file_discovery?, send_notification_email?}",
         ),
     )
 )

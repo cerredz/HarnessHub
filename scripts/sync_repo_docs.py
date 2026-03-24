@@ -79,6 +79,25 @@ PACKAGE_LAYOUT = [
     ),
 ]
 
+FOCUSED_SUBPACKAGE_DESCRIPTIONS = [
+    (
+        "harnessiq/cli/adapters/",
+        "Manifest-driven platform CLI adapter package with one module per harness plus shared adapter primitives.",
+    ),
+    (
+        "harnessiq/cli/adapters/utils/",
+        "Shared helper modules for adapter store loading, payload shaping, factory resolution, and session-directory setup.",
+    ),
+    (
+        "harnessiq/config/provider_credentials/",
+        "Focused provider-credential spec package split into catalog, models, builders, and masking helpers.",
+    ),
+    (
+        "harnessiq/utils/harness_manifest/",
+        "Manifest coercion, validation, and registry helpers extracted from the public shared manifest modules.",
+    ),
+]
+
 KEY_FILE_DESCRIPTIONS = [
     (
         "harnessiq/shared/harness_manifest.py",
@@ -97,8 +116,8 @@ KEY_FILE_DESCRIPTIONS = [
         "Platform-first CLI roots that synthesize manifest-driven prepare/show/run/inspect and credential management commands.",
     ),
     (
-        "harnessiq/cli/platform_adapters.py",
-        "Harness-specific adapter layer that turns manifest metadata into platform CLI behavior.",
+        "harnessiq/cli/adapters/base.py",
+        "Abstract adapter hooks and shared store-backed adapter behavior for the platform-first CLI.",
     ),
     (
         "harnessiq/toolset/catalog_provider.py",
@@ -778,6 +797,15 @@ def build_inventory() -> dict[str, Any]:
             }
         )
 
+    focused_subpackage_rows = [
+        {
+            "path": path,
+            "description": description,
+        }
+        for path, description in FOCUSED_SUBPACKAGE_DESCRIPTIONS
+        if (ROOT / path).exists()
+    ]
+
     top_level_commands = [command for command in commands if len(command["segments"]) == 1]
     direct_subcommands: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for command in commands:
@@ -797,6 +825,7 @@ def build_inventory() -> dict[str, Any]:
         },
         "top_level_directories": top_level_dirs,
         "package_layout": package_layout_rows,
+        "focused_subpackages": focused_subpackage_rows,
         "key_files": [
             {
                 "path": path,
@@ -1065,6 +1094,7 @@ def render_commands_artifact(inventory: dict[str, Any]) -> str:
 def render_file_index(inventory: dict[str, Any]) -> str:
     top_level_rows = [[f"`{entry['path']}`", entry["kind"], entry["description"]] for entry in inventory["top_level_directories"]]
     package_rows = [[f"`{entry['path']}`", entry["children"], entry["description"]] for entry in inventory["package_layout"]]
+    focused_subpackage_rows = [[f"`{entry['path']}`", entry["description"]] for entry in inventory["focused_subpackages"]]
     key_file_rows = [[f"`{entry['path']}`", entry["description"]] for entry in inventory["key_files"]]
 
     harness_rows = []
@@ -1132,6 +1162,10 @@ def render_file_index(inventory: dict[str, Any]) -> str:
             "## Package Layout",
             "",
             make_table(["Path", "Live Subpackages", "Responsibility"], package_rows),
+            "",
+            "## Focused Subpackages",
+            "",
+            make_table(["Path", "Responsibility"], focused_subpackage_rows),
             "",
             "## Key Files",
             "",

@@ -10,11 +10,17 @@ from urllib import error, parse, request
 from harnessiq.providers.google_drive.api import (
     FOLDER_MIME_TYPE,
     JSON_MIME_TYPE,
+    SHORTCUT_MIME_TYPE,
     build_bearer_headers,
+    file_action_url,
     files_url,
+    permissions_url,
 )
 from harnessiq.providers.http import ProviderHTTPError, RequestExecutor, request_json
 from harnessiq.shared.google_drive import GoogleDriveCredentials
+
+_DEFAULT_FILE_FIELDS = "id,name,mimeType,parents,shortcutDetails,targetId,trashed,webViewLink,webContentLink"
+_DEFAULT_PERMISSION_FIELDS = "permissions(id,type,role,emailAddress,domain,allowFileDiscovery)"
 
 
 class TokenRequestExecutor(Protocol):
@@ -155,25 +161,60 @@ class GoogleDriveClient:
         files = self.list_files(name=name, parent_id=parent_id, mime_type=mime_type)
         return files[0] if files else None
 
+    def get_file(
+        self,
+        file_id: str,
+        *,
+        fields: str = _DEFAULT_FILE_FIELDS,
+    ) -> dict[str, Any]:
+        access_token = self.refresh_access_token()
+        response = self.request_executor(
+            "GET",
+            files_url(
+                self.credentials.base_url,
+                file_id=file_id,
+                query={"fields": fields},
+            ),
+            headers=build_bearer_headers(access_token),
+            timeout_seconds=self.credentials.timeout_seconds,
+        )
+        if not isinstance(response, Mapping):
+            raise ProviderHTTPError(provider="google_drive", message="Drive file metadata response was not a JSON object.")
+        return dict(response)
+
     def list_files(
         self,
         *,
         name: str | None = None,
         parent_id: str | None = None,
         mime_type: str | None = None,
+        query: str | None = None,
+        page_size: int = 100,
+        include_trashed: bool = False,
+        fields: str = _DEFAULT_FILE_FIELDS,
     ) -> list[dict[str, Any]]:
+        if page_size <= 0:
+            raise ValueError("page_size must be greater than zero.")
         access_token = self.refresh_access_token()
-        query = _build_drive_query(name=name, parent_id=parent_id, mime_type=mime_type)
+        drive_query = _build_drive_query(
+            name=name,
+            parent_id=parent_id,
+            mime_type=mime_type,
+            query=query,
+            include_trashed=include_trashed,
+        )
+        request_query: dict[str, str | int] = {
+            "fields": f"files({fields})",
+            "pageSize": page_size,
+            "spaces": "drive",
+        }
+        if drive_query:
+            request_query["q"] = drive_query
         response = self.request_executor(
             "GET",
             files_url(
                 self.credentials.base_url,
-                query={
-                    "fields": "files(id,name,mimeType,parents)",
-                    "pageSize": 100,
-                    "q": query,
-                    "spaces": "drive",
-                },
+                query=request_query,
             ),
             headers=build_bearer_headers(access_token),
             timeout_seconds=self.credentials.timeout_seconds,
@@ -203,6 +244,145 @@ class GoogleDriveClient:
         if not isinstance(response, Mapping):
             raise ProviderHTTPError(provider="google_drive", message="Drive folder create response was not a JSON object.")
         return {"created": True, "folder": dict(response)}
+
+    def copy_file(
+        self,
+        file_id: str,
+        *,
+        name: str | None = None,
+        parent_id: str | None = None,
+    ) -> dict[str, Any]:
+        access_token = self.refresh_access_token()
+        metadata: dict[str, Any] = {}
+        if name is not None:
+            metadata["name"] = name
+        if parent_id is not None:
+            metadata["parents"] = [parent_id]
+        response = self.request_executor(
+            "POST",
+            file_action_url(
+                self.credentials.base_url,
+                file_id=file_id,
+                action="copy",
+                query={"fields": _DEFAULT_FILE_FIELDS},
+            ),
+            headers=build_bearer_headers(access_token),
+            json_body=metadata or None,
+            timeout_seconds=self.credentials.timeout_seconds,
+        )
+        if not isinstance(response, Mapping):
+            raise ProviderHTTPError(provider="google_drive", message="Drive copy response was not a JSON object.")
+        return dict(response)
+
+    def move_file(
+        self,
+        file_id: str,
+        *,
+        new_parent_id: str | None = None,
+        remove_parent_ids: list[str] | None = None,
+        clear_existing_parents: bool = True,
+        name: str | None = None,
+    ) -> dict[str, Any]:
+        if new_parent_id is None and not remove_parent_ids and name is None:
+            raise ValueError("move_file requires a new parent, removed parents, or a new name.")
+        if remove_parent_ids is None and new_parent_id is not None and clear_existing_parents:
+            current = self.get_file(file_id)
+            current_parents = current.get("parents", [])
+            if isinstance(current_parents, list):
+                remove_parent_ids = [str(parent_id) for parent_id in current_parents]
+        if remove_parent_ids and new_parent_id is not None:
+            remove_parent_ids = [parent_id for parent_id in remove_parent_ids if parent_id != new_parent_id]
+        access_token = self.refresh_access_token()
+        metadata: dict[str, Any] = {}
+        if name is not None:
+            metadata["name"] = name
+        query: dict[str, str] = {"fields": _DEFAULT_FILE_FIELDS}
+        if new_parent_id is not None:
+            query["addParents"] = new_parent_id
+        if remove_parent_ids:
+            query["removeParents"] = ",".join(remove_parent_ids)
+        response = self.request_executor(
+            "PATCH",
+            files_url(self.credentials.base_url, file_id=file_id, query=query),
+            headers=build_bearer_headers(access_token),
+            json_body=metadata or None,
+            timeout_seconds=self.credentials.timeout_seconds,
+        )
+        if not isinstance(response, Mapping):
+            raise ProviderHTTPError(provider="google_drive", message="Drive move response was not a JSON object.")
+        return dict(response)
+
+    def create_shortcut(
+        self,
+        *,
+        target_file_id: str,
+        name: str | None = None,
+        parent_id: str | None = None,
+    ) -> dict[str, Any]:
+        access_token = self.refresh_access_token()
+        metadata: dict[str, Any] = {
+            "mimeType": SHORTCUT_MIME_TYPE,
+            "shortcutDetails": {"targetId": target_file_id},
+        }
+        if name is not None:
+            metadata["name"] = name
+        if parent_id is not None:
+            metadata["parents"] = [parent_id]
+        response = self.request_executor(
+            "POST",
+            files_url(self.credentials.base_url, query={"fields": _DEFAULT_FILE_FIELDS}),
+            headers=build_bearer_headers(access_token),
+            json_body=metadata,
+            timeout_seconds=self.credentials.timeout_seconds,
+        )
+        if not isinstance(response, Mapping):
+            raise ProviderHTTPError(provider="google_drive", message="Drive shortcut create response was not a JSON object.")
+        return dict(response)
+
+    def list_permissions(self, file_id: str) -> list[dict[str, Any]]:
+        access_token = self.refresh_access_token()
+        response = self.request_executor(
+            "GET",
+            permissions_url(
+                self.credentials.base_url,
+                file_id=file_id,
+                query={"fields": _DEFAULT_PERMISSION_FIELDS},
+            ),
+            headers=build_bearer_headers(access_token),
+            timeout_seconds=self.credentials.timeout_seconds,
+        )
+        items = response.get("permissions", []) if isinstance(response, Mapping) else []
+        if not isinstance(items, list):
+            raise ProviderHTTPError(provider="google_drive", message="Drive permissions response did not include a permissions array.")
+        normalized = [dict(item) for item in items if isinstance(item, Mapping)]
+        normalized.sort(key=lambda item: (str(item.get("role", "")), str(item.get("id", ""))))
+        return normalized
+
+    def create_permission(
+        self,
+        file_id: str,
+        *,
+        permission: Mapping[str, Any],
+        send_notification_email: bool | None = None,
+    ) -> dict[str, Any]:
+        access_token = self.refresh_access_token()
+        query: dict[str, str | bool] = {"fields": "id,type,role,emailAddress,domain,allowFileDiscovery"}
+        if send_notification_email is not None:
+            query["sendNotificationEmail"] = send_notification_email
+        response = self.request_executor(
+            "POST",
+            permissions_url(
+                self.credentials.base_url,
+                file_id=file_id,
+                query=query,
+            ),
+            headers=build_bearer_headers(access_token),
+            json_body=dict(permission),
+            timeout_seconds=self.credentials.timeout_seconds,
+        )
+        if not isinstance(response, Mapping):
+            raise ProviderHTTPError(provider="google_drive", message="Drive create permission response was not a JSON object.")
+        return dict(response)
 
     def upsert_json_file(
         self,
@@ -245,14 +425,22 @@ def _build_drive_query(
     name: str | None,
     parent_id: str | None,
     mime_type: str | None,
+    query: str | None,
+    include_trashed: bool,
 ) -> str:
-    clauses = ["trashed = false"]
+    clauses: list[str] = []
+    if not include_trashed:
+        clauses.append("trashed = false")
     if name is not None:
         clauses.append(f"name = '{_escape_drive_query_value(name)}'")
     if parent_id is not None:
         clauses.append(f"'{_escape_drive_query_value(parent_id)}' in parents")
     if mime_type is not None:
         clauses.append(f"mimeType = '{_escape_drive_query_value(mime_type)}'")
+    if query is not None and query.strip():
+        clauses.append(f"({query.strip()})")
+    if not clauses:
+        return ""
     return " and ".join(clauses)
 
 

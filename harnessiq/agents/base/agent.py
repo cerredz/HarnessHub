@@ -43,8 +43,7 @@ from harnessiq.shared.tools import (
     REMOVE_TOOLS,
 )
 from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
-from harnessiq.tools.context import create_context_tools
-from harnessiq.tools.registry import ToolRegistry
+from harnessiq.tools.context import BoundContextToolExecutor, create_context_tools
 from harnessiq.utils.agent_instances import AgentInstanceRecord, AgentInstanceStore
 from harnessiq.utils.ledger import JSONLLedgerSink, LedgerEntry, new_run_id
 
@@ -52,66 +51,6 @@ logger = logging.getLogger(__name__)
 _CONTEXT_STATE_FILENAME = "context_runtime_state.json"
 _CONTEXT_MEMORY_SECTION_TITLE = "Context Memory"
 _DIRECTIVE_PRIORITY_ORDER = {"critical": 0, "standard": 1, "advisory": 2}
-
-
-class _BoundContextToolExecutor:
-    """Merge BaseAgent-bound context tools with an existing executor."""
-
-    def __init__(self, *, delegate: AgentToolExecutor, context_tools: Sequence[Any]) -> None:
-        self._delegate = delegate
-        self._context_registry = ToolRegistry(context_tools)
-
-    def definitions(self, tool_keys: Sequence[str] | None = None) -> list[ToolDefinition]:
-        if tool_keys is None:
-            delegate_definitions = self._delegate.definitions()
-            context_definitions = self._context_registry.definitions()
-            delegate_keys = {definition.key for definition in delegate_definitions}
-            return [
-                *delegate_definitions,
-                *(definition for definition in context_definitions if definition.key not in delegate_keys),
-            ]
-        definitions: list[ToolDefinition] = []
-        delegate_keys = set(getattr(self._delegate, "keys", lambda: ())())
-        context_keys = set(self._context_registry.keys())
-        for tool_key in tool_keys:
-            if tool_key in context_keys:
-                definitions.extend(self._context_registry.definitions([tool_key]))
-                continue
-            if tool_key in delegate_keys:
-                definitions.extend(self._delegate.definitions([tool_key]))
-                continue
-            definitions.extend(self._delegate.definitions([tool_key]))
-        return definitions
-
-    def inspect(self, tool_keys: Sequence[str] | None = None) -> list[dict[str, Any]]:
-        if tool_keys is None:
-            payload: list[dict[str, Any]] = []
-            inspector = getattr(self._delegate, "inspect", None)
-            if callable(inspector):
-                payload.extend(inspector())
-            else:
-                payload.extend(definition.inspect() for definition in self._delegate.definitions())
-            payload.extend(self._context_registry.inspect())
-            return payload
-
-        payload: list[dict[str, Any]] = []
-        inspector = getattr(self._delegate, "inspect", None)
-        context_keys = set(self._context_registry.keys())
-        delegate_keys = set(getattr(self._delegate, "keys", lambda: ())())
-        for tool_key in tool_keys:
-            if tool_key in context_keys:
-                payload.extend(self._context_registry.inspect([tool_key]))
-                continue
-            if callable(inspector) and tool_key in delegate_keys:
-                payload.extend(inspector([tool_key]))
-                continue
-            payload.extend(definition.inspect() for definition in self._delegate.definitions([tool_key]))
-        return payload
-
-    def execute(self, tool_key: str, arguments: dict[str, Any]) -> ToolResult:
-        if tool_key in self._context_registry:
-            return self._context_registry.execute(tool_key, arguments)
-        return self._delegate.execute(tool_key, arguments)
 
 
 class BaseAgent(ABC):
@@ -276,11 +215,11 @@ class BaseAgent(ABC):
         )
 
     def enable_context_tools(self) -> None:
-        """Wrap the current executor with the generic context-tool family."""
+        """Opt in to the generic context-tool family for this agent instance."""
         self._tool_executor = self._bind_context_tools(self._tool_executor)
 
     def _bind_context_tools(self, tool_executor: AgentToolExecutor) -> AgentToolExecutor:
-        return _BoundContextToolExecutor(
+        return BoundContextToolExecutor(
             delegate=tool_executor,
             context_tools=create_context_tools(
                 get_context_window=self.build_context_window,

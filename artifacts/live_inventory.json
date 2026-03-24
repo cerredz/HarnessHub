@@ -2015,11 +2015,29 @@
     "tool_only_external_surfaces": 1,
     "top_level_commands": 16
   },
+  "focused_subpackages": [
+    {
+      "description": "Manifest-driven platform CLI adapter package with one module per harness plus shared adapter primitives.",
+      "path": "harnessiq/cli/adapters/"
+    },
+    {
+      "description": "Shared helper modules for adapter store loading, payload shaping, factory resolution, and session-directory setup.",
+      "path": "harnessiq/cli/adapters/utils/"
+    },
+    {
+      "description": "Focused provider-credential spec package split into catalog, models, builders, and masking helpers.",
+      "path": "harnessiq/config/provider_credentials/"
+    },
+    {
+      "description": "Manifest coercion, validation, and registry helpers extracted from the public shared manifest modules.",
+      "path": "harnessiq/utils/harness_manifest/"
+    }
+  ],
   "harnesses": [
     {
       "agent_name": "exa_outreach",
       "class_name": "ExaOutreachAgent",
-      "cli_adapter_path": "harnessiq.cli.platform_adapters:ExaOutreachHarnessCliAdapter",
+      "cli_adapter_path": "harnessiq.cli.adapters.exa_outreach:ExaOutreachHarnessCliAdapter",
       "cli_command": "outreach",
       "custom_parameters": [],
       "default_memory_root": "memory/outreach",
@@ -2085,7 +2103,7 @@
     {
       "agent_name": "instagram_keyword_discovery",
       "class_name": "InstagramKeywordDiscoveryAgent",
-      "cli_adapter_path": "harnessiq.cli.platform_adapters:InstagramHarnessCliAdapter",
+      "cli_adapter_path": "harnessiq.cli.adapters.instagram:InstagramHarnessCliAdapter",
       "cli_command": "instagram",
       "custom_parameters": [],
       "default_memory_root": "memory/instagram",
@@ -2182,7 +2200,7 @@
     {
       "agent_name": "knowt_content_creator",
       "class_name": "KnowtAgent",
-      "cli_adapter_path": "harnessiq.cli.platform_adapters:KnowtHarnessCliAdapter",
+      "cli_adapter_path": "harnessiq.cli.adapters.knowt:KnowtHarnessCliAdapter",
       "cli_command": null,
       "custom_parameters": [],
       "default_memory_root": "memory/knowt",
@@ -2240,7 +2258,7 @@
     {
       "agent_name": "leads_agent",
       "class_name": "LeadsAgent",
-      "cli_adapter_path": "harnessiq.cli.platform_adapters:LeadsHarnessCliAdapter",
+      "cli_adapter_path": "harnessiq.cli.adapters.leads:LeadsHarnessCliAdapter",
       "cli_command": "leads",
       "custom_parameters": [],
       "default_memory_root": "memory/leads",
@@ -2375,7 +2393,7 @@
     {
       "agent_name": "linkedin_job_applier",
       "class_name": "LinkedInJobApplierAgent",
-      "cli_adapter_path": "harnessiq.cli.platform_adapters:LinkedInHarnessCliAdapter",
+      "cli_adapter_path": "harnessiq.cli.adapters.linkedin:LinkedInHarnessCliAdapter",
       "cli_command": "linkedin",
       "custom_parameters": [],
       "default_memory_root": "memory/linkedin",
@@ -2513,7 +2531,7 @@
     {
       "agent_name": "google_maps_prospecting",
       "class_name": "GoogleMapsProspectingAgent",
-      "cli_adapter_path": "harnessiq.cli.platform_adapters:ProspectingHarnessCliAdapter",
+      "cli_adapter_path": "harnessiq.cli.adapters.prospecting:ProspectingHarnessCliAdapter",
       "cli_command": "prospecting",
       "custom_parameters": [
         {
@@ -2667,8 +2685,8 @@
       "path": "harnessiq/cli/platform_commands.py"
     },
     {
-      "description": "Harness-specific adapter layer that turns manifest metadata into platform CLI behavior.",
-      "path": "harnessiq/cli/platform_adapters.py"
+      "description": "Abstract adapter hooks and shared store-backed adapter behavior for the platform-first CLI.",
+      "path": "harnessiq/cli/adapters/base.py"
     },
     {
       "description": "Provider-tool catalog metadata used by the toolset lookup layer.",
@@ -2709,6 +2727,7 @@
     },
     {
       "children": [
+        "adapters",
         "exa_outreach",
         "instagram",
         "leads",
@@ -2721,7 +2740,9 @@
       "path": "harnessiq/cli/"
     },
     {
-      "children": [],
+      "children": [
+        "provider_credentials"
+      ],
       "description": "Environment loading, credential binding, and provider-credential spec models.",
       "path": "harnessiq/config/"
     },
@@ -2825,7 +2846,9 @@
       "path": "harnessiq/toolset/"
     },
     {
-      "children": [],
+      "children": [
+        "harness_manifest"
+      ],
       "description": "Agent instance storage, ledger export/report helpers, and built-in output sink implementations.",
       "path": "harnessiq/utils/"
     }
@@ -2916,7 +2939,7 @@
       {
         "catalog_path": "harnessiq/shared/google_drive.py",
         "family": "google_drive",
-        "operations": 3,
+        "operations": 10,
         "provider_path": "harnessiq/providers/google_drive",
         "tool_path": "harnessiq/tools/google_drive/operations.py"
       },

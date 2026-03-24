@@ -523,6 +523,26 @@ class BaseAgentTests(unittest.TestCase):
             self.assertEqual(context_window[1]["kind"], "assistant")
             self.assertEqual(context_window[2]["kind"], "tool_result")
 
+    def test_context_tools_are_not_bound_until_explicitly_enabled(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = _InspectableAgent(
+                model=_FakeModel([]),
+                tool_executor=ToolRegistry([]),
+                repo_root=temp_dir,
+            )
+
+            self.assertNotIn(
+                CONTEXT_INJECT_ASSISTANT_NOTE,
+                {definition.key for definition in agent.available_tools()},
+            )
+
+            agent.enable_context_tools()
+
+            self.assertIn(
+                CONTEXT_INJECT_ASSISTANT_NOTE,
+                {definition.key for definition in agent.available_tools()},
+            )
+
     def test_enable_context_tools_applies_injection_result_without_recording_tool_result(self) -> None:
         registry = ToolRegistry([])
         model = _FakeModel(

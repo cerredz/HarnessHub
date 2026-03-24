@@ -49,15 +49,24 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Path | Live Subpackages | Responsibility |
 | --- | --- | --- |
 | `harnessiq/agents/` | apollo, base, email, exa, exa_outreach, instagram, instantly, knowt, leads, linkedin, outreach, prospecting, provider_base | Shared runtime bases plus the concrete harness packages exported by the SDK. |
-| `harnessiq/cli/` | exa_outreach, instagram, leads, ledger, linkedin, master_prompts, prospecting | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
-| `harnessiq/config/` | - | Environment loading, credential binding, and provider-credential spec models. |
+| `harnessiq/cli/` | adapters, exa_outreach, instagram, leads, ledger, linkedin, master_prompts, prospecting | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
+| `harnessiq/config/` | provider_credentials | Environment loading, credential binding, and provider-credential spec models. |
 | `harnessiq/integrations/` | - | Concrete external runtime adapters such as Playwright backends and model factories. |
 | `harnessiq/master_prompts/` | prompts | Packaged prompt assets and prompt registry helpers. |
 | `harnessiq/providers/` | anthropic, apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, gemini, google_drive, grok, inboxapp, instantly, leadiq, lemlist, lusha, openai, outreach, paperclip, peopledatalabs, phantombuster, playwright, proxycurl, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | Model-provider adapters, external service clients, output-sink transport clients, and Playwright runtime support. |
 | `harnessiq/shared/` | - | Shared manifests, durable memory stores, operation metadata, and package-wide types/constants. |
 | `harnessiq/tools/` | apollo, arcads, arxiv, attio, browser_use, context, coresignal, creatify, eval, exa, expandi, google_drive, inboxapp, instagram, instantly, knowt, leadiq, leads, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, prospecting, proxycurl, reasoning, salesforge, search, serper, smartlead, snovio, zerobounce, zoominfo | Built-in tool families, provider-backed tool factories, and domain-specific helper tools. |
 | `harnessiq/toolset/` | - | Static tool catalog plus registration and lookup helpers for reusable tool composition. |
-| `harnessiq/utils/` | - | Agent instance storage, ledger export/report helpers, and built-in output sink implementations. |
+| `harnessiq/utils/` | harness_manifest | Agent instance storage, ledger export/report helpers, and built-in output sink implementations. |
+
+## Focused Subpackages
+
+| Path | Responsibility |
+| --- | --- |
+| `harnessiq/cli/adapters/` | Manifest-driven platform CLI adapter package with one module per harness plus shared adapter primitives. |
+| `harnessiq/cli/adapters/utils/` | Shared helper modules for adapter store loading, payload shaping, factory resolution, and session-directory setup. |
+| `harnessiq/config/provider_credentials/` | Focused provider-credential spec package split into catalog, models, builders, and masking helpers. |
+| `harnessiq/utils/harness_manifest/` | Manifest coercion, validation, and registry helpers extracted from the public shared manifest modules. |
 
 ## Key Files
 
@@ -67,7 +76,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | `harnessiq/shared/harness_manifests.py` | Registry of the built-in harness manifests in deterministic order. |
 | `harnessiq/cli/main.py` | Root argparse entrypoint that wires every top-level command family into `harnessiq`. |
 | `harnessiq/cli/platform_commands.py` | Platform-first CLI roots that synthesize manifest-driven prepare/show/run/inspect and credential management commands. |
-| `harnessiq/cli/platform_adapters.py` | Harness-specific adapter layer that turns manifest metadata into platform CLI behavior. |
+| `harnessiq/cli/adapters/base.py` | Abstract adapter hooks and shared store-backed adapter behavior for the platform-first CLI. |
 | `harnessiq/toolset/catalog_provider.py` | Provider-tool catalog metadata used by the toolset lookup layer. |
 | `harnessiq/tools/builtin.py` | Built-in tool registry composition for the base runtime surface. |
 | `harnessiq/utils/ledger_sinks.py` | Built-in output sink registration plus sink-construction helpers. |
@@ -129,7 +138,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | creatify | 58 | `harnessiq/providers/creatify` | `harnessiq/tools/creatify/operations.py` | `harnessiq/shared/creatify.py` |
 | exa | 15 | `harnessiq/providers/exa` | `harnessiq/tools/exa/operations.py` | `harnessiq/shared/exa.py` |
 | expandi | 22 | `harnessiq/providers/expandi` | `harnessiq/tools/expandi/operations.py` | `harnessiq/shared/expandi.py` |
-| google_drive | 3 | `harnessiq/providers/google_drive` | `harnessiq/tools/google_drive/operations.py` | `harnessiq/shared/google_drive.py` |
+| google_drive | 10 | `harnessiq/providers/google_drive` | `harnessiq/tools/google_drive/operations.py` | `harnessiq/shared/google_drive.py` |
 | inboxapp | 9 | `harnessiq/providers/inboxapp` | `harnessiq/tools/inboxapp/operations.py` | `harnessiq/shared/inboxapp.py` |
 | instantly | 75 | `harnessiq/providers/instantly` | `harnessiq/tools/instantly/operations.py` | `harnessiq/shared/instantly.py` |
 | leadiq | 12 | `harnessiq/providers/leadiq` | `harnessiq/tools/leadiq/operations.py` | `harnessiq/shared/leadiq.py` |

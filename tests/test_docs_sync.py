@@ -91,6 +91,16 @@ class DocsSyncTests(unittest.TestCase):
                 sorted(manifest.output_schema.get("properties", {})),
             )
 
+    def test_inventory_includes_focused_subpackage_context(self) -> None:
+        inventory = self.sync_repo_docs.build_inventory()
+        focused_subpackages = {
+            entry["path"]: entry["description"] for entry in inventory["focused_subpackages"]
+        }
+        self.assertIn("harnessiq/cli/adapters/", focused_subpackages)
+        self.assertIn("harnessiq/cli/adapters/utils/", focused_subpackages)
+        self.assertIn("harnessiq/config/provider_credentials/", focused_subpackages)
+        self.assertIn("harnessiq/utils/harness_manifest/", focused_subpackages)
+
     def test_google_drive_operation_count_matches_live_catalog(self) -> None:
         inventory = self.sync_repo_docs.build_inventory()
         provider_index = {

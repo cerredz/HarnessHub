@@ -76,7 +76,7 @@ Harnessiq currently ships 4 model-provider adapters, 26 service provider package
 | creatify | 58 | `harnessiq/providers/creatify` | `harnessiq/tools/creatify/operations.py` |
 | exa | 15 | `harnessiq/providers/exa` | `harnessiq/tools/exa/operations.py` |
 | expandi | 22 | `harnessiq/providers/expandi` | `harnessiq/tools/expandi/operations.py` |
-| google_drive | 3 | `harnessiq/providers/google_drive` | `harnessiq/tools/google_drive/operations.py` |
+| google_drive | 10 | `harnessiq/providers/google_drive` | `harnessiq/tools/google_drive/operations.py` |
 | inboxapp | 9 | `harnessiq/providers/inboxapp` | `harnessiq/tools/inboxapp/operations.py` |
 | instantly | 75 | `harnessiq/providers/instantly` | `harnessiq/tools/instantly/operations.py` |
 | leadiq | 12 | `harnessiq/providers/leadiq` | `harnessiq/tools/leadiq/operations.py` |
