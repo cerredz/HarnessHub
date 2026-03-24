@@ -61,9 +61,10 @@ class _ResumeCandidate:
     @property
     def label(self) -> str:
         recorded_at = self.profile.last_run.recorded_at if self.profile.last_run is not None else "unknown"
+        run_number = self.profile.last_run.run_number if self.profile.last_run is not None else "?"
         return (
             f"{self.manifest.display_name} | {self.memory_path.as_posix()} | "
-            f"last run {recorded_at}"
+            f"last run #{run_number} at {recorded_at} ({len(self.profile.run_history)} stored)"
         )
 
 
@@ -93,6 +94,12 @@ def register_platform_commands(subparsers: argparse._SubParsersAction[argparse.A
     resume_parser.add_argument(
         "--model-factory",
         help="Optional override for the persisted model factory import path.",
+    )
+    resume_parser.add_argument(
+        "--run",
+        dest="resume_run_number",
+        type=int,
+        help="Specific persisted run number to resume; defaults to the latest stored run.",
     )
     resume_parser.add_argument(
         "--sink",
@@ -172,6 +179,12 @@ def _register_manifest_subcommands(
                 action="store_true",
                 default=False,
                 help="Reuse the most recent persisted run payload for this harness/profile.",
+            )
+            parser.add_argument(
+                "--run",
+                dest="resume_run_number",
+                type=int,
+                help="Specific persisted run number to reuse when --resume is set; defaults to the latest stored run.",
             )
             parser.add_argument(
                 "--model-factory",
@@ -279,26 +292,63 @@ def _handle_show(args: argparse.Namespace) -> int:
 def _handle_run(args: argparse.Namespace) -> int:
     manifest = get_harness_manifest(args.manifest_id)
     adapter = _build_adapter(manifest)
-    context = _build_context(
-        manifest=manifest,
-        adapter=adapter,
-        agent_name=args.agent,
-        memory_root=args.memory_root,
-        incoming_runtime=collect_manifest_parameter_values(args, manifest=manifest, scope="runtime"),
-        incoming_custom=collect_manifest_parameter_values(args, manifest=manifest, scope="custom"),
-        persist_profile=True,
-    )
+    incoming_runtime = collect_manifest_parameter_values(args, manifest=manifest, scope="runtime")
+    incoming_custom = collect_manifest_parameter_values(args, manifest=manifest, scope="custom")
+    selected_snapshot: HarnessRunSnapshot | None = None
+    if args.resume:
+        selection_context = _build_context(
+            manifest=manifest,
+            adapter=adapter,
+            agent_name=args.agent,
+            memory_root=args.memory_root,
+            incoming_runtime={},
+            incoming_custom={},
+            persist_profile=False,
+        )
+        selected_snapshot = _resolve_profile_resume_snapshot(
+            profile=selection_context.profile,
+            run_number=args.resume_run_number,
+        )
+        context = _build_context(
+            manifest=manifest,
+            adapter=adapter,
+            agent_name=args.agent,
+            memory_root=args.memory_root,
+            incoming_runtime=incoming_runtime,
+            incoming_custom=incoming_custom,
+            base_runtime_parameters=selected_snapshot.runtime_parameters,
+            base_custom_parameters=selected_snapshot.custom_parameters,
+            persist_profile=True,
+        )
+    else:
+        context = _build_context(
+            manifest=manifest,
+            adapter=adapter,
+            agent_name=args.agent,
+            memory_root=args.memory_root,
+            incoming_runtime=incoming_runtime,
+            incoming_custom=incoming_custom,
+            persist_profile=True,
+        )
     run_request = _resolve_run_request(
         args=args,
         profile=context.profile,
         resume_requested=bool(args.resume),
+        resume_snapshot=selected_snapshot,
+        requested_run_number=args.resume_run_number,
         run_argument_defaults=getattr(args, _RUN_ARGUMENT_DEFAULTS_DEST, {}),
         adapter_argument_names=getattr(args, _RUN_ADAPTER_ARGUMENT_NAMES_DEST, ()),
         run_argument_overrides=parse_generic_assignments(args.run_arg),
     )
-    context = _persist_last_run_snapshot(context, run_request)
+    context = _persist_run_snapshot(context, run_request)
     effective_args = _clone_args_with_run_request(args, run_request)
-    return _execute_run(adapter=adapter, args=effective_args, context=context, run_request=run_request)
+    return _execute_run(
+        adapter=adapter,
+        args=effective_args,
+        context=context,
+        run_request=run_request,
+        source_snapshot=selected_snapshot,
+    )
 
 
 def _handle_resume(args: argparse.Namespace) -> int:
@@ -314,6 +364,10 @@ def _handle_resume(args: argparse.Namespace) -> int:
         raise ValueError(f"No resumable profile named '{agent_name}' was found.")
     candidate = _select_resume_candidate(agent_name=agent_name, candidates=candidates)
     adapter = _build_adapter(candidate.manifest)
+    selected_snapshot = _resolve_profile_resume_snapshot(
+        profile=candidate.profile,
+        run_number=args.resume_run_number,
+    )
     context = _build_context(
         manifest=candidate.manifest,
         adapter=adapter,
@@ -321,16 +375,18 @@ def _handle_resume(args: argparse.Namespace) -> int:
         memory_path=candidate.memory_path,
         incoming_runtime=_parse_resume_manifest_parameters(args.runtime_param, manifest=candidate.manifest, scope="runtime"),
         incoming_custom=_parse_resume_manifest_parameters(args.custom_param, manifest=candidate.manifest, scope="custom"),
+        base_runtime_parameters=selected_snapshot.runtime_parameters,
+        base_custom_parameters=selected_snapshot.custom_parameters,
         persist_profile=True,
     )
     run_request = _resolve_resume_request_from_snapshot(
-        snapshot=context.profile.last_run,
+        snapshot=selected_snapshot,
         model_factory=args.model_factory,
         sink_specs=args.sink,
         max_cycles=args.max_cycles,
         run_argument_overrides=parse_generic_assignments(args.run_arg),
     )
-    context = _persist_last_run_snapshot(context, run_request)
+    context = _persist_run_snapshot(context, run_request)
     effective_args = argparse.Namespace(
         agent=context.agent_name,
         harness=context.manifest.manifest_id,
@@ -339,7 +395,13 @@ def _handle_resume(args: argparse.Namespace) -> int:
         sink=list(run_request.sink_specs),
         **dict(run_request.adapter_arguments),
     )
-    return _execute_run(adapter=adapter, args=effective_args, context=context, run_request=run_request)
+    return _execute_run(
+        adapter=adapter,
+        args=effective_args,
+        context=context,
+        run_request=run_request,
+        source_snapshot=selected_snapshot,
+    )
 
 
 def _execute_run(
@@ -348,6 +410,7 @@ def _execute_run(
     args: argparse.Namespace,
     context: HarnessAdapterContext,
     run_request: _ResolvedRunRequest,
+    source_snapshot: HarnessRunSnapshot | None = None,
 ) -> int:
     seed_cli_environment(context.repo_root)
     model = load_factory(run_request.model_factory)()
@@ -361,6 +424,9 @@ def _execute_run(
         "model_factory": run_request.model_factory,
         "sink_specs": list(run_request.sink_specs),
     }
+    if source_snapshot is not None:
+        payload["resume"]["source_recorded_at"] = source_snapshot.recorded_at
+        payload["resume"]["source_run_number"] = source_snapshot.run_number
     payload.update(
         adapter.run(
             args=args,
@@ -521,6 +587,8 @@ def _build_context(
     persist_profile: bool,
     memory_root: str | None = None,
     memory_path: Path | str | None = None,
+    base_runtime_parameters: dict[str, Any] | None = None,
+    base_custom_parameters: dict[str, Any] | None = None,
 ) -> HarnessAdapterContext:
     if memory_root is None and memory_path is None:
         raise ValueError("Either memory_root or memory_path must be provided.")
@@ -562,10 +630,10 @@ def _build_context(
             custom_parameters=native_custom,
         )
 
-    next_runtime = dict(profile.runtime_parameters)
+    next_runtime = dict(base_runtime_parameters if base_runtime_parameters is not None else profile.runtime_parameters)
     if incoming_runtime:
         next_runtime.update(incoming_runtime)
-    next_custom = dict(profile.custom_parameters)
+    next_custom = dict(base_custom_parameters if base_custom_parameters is not None else profile.custom_parameters)
     if incoming_custom:
         next_custom.update(incoming_custom)
 
@@ -575,6 +643,7 @@ def _build_context(
         runtime_parameters=next_runtime,
         custom_parameters=next_custom,
         last_run=profile.last_run,
+        run_history=profile.run_history,
     )
     if persist_profile:
         _persist_profile(profile=profile, memory_path=resolved_memory_path, repo_root=repo_root)
@@ -607,21 +676,19 @@ def _persist_profile(*, profile: HarnessProfile, memory_path: Path, repo_root: P
     return profile
 
 
-def _persist_last_run_snapshot(
+def _persist_run_snapshot(
     context: HarnessAdapterContext,
     run_request: _ResolvedRunRequest,
 ) -> HarnessAdapterContext:
-    profile = HarnessProfile(
-        manifest_id=context.profile.manifest_id,
-        agent_name=context.profile.agent_name,
-        runtime_parameters=context.profile.runtime_parameters,
-        custom_parameters=context.profile.custom_parameters,
-        last_run=HarnessRunSnapshot(
+    profile = context.profile.append_run_snapshot(
+        HarnessRunSnapshot(
             model_factory=run_request.model_factory,
             sink_specs=run_request.sink_specs,
             max_cycles=run_request.max_cycles,
             adapter_arguments=run_request.adapter_arguments,
-        ),
+            runtime_parameters=context.profile.runtime_parameters,
+            custom_parameters=context.profile.custom_parameters,
+        )
     )
     _persist_profile(profile=profile, memory_path=context.memory_path, repo_root=context.repo_root)
     return replace(context, profile=profile)
@@ -651,11 +718,16 @@ def _resolve_run_request(
     args: argparse.Namespace,
     profile: HarnessProfile,
     resume_requested: bool,
+    resume_snapshot: HarnessRunSnapshot | None,
+    requested_run_number: int | None,
     run_argument_defaults: dict[str, Any],
     adapter_argument_names: tuple[str, ...],
     run_argument_overrides: dict[str, Any],
 ) -> _ResolvedRunRequest:
-    snapshot = profile.last_run
+    normalized_run_number = _normalize_resume_run_number(requested_run_number)
+    if normalized_run_number is not None and not resume_requested:
+        raise ValueError("--run requires --resume when used with 'run <harness>'.")
+    snapshot = resume_snapshot if resume_snapshot is not None else profile.last_run
     if resume_requested and snapshot is None:
         raise ValueError(
             f"Harness profile '{profile.agent_name}' does not have a previously persisted run payload to resume."
@@ -711,6 +783,34 @@ def _resolve_resume_request_from_snapshot(
         max_cycles=resolved_max_cycles,
         adapter_arguments=adapter_arguments,
     )
+
+
+def _resolve_profile_resume_snapshot(
+    *,
+    profile: HarnessProfile,
+    run_number: int | None,
+) -> HarnessRunSnapshot:
+    normalized_run_number = _normalize_resume_run_number(run_number)
+    snapshot = profile.snapshot_for_run_number(normalized_run_number)
+    if snapshot is not None:
+        return snapshot
+    if normalized_run_number is None:
+        raise ValueError(
+            f"Harness profile '{profile.agent_name}' does not have a previously persisted run payload to resume."
+        )
+    available_runs = ", ".join(str(item.run_number) for item in profile.run_history)
+    raise ValueError(
+        f"Harness profile '{profile.agent_name}' does not have persisted run #{normalized_run_number}. "
+        f"Available runs: {available_runs or 'none'}."
+    )
+
+
+def _normalize_resume_run_number(run_number: int | None) -> int | None:
+    if run_number is None:
+        return None
+    if run_number < 1:
+        raise ValueError("--run must be greater than or equal to 1.")
+    return run_number
 
 
 def _explicit_run_argument_value(
@@ -828,7 +928,7 @@ def _load_resume_candidate(
         profile = profile_store.load(manifest_id=manifest.manifest_id, agent_name=agent_name)
     except ValueError:
         return None
-    if profile.last_run is None:
+    if not profile.run_history:
         return None
     return _ResumeCandidate(
         manifest=manifest,
@@ -970,6 +1070,8 @@ def _base_payload(context: HarnessAdapterContext) -> dict[str, Any]:
                 if context.profile.last_run is not None
                 else None
             ),
+            "run_count": len(context.profile.run_history),
+            "run_history": [snapshot.summary for snapshot in context.profile.run_history],
             "runtime_parameters": dict(context.profile.runtime_parameters),
         },
     }

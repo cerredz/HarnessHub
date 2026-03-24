@@ -13,6 +13,7 @@ from harnessiq.cli.main import main
 
 _LAST_PROVIDER_ENV: dict[str, str] = {}
 _SPECIAL_SEARCH_BACKEND = object()
+_SECOND_SPECIAL_SEARCH_BACKEND = object()
 
 
 class _StaticModel:
@@ -43,6 +44,10 @@ def create_instagram_search_backend() -> object:
 
 def create_special_instagram_search_backend() -> object:
     return _SPECIAL_SEARCH_BACKEND
+
+
+def create_second_special_instagram_search_backend() -> object:
+    return _SECOND_SPECIAL_SEARCH_BACKEND
 
 
 def _run(argv: list[str]) -> tuple[int, dict[str, object]]:
@@ -477,6 +482,8 @@ def test_run_resume_reuses_persisted_adapter_arguments(tmp_path: Path) -> None:
 
     assert exit_code == 0
     assert first_payload["profile"]["last_run"]["model_factory"] == "tests.test_platform_cli:create_static_model"
+    assert first_payload["profile"]["last_run"]["run_number"] == 1
+    assert first_payload["profile"]["run_count"] == 1
     assert (
         first_payload["profile"]["last_run"]["adapter_arguments"]["search_backend_factory"]
         == "tests.test_platform_cli:create_special_instagram_search_backend"
@@ -510,10 +517,116 @@ def test_run_resume_reuses_persisted_adapter_arguments(tmp_path: Path) -> None:
 
     assert exit_code == 0
     assert resumed_payload["result"]["status"] == "completed"
+    assert resumed_payload["profile"]["run_count"] == 2
     assert resumed_from_memory.call_args.kwargs["search_backend"] is _SPECIAL_SEARCH_BACKEND
     assert resumed_from_memory.call_args.kwargs["custom_overrides"] == {
         "icp_profiles": ["fitness creators"],
         "target_segment": "micro-creators",
+    }
+    assert resumed_payload["resume"]["source_run_number"] == 1
+
+
+def test_run_resume_can_target_specific_prior_run(tmp_path: Path) -> None:
+    _clear_repo_resume_index()
+    _run(["prepare", "instagram", "--agent", "creator-history", "--memory-root", str(tmp_path)])
+
+    first_agent = MagicMock()
+    first_agent.get_emails.return_value = ("creator@example.com",)
+    first_agent.run.return_value = SimpleNamespace(
+        cycles_completed=1,
+        pause_reason=None,
+        resets=0,
+        status="completed",
+    )
+    second_agent = MagicMock()
+    second_agent.get_emails.return_value = ("creator@example.com",)
+    second_agent.run.return_value = SimpleNamespace(
+        cycles_completed=1,
+        pause_reason=None,
+        resets=0,
+        status="completed",
+    )
+
+    with patch(
+        "harnessiq.cli.adapters.instagram.InstagramKeywordDiscoveryAgent.from_memory",
+        return_value=first_agent,
+    ):
+        _run(
+            [
+                "run",
+                "instagram",
+                "--agent",
+                "creator-history",
+                "--memory-root",
+                str(tmp_path),
+                "--model-factory",
+                "tests.test_platform_cli:create_static_model",
+                "--search-backend-factory",
+                "tests.test_platform_cli:create_special_instagram_search_backend",
+                "--custom-param",
+                'target_segment="fitness"',
+                "--icp",
+                "fitness creators",
+            ]
+        )
+
+    with patch(
+        "harnessiq.cli.adapters.instagram.InstagramKeywordDiscoveryAgent.from_memory",
+        return_value=second_agent,
+    ):
+        _run(
+            [
+                "run",
+                "instagram",
+                "--agent",
+                "creator-history",
+                "--memory-root",
+                str(tmp_path),
+                "--model-factory",
+                "tests.test_platform_cli:create_static_model",
+                "--search-backend-factory",
+                "tests.test_platform_cli:create_second_special_instagram_search_backend",
+                "--custom-param",
+                'target_segment="education"',
+                "--icp",
+                "education creators",
+            ]
+        )
+
+    resumed_agent = MagicMock()
+    resumed_agent.get_emails.return_value = ("creator@example.com",)
+    resumed_agent.run.return_value = SimpleNamespace(
+        cycles_completed=1,
+        pause_reason=None,
+        resets=0,
+        status="completed",
+    )
+
+    with patch(
+        "harnessiq.cli.adapters.instagram.InstagramKeywordDiscoveryAgent.from_memory",
+        return_value=resumed_agent,
+    ) as resumed_from_memory:
+        exit_code, resumed_payload = _run(
+            [
+                "run",
+                "instagram",
+                "--resume",
+                "--run",
+                "1",
+                "--agent",
+                "creator-history",
+                "--memory-root",
+                str(tmp_path),
+            ]
+        )
+
+    assert exit_code == 0
+    assert resumed_payload["profile"]["run_count"] == 3
+    assert resumed_payload["resume"]["source_run_number"] == 1
+    assert resumed_from_memory.call_args.kwargs["search_backend"] is _SPECIAL_SEARCH_BACKEND
+    assert resumed_from_memory.call_args.kwargs["custom_overrides"] == {
+        "icp_profiles": ["fitness creators"],
+        "target_segment": "fitness",
     }
 
 
@@ -566,7 +679,76 @@ def test_top_level_resume_reuses_prior_run_by_agent_name(tmp_path: Path) -> None
     assert payload["result"]["status"] == "completed"
     assert patched_agent.call_args.kwargs["max_tokens"] == 12000
     assert payload["resume"]["model_factory"] == "tests.test_platform_cli:create_static_model"
+    assert payload["resume"]["source_run_number"] == 1
     assert patched_select.call_count in {0, 1}
+
+
+def test_top_level_resume_can_target_specific_prior_run(tmp_path: Path) -> None:
+    _clear_repo_resume_index()
+    _run(["prepare", "knowt", "--agent", "channel-history", "--memory-root", str(tmp_path)])
+
+    first_agent = MagicMock()
+    first_agent.run.return_value = SimpleNamespace(
+        cycles_completed=1,
+        pause_reason=None,
+        resets=0,
+        status="completed",
+    )
+    second_agent = MagicMock()
+    second_agent.run.return_value = SimpleNamespace(
+        cycles_completed=1,
+        pause_reason=None,
+        resets=0,
+        status="completed",
+    )
+
+    with patch("harnessiq.cli.adapters.knowt.KnowtAgent", return_value=first_agent):
+        _run(
+            [
+                "run",
+                "knowt",
+                "--agent",
+                "channel-history",
+                "--memory-root",
+                str(tmp_path),
+                "--model-factory",
+                "tests.test_platform_cli:create_static_model",
+                "--max-tokens",
+                "12000",
+            ]
+        )
+
+    with patch("harnessiq.cli.adapters.knowt.KnowtAgent", return_value=second_agent):
+        _run(
+            [
+                "run",
+                "knowt",
+                "--agent",
+                "channel-history",
+                "--memory-root",
+                str(tmp_path),
+                "--model-factory",
+                "tests.test_platform_cli:create_static_model",
+                "--max-tokens",
+                "24000",
+            ]
+        )
+
+    resumed_agent = MagicMock()
+    resumed_agent.run.return_value = SimpleNamespace(
+        cycles_completed=1,
+        pause_reason=None,
+        resets=0,
+        status="completed",
+    )
+
+    with patch("harnessiq.cli.adapters.knowt.KnowtAgent", return_value=resumed_agent) as patched_agent:
+        exit_code, payload = _run(["resume", "channel-history", "--harness", "knowt", "--run", "1"])
+
+    assert exit_code == 0
+    assert payload["resume"]["source_run_number"] == 1
+    assert payload["profile"]["run_count"] == 3
+    assert patched_agent.call_args.kwargs["max_tokens"] == 12000
 
 
 def test_top_level_resume_prompts_when_agent_name_is_ambiguous(tmp_path: Path) -> None:

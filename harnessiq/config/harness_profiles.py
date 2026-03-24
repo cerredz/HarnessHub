@@ -27,13 +27,16 @@ def build_harness_credential_binding_name(*, manifest_id: str, agent_name: str) 
 
 @dataclass(frozen=True, slots=True)
 class HarnessRunSnapshot:
-    """Persisted replay metadata for the most recent platform-first run."""
+    """Persisted replay metadata for one platform-first run."""
 
     model_factory: str
     sink_specs: tuple[str, ...] = ()
     max_cycles: int | None = None
     adapter_arguments: dict[str, Any] | None = None
+    runtime_parameters: dict[str, Any] | None = None
+    custom_parameters: dict[str, Any] | None = None
     recorded_at: str | None = None
+    run_number: int | None = None
 
     def __post_init__(self) -> None:
         normalized_model_factory = self.model_factory.strip()
@@ -42,37 +45,77 @@ class HarnessRunSnapshot:
         object.__setattr__(self, "model_factory", normalized_model_factory)
         object.__setattr__(self, "sink_specs", tuple(str(spec) for spec in self.sink_specs))
         object.__setattr__(self, "adapter_arguments", dict(self.adapter_arguments or {}))
+        object.__setattr__(self, "runtime_parameters", dict(self.runtime_parameters or {}))
+        object.__setattr__(self, "custom_parameters", dict(self.custom_parameters or {}))
         object.__setattr__(self, "recorded_at", (self.recorded_at or _utcnow()).strip())
+        if self.run_number is not None and self.run_number < 1:
+            raise ValueError("run_number must be greater than or equal to 1 when present.")
 
     def as_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "adapter_arguments": dict(self.adapter_arguments or {}),
+            "custom_parameters": dict(self.custom_parameters or {}),
             "max_cycles": self.max_cycles,
             "model_factory": self.model_factory,
             "recorded_at": self.recorded_at,
+            "runtime_parameters": dict(self.runtime_parameters or {}),
             "sink_specs": list(self.sink_specs),
+        }
+        if self.run_number is not None:
+            payload["run_number"] = self.run_number
+        return payload
+
+    def with_run_number(self, run_number: int) -> "HarnessRunSnapshot":
+        return HarnessRunSnapshot(
+            model_factory=self.model_factory,
+            sink_specs=self.sink_specs,
+            max_cycles=self.max_cycles,
+            adapter_arguments=self.adapter_arguments,
+            runtime_parameters=self.runtime_parameters,
+            custom_parameters=self.custom_parameters,
+            recorded_at=self.recorded_at,
+            run_number=run_number,
+        )
+
+    @property
+    def summary(self) -> dict[str, Any]:
+        return {
+            "recorded_at": self.recorded_at,
+            "run_number": self.run_number,
         }
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "HarnessRunSnapshot":
         sink_specs = payload.get("sink_specs", ())
         adapter_arguments = payload.get("adapter_arguments", {})
+        runtime_parameters = payload.get("runtime_parameters", {})
+        custom_parameters = payload.get("custom_parameters", {})
         if not isinstance(sink_specs, (list, tuple)):
             raise ValueError("Harness run snapshot 'sink_specs' must be a JSON array.")
         if not isinstance(adapter_arguments, dict):
             raise ValueError("Harness run snapshot 'adapter_arguments' must be a JSON object.")
+        if not isinstance(runtime_parameters, dict):
+            raise ValueError("Harness run snapshot 'runtime_parameters' must be a JSON object.")
+        if not isinstance(custom_parameters, dict):
+            raise ValueError("Harness run snapshot 'custom_parameters' must be a JSON object.")
         max_cycles = payload.get("max_cycles")
         if max_cycles is not None and not isinstance(max_cycles, int):
             raise ValueError("Harness run snapshot 'max_cycles' must be an integer or null.")
         recorded_at = payload.get("recorded_at")
         if recorded_at is not None and not isinstance(recorded_at, str):
             raise ValueError("Harness run snapshot 'recorded_at' must be a string when present.")
+        run_number = payload.get("run_number")
+        if run_number is not None and not isinstance(run_number, int):
+            raise ValueError("Harness run snapshot 'run_number' must be an integer when present.")
         return cls(
             model_factory=str(payload["model_factory"]),
             sink_specs=tuple(str(spec) for spec in sink_specs),
             max_cycles=max_cycles,
             adapter_arguments=dict(adapter_arguments),
+            runtime_parameters=dict(runtime_parameters),
+            custom_parameters=dict(custom_parameters),
             recorded_at=recorded_at,
+            run_number=run_number,
         )
 
 
@@ -85,6 +128,7 @@ class HarnessProfile:
     runtime_parameters: dict[str, Any] | None = None
     custom_parameters: dict[str, Any] | None = None
     last_run: HarnessRunSnapshot | None = None
+    run_history: tuple[HarnessRunSnapshot, ...] = ()
 
     def __post_init__(self) -> None:
         normalized_manifest_id = self.manifest_id.strip()
@@ -97,12 +141,38 @@ class HarnessProfile:
         object.__setattr__(self, "agent_name", normalized_agent_name)
         object.__setattr__(self, "runtime_parameters", dict(self.runtime_parameters or {}))
         object.__setattr__(self, "custom_parameters", dict(self.custom_parameters or {}))
+        normalized_history = _normalize_run_history(run_history=self.run_history, last_run=self.last_run)
+        object.__setattr__(self, "run_history", normalized_history)
+        object.__setattr__(self, "last_run", normalized_history[-1] if normalized_history else None)
 
     @property
     def credential_binding_name(self) -> str:
         return build_harness_credential_binding_name(
             manifest_id=self.manifest_id,
             agent_name=self.agent_name,
+        )
+
+    @property
+    def next_run_number(self) -> int:
+        return len(self.run_history) + 1
+
+    def snapshot_for_run_number(self, run_number: int | None) -> HarnessRunSnapshot | None:
+        if run_number is None:
+            return self.last_run
+        for snapshot in self.run_history:
+            if snapshot.run_number == run_number:
+                return snapshot
+        return None
+
+    def append_run_snapshot(self, snapshot: HarnessRunSnapshot) -> "HarnessProfile":
+        normalized_snapshot = snapshot.with_run_number(self.next_run_number)
+        return HarnessProfile(
+            manifest_id=self.manifest_id,
+            agent_name=self.agent_name,
+            runtime_parameters=self.runtime_parameters,
+            custom_parameters=self.custom_parameters,
+            last_run=normalized_snapshot,
+            run_history=self.run_history + (normalized_snapshot,),
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -114,25 +184,56 @@ class HarnessProfile:
         }
         if self.last_run is not None:
             payload["last_run"] = self.last_run.as_dict()
+        if self.run_history:
+            payload["run_history"] = [snapshot.as_dict() for snapshot in self.run_history]
         return payload
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "HarnessProfile":
         runtime_parameters = payload.get("runtime_parameters", {})
         custom_parameters = payload.get("custom_parameters", {})
+        run_history_payload = payload.get("run_history", [])
         if not isinstance(runtime_parameters, dict):
             raise ValueError("Harness profile 'runtime_parameters' must be a JSON object.")
         if not isinstance(custom_parameters, dict):
             raise ValueError("Harness profile 'custom_parameters' must be a JSON object.")
+        if not isinstance(run_history_payload, list):
+            raise ValueError("Harness profile 'run_history' must be a JSON array when present.")
         last_run_payload = payload.get("last_run")
         if last_run_payload is not None and not isinstance(last_run_payload, dict):
             raise ValueError("Harness profile 'last_run' must be a JSON object when present.")
+        last_run = None
+        if last_run_payload is not None:
+            last_run = HarnessRunSnapshot.from_dict(last_run_payload)
+            if "runtime_parameters" not in last_run_payload:
+                last_run = HarnessRunSnapshot(
+                    model_factory=last_run.model_factory,
+                    sink_specs=last_run.sink_specs,
+                    max_cycles=last_run.max_cycles,
+                    adapter_arguments=last_run.adapter_arguments,
+                    runtime_parameters=dict(runtime_parameters),
+                    custom_parameters=last_run.custom_parameters,
+                    recorded_at=last_run.recorded_at,
+                    run_number=last_run.run_number,
+                )
+            if "custom_parameters" not in last_run_payload:
+                last_run = HarnessRunSnapshot(
+                    model_factory=last_run.model_factory,
+                    sink_specs=last_run.sink_specs,
+                    max_cycles=last_run.max_cycles,
+                    adapter_arguments=last_run.adapter_arguments,
+                    runtime_parameters=last_run.runtime_parameters,
+                    custom_parameters=dict(custom_parameters),
+                    recorded_at=last_run.recorded_at,
+                    run_number=last_run.run_number,
+                )
         return cls(
             manifest_id=str(payload["manifest_id"]),
             agent_name=str(payload["agent_name"]),
             runtime_parameters=dict(runtime_parameters),
             custom_parameters=dict(custom_parameters),
-            last_run=(HarnessRunSnapshot.from_dict(last_run_payload) if last_run_payload is not None else None),
+            last_run=last_run,
+            run_history=tuple(HarnessRunSnapshot.from_dict(item) for item in run_history_payload),
         )
 
 
@@ -296,6 +397,7 @@ class HarnessProfileStore:
         runtime_parameters: Mapping[str, Any] | None = None,
         custom_parameters: Mapping[str, Any] | None = None,
         last_run: HarnessRunSnapshot | None | object = _UNSET,
+        run_history: tuple[HarnessRunSnapshot, ...] | object = _UNSET,
     ) -> HarnessProfile:
         current = self.load(manifest_id=manifest_id, agent_name=agent_name)
         next_profile = HarnessProfile(
@@ -312,9 +414,41 @@ class HarnessProfileStore:
                 else current.custom_parameters
             ),
             last_run=(current.last_run if last_run is _UNSET else last_run),
+            run_history=(current.run_history if run_history is _UNSET else run_history),
         )
         self.save(next_profile)
         return next_profile
+
+
+def _normalize_run_history(
+    *,
+    run_history: tuple[HarnessRunSnapshot, ...],
+    last_run: HarnessRunSnapshot | None,
+) -> tuple[HarnessRunSnapshot, ...]:
+    snapshots = list(run_history)
+    if not snapshots and last_run is not None:
+        snapshots.append(last_run)
+    elif snapshots and last_run is not None and not _run_snapshots_match(snapshots[-1], last_run):
+        snapshots.append(last_run)
+
+    normalized: list[HarnessRunSnapshot] = []
+    for index, snapshot in enumerate(snapshots, start=1):
+        if not isinstance(snapshot, HarnessRunSnapshot):
+            raise TypeError("run_history must contain HarnessRunSnapshot instances.")
+        normalized.append(snapshot.with_run_number(index))
+    return tuple(normalized)
+
+
+def _run_snapshots_match(left: HarnessRunSnapshot, right: HarnessRunSnapshot) -> bool:
+    return (
+        left.model_factory == right.model_factory
+        and left.sink_specs == right.sink_specs
+        and left.max_cycles == right.max_cycles
+        and left.adapter_arguments == right.adapter_arguments
+        and left.runtime_parameters == right.runtime_parameters
+        and left.custom_parameters == right.custom_parameters
+        and left.recorded_at == right.recorded_at
+    )
 
 
 @dataclass(slots=True)
