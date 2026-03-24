@@ -3,6 +3,9 @@ Title: Remove live inventory from generated repo artifacts
 Issue URL:
 - https://github.com/cerredz/HarnessHub/issues/266
 
+PR URL:
+- https://github.com/cerredz/HarnessHub/pull/267
+
 Intent:
 Stop committing and advertising `artifacts/live_inventory.json` so the repository’s generated documentation surface stays high-signal and avoids unnecessary token-heavy artifacts.
 
