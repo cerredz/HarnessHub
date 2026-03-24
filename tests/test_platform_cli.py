@@ -694,7 +694,7 @@ def test_top_level_resume_reuses_prior_run_by_agent_name(tmp_path: Path) -> None
         return next(index for index, label in enumerate(options) if "Knowt" in label)
 
     with (
-        patch("harnessiq.cli.platform_commands.select_index", side_effect=_select_knowt) as patched_select,
+        patch("harnessiq.cli.commands.command_helpers.select_index", side_effect=_select_knowt) as patched_select,
         patch("harnessiq.cli.adapters.knowt.KnowtAgent", return_value=resumed_agent) as patched_agent,
     ):
         exit_code, payload = _run(["resume", "channel-resume", "--harness", "knowt"])
@@ -877,7 +877,7 @@ def test_top_level_resume_prompts_when_agent_name_is_ambiguous(tmp_path: Path) -
         return next(index for index, label in enumerate(options) if "Instagram" in label)
 
     with (
-        patch("harnessiq.cli.platform_commands.select_index", side_effect=_select_instagram) as patched_select,
+        patch("harnessiq.cli.commands.command_helpers.select_index", side_effect=_select_instagram) as patched_select,
         patch(
             "harnessiq.cli.adapters.instagram.InstagramKeywordDiscoveryAgent.from_memory",
             return_value=resumed_agent,
