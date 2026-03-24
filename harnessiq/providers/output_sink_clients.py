@@ -4,10 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Mapping
+from urllib.parse import quote, urlencode
 
+from harnessiq.providers.google_drive.client import TokenRequestExecutor, request_oauth_token
 from harnessiq.providers.http import RequestExecutor, request_json
 from harnessiq.shared.output_sinks import (
     DEFAULT_NOTION_VERSION,
+    GOOGLE_SHEETS_DEFAULT_BASE_URL,
+    GOOGLE_SHEETS_DEFAULT_SCOPE,
+    GOOGLE_SHEETS_DEFAULT_TOKEN_URL,
     LINEAR_DEFAULT_BASE_URL,
     NOTION_DEFAULT_BASE_URL,
 )
@@ -179,9 +184,136 @@ class LinearClient:
         )
 
 
+@dataclass(slots=True)
+class GoogleSheetsClient:
+    """Minimal Google Sheets API client for header reads and row writes."""
+
+    client_id: str
+    client_secret: str
+    refresh_token: str
+    request_executor: RequestExecutor = request_json
+    token_request_executor: TokenRequestExecutor = request_oauth_token
+    base_url: str = GOOGLE_SHEETS_DEFAULT_BASE_URL
+    token_url: str = GOOGLE_SHEETS_DEFAULT_TOKEN_URL
+    scope: str = GOOGLE_SHEETS_DEFAULT_SCOPE
+    timeout_seconds: float = 60.0
+
+    def refresh_access_token(self) -> str:
+        response = self.token_request_executor(
+            self.token_url,
+            form_fields={
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "grant_type": "refresh_token",
+                "refresh_token": self.refresh_token,
+                "scope": self.scope,
+            },
+            timeout_seconds=self.timeout_seconds,
+        )
+        access_token = response.get("access_token")
+        if not isinstance(access_token, str) or not access_token.strip():
+            raise ValueError("Google Sheets OAuth token response did not include a usable access_token.")
+        return access_token.strip()
+
+    def get_values(self, *, spreadsheet_id: str, range_name: str) -> list[list[Any]]:
+        response = self.request_executor(
+            "GET",
+            _google_sheets_values_url(self.base_url, spreadsheet_id=spreadsheet_id, range_name=range_name),
+            headers=self._headers(),
+            timeout_seconds=self.timeout_seconds,
+        )
+        values = response.get("values", []) if isinstance(response, Mapping) else []
+        if not isinstance(values, list):
+            raise ValueError("Google Sheets get_values response did not include a values array.")
+        return [list(row) for row in values if isinstance(row, list)]
+
+    def update_values(
+        self,
+        *,
+        spreadsheet_id: str,
+        range_name: str,
+        values: list[list[Any]],
+        value_input_option: str = "RAW",
+    ) -> Any:
+        return self.request_executor(
+            "PUT",
+            _google_sheets_values_url(
+                self.base_url,
+                spreadsheet_id=spreadsheet_id,
+                range_name=range_name,
+                query={"valueInputOption": value_input_option},
+            ),
+            headers=self._headers(),
+            json_body={"majorDimension": "ROWS", "values": values},
+            timeout_seconds=self.timeout_seconds,
+        )
+
+    def append_values(
+        self,
+        *,
+        spreadsheet_id: str,
+        range_name: str,
+        values: list[list[Any]],
+        value_input_option: str = "RAW",
+        insert_data_option: str = "INSERT_ROWS",
+    ) -> Any:
+        return self.request_executor(
+            "POST",
+            _google_sheets_append_url(
+                self.base_url,
+                spreadsheet_id=spreadsheet_id,
+                range_name=range_name,
+                query={
+                    "insertDataOption": insert_data_option,
+                    "valueInputOption": value_input_option,
+                },
+            ),
+            headers=self._headers(),
+            json_body={"majorDimension": "ROWS", "values": values},
+            timeout_seconds=self.timeout_seconds,
+        )
+
+    def _headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self.refresh_access_token()}"}
+
+
+def _google_sheets_values_url(
+    base_url: str,
+    *,
+    spreadsheet_id: str,
+    range_name: str,
+    query: Mapping[str, str | int | float | bool] | None = None,
+) -> str:
+    base = base_url.rstrip("/")
+    suffix = ""
+    if query:
+        suffix = "?" + urlencode({key: value for key, value in query.items()})
+    return (
+        f"{base}/spreadsheets/{quote(spreadsheet_id, safe='')}"
+        f"/values/{quote(range_name, safe='')}{suffix}"
+    )
+
+
+def _google_sheets_append_url(
+    base_url: str,
+    *,
+    spreadsheet_id: str,
+    range_name: str,
+    query: Mapping[str, str | int | float | bool] | None = None,
+) -> str:
+    return (
+        f"{_google_sheets_values_url(base_url, spreadsheet_id=spreadsheet_id, range_name=range_name, query=query)}"
+        ":append"
+    )
+
+
 __all__ = [
     "ConfluenceClient",
     "DEFAULT_NOTION_VERSION",
+    "GOOGLE_SHEETS_DEFAULT_BASE_URL",
+    "GOOGLE_SHEETS_DEFAULT_SCOPE",
+    "GOOGLE_SHEETS_DEFAULT_TOKEN_URL",
+    "GoogleSheetsClient",
     "LINEAR_DEFAULT_BASE_URL",
     "LinearClient",
     "NOTION_DEFAULT_BASE_URL",

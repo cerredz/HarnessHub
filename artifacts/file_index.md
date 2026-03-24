@@ -10,12 +10,12 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | --- | --- |
 | Concrete harness manifests | 6 |
 | Top-level CLI commands | 16 |
-| Registered CLI command paths | 105 |
+| Registered CLI command paths | 106 |
 | Model providers | 4 |
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
-| Built-in sink types | 8 |
-| Test modules | 79 |
+| Built-in sink types | 9 |
+| Test modules | 80 |
 
 ## Codebase Standards
 
@@ -31,17 +31,11 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Kind | Responsibility |
 | --- | --- | --- |
-| `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
-| `.pytest_cache/` | generated/cache | Test runner cache; generated, not part of the source of truth. |
-| `.worktrees/` | other | Repository directory not yet classified in the generated file index. |
 | `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
-| `build/` | generated/cache | Setuptools build output; generated, not part of the live source tree. |
 | `docs/` | repo docs | Focused usage and architecture notes for the package. |
 | `harnessiq/` | source | Live SDK package source. |
-| `harnessiq.egg-info/` | generated/cache | Packaging metadata emitted by local builds. |
 | `memory/` | local state | Task artifacts plus durable agent runtime state; not part of the shipped package. |
 | `scripts/` | repo tooling | Repository maintenance and generation scripts. |
-| `src/` | generated/cache | Legacy or generated residue in this checkout; not the authoritative package source. |
 | `tests/` | source | unittest coverage for runtime, CLI, providers, and tools. |
 
 ## Package Layout
@@ -97,7 +91,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Command | Direct Subcommands | Description | Source |
 | --- | --- | --- | --- |
-| harnessiq connect | confluence, discord, linear, notion, obsidian, slack, supabase | Configure a global output sink connection | `harnessiq/cli/ledger/commands.py` |
+| harnessiq connect | confluence, discord, google_sheets, linear, notion, obsidian, slack, supabase | Configure a global output sink connection | `harnessiq/cli/ledger/commands.py` |
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections | `harnessiq/cli/ledger/commands.py` |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings | `harnessiq/cli/platform_commands.py` |
 | harnessiq export | - | Export ledger entries in a structured format | `harnessiq/cli/ledger/commands.py` |
@@ -168,6 +162,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | --- |
 | `confluence` |
 | `discord` |
+| `google_sheets` |
 | `jsonl` |
 | `linear` |
 | `notion` |
@@ -177,7 +172,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 ## Test Surface
 
-`tests/` currently contains 79 test modules. The table below groups them by dominant responsibility.
+`tests/` currently contains 80 test modules. The table below groups them by dominant responsibility.
 
 | Area | Count | Examples |
 | --- | --- | --- |
@@ -185,5 +180,5 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | cli | 8 | `tests/test_exa_outreach_cli.py`, `tests/test_instagram_cli.py`, `tests/test_leads_cli.py` |
 | ledger | 1 | `tests/test_output_sinks.py` |
 | providers | 31 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
-| support | 12 | `tests/test_cli_common.py`, `tests/test_config_loader.py`, `tests/test_credentials_config.py` |
+| support | 13 | `tests/test_cli_common.py`, `tests/test_cli_environment.py`, `tests/test_config_loader.py` |
 | tools | 12 | `tests/test_context_compaction_tools.py`, `tests/test_context_window_tools.py`, `tests/test_general_tools.py` |
