@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from harnessiq.agents import LeadsAgent
-from harnessiq.cli._langsmith import seed_langsmith_environment
+from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.common import (
     add_agent_options,
     add_text_or_file_options,
@@ -232,7 +232,7 @@ def _handle_run(args: argparse.Namespace) -> int:
     store = _load_store(args)
     store.prepare()
     _ensure_runtime_parameters_file(store.memory_path)
-    seed_langsmith_environment(Path(args.memory_root).expanduser())
+    seed_cli_environment(Path(args.memory_root).expanduser())
     run_config = store.read_run_config()
     overrides = parse_manifest_parameter_assignments(
         args.runtime_param,

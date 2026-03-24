@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,9 +12,21 @@ from unittest.mock import MagicMock, patch
 from harnessiq.cli.main import build_parser, main
 from harnessiq.shared.prospecting import ProspectingMemoryStore
 
+_LAST_PROVIDER_ENV: dict[str, str] = {}
+
 
 def _run(argv: list[str]) -> int:
     return main(argv)
+
+
+def _recording_model_factory() -> MagicMock:
+    global _LAST_PROVIDER_ENV
+    _LAST_PROVIDER_ENV = {
+        "XAI_API_KEY": os.environ.get("XAI_API_KEY", ""),
+    }
+    model = MagicMock()
+    model.generate_turn.return_value = MagicMock()
+    return model
 
 
 class ProspectingCliTests(unittest.TestCase):
@@ -135,6 +148,60 @@ class ProspectingCliTests(unittest.TestCase):
             self.assertEqual(payload["ledger_run_id"], "run-123")
             self.assertEqual(payload["result"]["cycles_completed"], 3)
             self.assertEqual(payload["result"]["resets"], 1)
+
+    def test_run_seeds_provider_environment_from_local_env_before_model_factory(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            Path(temp_dir, "local.env").write_text("XAI_API_KEY=local-xai-key\n", encoding="utf-8")
+            _run(["prospecting", "prepare", "--agent", "nj-dentists", "--memory-root", temp_dir])
+            _run(
+                [
+                    "prospecting",
+                    "configure",
+                    "--agent",
+                    "nj-dentists",
+                    "--memory-root",
+                    temp_dir,
+                    "--company-description-text",
+                    "Owner-operated dental practices in New Jersey.",
+                ]
+            )
+
+            mock_agent = MagicMock()
+            mock_agent.last_run_id = "run-123"
+            mock_result = MagicMock()
+            mock_result.cycles_completed = 1
+            mock_result.pause_reason = None
+            mock_result.resets = 0
+            mock_result.status = "completed"
+            mock_agent.run.return_value = mock_result
+
+            with (
+                patch.dict(os.environ, {}, clear=True),
+                patch(
+                    "harnessiq.cli.prospecting.commands._load_factory",
+                    side_effect=[_recording_model_factory, lambda: ()],
+                ),
+                patch(
+                    "harnessiq.agents.GoogleMapsProspectingAgent.from_memory",
+                    return_value=mock_agent,
+                ),
+                patch("sys.stdout.write"),
+            ):
+                result = _run(
+                    [
+                        "prospecting",
+                        "run",
+                        "--agent",
+                        "nj-dentists",
+                        "--memory-root",
+                        temp_dir,
+                        "--model-factory",
+                        "mod:model",
+                    ]
+                )
+
+            self.assertEqual(result, 0)
+            self.assertEqual(_LAST_PROVIDER_ENV["XAI_API_KEY"], "local-xai-key")
 
 
 if __name__ == "__main__":

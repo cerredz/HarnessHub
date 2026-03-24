@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 from contextlib import redirect_stdout
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,6 +10,8 @@ from unittest.mock import MagicMock, patch
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse
 from harnessiq.cli.main import main
+
+_LAST_PROVIDER_ENV: dict[str, str] = {}
 
 
 class _StaticModel:
@@ -19,6 +22,18 @@ class _StaticModel:
 
 def create_static_model() -> _StaticModel:
     return _StaticModel()
+
+
+def create_static_model_recording_provider_env() -> _StaticModel:
+    global _LAST_PROVIDER_ENV
+    _LAST_PROVIDER_ENV = {
+        "XAI_API_KEY": os.environ.get("XAI_API_KEY", ""),
+    }
+    return _StaticModel()
+
+
+def create_empty_browser_tools() -> tuple[object, ...]:
+    return ()
 
 
 def _run(argv: list[str]) -> tuple[int, dict[str, object]]:
@@ -216,3 +231,43 @@ def test_run_generic_knowt_uses_bound_creatify_credentials(tmp_path: Path) -> No
     kwargs = patched_agent.call_args.kwargs
     assert kwargs["creatify_credentials"].api_id == "cid_123"
     assert kwargs["max_tokens"] == 12000
+
+
+def test_run_generic_prospecting_seeds_model_factory_environment_from_local_env(tmp_path: Path) -> None:
+    (tmp_path / "local.env").write_text("XAI_API_KEY=local-xai-key\n", encoding="utf-8")
+    _run(["prepare", "prospecting", "--agent", "nj-dentists", "--memory-root", str(tmp_path)])
+
+    mock_agent = MagicMock()
+    mock_agent.last_run_id = "run-123"
+    mock_agent.run.return_value = SimpleNamespace(
+        cycles_completed=1,
+        pause_reason=None,
+        resets=0,
+        status="completed",
+    )
+
+    with (
+        patch.dict("os.environ", {}, clear=True),
+        patch(
+            "harnessiq.cli.adapters.prospecting.GoogleMapsProspectingAgent.from_memory",
+            return_value=mock_agent,
+        ),
+    ):
+        exit_code, payload = _run(
+            [
+                "run",
+                "prospecting",
+                "--agent",
+                "nj-dentists",
+                "--memory-root",
+                str(tmp_path),
+                "--model-factory",
+                "tests.test_platform_cli:create_static_model_recording_provider_env",
+                "--browser-tools-factory",
+                "tests.test_platform_cli:create_empty_browser_tools",
+            ]
+        )
+
+    assert exit_code == 0
+    assert payload["result"]["status"] == "completed"
+    assert _LAST_PROVIDER_ENV["XAI_API_KEY"] == "local-xai-key"

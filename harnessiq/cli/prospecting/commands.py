@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from harnessiq.agents import AgentRuntimeConfig, GoogleMapsProspectingAgent, ProspectingMemoryStore
+from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.common import (
     add_agent_options,
     add_text_or_file_options,
@@ -239,6 +240,7 @@ def _handle_show(args: argparse.Namespace) -> int:
 def _handle_run(args: argparse.Namespace) -> int:
     store = _load_store(args)
     store.prepare()
+    seed_cli_environment(Path(args.memory_root).expanduser())
 
     if "HARNESSIQ_PROSPECTING_SESSION_DIR" not in os.environ:
         os.environ["HARNESSIQ_PROSPECTING_SESSION_DIR"] = str(store.browser_data_dir.resolve())
