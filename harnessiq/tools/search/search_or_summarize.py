@@ -18,41 +18,8 @@ def build_search_or_summarize_tool_definition() -> ToolDefinition:
         description="Determine the next search query and optionally summarize/prune prior search history when the unsummarized threshold is reached.",
         input_schema={
             "type": "object",
-            "properties": {
-                "company_description": {
-                    "type": "string",
-                    "description": "Natural-language description of the target company profile.",
-                },
-                "searches_completed": {
-                    "type": "array",
-                    "description": "Completed search history records carried from durable memory.",
-                    "items": {"type": "object", "additionalProperties": True},
-                },
-                "search_history_summary": {
-                    "type": ["string", "null"],
-                    "description": "Existing compact search history summary, if present.",
-                },
-                "searches_summarized_through": {
-                    "type": "integer",
-                    "description": "Highest search index already folded into the summary.",
-                },
-                "summarize_at_x": {
-                    "type": "integer",
-                    "description": "Threshold of unsummarized searches that triggers summary generation.",
-                },
-                "last_completed_search_index": {
-                    "type": "integer",
-                    "description": "Continuation pointer for the most recently completed search.",
-                },
-            },
-            "required": [
-                "company_description",
-                "searches_completed",
-                "search_history_summary",
-                "searches_summarized_through",
-                "summarize_at_x",
-                "last_completed_search_index",
-            ],
+            "properties": {},
+            "required": [],
             "additionalProperties": False,
         },
     )

@@ -169,11 +169,17 @@ def _serialize_model_inputs(
     tools: Sequence[ToolDefinition],
     request_payload: RequestPayload | None,
 ) -> dict[str, Any]:
+    serialized_messages = _serialize_messages(messages)
+    if system_prompt.strip():
+        serialized_messages = [
+            {"role": "system", "content": system_prompt},
+            *serialized_messages,
+        ]
     inputs: dict[str, Any] = {
         "provider": provider,
         "model_name": model_name,
         "system_prompt": system_prompt,
-        "messages": _serialize_messages(messages),
+        "messages": serialized_messages,
         "tools": _serialize_tools(tools),
     }
     if request_payload is not None:

@@ -341,6 +341,35 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(model.requests[1].transcript, ())
         self.assertEqual(model.requests[1].parameter_sections[0].content, "refreshed")
 
+    def test_run_resets_when_transcript_free_request_is_below_max_tokens_but_above_threshold(self) -> None:
+        registry = ToolRegistry([])
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="y" * 400,
+                    should_continue=True,
+                ),
+                AgentModelResponse(
+                    assistant_message="done",
+                    should_continue=False,
+                ),
+            ]
+        )
+        agent = _InspectableAgent(
+            model=model,
+            tool_executor=registry,
+            parameter_versions=["x" * 700, "refreshed"],
+            runtime_config=AgentRuntimeConfig(max_tokens=400, reset_threshold=0.5),
+        )
+
+        result = agent.run(max_cycles=3)
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.resets, 1)
+        self.assertEqual(len(model.requests), 2)
+        self.assertEqual(model.requests[1].transcript, ())
+        self.assertEqual(model.requests[1].parameter_sections[0].content, "refreshed")
+
     def test_run_resets_context_when_prune_progress_interval_is_reached(self) -> None:
         registry = ToolRegistry([])
         model = _FakeModel(
@@ -365,6 +394,56 @@ class BaseAgentTests(unittest.TestCase):
 
         self.assertEqual(result.status, "completed")
         self.assertEqual(result.resets, 1)
+        self.assertEqual(len(model.requests), 2)
+        self.assertEqual(model.requests[1].transcript, ())
+        self.assertEqual(model.requests[1].parameter_sections[0].content, "refreshed")
+
+    def test_run_can_reset_immediately_after_a_tool_result_and_skip_remaining_stale_tool_calls(self) -> None:
+        first_tool_calls: list[dict[str, object]] = []
+        second_tool_calls: list[dict[str, object]] = []
+        registry = ToolRegistry(
+            [
+                _constant_tool(
+                    "session.large_result",
+                    "large_result",
+                    lambda arguments: first_tool_calls.append(dict(arguments)) or {"blob": "x" * 500},
+                ),
+                _constant_tool(
+                    "session.never_run",
+                    "never_run",
+                    lambda arguments: second_tool_calls.append(dict(arguments)) or {"ok": True},
+                ),
+            ]
+        )
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Run both tools.",
+                    tool_calls=(
+                        ToolCall(tool_key="session.large_result", arguments={"step": 1}),
+                        ToolCall(tool_key="session.never_run", arguments={"step": 2}),
+                    ),
+                    should_continue=True,
+                ),
+                AgentModelResponse(
+                    assistant_message="done",
+                    should_continue=False,
+                ),
+            ]
+        )
+        agent = _InspectableAgent(
+            model=model,
+            tool_executor=registry,
+            parameter_versions=["initial", "refreshed"],
+            runtime_config=AgentRuntimeConfig(max_tokens=220, reset_threshold=0.5),
+        )
+
+        result = agent.run(max_cycles=3)
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.resets, 1)
+        self.assertEqual(len(first_tool_calls), 1)
+        self.assertEqual(len(second_tool_calls), 0)
         self.assertEqual(len(model.requests), 2)
         self.assertEqual(model.requests[1].transcript, ())
         self.assertEqual(model.requests[1].parameter_sections[0].content, "refreshed")

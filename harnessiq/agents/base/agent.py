@@ -432,13 +432,28 @@ class BaseAgent(ABC):
                     )
 
                 pause_signal: AgentPauseSignal | None = None
+                reset_after_tool_result = False
+                last_recorded_tool_result: ToolResult | None = None
                 for tool_call in response.tool_calls:
                     result = self._execute_tool(tool_call)
                     if self._apply_compaction_result(result):
                         continue
                     self._record_tool_result(result)
+                    last_recorded_tool_result = result
                     if isinstance(result.output, AgentPauseSignal):
                         pause_signal = result.output
+                        break
+                    if not self._allow_auto_reset_after_tool_result(result):
+                        continue
+                    if self._should_prune_context():
+                        self.reset_context()
+                        self._last_prune_progress = self.pruning_progress_value()
+                        reset_after_tool_result = True
+                        break
+                    if self._should_reset_context():
+                        self.reset_context()
+                        self._last_prune_progress = self.pruning_progress_value()
+                        reset_after_tool_result = True
                         break
 
                 if pause_signal is not None:
@@ -453,6 +468,9 @@ class BaseAgent(ABC):
                         total_estimated_request_tokens=total_estimated_request_tokens,
                     )
 
+                if reset_after_tool_result:
+                    continue
+
                 if not response.should_continue:
                     return self._complete_run(
                         AgentRunResult(
@@ -464,11 +482,17 @@ class BaseAgent(ABC):
                         total_estimated_request_tokens=total_estimated_request_tokens,
                     )
 
-                if self._should_prune_context():
+                if (
+                    last_recorded_tool_result is None
+                    or self._allow_auto_reset_after_tool_result(last_recorded_tool_result)
+                ) and self._should_prune_context():
                     self.reset_context()
                     self._last_prune_progress = self.pruning_progress_value()
 
-                if self._should_reset_context():
+                if (
+                    last_recorded_tool_result is None
+                    or self._allow_auto_reset_after_tool_result(last_recorded_tool_result)
+                ) and self._should_reset_context():
                     self.reset_context()
                     self._last_prune_progress = self.pruning_progress_value()
         except Exception as exc:
@@ -709,7 +733,7 @@ class BaseAgent(ABC):
             transcript=(),
             tools=request.tools,
         )
-        return reset_request.estimated_tokens() < token_limit
+        return reset_request.estimated_tokens() < self._runtime_config.max_tokens
 
     def _apply_compaction_result(self, result: ToolResult) -> bool:
         if result.tool_key not in self._COMPACTION_TOOL_KEYS:
@@ -738,6 +762,10 @@ class BaseAgent(ABC):
             transcript.append(self._context_entry_to_transcript_entry(entry))
         self._parameter_sections = tuple(parameter_sections)
         self._transcript = transcript
+
+    def _allow_auto_reset_after_tool_result(self, result: ToolResult) -> bool:
+        del result
+        return True
 
     def _context_entry_to_transcript_entry(self, entry: dict[str, Any]) -> AgentTranscriptEntry:
         kind = entry.get("kind")
