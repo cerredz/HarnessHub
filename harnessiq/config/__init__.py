@@ -22,8 +22,13 @@ from .credentials import (
 )
 from .harness_profiles import (
     DEFAULT_HARNESS_PROFILE_FILENAME,
+    DEFAULT_HARNESS_PROFILE_INDEX_FILENAME,
     HarnessProfile,
+    HarnessProfileIndex,
+    HarnessProfileIndexRecord,
+    HarnessProfileIndexStore,
     HarnessProfileStore,
+    HarnessRunSnapshot,
     build_harness_credential_binding_name,
 )
 from .model_profiles import (
@@ -49,9 +54,14 @@ __all__ = [
     "DEFAULT_ENV_FILENAME",
     "DEFAULT_HARNESS_PROFILE_FILENAME",
     "DEFAULT_MODEL_PROFILES_FILENAME",
+    "DEFAULT_HARNESS_PROFILE_INDEX_FILENAME",
     "DotEnvFileNotFoundError",
     "HarnessProfile",
+    "HarnessProfileIndex",
+    "HarnessProfileIndexRecord",
+    "HarnessProfileIndexStore",
     "HarnessProfileStore",
+    "HarnessRunSnapshot",
     "MissingEnvironmentVariableError",
     "ModelProfile",
     "ModelProfileCatalog",
