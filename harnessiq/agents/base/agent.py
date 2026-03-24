@@ -34,7 +34,9 @@ from harnessiq.shared.agents import (
     render_json_parameter_content,
     estimate_text_tokens,
 )
+from harnessiq.shared.hooks import HookContext, HookDefinition, HookPhase, RegisteredHook
 from harnessiq.shared.tools import (
+    CONTEXT_SELECT_CHECKPOINT,
     CONTEXT_COMPACTION_TOOL_KEYS,
     CONTEXT_PARAMETER_TOOL_KEYS,
     HEAVY_COMPACTION,
@@ -44,6 +46,7 @@ from harnessiq.shared.tools import (
 )
 from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
 from harnessiq.tools.context import BoundContextToolExecutor, create_context_tools
+from harnessiq.tools.hooks import create_default_hook_tools
 from harnessiq.utils.agent_instances import AgentInstanceRecord, AgentInstanceStore
 from harnessiq.utils.ledger import JSONLLedgerSink, LedgerEntry, new_run_id
 
@@ -97,6 +100,7 @@ class BaseAgent(ABC):
         self._last_prune_progress = 0
         self._context_runtime_state = self._load_context_runtime_state()
         self._tool_executor = tool_executor
+        self._hook_tools = self._build_hook_tools()
 
     @property
     def name(self) -> str:
@@ -191,6 +195,17 @@ class BaseAgent(ABC):
             return tuple(inspector(tool_keys))
         definitions = self._tool_executor.definitions(tool_keys)
         return tuple(definition.inspect() for definition in definitions)
+
+    def available_hooks(self) -> tuple[HookDefinition, ...]:
+        return tuple(hook.definition for hook in self._resolved_hook_tools())
+
+    def inspect_hooks(self, hook_keys: Sequence[str] | None = None) -> tuple[dict[str, Any], ...]:
+        selected_keys = set(hook_keys) if hook_keys is not None else None
+        return tuple(
+            hook.inspect()
+            for hook in self._resolved_hook_tools()
+            if selected_keys is None or hook.key in selected_keys
+        )
 
     def refresh_parameters(self) -> tuple[AgentParameterSection, ...]:
         sections = tuple(self._compose_parameter_sections(tuple(self.load_parameter_sections())))
@@ -409,6 +424,19 @@ class BaseAgent(ABC):
         total_estimated_request_tokens = 0
         self._last_prune_progress = self.pruning_progress_value()
 
+        before_run_pause = self._apply_before_run_hooks()
+        if before_run_pause is not None:
+            return self._complete_run(
+                AgentRunResult(
+                    status="paused",
+                    cycles_completed=0,
+                    resets=self._reset_count,
+                    pause_reason=before_run_pause.reason,
+                ),
+                started_at=started_at,
+                total_estimated_request_tokens=total_estimated_request_tokens,
+            )
+
         cycles_completed = 0
         try:
             while max_cycles is None or cycles_completed < max_cycles:
@@ -434,14 +462,26 @@ class BaseAgent(ABC):
                 pause_signal: AgentPauseSignal | None = None
                 reset_after_tool_result = False
                 last_recorded_tool_result: ToolResult | None = None
-                for tool_call in response.tool_calls:
-                    result = self._execute_tool(tool_call)
+                for requested_tool_call in response.tool_calls:
+                    tool_call, result, pause_signal = self._prepare_tool_call(requested_tool_call)
+                    if pause_signal is not None:
+                        break
+                    assert tool_call is not None  # noqa: S101
+                    if result is None:
+                        result = self._execute_tool(tool_call)
+                    result, hook_pause_signal = self._finalize_tool_result(tool_call, result)
                     if self._apply_compaction_result(result):
+                        if hook_pause_signal is not None:
+                            pause_signal = hook_pause_signal
+                            break
                         continue
                     self._record_tool_result(result)
                     last_recorded_tool_result = result
                     if isinstance(result.output, AgentPauseSignal):
                         pause_signal = result.output
+                        break
+                    if hook_pause_signal is not None:
+                        pause_signal = hook_pause_signal
                         break
                     if not self._allow_auto_reset_after_tool_result(result):
                         continue
@@ -589,8 +629,11 @@ class BaseAgent(ABC):
         error: Exception | None,
     ) -> dict[str, Any]:
         metadata: dict[str, Any] = {
+            "approval_policy": self._runtime_config.approval_policy,
+            "allowed_tools": list(self._runtime_config.allowed_tools),
             "cycles_completed": cycles_completed,
             "estimated_request_tokens": total_estimated_request_tokens,
+            "hook_count": len(self.available_hooks()),
             "max_tokens": self._runtime_config.max_tokens,
             "memory_path": str(self._memory_path) if self._memory_path is not None else None,
             "reset_threshold": self._runtime_config.reset_threshold,
@@ -613,6 +656,30 @@ class BaseAgent(ABC):
             sinks.append(JSONLLedgerSink())
         sinks.extend(self._runtime_config.output_sinks)
         return tuple(sinks)
+
+    def _resolved_hook_tools(self) -> tuple[RegisteredHook, ...]:
+        return self._hook_tools
+
+    def _build_hook_tools(self) -> tuple[RegisteredHook, ...]:
+        hooks: list[RegisteredHook] = []
+        if self._runtime_config.include_default_hooks:
+            hooks.extend(
+                create_default_hook_tools(
+                    approval_policy=self._runtime_config.approval_policy,
+                    allowed_tools=self._runtime_config.allowed_tools,
+                )
+            )
+        hooks.extend(self._runtime_config.hooks)
+        ordered = sorted(
+            enumerate(hooks),
+            key=lambda item: (item[1].definition.priority, item[0]),
+        )
+        return tuple(hook for _, hook in ordered)
+
+    def _apply_before_run_hooks(self) -> AgentPauseSignal | None:
+        context = self._make_hook_context("before_run")
+        _, _, pause_signal = self._run_hook_phase("before_run", context)
+        return pause_signal
 
     def _trace_run(self, operation):
         wrapped = trace_agent_run(
@@ -666,6 +733,122 @@ class BaseAgent(ABC):
         if not definitions:
             return None
         return definitions[0]
+
+    def _prepare_tool_call(
+        self,
+        tool_call: ToolCall,
+    ) -> tuple[ToolCall | None, ToolResult | None, AgentPauseSignal | None]:
+        tool_definition = self._resolve_tool_definition(tool_call.tool_key)
+        tool_name = tool_definition.name if tool_definition is not None else tool_call.tool_key
+        context = self._make_hook_context(
+            "before_tool",
+            tool_key=tool_call.tool_key,
+            tool_name=tool_name,
+            tool_arguments=tool_call.arguments,
+            checkpoint_name=self._checkpoint_name_for_tool_call(tool_call),
+        )
+        if self._is_checkpoint_tool_call(tool_call):
+            checkpoint_context = self._make_hook_context(
+                "before_checkpoint",
+                tool_key=tool_call.tool_key,
+                tool_name=tool_name,
+                tool_arguments=context.tool_arguments,
+                checkpoint_name=context.checkpoint_name,
+            )
+            checkpoint_context, override_result, pause_signal = self._run_hook_phase(
+                "before_checkpoint",
+                checkpoint_context,
+            )
+            if pause_signal is not None or override_result is not None:
+                prepared_call = ToolCall(
+                    tool_key=tool_call.tool_key,
+                    arguments=checkpoint_context.tool_arguments or tool_call.arguments,
+                )
+                return prepared_call, override_result, pause_signal
+            context = context.with_updates(tool_arguments=checkpoint_context.tool_arguments)
+        context, override_result, pause_signal = self._run_hook_phase("before_tool", context)
+        prepared_call = ToolCall(
+            tool_key=tool_call.tool_key,
+            arguments=context.tool_arguments or tool_call.arguments,
+        )
+        return prepared_call, override_result, pause_signal
+
+    def _finalize_tool_result(
+        self,
+        tool_call: ToolCall,
+        result: ToolResult,
+    ) -> tuple[ToolResult, AgentPauseSignal | None]:
+        tool_definition = self._resolve_tool_definition(result.tool_key)
+        tool_name = tool_definition.name if tool_definition is not None else result.tool_key
+        context = self._make_hook_context(
+            "after_tool",
+            tool_key=result.tool_key,
+            tool_name=tool_name,
+            tool_arguments=tool_call.arguments,
+            tool_output=result.output,
+            checkpoint_name=self._checkpoint_name_for_tool_call(tool_call),
+        )
+        _, override_result, pause_signal = self._run_hook_phase("after_tool", context)
+        return (override_result or result), pause_signal
+
+    def _run_hook_phase(
+        self,
+        phase: HookPhase,
+        context: HookContext,
+    ) -> tuple[HookContext, ToolResult | None, AgentPauseSignal | None]:
+        current_context = context
+        for hook in self._resolved_hook_tools():
+            if not hook.applies_to(phase):
+                continue
+            response = hook.execute(current_context)
+            if response is None:
+                continue
+            if response.pause_reason is not None:
+                return current_context, None, AgentPauseSignal(
+                    reason=response.pause_reason,
+                    details=deepcopy(response.pause_details) if response.pause_details is not None else None,
+                )
+            if response.tool_result is not None:
+                return current_context, response.tool_result, None
+            if response.tool_arguments is not None:
+                current_context = current_context.with_updates(tool_arguments=response.tool_arguments)
+        return current_context, None, None
+
+    def _make_hook_context(
+        self,
+        phase: HookPhase,
+        *,
+        tool_key: str | None = None,
+        tool_name: str | None = None,
+        tool_arguments: dict[str, Any] | None = None,
+        tool_output: Any = None,
+        checkpoint_name: str | None = None,
+    ) -> HookContext:
+        return HookContext(
+            phase=phase,
+            agent_name=self.name,
+            run_id=self._last_run_id,
+            cycle_index=self._cycle_index,
+            reset_count=self._reset_count,
+            memory_path=str(self._memory_path) if self._memory_path is not None else None,
+            available_tool_keys=tuple(definition.key for definition in self.available_tools()),
+            tool_key=tool_key,
+            tool_name=tool_name,
+            tool_arguments=deepcopy(tool_arguments) if tool_arguments is not None else None,
+            tool_output=deepcopy(tool_output),
+            checkpoint_name=checkpoint_name,
+        )
+
+    def _is_checkpoint_tool_call(self, tool_call: ToolCall) -> bool:
+        return tool_call.tool_key == CONTEXT_SELECT_CHECKPOINT
+
+    def _checkpoint_name_for_tool_call(self, tool_call: ToolCall) -> str | None:
+        if not self._is_checkpoint_tool_call(tool_call):
+            return None
+        raw_name = tool_call.arguments.get("checkpoint_name")
+        if raw_name is None:
+            return None
+        return str(raw_name)
 
     def _record_assistant_response(self, response: AgentModelResponse) -> None:
         parts: list[str] = []

@@ -42,14 +42,6 @@ class BaseEmailAgent(BaseAgent, ABC):
             tuple(email_tools),
             tuple(tools or ()),
         )
-        runtime_config = AgentRuntimeConfig(
-            max_tokens=self._config.max_tokens,
-            reset_threshold=self._config.reset_threshold,
-            output_sinks=runtime_config.output_sinks if runtime_config is not None else (),
-            include_default_output_sink=(
-                runtime_config.include_default_output_sink if runtime_config is not None else True
-            ),
-        )
         super().__init__(
             name=name,
             model=model,

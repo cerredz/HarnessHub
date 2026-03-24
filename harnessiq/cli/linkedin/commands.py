@@ -14,7 +14,9 @@ from harnessiq.agents import LinkedInJobApplierAgent, LinkedInMemoryStore
 from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.common import (
     add_agent_options,
+    add_policy_options,
     add_text_or_file_options,
+    build_runtime_config,
     emit_json,
     format_manifest_parameter_keys,
     parse_generic_assignments,
@@ -23,12 +25,10 @@ from harnessiq.cli.common import (
     resolve_text_argument,
     split_assignment,
 )
-from harnessiq.shared.agents import AgentRuntimeConfig
 from harnessiq.agents.linkedin import (
     JobApplicationRecord,
     LINKEDIN_HARNESS_MANIFEST,
 )
-from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
 
 def register_linkedin_commands(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -132,6 +132,7 @@ def register_linkedin_commands(subparsers: argparse._SubParsersAction[argparse.A
         help="Add a per-run output sink override using kind:value or kind:key=value,key=value.",
     )
     run_parser.add_argument("--max-cycles", type=int, help="Optional max cycle count passed to agent.run().")
+    add_policy_options(run_parser)
     run_parser.set_defaults(command_handler=_handle_run)
 
     init_browser_parser = linkedin_subparsers.add_parser(
@@ -237,7 +238,11 @@ def _handle_run(args: argparse.Namespace) -> int:
         else:
             browser_tools = tuple(created_tools)
     runtime_overrides = _parse_runtime_assignments(args.runtime_param)
-    runtime_config = _build_runtime_config(args.sink)
+    runtime_config = build_runtime_config(
+        sink_specs=args.sink,
+        approval_policy=args.approval_policy,
+        allowed_tools=args.allowed_tools,
+    )
     agent = LinkedInJobApplierAgent.from_memory(
         model=model,
         memory_path=store.memory_path,
@@ -336,15 +341,6 @@ def _build_summary(store: LinkedInMemoryStore) -> dict[str, Any]:
         "runtime_parameters": store.read_runtime_parameters(),
         "user_profile": store.read_user_profile(),
     }
-
-
-def _build_runtime_config(sink_specs: Sequence[str]) -> AgentRuntimeConfig:
-    if not sink_specs:
-        return AgentRuntimeConfig()
-    connections = ConnectionsConfigStore().load().enabled_connections()
-    return AgentRuntimeConfig(
-        output_sinks=build_output_sinks(connections=connections, sink_specs=sink_specs),
-    )
 
 
 def _load_factory(spec: str):

@@ -11,7 +11,10 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from harnessiq.shared.agents import AgentRuntimeConfig
 from harnessiq.shared.harness_manifest import HarnessManifest
+from harnessiq.shared.hooks import DEFAULT_APPROVAL_POLICY, SUPPORTED_APPROVAL_POLICIES
+from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
 
 def add_agent_options(
@@ -143,6 +146,30 @@ def add_manifest_parameter_options(
         )
 
 
+def add_policy_options(parser: argparse.ArgumentParser) -> None:
+    """Register shared approval and allowlist flags for run commands."""
+    parser.add_argument(
+        "--approval",
+        dest="approval_policy",
+        choices=SUPPORTED_APPROVAL_POLICIES,
+        default=DEFAULT_APPROVAL_POLICY,
+        help=(
+            "Approval policy for tool execution. "
+            f"Choices: {', '.join(SUPPORTED_APPROVAL_POLICIES)}."
+        ),
+    )
+    parser.add_argument(
+        "--allowed-tools",
+        action="append",
+        default=[],
+        metavar="PATTERN[,PATTERN...]",
+        help=(
+            "Allow only matching tool keys or families. Repeat the flag or provide comma-delimited values. "
+            "Examples: filesystem, filesystem.*, context.select.checkpoint."
+        ),
+    )
+
+
 def format_manifest_parameter_keys(
     manifest: HarnessManifest,
     *,
@@ -221,6 +248,38 @@ def resolve_repo_root(path: str | Path) -> Path:
     return resolved
 
 
+def parse_allowed_tool_values(values: Sequence[str]) -> tuple[str, ...]:
+    """Normalize repeatable/comma-delimited allowlist values."""
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for raw_value in values:
+        for part in str(raw_value).split(","):
+            candidate = part.strip()
+            if not candidate or candidate in seen:
+                continue
+            seen.add(candidate)
+            normalized.append(candidate)
+    return tuple(normalized)
+
+
+def build_runtime_config(
+    *,
+    sink_specs: Sequence[str] = (),
+    approval_policy: str | None = None,
+    allowed_tools: Sequence[str] = (),
+) -> AgentRuntimeConfig:
+    """Build one runtime config from shared CLI surfaces."""
+    output_sinks = ()
+    if sink_specs:
+        connections = ConnectionsConfigStore().load().enabled_connections()
+        output_sinks = build_output_sinks(connections=connections, sink_specs=sink_specs)
+    return AgentRuntimeConfig(
+        approval_policy=approval_policy or DEFAULT_APPROVAL_POLICY,
+        allowed_tools=parse_allowed_tool_values(allowed_tools),
+        output_sinks=output_sinks,
+    )
+
+
 def _json_default(value: Any) -> Any:
     if isinstance(value, Path):
         return os.fspath(value)
@@ -254,11 +313,14 @@ def _manifest_option_dest(scope: str, key: str) -> str:
 __all__ = [
     "add_agent_options",
     "add_manifest_parameter_options",
+    "add_policy_options",
     "add_text_or_file_options",
+    "build_runtime_config",
     "collect_manifest_parameter_values",
     "emit_json",
     "format_manifest_parameter_keys",
     "load_factory",
+    "parse_allowed_tool_values",
     "parse_manifest_parameter_assignments",
     "parse_generic_assignments",
     "parse_scalar",

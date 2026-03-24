@@ -6,9 +6,15 @@ import json
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol, Sequence, TypedDict
 
+from harnessiq.shared.hooks import (
+    DEFAULT_APPROVAL_POLICY,
+    SUPPORTED_APPROVAL_POLICIES,
+    ApprovalPolicy,
+)
 from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
 
 if TYPE_CHECKING:
+    from harnessiq.shared.hooks import RegisteredHook
     from harnessiq.utils.ledger import OutputSink
 
 DEFAULT_AGENT_MAX_TOKENS = 80_000
@@ -77,6 +83,10 @@ class AgentRuntimeConfig:
 
     max_tokens: int = DEFAULT_AGENT_MAX_TOKENS
     reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD
+    hooks: tuple["RegisteredHook", ...] = ()
+    include_default_hooks: bool = True
+    approval_policy: ApprovalPolicy = DEFAULT_APPROVAL_POLICY
+    allowed_tools: tuple[str, ...] = ()
     output_sinks: tuple["OutputSink", ...] = ()
     include_default_output_sink: bool = True
     prune_progress_interval: int | None = DEFAULT_AGENT_PRUNE_PROGRESS_INTERVAL
@@ -93,6 +103,23 @@ class AgentRuntimeConfig:
         if not 0 < self.reset_threshold <= 1:
             message = "reset_threshold must be between 0 and 1."
             raise ValueError(message)
+        object.__setattr__(self, "hooks", tuple(self.hooks))
+        normalized_approval_policy = str(self.approval_policy).strip().lower()
+        if normalized_approval_policy not in set(SUPPORTED_APPROVAL_POLICIES):
+            message = (
+                f"approval_policy must be one of {', '.join(SUPPORTED_APPROVAL_POLICIES)}."
+            )
+            raise ValueError(message)
+        object.__setattr__(self, "approval_policy", normalized_approval_policy)
+        normalized_allowed_tools: list[str] = []
+        seen_allowed_tools: set[str] = set()
+        for pattern in self.allowed_tools:
+            candidate = str(pattern).strip()
+            if not candidate or candidate in seen_allowed_tools:
+                continue
+            seen_allowed_tools.add(candidate)
+            normalized_allowed_tools.append(candidate)
+        object.__setattr__(self, "allowed_tools", tuple(normalized_allowed_tools))
         object.__setattr__(self, "output_sinks", tuple(self.output_sinks))
         if self.prune_progress_interval is not None and self.prune_progress_interval <= 0:
             message = "prune_progress_interval must be greater than zero when provided."
@@ -143,6 +170,10 @@ def merge_agent_runtime_config(
     return AgentRuntimeConfig(
         max_tokens=max_tokens,
         reset_threshold=reset_threshold,
+        hooks=runtime_config.hooks,
+        include_default_hooks=runtime_config.include_default_hooks,
+        approval_policy=runtime_config.approval_policy,
+        allowed_tools=runtime_config.allowed_tools,
         output_sinks=runtime_config.output_sinks,
         include_default_output_sink=runtime_config.include_default_output_sink,
         prune_progress_interval=(

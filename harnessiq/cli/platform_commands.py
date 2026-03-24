@@ -11,6 +11,8 @@ from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.common import (
     add_agent_options,
     add_manifest_parameter_options,
+    add_policy_options,
+    build_runtime_config,
     collect_manifest_parameter_values,
     emit_json,
     load_factory,
@@ -29,8 +31,6 @@ from harnessiq.config import (
 )
 from harnessiq.shared.harness_manifest import HarnessManifest
 from harnessiq.shared.harness_manifests import get_harness_manifest, list_harness_manifests
-from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
-from harnessiq.agents import AgentRuntimeConfig
 
 
 def register_platform_commands(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -103,6 +103,7 @@ def _register_manifest_subcommands(
             parser.add_argument("--max-cycles", type=int, help="Optional max cycle count passed to agent.run().")
             add_manifest_parameter_options(parser, manifest=manifest, scope="runtime")
             add_manifest_parameter_options(parser, manifest=manifest, scope="custom")
+            add_policy_options(parser)
             _build_adapter(manifest).register_run_arguments(parser)
             parser.set_defaults(command_handler=_handle_run, manifest_id=manifest.manifest_id)
         elif command == "inspect":
@@ -178,7 +179,11 @@ def _handle_run(args: argparse.Namespace) -> int:
     model = load_factory(args.model_factory)()
     if not hasattr(model, "generate_turn"):
         raise TypeError("Model factory must return an object that implements generate_turn(request).")
-    runtime_config = _build_runtime_config(args.sink)
+    runtime_config = build_runtime_config(
+        sink_specs=args.sink,
+        approval_policy=args.approval_policy,
+        allowed_tools=args.allowed_tools,
+    )
     payload = _base_payload(context)
     payload.update(
         adapter.run(
@@ -488,13 +493,6 @@ def _binding_name(manifest: HarnessManifest, agent_name: str) -> str:
         manifest_id=manifest.manifest_id,
         agent_name=agent_name,
     ).credential_binding_name
-
-
-def _build_runtime_config(sink_specs: list[str]) -> AgentRuntimeConfig:
-    connections = ConnectionsConfigStore().load().enabled_connections()
-    return AgentRuntimeConfig(
-        output_sinks=build_output_sinks(connections=connections, sink_specs=sink_specs),
-    )
 
 
 def _build_adapter(manifest: HarnessManifest):

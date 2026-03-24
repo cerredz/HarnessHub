@@ -2305,7 +2305,7 @@
     "model_providers": 4,
     "service_provider_packages": 26,
     "sink_types": 9,
-    "test_modules": 82,
+    "test_modules": 86,
     "tool_only_external_surfaces": 1,
     "top_level_commands": 17
   },
@@ -3218,6 +3218,7 @@
         "exa",
         "expandi",
         "google_drive",
+        "hooks",
         "inboxapp",
         "instagram",
         "instantly",
@@ -3481,10 +3482,10 @@
     ]
   },
   "tests": {
-    "count": 82,
+    "count": 86,
     "groups": [
       {
-        "count": 16,
+        "count": 17,
         "examples": [
           "test_agent_instances.py",
           "test_agents_base.py",
@@ -3518,16 +3519,16 @@
         "name": "providers"
       },
       {
-        "count": 13,
+        "count": 15,
         "examples": [
           "test_cli_common.py",
           "test_cli_environment.py",
-          "test_config_loader.py"
+          "test_cli_policy_options.py"
         ],
         "name": "support"
       },
       {
-        "count": 12,
+        "count": 13,
         "examples": [
           "test_context_compaction_tools.py",
           "test_context_window_tools.py",
@@ -3557,12 +3558,6 @@
       "path": "artifacts/"
     },
     {
-      "description": "Setuptools build output; generated, not part of the live source tree.",
-      "kind": "generated/cache",
-      "name": "build",
-      "path": "build/"
-    },
-    {
       "description": "Focused usage and architecture notes for the package.",
       "kind": "repo docs",
       "name": "docs",
@@ -3573,12 +3568,6 @@
       "kind": "source",
       "name": "harnessiq",
       "path": "harnessiq/"
-    },
-    {
-      "description": "Packaging metadata emitted by local builds.",
-      "kind": "generated/cache",
-      "name": "harnessiq.egg-info",
-      "path": "harnessiq.egg-info/"
     },
     {
       "description": "Task artifacts plus durable agent runtime state; not part of the shipped package.",

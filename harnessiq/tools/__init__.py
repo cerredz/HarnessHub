@@ -106,6 +106,16 @@ from harnessiq.shared.tools import (
     ToolHandler,
     ToolResult,
 )
+from harnessiq.shared.hooks import (
+    ApprovalPolicy,
+    DEFAULT_APPROVAL_POLICY,
+    HookContext,
+    HookDefinition,
+    HookHandler,
+    HookPhase,
+    HookResponse,
+    RegisteredHook,
+)
 
 from .browser import build_browser_tool_definitions, create_browser_tools
 from .browser_use import build_browser_use_request_tool_definition, create_browser_use_tools
@@ -148,6 +158,13 @@ from .general_purpose import (
     unique_records,
 )
 from .instagram import create_instagram_tools
+from .hooks import (
+    create_approval_policy_hook,
+    create_default_hook_tools,
+    define_hook_tool,
+    hook_tool,
+    is_tool_allowed,
+)
 from .paperclip import (
     build_paperclip_request_tool_definition,
     create_paperclip_tools,
@@ -184,6 +201,7 @@ from .registry import ToolRegistry, create_builtin_registry, create_tool_registr
 
 __all__ = [
     "ADD_NUMBERS",
+    "ApprovalPolicy",
     "BROWSER_CLICK",
     "BROWSER_EXTRACT_CONTENT",
     "BROWSER_FIND_ELEMENT",
@@ -203,6 +221,7 @@ __all__ = [
     "BUILTIN_TOOLS",
     "CONTROL_PAUSE_FOR_HUMAN",
     "ContextSummarizer",
+    "DEFAULT_APPROVAL_POLICY",
     "DEFAULT_RESEND_BASE_URL",
     "DEFAULT_RESEND_USER_AGENT",
     "ECHO_TEXT",
@@ -217,6 +236,11 @@ __all__ = [
     "FILESYSTEM_WRITE_TEXT_FILE",
     "FilterOperator",
     "HEAVY_COMPACTION",
+    "HookContext",
+    "HookDefinition",
+    "HookHandler",
+    "HookPhase",
+    "HookResponse",
     "JsonObject",
     "LOG_COMPACTION",
     "PAPERCLIP_REQUEST",
@@ -283,6 +307,7 @@ __all__ = [
     "RESEND_REQUEST",
     "REMOVE_TOOL_RESULTS",
     "REMOVE_TOOLS",
+    "RegisteredHook",
     "RegisteredTool",
     "SEARCH_OR_SUMMARIZE",
     "ResendClient",
@@ -310,12 +335,14 @@ __all__ = [
     "build_search_or_summarize_tool_definition",
     "copy_path",
     "count_by_field",
+    "create_approval_policy_hook",
     "create_browser_tools",
     "create_browser_use_tools",
     "create_builtin_registry",
     "create_context_tools",
     "create_tool_registry",
     "create_context_compaction_tools",
+    "create_default_hook_tools",
     "create_filesystem_tools",
     "create_general_purpose_tools",
     "create_instagram_tools",
@@ -331,6 +358,7 @@ __all__ = [
     "create_search_or_summarize_tool",
     "critique",
     "create_system_prompt",
+    "define_hook_tool",
     "filter_records",
     "get_current_directory",
     "get_resend_operation",
@@ -351,5 +379,7 @@ __all__ = [
     "summarize_and_log_compact",
     "truncate_text",
     "unique_records",
+    "hook_tool",
+    "is_tool_allowed",
     "write_text_file",
 ]

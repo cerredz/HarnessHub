@@ -13,7 +13,9 @@ from harnessiq.agents import LeadsAgent
 from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.common import (
     add_agent_options,
+    add_policy_options,
     add_text_or_file_options,
+    build_runtime_config,
     emit_json,
     format_manifest_parameter_keys,
     parse_manifest_parameter_assignments,
@@ -145,6 +147,7 @@ def register_leads_commands(
         help="Override a persisted leads runtime/config parameter for this run only.",
     )
     run_parser.add_argument("--max-cycles", type=int, help="Optional max cycle count passed to agent.run().")
+    add_policy_options(run_parser)
     run_parser.set_defaults(command_handler=_handle_run)
 
 
@@ -291,6 +294,10 @@ def _handle_run(args: argparse.Namespace) -> int:
         search_summary_every=effective_run_config.search_summary_every,
         search_tail_size=effective_run_config.search_tail_size,
         max_leads_per_icp=effective_run_config.max_leads_per_icp,
+        runtime_config=build_runtime_config(
+            approval_policy=args.approval_policy,
+            allowed_tools=args.allowed_tools,
+        ),
     )
     result = agent.run(max_cycles=args.max_cycles)
 

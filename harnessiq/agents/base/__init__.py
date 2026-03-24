@@ -1,5 +1,15 @@
 """Base agent runtime abstractions."""
 
+from harnessiq.shared.hooks import (
+    ApprovalPolicy,
+    DEFAULT_APPROVAL_POLICY,
+    HookContext,
+    HookDefinition,
+    HookHandler,
+    HookPhase,
+    HookResponse,
+    RegisteredHook,
+)
 from harnessiq.agents.base.agent import (
     AgentModel,
     AgentModelRequest,
@@ -30,7 +40,15 @@ __all__ = [
     "AgentRuntimeConfig",
     "AgentToolExecutor",
     "AgentTranscriptEntry",
+    "ApprovalPolicy",
     "BaseAgent",
+    "DEFAULT_APPROVAL_POLICY",
+    "HookContext",
+    "HookDefinition",
+    "HookHandler",
+    "HookPhase",
+    "HookResponse",
+    "RegisteredHook",
     "json_parameter_section",
     "render_json_parameter_content",
     "estimate_text_tokens",
