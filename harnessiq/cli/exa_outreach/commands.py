@@ -17,7 +17,7 @@ from harnessiq.cli.common import (
     resolve_memory_path,
     resolve_text_argument,
 )
-from harnessiq.cli._langsmith import seed_langsmith_environment
+from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.agents import AgentRuntimeConfig
 from harnessiq.shared.exa_outreach import EXA_OUTREACH_HARNESS_MANIFEST, ExaOutreachMemoryStore
 from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
@@ -210,7 +210,7 @@ def _handle_run(args: argparse.Namespace) -> int:
 
     store = _load_store(args)
     store.prepare()
-    seed_langsmith_environment(Path(args.memory_root).expanduser())
+    seed_cli_environment(Path(args.memory_root).expanduser())
 
     search_only: bool = getattr(args, "search_only", False)
 

@@ -7,7 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from harnessiq.cli._langsmith import seed_langsmith_environment
+from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.common import (
     add_agent_options,
     add_manifest_parameter_options,
@@ -174,7 +174,7 @@ def _handle_run(args: argparse.Namespace) -> int:
         incoming_custom=collect_manifest_parameter_values(args, manifest=manifest, scope="custom"),
         persist_profile=True,
     )
-    seed_langsmith_environment(context.repo_root)
+    seed_cli_environment(context.repo_root)
     model = load_factory(args.model_factory)()
     if not hasattr(model, "generate_turn"):
         raise TypeError("Model factory must return an object that implements generate_turn(request).")
