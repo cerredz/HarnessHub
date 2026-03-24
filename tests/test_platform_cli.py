@@ -8,6 +8,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from harnessiq.agents import AgentModelRequest, AgentModelResponse
 from harnessiq.cli.main import main
 
@@ -630,6 +632,28 @@ def test_run_resume_can_target_specific_prior_run(tmp_path: Path) -> None:
     }
 
 
+def test_run_rejects_specific_run_without_resume(tmp_path: Path) -> None:
+    _run(["prepare", "instagram", "--agent", "creator-invalid", "--memory-root", str(tmp_path)])
+
+    with pytest.raises(ValueError, match="--run requires --resume"):
+        _run(
+            [
+                "run",
+                "instagram",
+                "--agent",
+                "creator-invalid",
+                "--memory-root",
+                str(tmp_path),
+                "--run",
+                "1",
+                "--model-factory",
+                "tests.test_platform_cli:create_static_model",
+                "--search-backend-factory",
+                "tests.test_platform_cli:create_special_instagram_search_backend",
+            ]
+        )
+
+
 def test_top_level_resume_reuses_prior_run_by_agent_name(tmp_path: Path) -> None:
     _clear_repo_resume_index()
     _run(["prepare", "knowt", "--agent", "channel-resume", "--memory-root", str(tmp_path)])
@@ -749,6 +773,38 @@ def test_top_level_resume_can_target_specific_prior_run(tmp_path: Path) -> None:
     assert payload["resume"]["source_run_number"] == 1
     assert payload["profile"]["run_count"] == 3
     assert patched_agent.call_args.kwargs["max_tokens"] == 12000
+
+
+def test_top_level_resume_rejects_unknown_run_number(tmp_path: Path) -> None:
+    _clear_repo_resume_index()
+    _run(["prepare", "knowt", "--agent", "channel-missing-run", "--memory-root", str(tmp_path)])
+
+    first_agent = MagicMock()
+    first_agent.run.return_value = SimpleNamespace(
+        cycles_completed=1,
+        pause_reason=None,
+        resets=0,
+        status="completed",
+    )
+
+    with patch("harnessiq.cli.adapters.knowt.KnowtAgent", return_value=first_agent):
+        _run(
+            [
+                "run",
+                "knowt",
+                "--agent",
+                "channel-missing-run",
+                "--memory-root",
+                str(tmp_path),
+                "--model-factory",
+                "tests.test_platform_cli:create_static_model",
+                "--max-tokens",
+                "12000",
+            ]
+        )
+
+    with pytest.raises(ValueError, match="Available runs: 1"):
+        _run(["resume", "channel-missing-run", "--harness", "knowt", "--run", "2"])
 
 
 def test_top_level_resume_prompts_when_agent_name_is_ambiguous(tmp_path: Path) -> None:
