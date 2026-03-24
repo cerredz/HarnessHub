@@ -92,6 +92,53 @@ def test_prepare_show_and_inspect_generic_linkedin(tmp_path: Path) -> None:
     assert inspected["provider_credential_fields"]["playwright"] == []
 
 
+def test_prepare_show_and_inspect_generic_research_sweep(tmp_path: Path) -> None:
+    exit_code, prepared = _run(
+        [
+            "prepare",
+            "research-sweep",
+            "--agent",
+            "sweep-a",
+            "--memory-root",
+            str(tmp_path),
+            "--max-tokens",
+            "4096",
+            "--reset-threshold",
+            "0.8",
+            "--query",
+            "CRISPR therapeutic applications",
+            "--allowed-serper-operations",
+            "search,scholar",
+        ]
+    )
+    assert exit_code == 0
+    assert prepared["status"] == "prepared"
+    assert prepared["profile"]["runtime_parameters"]["max_tokens"] == 4096
+    assert prepared["profile"]["runtime_parameters"]["reset_threshold"] == 0.8
+    assert prepared["profile"]["custom_parameters"]["query"] == "CRISPR therapeutic applications"
+
+    exit_code, shown = _run(
+        [
+            "show",
+            "research_sweep",
+            "--agent",
+            "sweep-a",
+            "--memory-root",
+            str(tmp_path),
+        ]
+    )
+    assert exit_code == 0
+    assert shown["state"]["query"] == "CRISPR therapeutic applications"
+    assert shown["state"]["custom_parameters"]["allowed_serper_operations"] == "search,scholar"
+
+    exit_code, inspected = _run(["inspect", "research-sweep"])
+    assert exit_code == 0
+    runtime_index = {entry["key"]: entry for entry in inspected["runtime_parameters"]}
+    assert runtime_index["max_tokens"]["default"] == 80000
+    assert inspected["default_memory_root"] == "memory/research_sweep"
+    assert inspected["provider_credential_fields"]["serper"][0]["name"] == "api_key"
+
+
 def test_generic_show_seeds_profile_from_existing_native_linkedin_state(tmp_path: Path) -> None:
     _run(
         [
@@ -235,6 +282,67 @@ def test_run_generic_knowt_uses_bound_creatify_credentials(tmp_path: Path) -> No
     kwargs = patched_agent.call_args.kwargs
     assert kwargs["creatify_credentials"].api_id == "cid_123"
     assert kwargs["max_tokens"] == 12000
+
+
+def test_run_generic_research_sweep_uses_bound_serper_credentials(tmp_path: Path) -> None:
+    (tmp_path / ".env").write_text("SERPER_API_KEY=serper_123\n", encoding="utf-8")
+    _run(
+        [
+            "prepare",
+            "research-sweep",
+            "--agent",
+            "sweep-b",
+            "--memory-root",
+            str(tmp_path),
+            "--query",
+            "few-shot learning for protein folding",
+        ]
+    )
+    _run(
+        [
+            "credentials",
+            "bind",
+            "research_sweep",
+            "--agent",
+            "sweep-b",
+            "--memory-root",
+            str(tmp_path),
+            "--env",
+            "serper.api_key=SERPER_API_KEY",
+        ]
+    )
+
+    mock_agent = MagicMock()
+    mock_agent.last_run_id = "run-456"
+    mock_agent.run.return_value = SimpleNamespace(
+        cycles_completed=1,
+        pause_reason=None,
+        resets=0,
+        status="completed",
+    )
+
+    with patch(
+        "harnessiq.cli.adapters.research_sweep.ResearchSweepAgent.from_memory",
+        return_value=mock_agent,
+    ) as patched_from_memory:
+        exit_code, payload = _run(
+            [
+                "run",
+                "research-sweep",
+                "--agent",
+                "sweep-b",
+                "--memory-root",
+                str(tmp_path),
+                "--model-factory",
+                "tests.test_platform_cli:create_static_model",
+            ]
+        )
+
+    assert exit_code == 0
+    assert payload["result"]["status"] == "completed"
+    kwargs = patched_from_memory.call_args.kwargs
+    assert kwargs["serper_credentials"].api_key == "serper_123"
+    assert kwargs["custom_overrides"]["query"] == "few-shot learning for protein folding"
 
 
 def test_run_generic_prospecting_seeds_model_factory_environment_from_local_env(tmp_path: Path) -> None:

@@ -8,6 +8,7 @@ from .knowt import KnowtHarnessCliAdapter
 from .leads import LeadsHarnessCliAdapter
 from .linkedin import LinkedInHarnessCliAdapter
 from .prospecting import ProspectingHarnessCliAdapter
+from .research_sweep import ResearchSweepHarnessCliAdapter
 
 __all__ = [
     "BaseHarnessCliAdapter",
@@ -19,5 +20,6 @@ __all__ = [
     "LeadsHarnessCliAdapter",
     "LinkedInHarnessCliAdapter",
     "ProspectingHarnessCliAdapter",
+    "ResearchSweepHarnessCliAdapter",
     "StoreBackedHarnessCliAdapter",
 ]

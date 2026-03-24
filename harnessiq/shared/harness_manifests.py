@@ -11,6 +11,7 @@ from harnessiq.shared.knowt import KNOWT_HARNESS_MANIFEST
 from harnessiq.shared.leads import LEADS_HARNESS_MANIFEST
 from harnessiq.shared.linkedin import LINKEDIN_HARNESS_MANIFEST
 from harnessiq.shared.prospecting import PROSPECTING_HARNESS_MANIFEST
+from harnessiq.shared.research_sweep import RESEARCH_SWEEP_HARNESS_MANIFEST
 from harnessiq.utils.harness_manifest.registry import (
     load_entrypoint_manifests,
     register_manifest,
@@ -26,6 +27,7 @@ _BUILTIN_HARNESS_MANIFESTS: tuple[HarnessManifest, ...] = (
     LEADS_HARNESS_MANIFEST,
     LINKEDIN_HARNESS_MANIFEST,
     PROSPECTING_HARNESS_MANIFEST,
+    RESEARCH_SWEEP_HARNESS_MANIFEST,
 )
 
 _HARNESS_MANIFESTS: dict[str, HarnessManifest] = {}
@@ -97,6 +99,7 @@ __all__ = [
     "LEADS_HARNESS_MANIFEST",
     "LINKEDIN_HARNESS_MANIFEST",
     "PROSPECTING_HARNESS_MANIFEST",
+    "RESEARCH_SWEEP_HARNESS_MANIFEST",
     "get_harness_manifest",
     "list_harness_manifests",
     "register_harness_manifest",
