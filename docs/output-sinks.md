@@ -52,6 +52,13 @@ Global CLI injection:
 ```bash
 harnessiq connect obsidian --vault-path ~/Documents/Vault --note-folder "Agent Runs"
 harnessiq connect slack --webhook-url "https://hooks.slack.com/services/..."
+harnessiq connect google_sheets \
+  --client-id "<google-client-id>" \
+  --client-secret "<google-client-secret>" \
+  --refresh-token "<google-refresh-token>" \
+  --spreadsheet-id "<sheet-id>" \
+  --sheet-name "Prospecting Leads" \
+  --explode-field "outputs.qualified_leads"
 ```
 
 Per-run CLI injection:
@@ -72,6 +79,7 @@ harnessiq linkedin run --agent candidate-a \
 - `ConfluenceSink`: create a Confluence page per run
 - `SupabaseSink`: insert a row into a Supabase table
 - `LinearSink`: create one or more Linear issues from a run
+- `GoogleSheetsSink`: append one or more rows to a Google Sheet
 
 Use `list_output_sink_types()` to inspect the full set of built-in plus custom-registered sink names.
 
@@ -85,6 +93,8 @@ harnessiq connections list
 harnessiq connections test <name>
 harnessiq connections remove <name>
 ```
+
+For `google_sheets`, the configured OAuth refresh token must have Google Sheets access. If an existing Google token was minted only for Drive scopes, re-authorize it with Sheets scope before using the sink.
 
 ## Ledger CLI
 

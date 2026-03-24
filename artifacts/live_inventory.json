@@ -32,6 +32,16 @@
       },
       {
         "aliases": [],
+        "command": "harnessiq connect google_sheets",
+        "help": "Configure a global google_sheets sink",
+        "segments": [
+          "connect",
+          "google_sheets"
+        ],
+        "source_file": "harnessiq/cli/ledger/commands.py"
+      },
+      {
+        "aliases": [],
         "command": "harnessiq connect linear",
         "help": "Configure a global linear sink",
         "segments": [
@@ -1007,6 +1017,16 @@
           "segments": [
             "connect",
             "discord"
+          ],
+          "source_file": "harnessiq/cli/ledger/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq connect google_sheets",
+          "help": "Configure a global google_sheets sink",
+          "segments": [
+            "connect",
+            "google_sheets"
           ],
           "source_file": "harnessiq/cli/ledger/commands.py"
         },
@@ -2006,10 +2026,11 @@
     ]
   },
   "counts": {
-    "command_paths": 105,
+    "command_paths": 106,
     "harnesses": 6,
     "model_providers": 4,
     "service_provider_packages": 26,
+    "sink_types": 9,
     "sink_types": 8,
     "test_modules": 80,
     "tool_only_external_surfaces": 1,
@@ -3078,6 +3099,7 @@
     "sink_types": [
       "confluence",
       "discord",
+      "google_sheets",
       "jsonl",
       "linear",
       "notion",

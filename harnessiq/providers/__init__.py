@@ -15,6 +15,7 @@ from .langsmith import (
 )
 from .output_sinks import (
     ConfluenceClient,
+    GoogleSheetsClient,
     LinearClient,
     NotionClient,
     SupabaseClient,
@@ -44,6 +45,7 @@ __all__ = [
     "build_langsmith_client",
     "WebhookDeliveryClient",
     "ConfluenceClient",
+    "GoogleSheetsClient",
     "LinearClient",
     "NotionClient",
     "PlaywrightBrowserSession",

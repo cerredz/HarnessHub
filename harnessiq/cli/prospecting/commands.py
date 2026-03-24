@@ -27,6 +27,7 @@ from harnessiq.shared.prospecting import (
     normalize_prospecting_custom_parameters,
     normalize_prospecting_runtime_parameters,
     slugify_agent_name,
+    validate_company_description_for_run,
 )
 from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
@@ -240,6 +241,7 @@ def _handle_show(args: argparse.Namespace) -> int:
 def _handle_run(args: argparse.Namespace) -> int:
     store = _load_store(args)
     store.prepare()
+    validate_company_description_for_run(store.read_company_description())
     seed_cli_environment(Path(args.memory_root).expanduser())
 
     if "HARNESSIQ_PROSPECTING_SESSION_DIR" not in os.environ:

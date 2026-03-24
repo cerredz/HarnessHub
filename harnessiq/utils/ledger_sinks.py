@@ -12,6 +12,7 @@ from typing import Any, Mapping, Sequence
 
 from harnessiq.providers.output_sinks import (
     ConfluenceClient,
+    GoogleSheetsClient,
     LinearClient,
     NotionClient,
     SupabaseClient,
@@ -185,6 +186,51 @@ class LinearSink:
             client.create_issue(team_id=self.team_id, title=title, description=description)
 
 
+@dataclass(slots=True)
+class GoogleSheetsSink:
+    """Append one or more ledger rows into a Google Sheet."""
+
+    client_id: str
+    client_secret: str
+    refresh_token: str
+    spreadsheet_id: str
+    sheet_name: str = "Sheet1"
+    explode_field: str | None = None
+    include_header: bool = True
+    scope: str | None = None
+    token_url: str | None = None
+    base_url: str | None = None
+    client: GoogleSheetsClient | None = None
+
+    def on_run_complete(self, entry: LedgerEntry) -> None:
+        client = self.client or self._build_client()
+        records = _explode_entry(entry, self.explode_field)
+        if not records:
+            records = [{"record": None}]
+        row_dicts = [_render_google_sheets_row(entry, item.get("record")) for item in records]
+        _append_google_sheet_rows(
+            client=client,
+            spreadsheet_id=self.spreadsheet_id,
+            sheet_name=self.sheet_name,
+            row_dicts=row_dicts,
+            include_header=self.include_header,
+        )
+
+    def _build_client(self) -> GoogleSheetsClient:
+        kwargs: dict[str, Any] = {
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "refresh_token": self.refresh_token,
+        }
+        if self.scope is not None:
+            kwargs["scope"] = self.scope
+        if self.token_url is not None:
+            kwargs["token_url"] = self.token_url
+        if self.base_url is not None:
+            kwargs["base_url"] = self.base_url
+        return GoogleSheetsClient(**kwargs)
+
+
 def register_output_sink(
     sink_type: str,
     factory: OutputSinkFactory,
@@ -296,6 +342,18 @@ def _register_builtin_sinks() -> None:
                 api_key=str(data["api_key"]),
                 team_id=str(data["team_id"]),
                 explode_field=str(data["explode_field"]) if data.get("explode_field") is not None else None,
+            ),
+            "google_sheets": lambda data: GoogleSheetsSink(
+                client_id=str(data["client_id"]),
+                client_secret=str(data["client_secret"]),
+                refresh_token=str(data["refresh_token"]),
+                spreadsheet_id=str(data["spreadsheet_id"]),
+                sheet_name=str(data.get("sheet_name", "Sheet1")),
+                explode_field=str(data["explode_field"]) if data.get("explode_field") is not None else None,
+                include_header=_coerce_sink_bool(data.get("include_header"), default=True),
+                scope=str(data["scope"]) if data.get("scope") is not None else None,
+                token_url=str(data["token_url"]) if data.get("token_url") is not None else None,
+                base_url=str(data["base_url"]) if data.get("base_url") is not None else None,
             ),
         }
     )
@@ -452,6 +510,92 @@ def _render_linear_description(entry: LedgerEntry, record: Any) -> str:
     return "```json\n" + json.dumps(body, indent=2, sort_keys=True) + "\n```"
 
 
+def _render_google_sheets_row(entry: LedgerEntry, record: Any) -> dict[str, Any]:
+    row: dict[str, Any] = {
+        "run_id": entry.run_id,
+        "agent_name": entry.agent_name,
+        "status": entry.status,
+        "started_at": _isoformat_z(entry.started_at),
+        "finished_at": _isoformat_z(entry.finished_at),
+        "reset_count": entry.reset_count,
+    }
+    if isinstance(record, Mapping):
+        row.update(_flatten_sheet_mapping(record))
+        return row
+    if record is not None:
+        row["record"] = _render_sheet_cell(record)
+        return row
+    row["outputs_json"] = json.dumps(entry.outputs, sort_keys=True)
+    row["metadata_json"] = json.dumps(entry.metadata, sort_keys=True)
+    row["tags_json"] = json.dumps(list(entry.tags), sort_keys=True)
+    return row
+
+
+def _flatten_sheet_mapping(payload: Mapping[str, Any], prefix: str = "") -> dict[str, Any]:
+    flattened: dict[str, Any] = {}
+    for key in sorted(payload):
+        column_name = f"{prefix}.{key}" if prefix else str(key)
+        value = payload[key]
+        if isinstance(value, Mapping):
+            flattened.update(_flatten_sheet_mapping(value, column_name))
+            continue
+        flattened[column_name] = _render_sheet_cell(value)
+    return flattened
+
+
+def _render_sheet_cell(value: Any) -> Any:
+    if value is None:
+        return ""
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, datetime):
+        return _isoformat_z(value)
+    return json.dumps(value, sort_keys=True, default=str)
+
+
+def _append_google_sheet_rows(
+    *,
+    client: GoogleSheetsClient,
+    spreadsheet_id: str,
+    sheet_name: str,
+    row_dicts: Sequence[Mapping[str, Any]],
+    include_header: bool,
+) -> None:
+    if not row_dicts:
+        return
+    existing_values = client.get_values(spreadsheet_id=spreadsheet_id, range_name=f"{sheet_name}!1:1")
+    existing_header = [str(cell) for cell in existing_values[0]] if existing_values else []
+    desired_header = _determine_sheet_header(row_dicts=row_dicts, existing_header=existing_header)
+    should_write_header = bool(existing_header) and desired_header != existing_header
+    should_write_header = should_write_header or (include_header and bool(desired_header) and not existing_header)
+    if should_write_header:
+        client.update_values(
+            spreadsheet_id=spreadsheet_id,
+            range_name=f"{sheet_name}!1:1",
+            values=[desired_header],
+        )
+    header = desired_header if desired_header else existing_header
+    values = [[row.get(column, "") for column in header] for row in row_dicts]
+    client.append_values(
+        spreadsheet_id=spreadsheet_id,
+        range_name=f"{sheet_name}!A:A",
+        values=values,
+    )
+
+
+def _determine_sheet_header(
+    *,
+    row_dicts: Sequence[Mapping[str, Any]],
+    existing_header: Sequence[str],
+) -> list[str]:
+    header = list(existing_header)
+    for row in row_dicts:
+        for key in row:
+            if key not in header:
+                header.append(str(key))
+    return header
+
+
 def _resolve_entry_path(entry: LedgerEntry, path: str) -> Any:
     if path == "run_id":
         return entry.run_id
@@ -494,6 +638,20 @@ def _apply_transform(value: Any, transform: Any) -> Any:
     return value
 
 
+def _coerce_sink_bool(value: Any, *, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "on"}:
+            return True
+        if normalized in {"false", "0", "no", "off"}:
+            return False
+    raise ValueError(f"Expected a boolean-compatible sink value, received {value!r}.")
+
+
 def _count_output_metrics(outputs: Mapping[str, Any]) -> dict[str, int]:
     metrics: dict[str, int] = {}
     for key, value in outputs.items():
@@ -507,6 +665,7 @@ def _count_output_metrics(outputs: Mapping[str, Any]) -> dict[str, int]:
 __all__ = [
     "ConfluenceSink",
     "DiscordSink",
+    "GoogleSheetsSink",
     "JSONLLedgerSink",
     "LinearSink",
     "NotionSink",

@@ -149,6 +149,24 @@ class ProspectingCliTests(unittest.TestCase):
             self.assertEqual(payload["result"]["cycles_completed"], 3)
             self.assertEqual(payload["result"]["resets"], 1)
 
+    def test_run_requires_configured_company_description(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _run(["prospecting", "prepare", "--agent", "nj-dentists", "--memory-root", temp_dir])
+
+            with self.assertRaisesRegex(ValueError, "prospecting configure --company-description-text"):
+                _run(
+                    [
+                        "prospecting",
+                        "run",
+                        "--agent",
+                        "nj-dentists",
+                        "--memory-root",
+                        temp_dir,
+                        "--model-factory",
+                        "mod:model",
+                    ]
+                )
+
     def test_run_seeds_provider_environment_from_local_env_before_model_factory(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             Path(temp_dir, "local.env").write_text("XAI_API_KEY=local-xai-key\n", encoding="utf-8")

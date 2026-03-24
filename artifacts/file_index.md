@@ -10,11 +10,11 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | --- | --- |
 | Concrete harness manifests | 6 |
 | Top-level CLI commands | 16 |
-| Registered CLI command paths | 105 |
+| Registered CLI command paths | 106 |
 | Model providers | 4 |
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
-| Built-in sink types | 8 |
+| Built-in sink types | 9 |
 | Test modules | 80 |
 
 ## Codebase Standards
@@ -31,8 +31,6 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Kind | Responsibility |
 | --- | --- | --- |
-| `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
-| `.pytest_cache/` | generated/cache | Test runner cache; generated, not part of the source of truth. |
 | `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
 | `docs/` | repo docs | Focused usage and architecture notes for the package. |
 | `harnessiq/` | source | Live SDK package source. |
@@ -93,7 +91,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Command | Direct Subcommands | Description | Source |
 | --- | --- | --- | --- |
-| harnessiq connect | confluence, discord, linear, notion, obsidian, slack, supabase | Configure a global output sink connection | `harnessiq/cli/ledger/commands.py` |
+| harnessiq connect | confluence, discord, google_sheets, linear, notion, obsidian, slack, supabase | Configure a global output sink connection | `harnessiq/cli/ledger/commands.py` |
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections | `harnessiq/cli/ledger/commands.py` |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings | `harnessiq/cli/platform_commands.py` |
 | harnessiq export | - | Export ledger entries in a structured format | `harnessiq/cli/ledger/commands.py` |
@@ -164,6 +162,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | --- |
 | `confluence` |
 | `discord` |
+| `google_sheets` |
 | `jsonl` |
 | `linear` |
 | `notion` |

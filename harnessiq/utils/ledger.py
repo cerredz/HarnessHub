@@ -30,6 +30,7 @@ from harnessiq.utils.ledger_reports import build_ledger_report, render_ledger_re
 from harnessiq.utils.ledger_sinks import (
     ConfluenceSink,
     DiscordSink,
+    GoogleSheetsSink,
     JSONLLedgerSink,
     LinearSink,
     NotionSink,
@@ -53,6 +54,7 @@ __all__ = [
     "DEFAULT_HARNESSIQ_DIRNAME",
     "DEFAULT_LEDGER_FILENAME",
     "DiscordSink",
+    "GoogleSheetsSink",
     "JSONLLedgerSink",
     "LedgerEntry",
     "LedgerStatus",

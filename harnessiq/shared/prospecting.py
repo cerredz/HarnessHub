@@ -505,6 +505,21 @@ def normalize_prospecting_custom_parameters(parameters: Mapping[str, Any]) -> di
     return PROSPECTING_HARNESS_MANIFEST.coerce_custom_parameters(parameters)
 
 
+def is_placeholder_company_description(value: str) -> bool:
+    normalized = value.strip()
+    return not normalized or normalized == DEFAULT_COMPANY_DESCRIPTION
+
+
+def validate_company_description_for_run(value: str) -> str:
+    normalized = value.strip()
+    if is_placeholder_company_description(normalized):
+        raise ValueError(
+            "Prospecting run requires a configured company description. "
+            "Run `harnessiq prospecting configure --company-description-text ...` first."
+        )
+    return normalized
+
+
 def new_run_id() -> str:
     return str(uuid4())
 
@@ -625,9 +640,11 @@ __all__ = [
     "SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS",
     "STATE_FILENAME",
     "SearchRecord",
+    "is_placeholder_company_description",
     "new_run_id",
     "normalize_prospecting_custom_parameters",
     "normalize_prospecting_runtime_parameters",
     "slugify_agent_name",
     "utcnow",
+    "validate_company_description_for_run",
 ]

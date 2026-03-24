@@ -9,10 +9,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock
 
+from harnessiq.providers import GoogleSheetsClient as ProviderGoogleSheetsClient
 from harnessiq.providers import LinearClient as ProviderLinearClient
 from harnessiq.providers import WebhookDeliveryClient as ProviderWebhookDeliveryClient
 from harnessiq.providers import extract_model_metadata as provider_extract_model_metadata
 from harnessiq.providers.output_sinks import (
+    GoogleSheetsClient,
     LinearClient,
     WebhookDeliveryClient,
     extract_model_metadata,
@@ -20,6 +22,7 @@ from harnessiq.providers.output_sinks import (
 from harnessiq.utils import (
     ConfluenceSink,
     DiscordSink,
+    GoogleSheetsSink,
     JSONLLedgerSink,
     LedgerEntry,
     LinearSink,
@@ -53,9 +56,11 @@ def _entry() -> LedgerEntry:
 
 class OutputSinkTests(unittest.TestCase):
     def test_provider_output_sink_facades_preserve_public_imports(self) -> None:
+        self.assertIs(GoogleSheetsClient, ProviderGoogleSheetsClient)
         self.assertIs(LinearClient, ProviderLinearClient)
         self.assertIs(WebhookDeliveryClient, ProviderWebhookDeliveryClient)
         self.assertIs(extract_model_metadata, provider_extract_model_metadata)
+        self.assertEqual(GoogleSheetsClient.__module__, "harnessiq.providers.output_sinks")
         self.assertEqual(LinearClient.__module__, "harnessiq.providers.output_sinks")
         self.assertEqual(WebhookDeliveryClient.__module__, "harnessiq.providers.output_sinks")
         self.assertEqual(extract_model_metadata.__module__, "harnessiq.providers.output_sinks")
@@ -100,16 +105,27 @@ class OutputSinkTests(unittest.TestCase):
         confluence_client = MagicMock()
         supabase_client = MagicMock()
         linear_client = MagicMock()
+        google_sheets_client = MagicMock()
+        google_sheets_client.get_values.return_value = []
 
         NotionSink(api_token="token", database_id="db", client=notion_client).on_run_complete(_entry())
         ConfluenceSink(base_url="https://conf.example", api_token="token", space_key="ENG", client=confluence_client).on_run_complete(_entry())
         SupabaseSink(base_url="https://supabase.example", api_key="key", client=supabase_client).on_run_complete(_entry())
         LinearSink(api_key="key", team_id="team", client=linear_client).on_run_complete(_entry())
+        GoogleSheetsSink(
+            client_id="cid",
+            client_secret="secret",
+            refresh_token="refresh",
+            spreadsheet_id="sheet-123",
+            client=google_sheets_client,
+        ).on_run_complete(_entry())
 
         self.assertTrue(notion_client.create_page.called)
         self.assertTrue(confluence_client.create_page.called)
         self.assertTrue(supabase_client.insert_row.called)
         self.assertTrue(linear_client.create_issue.called)
+        self.assertTrue(google_sheets_client.update_values.called)
+        self.assertTrue(google_sheets_client.append_values.called)
 
     def test_linear_sink_can_explode_output_records(self) -> None:
         client = MagicMock()
@@ -125,6 +141,30 @@ class OutputSinkTests(unittest.TestCase):
         self.assertEqual(client.create_issue.call_count, 1)
         description = client.create_issue.call_args.kwargs["description"]
         self.assertIn("Stripe", description)
+
+    def test_google_sheets_sink_can_explode_output_records(self) -> None:
+        client = MagicMock()
+        client.get_values.return_value = [["run_id", "agent_name", "company", "title"]]
+        sink = GoogleSheetsSink(
+            client_id="cid",
+            client_secret="secret",
+            refresh_token="refresh",
+            spreadsheet_id="sheet-123",
+            explode_field="outputs.jobs_applied",
+            client=client,
+        )
+
+        sink.on_run_complete(_entry())
+
+        self.assertTrue(client.update_values.called)
+        updated_header = client.update_values.call_args.kwargs["values"][0]
+        self.assertIn("company", updated_header)
+        self.assertIn("title", updated_header)
+        appended_values = client.append_values.call_args.kwargs["values"]
+        self.assertEqual(len(appended_values), 1)
+        header_index = {name: index for index, name in enumerate(updated_header)}
+        self.assertEqual(appended_values[0][header_index["company"]], "Stripe")
+        self.assertEqual(appended_values[0][header_index["title"]], "Staff Engineer")
 
     def test_parse_sink_spec_and_build_output_sinks_support_runtime_injection(self) -> None:
         sink_type, config = parse_sink_spec("obsidian:vault_path=C:/vault,note_folder=Runs")
@@ -165,6 +205,21 @@ class OutputSinkTests(unittest.TestCase):
     def test_register_output_sink_rejects_builtin_collision(self) -> None:
         with self.assertRaisesRegex(ValueError, "reserved for a built-in"):
             register_output_sink("slack", lambda config: SlackSink(webhook_url=str(config["webhook_url"])))
+
+    def test_google_sheets_sink_is_listed_and_buildable(self) -> None:
+        self.assertIn("google_sheets", list_output_sink_types())
+        sink = build_output_sink(
+            "google_sheets",
+            {
+                "client_id": "cid",
+                "client_secret": "secret",
+                "refresh_token": "refresh",
+                "spreadsheet_id": "sheet-123",
+                "include_header": "false",
+            },
+        )
+        self.assertIsInstance(sink, GoogleSheetsSink)
+        self.assertFalse(sink.include_header)
 
 
 if __name__ == "__main__":

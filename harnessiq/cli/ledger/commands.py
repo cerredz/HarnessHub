@@ -47,6 +47,22 @@ def register_ledger_commands(subparsers: argparse._SubParsersAction[argparse.Arg
         "linear",
         [("api-key", True), ("team-id", True), ("explode-field", False)],
     )
+    _register_connect_command(
+        connect_subparsers,
+        "google_sheets",
+        [
+            ("client-id", True),
+            ("client-secret", True),
+            ("refresh-token", True),
+            ("spreadsheet-id", True),
+            ("sheet-name", False),
+            ("explode-field", False),
+            ("include-header", False),
+            ("scope", False),
+            ("token-url", False),
+            ("base-url", False),
+        ],
+    )
 
     connections_parser = subparsers.add_parser("connections", help="Inspect or manage configured sink connections")
     connections_parser.set_defaults(command_handler=lambda args: _print_help(connections_parser))

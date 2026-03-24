@@ -32,10 +32,11 @@ print(result.output)
 | --- | --- |
 | Concrete harness manifests | 6 |
 | Top-level CLI commands | 16 |
-| Registered CLI command paths | 105 |
+| Registered CLI command paths | 106 |
 | Model providers | 4 |
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
+| Built-in sink types | 9 |
 | Built-in sink types | 8 |
 | Test modules | 80 |
 
@@ -106,7 +107,7 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 
 | Command | Direct Subcommands | Description |
 | --- | --- | --- |
-| harnessiq connect | confluence, discord, linear, notion, obsidian, slack, supabase | Configure a global output sink connection |
+| harnessiq connect | confluence, discord, google_sheets, linear, notion, obsidian, slack, supabase | Configure a global output sink connection |
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings |
 | harnessiq export | - | Export ledger entries in a structured format |
