@@ -11,8 +11,10 @@ from harnessiq.shared.agents import (
     DEFAULT_AGENT_MAX_TOKENS,
     DEFAULT_AGENT_RESET_THRESHOLD,
     AgentModel,
+    AgentModelResponse,
     AgentParameterSection,
     AgentRuntimeConfig,
+    AgentTranscriptEntry,
     json_parameter_section,
     merge_agent_runtime_config,
 )
@@ -84,6 +86,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             recent_result_window=recent_result_window,
             search_result_limit=search_result_limit,
         )
+        self._attempted_search_keywords: list[str] = []
 
         bound_search_tool = create_instagram_tools(
             memory_store=self._memory_store,
@@ -168,6 +171,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             self._memory_store.write_icp_profiles(self._initial_icp_descriptions)
 
     def run(self, *, max_cycles: int | None = None):
+        self._attempted_search_keywords.clear()
         try:
             return super().run(max_cycles=max_cycles)
         finally:
@@ -201,11 +205,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
 
     def load_parameter_sections(self) -> Sequence[AgentParameterSection]:
         icp_profiles = list(self._initial_icp_descriptions)
-        recent_searches = ", ".join(
-            record.keyword
-            for record in self._memory_store.read_recent_searches(self._config.recent_search_window)
-            if record.keyword
-        )
+        recent_searches = ", ".join(self._recent_search_keywords_for_context())
         sections: list[AgentParameterSection] = [
             json_parameter_section("ICP Profiles", icp_profiles),
             AgentParameterSection(title="Recent Searches", content=recent_searches),
@@ -238,16 +238,85 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
     def get_search_history(self):
         return tuple(self._memory_store.read_search_history())
 
+    def build_ledger_outputs(self) -> dict[str, Any]:
+        return {
+            "emails": list(self.get_emails()),
+            "leads": [record.as_dict() for record in self.get_leads()],
+            "search_history": [record.as_dict() for record in self.get_search_history()],
+        }
+
     def close(self) -> None:
         close_backend = getattr(self._search_backend, "close", None)
         if callable(close_backend):
             close_backend()
 
     def _execute_tool(self, tool_call: ToolCall) -> ToolResult:
+        if tool_call.tool_key == INSTAGRAM_SEARCH_KEYWORD:
+            self._remember_attempted_search_keyword(tool_call.arguments.get("keyword"))
         result = super()._execute_tool(tool_call)
         if tool_call.tool_key == INSTAGRAM_SEARCH_KEYWORD:
             self.refresh_parameters()
         return result
+
+    def _record_assistant_response(self, response: AgentModelResponse) -> None:
+        parts: list[str] = []
+        if response.assistant_message.strip():
+            parts.append(response.assistant_message.strip())
+        if response.pause_reason:
+            parts.append(f"Pause requested: {response.pause_reason}")
+
+        if parts and (response.pause_reason is not None or not _is_search_only_response(response)):
+            self._transcript.append(
+                AgentTranscriptEntry(
+                    entry_type="assistant",
+                    content="\n".join(parts),
+                    role="assistant",
+                )
+            )
+
+        for tool_call in response.tool_calls:
+            if tool_call.tool_key == INSTAGRAM_SEARCH_KEYWORD:
+                continue
+            arguments = json.dumps(tool_call.arguments, sort_keys=True)
+            self._transcript.append(
+                AgentTranscriptEntry(
+                    entry_type="tool_call",
+                    content=f"{tool_call.tool_key}\n{arguments}",
+                    tool_key=tool_call.tool_key,
+                    arguments=dict(tool_call.arguments),
+                )
+            )
+
+    def _record_tool_result(self, result: ToolResult) -> None:
+        if result.tool_key == INSTAGRAM_SEARCH_KEYWORD:
+            return
+        super()._record_tool_result(result)
+
+    def _recent_search_keywords_for_context(self) -> tuple[str, ...]:
+        durable_keywords = [
+            record.keyword
+            for record in self._memory_store.read_recent_searches(self._config.recent_search_window)
+            if record.keyword
+        ]
+        return _merge_recent_keywords(
+            durable_keywords,
+            self._attempted_search_keywords,
+            limit=self._config.recent_search_window,
+        )
+
+    def _remember_attempted_search_keyword(self, raw_keyword: Any) -> None:
+        if not isinstance(raw_keyword, str):
+            return
+        cleaned = raw_keyword.strip()
+        if not cleaned:
+            return
+        if any(keyword.lower() == cleaned.lower() for keyword in self._attempted_search_keywords):
+            return
+        self._attempted_search_keywords.append(cleaned)
+        if len(self._attempted_search_keywords) > self._config.recent_search_window:
+            self._attempted_search_keywords = self._attempted_search_keywords[
+                -self._config.recent_search_window :
+            ]
 
 
 def _resolve_memory_path(memory_path: str | Path | None) -> Path:
@@ -263,6 +332,33 @@ def _normalize_icp_descriptions(icp_descriptions: Iterable[str]) -> tuple[str, .
         if cleaned:
             normalized.append(cleaned)
     return tuple(normalized)
+
+
+def _is_search_only_response(response: AgentModelResponse) -> bool:
+    return bool(response.tool_calls) and all(
+        tool_call.tool_key == INSTAGRAM_SEARCH_KEYWORD for tool_call in response.tool_calls
+    )
+
+
+def _merge_recent_keywords(
+    *keyword_groups: Iterable[str],
+    limit: int,
+) -> tuple[str, ...]:
+    merged: list[str] = []
+    seen: set[str] = set()
+    for group in keyword_groups:
+        for keyword in group:
+            cleaned = str(keyword).strip()
+            if not cleaned:
+                continue
+            normalized = cleaned.lower()
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            merged.append(cleaned)
+    if limit <= 0:
+        return tuple(merged)
+    return tuple(merged[-limit:])
 
 
 def _build_instagram_instance_payload(
