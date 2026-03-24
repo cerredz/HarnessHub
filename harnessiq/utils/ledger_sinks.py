@@ -18,6 +18,7 @@ from harnessiq.providers.output_sinks import (
     SupabaseClient,
     WebhookDeliveryClient,
 )
+from harnessiq.shared.instagram import INSTAGRAM_HARNESS_MANIFEST, build_instagram_lead_export_rows
 from harnessiq.utils.ledger_connections import SinkConnection, default_ledger_path, parse_sink_spec
 from harnessiq.utils.ledger_models import (
     LedgerEntry,
@@ -207,7 +208,9 @@ class GoogleSheetsSink:
         records = _explode_entry(entry, self.explode_field)
         if not records:
             records = [{"record": None}]
-        row_dicts = [_render_google_sheets_row(entry, item.get("record")) for item in records]
+        row_dicts: list[dict[str, Any]] = []
+        for item in records:
+            row_dicts.extend(_render_google_sheets_rows(entry, item.get("record")))
         _append_google_sheet_rows(
             client=client,
             spreadsheet_id=self.spreadsheet_id,
@@ -529,6 +532,28 @@ def _render_google_sheets_row(entry: LedgerEntry, record: Any) -> dict[str, Any]
     row["metadata_json"] = json.dumps(entry.metadata, sort_keys=True)
     row["tags_json"] = json.dumps(list(entry.tags), sort_keys=True)
     return row
+
+
+def _render_google_sheets_rows(entry: LedgerEntry, record: Any) -> list[dict[str, Any]]:
+    instagram_rows = _maybe_render_instagram_google_sheets_rows(entry, record)
+    if instagram_rows is not None:
+        return instagram_rows
+    return [_render_google_sheets_row(entry, record)]
+
+
+def _maybe_render_instagram_google_sheets_rows(
+    entry: LedgerEntry,
+    record: Any,
+) -> list[dict[str, Any]] | None:
+    if entry.agent_name != INSTAGRAM_HARNESS_MANIFEST.agent_name or not isinstance(record, Mapping):
+        return None
+    source_url = str(record.get("source_url", "")).strip()
+    if "instagram.com" not in source_url.lower():
+        return None
+    try:
+        return [dict(row) for row in build_instagram_lead_export_rows(record)]
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 def _flatten_sheet_mapping(payload: Mapping[str, Any], prefix: str = "") -> dict[str, Any]:

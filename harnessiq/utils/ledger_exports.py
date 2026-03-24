@@ -11,6 +11,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from harnessiq.shared.instagram import INSTAGRAM_HARNESS_MANIFEST, build_instagram_lead_export_rows
 from harnessiq.utils.ledger_connections import default_ledger_path
 from harnessiq.utils.ledger_models import LedgerEntry, _isoformat_z, parse_relative_duration
 
@@ -78,7 +79,11 @@ def follow_ledger(path: Path | str | None = None, *, poll_interval: float = 0.5)
 
 
 def _export_entries_csv(entries: Sequence[LedgerEntry], *, flatten_outputs: bool) -> str:
-    rows = [_entry_to_row(entry, flatten_outputs=flatten_outputs) for entry in entries]
+    rows: list[dict[str, Any]] = []
+    for entry in entries:
+        rows.extend(_entry_to_rows(entry, flatten_outputs=flatten_outputs))
+    if not rows:
+        return ""
     fieldnames: list[str] = []
     for row in rows:
         for key in row:
@@ -107,6 +112,13 @@ def _export_entries_markdown(entries: Sequence[LedgerEntry], *, flatten_outputs:
     return "\n".join(lines).rstrip()
 
 
+def _entry_to_rows(entry: LedgerEntry, *, flatten_outputs: bool) -> list[dict[str, Any]]:
+    instagram_rows = _maybe_export_instagram_lead_rows(entry, flatten_outputs=flatten_outputs)
+    if instagram_rows is not None:
+        return instagram_rows
+    return [_entry_to_row(entry, flatten_outputs=flatten_outputs)]
+
+
 def _entry_to_row(entry: LedgerEntry, *, flatten_outputs: bool) -> dict[str, Any]:
     row: dict[str, Any] = {
         "agent_name": entry.agent_name,
@@ -124,6 +136,24 @@ def _entry_to_row(entry: LedgerEntry, *, flatten_outputs: bool) -> dict[str, Any
         row["outputs"] = json.dumps(entry.outputs, sort_keys=True)
         row["metadata"] = json.dumps(entry.metadata, sort_keys=True)
     return row
+
+
+def _maybe_export_instagram_lead_rows(
+    entry: LedgerEntry,
+    *,
+    flatten_outputs: bool,
+) -> list[dict[str, Any]] | None:
+    if not flatten_outputs or entry.agent_name != INSTAGRAM_HARNESS_MANIFEST.agent_name:
+        return None
+    leads = entry.outputs.get("leads")
+    if not isinstance(leads, list):
+        return None
+    rows: list[dict[str, Any]] = []
+    for lead in leads:
+        if not isinstance(lead, Mapping):
+            continue
+        rows.extend(build_instagram_lead_export_rows(lead))
+    return rows
 
 
 def _flatten_mapping(payload: Mapping[str, Any], prefix: str = "") -> dict[str, Any]:

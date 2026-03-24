@@ -7,6 +7,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
+from urllib.parse import urlparse
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.shared.harness_manifest import HarnessManifest, HarnessMemoryFileSpec, HarnessParameterSpec
@@ -47,6 +48,16 @@ _EMAIL_PATTERN = re.compile(
     r"[A-Z0-9._%+-]+\s*@\s*(?:[A-Z0-9-]+\s*\.(?!\s))+[A-Z]{2,63}\b",
     re.IGNORECASE,
 )
+_RESERVED_INSTAGRAM_PATH_SEGMENTS = {
+    "accounts",
+    "directory",
+    "explore",
+    "p",
+    "reel",
+    "reels",
+    "stories",
+    "tv",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -408,6 +419,39 @@ def resolve_instagram_icp_profiles(
     return _coerce_icp_profiles_value(stored_profiles)
 
 
+def extract_instagram_username(source_url: str) -> str:
+    """Best-effort username extraction from a canonical Instagram profile URL."""
+    parsed = urlparse(source_url.strip())
+    if "instagram.com" not in parsed.netloc.lower():
+        return ""
+    segments = [segment.strip() for segment in parsed.path.split("/") if segment.strip()]
+    if not segments:
+        return ""
+    candidate = segments[0]
+    if candidate.lower() in _RESERVED_INSTAGRAM_PATH_SEGMENTS:
+        return ""
+    return candidate
+
+
+def build_instagram_lead_export_rows(
+    lead: InstagramLeadRecord | Mapping[str, Any],
+) -> list[dict[str, str]]:
+    """Return one simple export row per email address for an Instagram lead."""
+    record = _coerce_instagram_lead_record(lead)
+    username = extract_instagram_username(record.source_url)
+    name = record.title.strip() or username
+    email_values = record.emails or ("",)
+    return [
+        {
+            "name": name,
+            "instagram_url": record.source_url,
+            "email_address": email,
+            "username": username,
+        }
+        for email in email_values
+    ]
+
+
 INSTAGRAM_HARNESS_MANIFEST = HarnessManifest(
     manifest_id="instagram",
     agent_name="instagram_keyword_discovery",
@@ -515,6 +559,14 @@ def _coerce_icp_profiles_value(value: Any) -> list[str]:
     raise ValueError("Instagram ICP profiles must be a string, null, or a JSON array of strings.")
 
 
+def _coerce_instagram_lead_record(
+    lead: InstagramLeadRecord | Mapping[str, Any],
+) -> InstagramLeadRecord:
+    if isinstance(lead, InstagramLeadRecord):
+        return lead
+    return InstagramLeadRecord.from_dict(dict(lead))
+
+
 def _dedupe_emails(values: Sequence[str]) -> list[str]:
     seen: set[str] = set()
     result: list[str] = []
@@ -574,7 +626,9 @@ __all__ = [
     "SEARCH_HISTORY_FILENAME",
     "build_instagram_google_fallback_query",
     "build_instagram_google_query",
+    "build_instagram_lead_export_rows",
     "extract_emails",
+    "extract_instagram_username",
     "normalize_instagram_custom_parameters",
     "normalize_instagram_runtime_parameters",
     "resolve_instagram_icp_profiles",
