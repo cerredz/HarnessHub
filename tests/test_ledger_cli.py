@@ -159,6 +159,46 @@ class LedgerCLITests(unittest.TestCase):
                 ],
             )
 
+    def test_export_csv_flatten_preserves_generic_run_rows_for_non_instagram(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger_path = Path(temp_dir, "runs.jsonl")
+            ledger_path.write_text(
+                json.dumps(
+                    {
+                        "agent_name": "linkedin_job_applier",
+                        "finished_at": "2026-03-19T02:05:00Z",
+                        "metadata": {"provider": "grok"},
+                        "outputs": {"jobs_applied": [{"company": "Stripe"}]},
+                        "reset_count": 1,
+                        "run_id": "run-1",
+                        "started_at": "2026-03-19T02:00:00Z",
+                        "status": "completed",
+                        "tags": ["linkedin", "jobs"],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            output = io.StringIO()
+            with redirect_stdout(output):
+                main(
+                    [
+                        "export",
+                        "--format",
+                        "csv",
+                        "--flatten-outputs",
+                        "--ledger-path",
+                        str(ledger_path),
+                    ]
+                )
+
+            rows = list(csv.DictReader(io.StringIO(output.getvalue())))
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["agent_name"], "linkedin_job_applier")
+            self.assertEqual(rows[0]["run_id"], "run-1")
+            self.assertEqual(rows[0]["outputs.jobs_applied"], '[{"company": "Stripe"}]')
+
     def test_linkedin_run_accepts_per_run_sink_override(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             vault_path = Path(temp_dir, "vault")
