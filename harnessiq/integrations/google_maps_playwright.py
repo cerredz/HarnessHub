@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from harnessiq.tools.browser import create_browser_tools
+from harnessiq.shared.tools import RegisteredTool
+from harnessiq.tools.browser import create_browser_tools as create_registered_browser_tools
 
 _DEFAULT_TIMEOUT_MS = 30_000
 _NETWORK_IDLE_TIMEOUT_MS = 5_000
@@ -101,8 +102,8 @@ class PlaywrightGoogleMapsSession:
         except Exception:
             pass
 
-    def build_tools(self):
-        return create_browser_tools(
+    def build_tools(self) -> tuple[RegisteredTool, ...]:
+        return create_registered_browser_tools(
             handlers={
                 "navigate": self._handle_navigate,
                 "click": self._handle_click,
@@ -333,7 +334,7 @@ class PlaywrightGoogleMapsSession:
             return 0
 
 
-def create_browser_tools():
+def create_browser_tools() -> tuple[RegisteredTool, ...]:
     session_dir_env = os.environ.get("HARNESSIQ_PROSPECTING_SESSION_DIR", "").strip()
     channel = os.environ.get("HARNESSIQ_PROSPECTING_BROWSER_CHANNEL", "chrome").strip() or "chrome"
     headless = _parse_bool(os.environ.get("HARNESSIQ_PROSPECTING_HEADLESS"), default=True)
