@@ -31,6 +31,8 @@ from harnessiq.utils.ledger_models import (
 OutputSinkFactory = Callable[[Mapping[str, Any]], OutputSink]
 _BUILTIN_SINK_FACTORIES: dict[str, OutputSinkFactory] = {}
 _CUSTOM_SINK_FACTORIES: dict[str, OutputSinkFactory] = {}
+_INSTAGRAM_AGENT_NAME = "instagram_keyword_discovery"
+_INSTAGRAM_LEAD_EXPORT_HEADER = ("name", "instagram_url", "email_address", "username")
 
 
 @dataclass(slots=True)
@@ -207,7 +209,9 @@ class GoogleSheetsSink:
         records = _explode_entry(entry, self.explode_field)
         if not records:
             records = [{"record": None}]
-        row_dicts = [_render_google_sheets_row(entry, item.get("record")) for item in records]
+        row_dicts: list[dict[str, Any]] = []
+        for item in records:
+            row_dicts.extend(_render_google_sheets_rows(entry, item.get("record")))
         _append_google_sheet_rows(
             client=client,
             spreadsheet_id=self.spreadsheet_id,
@@ -531,6 +535,30 @@ def _render_google_sheets_row(entry: LedgerEntry, record: Any) -> dict[str, Any]
     return row
 
 
+def _render_google_sheets_rows(entry: LedgerEntry, record: Any) -> list[dict[str, Any]]:
+    instagram_rows = _maybe_render_instagram_google_sheets_rows(entry, record)
+    if instagram_rows is not None:
+        return instagram_rows
+    return [_render_google_sheets_row(entry, record)]
+
+
+def _maybe_render_instagram_google_sheets_rows(
+    entry: LedgerEntry,
+    record: Any,
+) -> list[dict[str, Any]] | None:
+    if entry.agent_name != _INSTAGRAM_AGENT_NAME or not isinstance(record, Mapping):
+        return None
+    source_url = str(record.get("source_url", "")).strip()
+    if "instagram.com" not in source_url.lower():
+        return None
+    try:
+        from harnessiq.shared.instagram import build_instagram_lead_export_rows
+
+        return [dict(row) for row in build_instagram_lead_export_rows(record)]
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def _flatten_sheet_mapping(payload: Mapping[str, Any], prefix: str = "") -> dict[str, Any]:
     flattened: dict[str, Any] = {}
     for key in sorted(payload):
@@ -588,12 +616,26 @@ def _determine_sheet_header(
     row_dicts: Sequence[Mapping[str, Any]],
     existing_header: Sequence[str],
 ) -> list[str]:
+    instagram_header = _resolve_instagram_lead_header(row_dicts)
+    if instagram_header is not None:
+        return instagram_header
     header = list(existing_header)
     for row in row_dicts:
         for key in row:
             if key not in header:
                 header.append(str(key))
     return header
+
+
+def _resolve_instagram_lead_header(row_dicts: Sequence[Mapping[str, Any]]) -> list[str] | None:
+    if not row_dicts:
+        return None
+    allowed = set(_INSTAGRAM_LEAD_EXPORT_HEADER)
+    if any(set(row) - allowed for row in row_dicts):
+        return None
+    if not any("instagram_url" in row for row in row_dicts):
+        return None
+    return [column for column in _INSTAGRAM_LEAD_EXPORT_HEADER if any(column in row for row in row_dicts)]
 
 
 def _resolve_entry_path(entry: LedgerEntry, path: str) -> Any:
