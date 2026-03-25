@@ -2365,7 +2365,7 @@
     "model_providers": 4,
     "service_provider_packages": 26,
     "sink_types": 9,
-    "test_modules": 85,
+    "test_modules": 86,
     "tool_only_external_surfaces": 1,
     "top_level_commands": 18
   },
@@ -3542,7 +3542,7 @@
     ]
   },
   "tests": {
-    "count": 85,
+    "count": 86,
     "groups": [
       {
         "count": 17,
@@ -3579,7 +3579,7 @@
         "name": "providers"
       },
       {
-        "count": 15,
+        "count": 16,
         "examples": [
           "test_cli_common.py",
           "test_cli_environment.py",
@@ -3600,12 +3600,6 @@
   },
   "top_level_directories": [
     {
-      "description": "Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable.",
-      "kind": "generated/cache",
-      "name": ".harnessiq",
-      "path": ".harnessiq/"
-    },
-    {
       "description": "Test runner cache; generated, not part of the source of truth.",
       "kind": "generated/cache",
       "name": ".pytest_cache",
@@ -3618,12 +3612,6 @@
       "path": "artifacts/"
     },
     {
-      "description": "Setuptools build output; generated, not part of the live source tree.",
-      "kind": "generated/cache",
-      "name": "build",
-      "path": "build/"
-    },
-    {
       "description": "Focused usage and architecture notes for the package.",
       "kind": "repo docs",
       "name": "docs",
@@ -3634,12 +3622,6 @@
       "kind": "source",
       "name": "harnessiq",
       "path": "harnessiq/"
-    },
-    {
-      "description": "Packaging metadata emitted by local builds.",
-      "kind": "generated/cache",
-      "name": "harnessiq.egg-info",
-      "path": "harnessiq.egg-info/"
     },
     {
       "description": "Task artifacts plus durable agent runtime state; not part of the shipped package.",
