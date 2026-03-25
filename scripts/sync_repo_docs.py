@@ -6,6 +6,7 @@ import json
 from collections.abc import Callable
 from collections import defaultdict
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, NamedTuple
 
 
@@ -28,7 +29,17 @@ class DirectoryClassification(NamedTuple):
 DirectoryClassifier = Callable[[Path], DirectoryClassification | None]
 
 
-EXACT_TOP_LEVEL_DIRECTORY_CLASSIFICATIONS = {
+WORKTREES_DIRECTORY_CLASSIFICATION = DirectoryClassification(
+    "local state",
+    "Git worktree checkouts used for isolated implementation branches; local-only and not part of the shipped package.",
+)
+
+LOCAL_DATA_DIRECTORY_CLASSIFICATION = DirectoryClassification(
+    "local state",
+    "Local datasets, exports, and scratch runtime artifacts; not part of the shipped package.",
+)
+
+EXACT_TOP_LEVEL_DIRECTORY_CLASSIFICATIONS = MappingProxyType({
     ".harnessiq": DirectoryClassification(
         "generated/cache",
         "Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable.",
@@ -58,7 +69,7 @@ EXACT_TOP_LEVEL_DIRECTORY_CLASSIFICATIONS = {
         "Legacy or generated residue in this checkout; not the authoritative package source.",
     ),
     "tests": DirectoryClassification("source", "unittest coverage for runtime, CLI, providers, and tools."),
-}
+})
 
 DEFAULT_TOP_LEVEL_DIRECTORY_CLASSIFICATION = DirectoryClassification(
     "other",
@@ -195,19 +206,13 @@ def _classify_exact_top_level_directory(directory: Path) -> DirectoryClassificat
 def _classify_git_worktrees_directory(directory: Path) -> DirectoryClassification | None:
     if directory.name != ".worktrees":
         return None
-    return DirectoryClassification(
-        "local state",
-        "Git worktree checkouts used for isolated implementation branches; local-only and not part of the shipped package.",
-    )
+    return WORKTREES_DIRECTORY_CLASSIFICATION
 
 
 def _classify_local_data_directory(directory: Path) -> DirectoryClassification | None:
     if directory.name != "data":
         return None
-    return DirectoryClassification(
-        "local state",
-        "Local datasets, exports, and scratch runtime artifacts; not part of the shipped package.",
-    )
+    return LOCAL_DATA_DIRECTORY_CLASSIFICATION
 
 
 TOP_LEVEL_DIRECTORY_CLASSIFIERS: tuple[DirectoryClassifier, ...] = (
