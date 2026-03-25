@@ -1,6 +1,7 @@
 Title: Introduce an extensible top-level directory classifier for generated repo docs
 
 Issue URL: https://github.com/cerredz/HarnessHub/issues/270
+PR URL: https://github.com/cerredz/HarnessHub/pull/271
 
 Intent:
 Reduce maintenance debt in the repository docs generator by replacing the single hardcoded top-level directory map with an explicit classifier pipeline. This makes directory classification easier to extend as the repo grows and prevents new local directories from silently degrading to the generic `other` bucket.
