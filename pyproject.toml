@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 authors = [{ name = "Harnessiq" }]
 dependencies = [
   "langsmith>=0.6.7,<1.0.0",
+  "pymongo>=4.9,<5.0",
 ]
 keywords = ["agents", "sdk", "tools", "llm", "automation"]
 classifiers = [

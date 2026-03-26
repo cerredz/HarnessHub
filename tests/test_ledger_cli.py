@@ -19,6 +19,19 @@ class LedgerCLITests(unittest.TestCase):
         parser = build_parser()
         args, _ = parser.parse_known_args(["connect", "obsidian", "--vault-path", "vault"])
         self.assertEqual(args.connect_command, "obsidian")
+        args, _ = parser.parse_known_args(
+            [
+                "connect",
+                "mongodb",
+                "--connection-uri",
+                "mongodb://localhost:27017",
+                "--database",
+                "harnessiq",
+                "--collection",
+                "agent_runs",
+            ]
+        )
+        self.assertEqual(args.connect_command, "mongodb")
         args, _ = parser.parse_known_args(["connections", "list"])
         self.assertEqual(args.connections_command, "list")
         args, _ = parser.parse_known_args(["export", "--format", "json"])
@@ -59,6 +72,45 @@ class LedgerCLITests(unittest.TestCase):
                     main(["connections", "remove", "obsidian"])
                 removed = json.loads(output.getvalue())
                 self.assertEqual(removed["status"], "removed")
+
+    def test_connect_mongodb_round_trips_through_connection_store(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch.dict("os.environ", {"HARNESSIQ_HOME": temp_dir}):
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    exit_code = main(
+                        [
+                            "connect",
+                            "mongodb",
+                            "--name",
+                            "mongo-warehouse",
+                            "--connection-uri",
+                            "mongodb://localhost:27017",
+                            "--database",
+                            "harnessiq",
+                            "--collection",
+                            "agent_runs",
+                            "--explode-field",
+                            "outputs.jobs_applied",
+                        ]
+                    )
+                self.assertEqual(exit_code, 0)
+
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    main(["connections", "list"])
+                listed = json.loads(output.getvalue())
+                self.assertEqual(len(listed["connections"]), 1)
+                self.assertEqual(listed["connections"][0]["name"], "mongo-warehouse")
+                self.assertEqual(listed["connections"][0]["sink_type"], "mongodb")
+                self.assertEqual(listed["connections"][0]["config"]["database"], "harnessiq")
+
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    main(["connections", "test", "mongo-warehouse"])
+                tested = json.loads(output.getvalue())
+                self.assertEqual(tested["status"], "validated")
+                self.assertEqual(tested["sink_class"], "MongoDBSink")
 
     def test_export_and_report_read_from_local_ledger(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -59,6 +59,11 @@ harnessiq connect google_sheets \
   --spreadsheet-id "<sheet-id>" \
   --sheet-name "Prospecting Leads" \
   --explode-field "outputs.qualified_leads"
+harnessiq connect mongodb \
+  --connection-uri "mongodb://localhost:27017/?retryWrites=true&w=majority" \
+  --database "harnessiq" \
+  --collection "agent_runs" \
+  --explode-field "outputs.qualified_leads"
 ```
 
 Per-run CLI injection:
@@ -78,6 +83,7 @@ harnessiq linkedin run --agent candidate-a \
 - `NotionSink`: create a page in a Notion database
 - `ConfluenceSink`: create a Confluence page per run
 - `SupabaseSink`: insert a row into a Supabase table
+- `MongoDBSink`: insert one or more documents into a MongoDB collection
 - `LinearSink`: create one or more Linear issues from a run
 - `GoogleSheetsSink`: append one or more rows to a Google Sheet
 
@@ -95,6 +101,8 @@ harnessiq connections remove <name>
 ```
 
 For `google_sheets`, the configured OAuth refresh token must have Google Sheets access. If an existing Google token was minted only for Drive scopes, re-authorize it with Sheets scope before using the sink.
+
+For `mongodb`, the sink stores the full ledger entry by default. When `explode_field` points at a list-valued output path, the sink inserts one document per record and includes the exploded record under a `record` field.
 
 ## Ledger CLI
 

@@ -15,6 +15,7 @@ from .output_sink_clients import (
     ConfluenceClient,
     GoogleSheetsClient,
     LinearClient,
+    MongoDBClient,
     NotionClient,
     SupabaseClient,
     WebhookDeliveryClient,
@@ -24,6 +25,7 @@ from .output_sink_metadata import extract_model_metadata
 ConfluenceClient.__module__ = __name__
 GoogleSheetsClient.__module__ = __name__
 LinearClient.__module__ = __name__
+MongoDBClient.__module__ = __name__
 NotionClient.__module__ = __name__
 SupabaseClient.__module__ = __name__
 WebhookDeliveryClient.__module__ = __name__
@@ -38,6 +40,7 @@ __all__ = [
     "GoogleSheetsClient",
     "LINEAR_DEFAULT_BASE_URL",
     "LinearClient",
+    "MongoDBClient",
     "NOTION_DEFAULT_BASE_URL",
     "NotionClient",
     "SupabaseClient",
