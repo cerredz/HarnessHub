@@ -31,13 +31,13 @@ print(result.output)
 | Metric | Count |
 | --- | --- |
 | Concrete harness manifests | 7 |
-| Top-level CLI commands | 17 |
-| Registered CLI command paths | 125 |
+| Top-level CLI commands | 18 |
+| Registered CLI command paths | 128 |
 | Model providers | 4 |
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 9 |
-| Test modules | 84 |
+| Test modules | 86 |
 
 ## Agent Matrix
 
@@ -116,6 +116,7 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent |
 | harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent |
 | harnessiq logs | - | Inspect the local audit ledger |
+| harnessiq models | add, list | Manage reusable provider-backed model profiles |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent |
 | harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Prepare and persist generic config for a harness |
 | harnessiq prompts | list, show, text | Inspect bundled master prompts |

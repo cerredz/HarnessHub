@@ -681,6 +681,35 @@
       },
       {
         "aliases": [],
+        "command": "harnessiq models",
+        "help": "Manage reusable provider-backed model profiles",
+        "segments": [
+          "models"
+        ],
+        "source_file": "harnessiq/cli/models/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq models add",
+        "help": "Add or update a persisted model profile",
+        "segments": [
+          "models",
+          "add"
+        ],
+        "source_file": "harnessiq/cli/models/commands.py"
+      },
+      {
+        "aliases": [],
+        "command": "harnessiq models list",
+        "help": "List persisted model profiles",
+        "segments": [
+          "models",
+          "list"
+        ],
+        "source_file": "harnessiq/cli/models/commands.py"
+      },
+      {
+        "aliases": [],
         "command": "harnessiq outreach",
         "help": "Manage and run the ExaOutreach agent",
         "segments": [
@@ -1746,6 +1775,28 @@
           "source_file": "harnessiq/cli/linkedin/commands.py"
         }
       ],
+      "models": [
+        {
+          "aliases": [],
+          "command": "harnessiq models add",
+          "help": "Add or update a persisted model profile",
+          "segments": [
+            "models",
+            "add"
+          ],
+          "source_file": "harnessiq/cli/models/commands.py"
+        },
+        {
+          "aliases": [],
+          "command": "harnessiq models list",
+          "help": "List persisted model profiles",
+          "segments": [
+            "models",
+            "list"
+          ],
+          "source_file": "harnessiq/cli/models/commands.py"
+        }
+      ],
       "outreach": [
         {
           "aliases": [],
@@ -2227,6 +2278,15 @@
       },
       {
         "aliases": [],
+        "command": "harnessiq models",
+        "help": "Manage reusable provider-backed model profiles",
+        "segments": [
+          "models"
+        ],
+        "source_file": "harnessiq/cli/models/commands.py"
+      },
+      {
+        "aliases": [],
         "command": "harnessiq outreach",
         "help": "Manage and run the ExaOutreach agent",
         "segments": [
@@ -2300,14 +2360,14 @@
     ]
   },
   "counts": {
-    "command_paths": 125,
+    "command_paths": 128,
     "harnesses": 7,
     "model_providers": 4,
     "service_provider_packages": 26,
     "sink_types": 9,
-    "test_modules": 84,
+    "test_modules": 86,
     "tool_only_external_surfaces": 1,
-    "top_level_commands": 17
+    "top_level_commands": 18
   },
   "focused_subpackages": [
     {
@@ -3137,6 +3197,7 @@
         "ledger",
         "linkedin",
         "master_prompts",
+        "models",
         "prospecting",
         "research_sweep"
       ],
@@ -3481,14 +3542,14 @@
     ]
   },
   "tests": {
-    "count": 84,
+    "count": 86,
     "groups": [
       {
-        "count": 16,
+        "count": 17,
         "examples": [
           "test_agent_instances.py",
-          "test_agents_base.py",
-          "test_apollo_agent.py"
+          "test_agent_models.py",
+          "test_agents_base.py"
         ],
         "name": "agents"
       },
@@ -3518,7 +3579,7 @@
         "name": "providers"
       },
       {
-        "count": 15,
+        "count": 16,
         "examples": [
           "test_cli_common.py",
           "test_cli_environment.py",
@@ -3557,12 +3618,6 @@
       "path": "artifacts/"
     },
     {
-      "description": "Setuptools build output; generated, not part of the live source tree.",
-      "kind": "generated/cache",
-      "name": "build",
-      "path": "build/"
-    },
-    {
       "description": "Focused usage and architecture notes for the package.",
       "kind": "repo docs",
       "name": "docs",
@@ -3573,12 +3628,6 @@
       "kind": "source",
       "name": "harnessiq",
       "path": "harnessiq/"
-    },
-    {
-      "description": "Packaging metadata emitted by local builds.",
-      "kind": "generated/cache",
-      "name": "harnessiq.egg-info",
-      "path": "harnessiq.egg-info/"
     },
     {
       "description": "Task artifacts plus durable agent runtime state; not part of the shipped package.",

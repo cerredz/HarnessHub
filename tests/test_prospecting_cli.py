@@ -121,8 +121,12 @@ class ProspectingCliTests(unittest.TestCase):
 
             with (
                 patch(
+                    "harnessiq.cli.common.load_factory",
+                    return_value=lambda: MagicMock(),
+                ),
+                patch(
                     "harnessiq.cli.prospecting.commands._load_factory",
-                    side_effect=[lambda: MagicMock(), lambda: ()],
+                    return_value=lambda: (),
                 ),
                 patch(
                     "harnessiq.agents.GoogleMapsProspectingAgent.from_memory",
@@ -196,8 +200,12 @@ class ProspectingCliTests(unittest.TestCase):
             with (
                 patch.dict(os.environ, {}, clear=True),
                 patch(
+                    "harnessiq.cli.common.load_factory",
+                    return_value=_recording_model_factory,
+                ),
+                patch(
                     "harnessiq.cli.prospecting.commands._load_factory",
-                    side_effect=[_recording_model_factory, lambda: ()],
+                    return_value=lambda: (),
                 ),
                 patch(
                     "harnessiq.agents.GoogleMapsProspectingAgent.from_memory",

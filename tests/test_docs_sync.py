@@ -101,6 +101,31 @@ class DocsSyncTests(unittest.TestCase):
         self.assertIn("harnessiq/config/provider_credentials/", focused_subpackages)
         self.assertIn("harnessiq/utils/harness_manifest/", focused_subpackages)
 
+    def test_top_level_directory_classifier_preserves_exact_match_metadata(self) -> None:
+        classified = self.sync_repo_docs.classify_top_level_directory(ROOT / "artifacts")
+        self.assertEqual(classified["kind"], "repo docs")
+        self.assertEqual(
+            classified["description"],
+            "Generated and curated repository reference artifacts.",
+        )
+
+    def test_top_level_directory_classifier_handles_local_state_overrides(self) -> None:
+        worktrees = self.sync_repo_docs.classify_top_level_directory(ROOT / ".worktrees")
+        self.assertEqual(worktrees["kind"], "local state")
+        self.assertIn("Git worktree checkouts", worktrees["description"])
+
+        data = self.sync_repo_docs.classify_top_level_directory(ROOT / "data")
+        self.assertEqual(data["kind"], "local state")
+        self.assertIn("Local datasets, exports, and scratch runtime artifacts", data["description"])
+
+    def test_top_level_directory_classifier_uses_generic_fallback_for_unknown_names(self) -> None:
+        classified = self.sync_repo_docs.classify_top_level_directory(ROOT / "unclassified-root")
+        self.assertEqual(classified["kind"], "other")
+        self.assertEqual(
+            classified["description"],
+            "Repository directory not yet classified in the generated file index.",
+        )
+
     def test_google_drive_operation_count_matches_live_catalog(self) -> None:
         inventory = self.sync_repo_docs.build_inventory()
         provider_index = {
