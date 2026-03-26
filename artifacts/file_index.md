@@ -10,11 +10,11 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | --- | --- |
 | Concrete harness manifests | 7 |
 | Top-level CLI commands | 18 |
-| Registered CLI command paths | 131 |
+| Registered CLI command paths | 132 |
 | Model providers | 4 |
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
-| Built-in sink types | 9 |
+| Built-in sink types | 10 |
 | Test modules | 90 |
 
 ## Codebase Standards
@@ -31,13 +31,10 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Kind | Responsibility |
 | --- | --- | --- |
-| `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
 | `.pytest_cache/` | generated/cache | Test runner cache; generated, not part of the source of truth. |
 | `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
-| `build/` | generated/cache | Setuptools build output; generated, not part of the live source tree. |
 | `docs/` | repo docs | Focused usage and architecture notes for the package. |
 | `harnessiq/` | source | Live SDK package source. |
-| `harnessiq.egg-info/` | generated/cache | Packaging metadata emitted by local builds. |
 | `memory/` | local state | Task artifacts plus durable agent runtime state; not part of the shipped package. |
 | `scripts/` | repo tooling | Repository maintenance and generation scripts. |
 | `tests/` | source | unittest coverage for runtime, CLI, providers, and tools. |
@@ -96,7 +93,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Command | Direct Subcommands | Description | Source |
 | --- | --- | --- | --- |
-| harnessiq connect | confluence, discord, google_sheets, linear, notion, obsidian, slack, supabase | Configure a global output sink connection | `harnessiq/cli/ledger/commands.py` |
+| harnessiq connect | confluence, discord, google_sheets, linear, mongodb, notion, obsidian, slack, supabase | Configure a global output sink connection | `harnessiq/cli/ledger/commands.py` |
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections | `harnessiq/cli/ledger/commands.py` |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings | `harnessiq/cli/platform_commands.py` |
 | harnessiq export | - | Export ledger entries in a structured format | `harnessiq/cli/ledger/commands.py` |
@@ -172,6 +169,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | `google_sheets` |
 | `jsonl` |
 | `linear` |
+| `mongodb` |
 | `notion` |
 | `obsidian` |
 | `slack` |

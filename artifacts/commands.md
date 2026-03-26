@@ -7,7 +7,7 @@ This artifact is generated from the live `harnessiq/cli/` source tree by `python
 | Metric | Count |
 | --- | --- |
 | Top-level commands | 18 |
-| Registered command paths | 131 |
+| Registered command paths | 132 |
 
 Alias paths are included in the registered command total. Canonical commands list aliases where they exist.
 
@@ -15,7 +15,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 
 | Command | Direct Subcommands | Description | Source |
 | --- | --- | --- | --- |
-| harnessiq connect | confluence, discord, google_sheets, linear, notion, obsidian, slack, supabase | Configure a global output sink connection | `harnessiq/cli/ledger/commands.py` |
+| harnessiq connect | confluence, discord, google_sheets, linear, mongodb, notion, obsidian, slack, supabase | Configure a global output sink connection | `harnessiq/cli/ledger/commands.py` |
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections | `harnessiq/cli/ledger/commands.py` |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings | `harnessiq/cli/platform_commands.py` |
 | harnessiq export | - | Export ledger entries in a structured format | `harnessiq/cli/ledger/commands.py` |
@@ -42,6 +42,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq connect discord | Configure a global discord sink | `harnessiq/cli/ledger/commands.py` |
 | harnessiq connect google_sheets | Configure a global google_sheets sink | `harnessiq/cli/ledger/commands.py` |
 | harnessiq connect linear | Configure a global linear sink | `harnessiq/cli/ledger/commands.py` |
+| harnessiq connect mongodb | Configure a global mongodb sink | `harnessiq/cli/ledger/commands.py` |
 | harnessiq connect notion | Configure a global notion sink | `harnessiq/cli/ledger/commands.py` |
 | harnessiq connect obsidian | Configure a global obsidian sink | `harnessiq/cli/ledger/commands.py` |
 | harnessiq connect slack | Configure a global slack sink | `harnessiq/cli/ledger/commands.py` |
