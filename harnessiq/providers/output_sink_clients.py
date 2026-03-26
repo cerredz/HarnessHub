@@ -319,7 +319,7 @@ def _build_pymongo_client(connection_uri: str, **kwargs: Any) -> Any:
         from pymongo import MongoClient
     except ImportError as exc:  # pragma: no cover - depends on optional environment state
         raise RuntimeError(
-            "MongoDB support requires the 'pymongo' package. Install HarnessIQ with its MongoDB dependency."
+            "MongoDB support requires the 'pymongo' package. Install it with 'pip install pymongo'."
         ) from exc
     return MongoClient(connection_uri, **kwargs)
 

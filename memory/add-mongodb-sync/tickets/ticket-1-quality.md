@@ -29,7 +29,7 @@ pytest tests/test_output_sinks.py tests/test_ledger_cli.py
 ```
 
 Observed result:
-- `22 passed in 0.49s`
+- `24 passed in 0.51s`
 
 Coverage of changed behavior:
 - MongoDB provider facade exports

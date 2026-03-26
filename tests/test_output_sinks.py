@@ -186,6 +186,37 @@ class OutputSinkTests(unittest.TestCase):
         self.assertTrue(collection.insert_many.called)
         self.assertTrue(managed_client.close.called)
 
+    def test_mongodb_client_uses_insert_one_for_single_document(self) -> None:
+        collection = MagicMock()
+        client = MongoDBClient(
+            connection_uri="mongodb://localhost:27017",
+            database="harnessiq",
+            collection="agent_runs",
+            collection_handle=collection,
+        )
+
+        client.insert_documents(documents=[{"run_id": "run-1"}])
+
+        self.assertTrue(collection.insert_one.called)
+        self.assertFalse(collection.insert_many.called)
+
+    def test_mongodb_sink_persists_full_entry_without_explode_field(self) -> None:
+        client = MagicMock()
+        sink = MongoDBSink(
+            connection_uri="mongodb://localhost:27017",
+            database="harnessiq",
+            collection="agent_runs",
+            client=client,
+        )
+
+        sink.on_run_complete(_entry())
+
+        documents = client.insert_documents.call_args.kwargs["documents"]
+        self.assertEqual(len(documents), 1)
+        self.assertEqual(documents[0]["run_id"], "run-123")
+        self.assertEqual(documents[0]["agent_name"], "linkedin_job_applier")
+        self.assertNotIn("record", documents[0])
+
     def test_mongodb_sink_can_explode_output_records(self) -> None:
         client = MagicMock()
         sink = MongoDBSink(
