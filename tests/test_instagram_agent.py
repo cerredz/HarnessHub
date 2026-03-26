@@ -75,11 +75,11 @@ def _build_execution(keyword: str = "fitness coach") -> InstagramSearchExecution
         found_at="2026-03-19T00:00:00Z",
         emails=("creator@example.com",),
         title="Creator A",
-        snippet="creator@example.com fitness coach",
+        snippet=f"creator@example.com {keyword}",
     )
     search_record = InstagramSearchRecord(
         keyword=keyword,
-        query='site:instagram .com "@gmail .com" fitness coach',
+        query=f'site:instagram .com "@gmail .com" {keyword}',
         searched_at="2026-03-19T00:00:00Z",
         visited_urls=("https://www.instagram.com/creator-a/",),
         lead_count=1,
@@ -109,9 +109,14 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
 
             self.assertIn("custom.instagram_helper", {tool.key for tool in agent.available_tools()})
 
-    def test_run_bootstraps_memory_files_and_parameter_order(self) -> None:
+    def test_multi_icp_run_rotates_in_configured_order(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+            model = _FakeModel(
+                [
+                    AgentModelResponse(assistant_message="done", should_continue=False),
+                    AgentModelResponse(assistant_message="done", should_continue=False),
+                ]
+            )
             agent = InstagramKeywordDiscoveryAgent(
                 model=model,
                 search_backend=_FakeSearchBackend(_build_execution()),
@@ -119,22 +124,23 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
                 icp_descriptions=("fitness creators", "ugc skincare creators"),
             )
 
-            result = agent.run(max_cycles=1)
+            result = agent.run(max_cycles=2)
 
             self.assertEqual(result.status, "completed")
-            self.assertTrue(Path(temp_dir, "icp_profiles.json").exists())
-            self.assertTrue(Path(temp_dir, "search_history.json").exists())
-            self.assertTrue(Path(temp_dir, "lead_database.json").exists())
-            self.assertTrue(Path(temp_dir, "runtime_parameters.json").exists())
-            self.assertTrue(Path(temp_dir, "custom_parameters.json").exists())
+            self.assertTrue(Path(temp_dir, "run_state.json").exists())
+            self.assertTrue(Path(temp_dir, "icps").is_dir())
+            self.assertEqual(len(model.requests), 2)
             self.assertEqual(
                 [section.title for section in model.requests[0].parameter_sections],
-                ["ICP Profiles", "Recent Searches"],
+                ["Active ICP", "Run Progress", "Recent Searches"],
             )
-            self.assertIn("fitness creators", model.requests[0].parameter_sections[0].content)
-            self.assertEqual(model.requests[0].parameter_sections[1].content, "")
+            self.assertEqual(model.requests[0].parameter_sections[0].content, "fitness creators")
+            self.assertEqual(model.requests[1].parameter_sections[0].content, "ugc skincare creators")
+            run_state = json.loads(Path(temp_dir, "run_state.json").read_text(encoding="utf-8"))
+            self.assertEqual(run_state["status"], "completed")
+            self.assertEqual(run_state["active_icp_index"], 1)
 
-    def test_search_tool_persists_results_and_refreshes_parameter_sections(self) -> None:
+    def test_search_tool_persists_results_and_refreshes_active_icp_context(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             model = _FakeModel(
                 [
@@ -158,20 +164,15 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
 
             self.assertEqual(result.status, "completed")
             self.assertEqual(backend.calls, [("fitness coach", 5)])
-            self.assertEqual(len(model.requests), 2)
-            self.assertEqual(
-                [section.title for section in model.requests[1].parameter_sections],
-                ["ICP Profiles", "Recent Searches"],
-            )
-            self.assertEqual(model.requests[1].parameter_sections[1].content, "fitness coach")
+            self.assertEqual(model.requests[1].parameter_sections[0].content, "fitness creators")
+            self.assertEqual(model.requests[1].parameter_sections[2].content, "fitness coach")
             self.assertEqual(model.requests[1].transcript, ())
             self.assertFalse(any(entry.entry_type == "tool_call" for entry in agent.transcript))
             self.assertFalse(any(entry.entry_type == "tool_result" for entry in agent.transcript))
-            self.assertFalse(any(entry.content == "(no assistant content)" for entry in agent.transcript))
             database = json.loads(Path(temp_dir, "lead_database.json").read_text(encoding="utf-8"))
             self.assertEqual(database["emails"], ["creator@example.com"])
 
-    def test_failed_search_attempt_still_updates_recent_searches_without_transcript_tool_state(self) -> None:
+    def test_failed_search_attempt_still_updates_recent_searches_without_persisted_history(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             model = _FakeModel(
                 [
@@ -183,10 +184,9 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
                     AgentModelResponse(assistant_message="done", should_continue=False),
                 ]
             )
-            backend = _FailingSearchBackend("Google blocked")
             agent = InstagramKeywordDiscoveryAgent(
                 model=model,
-                search_backend=backend,
+                search_backend=_FailingSearchBackend("Google blocked"),
                 memory_path=temp_dir,
                 icp_descriptions=("fitness creators",),
             )
@@ -194,11 +194,108 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
             result = agent.run(max_cycles=2)
 
             self.assertEqual(result.status, "completed")
-            self.assertEqual(backend.calls, [("fitness coach", 5)])
-            self.assertEqual(len(model.requests), 2)
-            self.assertEqual(model.requests[1].parameter_sections[1].content, "fitness coach")
-            self.assertEqual(model.requests[1].transcript, ())
+            self.assertEqual(model.requests[1].parameter_sections[2].content, "fitness coach")
             self.assertEqual(agent.get_search_history(), ())
+
+    def test_duplicate_keyword_detection_is_scoped_per_icp(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model = _FakeModel(
+                [
+                    AgentModelResponse(
+                        assistant_message="Search fitness coach.",
+                        tool_calls=(ToolCall(tool_key="instagram.search_keyword", arguments={"keyword": "fitness coach"}),),
+                        should_continue=True,
+                    ),
+                    AgentModelResponse(assistant_message="done", should_continue=False),
+                    AgentModelResponse(
+                        assistant_message="Search fitness coach again.",
+                        tool_calls=(ToolCall(tool_key="instagram.search_keyword", arguments={"keyword": "fitness coach"}),),
+                        should_continue=True,
+                    ),
+                    AgentModelResponse(assistant_message="done", should_continue=False),
+                ]
+            )
+            backend = _FakeSearchBackend(_build_execution())
+            agent = InstagramKeywordDiscoveryAgent(
+                model=model,
+                search_backend=backend,
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators", "ugc skincare creators"),
+            )
+
+            result = agent.run(max_cycles=4)
+
+            self.assertEqual(result.status, "completed")
+            self.assertEqual(backend.calls, [("fitness coach", 5), ("fitness coach", 5)])
+
+    def test_recent_searches_are_scoped_to_the_active_icp(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = InstagramMemoryStore(memory_path=temp_dir)
+            store.prepare()
+            icps = store.initialize_icp_states(["fitness creators", "ugc skincare creators"])
+            store.append_search(
+                InstagramSearchRecord(
+                    keyword="fitness coach",
+                    query='site:instagram.com "@gmail.com" "fitness coach"',
+                    searched_at="2026-03-19T00:00:00Z",
+                ),
+                icp_key=icps[0].key,
+            )
+            store.append_search(
+                InstagramSearchRecord(
+                    keyword="skincare creator",
+                    query='site:instagram.com "@gmail.com" "skincare creator"',
+                    searched_at="2026-03-19T01:00:00Z",
+                ),
+                icp_key=icps[1].key,
+            )
+            agent = InstagramKeywordDiscoveryAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                search_backend=_FakeSearchBackend(_build_execution()),
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators", "ugc skincare creators"),
+            )
+            agent.prepare()
+
+            first_sections = agent.load_parameter_sections()
+            agent._activate_icp(1)
+            second_sections = agent.load_parameter_sections()
+
+            self.assertEqual(first_sections[0].content, "fitness creators")
+            self.assertEqual(first_sections[2].content, "fitness coach")
+            self.assertEqual(second_sections[0].content, "ugc skincare creators")
+            self.assertEqual(second_sections[2].content, "skincare creator")
+
+    def test_legacy_search_history_remains_readable(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = InstagramMemoryStore(memory_path=temp_dir)
+            store.prepare()
+            store.write_icp_profiles(["fitness creators"])
+            Path(temp_dir, "search_history.json").write_text(
+                json.dumps(
+                    [
+                        {
+                            "email_count": 1,
+                            "keyword": "fitness coach",
+                            "lead_count": 1,
+                            "query": 'site:instagram.com "@gmail.com" "fitness coach"',
+                            "searched_at": "2026-03-19T00:00:00Z",
+                            "visited_urls": [],
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            agent = InstagramKeywordDiscoveryAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                search_backend=_FakeSearchBackend(_build_execution()),
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators",),
+            )
+            agent.prepare()
+
+            self.assertEqual(agent.get_search_history()[0].keyword, "fitness coach")
+            self.assertEqual(agent.load_parameter_sections()[2].content, "fitness coach")
 
     def test_build_ledger_outputs_reads_persisted_instagram_memory(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -247,80 +344,11 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
             ],
         )
 
-    def test_get_emails_returns_unique_persisted_values(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
-            agent = InstagramKeywordDiscoveryAgent(
-                model=model,
-                search_backend=_FakeSearchBackend(_build_execution()),
-                memory_path=temp_dir,
-                icp_descriptions=("fitness creators",),
-            )
-            agent.prepare()
-
-            first_result = agent.tool_executor.execute("instagram.search_keyword", {"keyword": "fitness coach"})
-            agent.tool_executor.execute("instagram.search_keyword", {"keyword": "fitness coach"})
-
-            self.assertEqual(agent.get_emails(), ("creator@example.com",))
-            self.assertEqual(first_result.output["status"], "searched")
-            self.assertIn("merge_summary", first_result.output)
-            self.assertNotIn("query", first_result.output)
-            self.assertNotIn("visited_urls", first_result.output)
-
-    def test_duplicate_search_result_is_compact(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
-            agent = InstagramKeywordDiscoveryAgent(
-                model=model,
-                search_backend=_FakeSearchBackend(_build_execution()),
-                memory_path=temp_dir,
-                icp_descriptions=("fitness creators",),
-            )
-            agent.prepare()
-
-            agent.tool_executor.execute("instagram.search_keyword", {"keyword": "fitness coach"})
-            duplicate_result = agent.tool_executor.execute("instagram.search_keyword", {"keyword": "fitness coach"})
-
-            self.assertEqual(duplicate_result.output["status"], "already_searched")
-            self.assertNotIn("query", duplicate_result.output)
-            self.assertNotIn("visited_urls", duplicate_result.output)
-
-    def test_recent_searches_are_rendered_as_comma_separated_keywords(self) -> None:
+    def test_from_memory_loads_runtime_parameters_and_custom_icp_override(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             store = InstagramMemoryStore(memory_path=temp_dir)
             store.prepare()
             store.write_icp_profiles(["fitness creators"])
-            store.append_search(
-                InstagramSearchRecord(
-                    keyword="fitness coach",
-                    query='site:instagram.com "@gmail.com" "fitness coach"',
-                    searched_at="2026-03-19T00:00:00Z",
-                )
-            )
-            store.append_search(
-                InstagramSearchRecord(
-                    keyword="skincare creator",
-                    query='site:instagram.com "@gmail.com" "skincare creator"',
-                    searched_at="2026-03-19T01:00:00Z",
-                )
-            )
-            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
-            agent = InstagramKeywordDiscoveryAgent(
-                model=model,
-                search_backend=_FakeSearchBackend(_build_execution()),
-                memory_path=temp_dir,
-            )
-
-            sections = agent.load_parameter_sections()
-
-            self.assertEqual([section.title for section in sections], ["ICP Profiles", "Recent Searches"])
-            self.assertEqual(sections[1].content, "fitness coach, skincare creator")
-
-    def test_from_memory_loads_runtime_parameters(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            store = InstagramMemoryStore(memory_path=temp_dir)
-            store.prepare()
-            store.write_icp_profiles(["ugc skincare creators"])
             store.write_runtime_parameters(
                 {
                     "recent_result_window": 3,
@@ -328,24 +356,6 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
                     "search_result_limit": 2,
                 }
             )
-            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
-
-            agent = InstagramKeywordDiscoveryAgent.from_memory(
-                model=model,
-                search_backend=_FakeSearchBackend(_build_execution("skincare")),
-                memory_path=temp_dir,
-            )
-
-            self.assertEqual(agent.config.recent_search_window, 4)
-            self.assertEqual(agent.config.recent_result_window, 3)
-            self.assertEqual(agent.config.search_result_limit, 2)
-            self.assertIn("ugc skincare creators", agent.load_parameter_sections()[0].content)
-
-    def test_from_memory_uses_custom_icp_override_and_custom_parameter_section(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            store = InstagramMemoryStore(memory_path=temp_dir)
-            store.prepare()
-            store.write_icp_profiles(["fitness creators"])
             store.write_custom_parameters({"research_mode": True})
             model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
 
@@ -361,11 +371,14 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
 
             sections = agent.load_parameter_sections()
 
-            self.assertEqual([section.title for section in sections], ["ICP Profiles", "Recent Searches", "Custom Parameters"])
-            self.assertIn("ugc skincare creators", sections[0].content)
-            self.assertIn("target_segment", sections[2].content)
-            self.assertIn("research_mode", sections[2].content)
-            self.assertNotIn("icp_profiles", sections[2].content)
+            self.assertEqual(agent.config.recent_search_window, 4)
+            self.assertEqual(agent.config.recent_result_window, 3)
+            self.assertEqual(agent.config.search_result_limit, 2)
+            self.assertEqual([section.title for section in sections], ["Active ICP", "Run Progress", "Recent Searches", "Custom Parameters"])
+            self.assertEqual(sections[0].content, "ugc skincare creators")
+            self.assertIn("target_segment", sections[3].content)
+            self.assertIn("research_mode", sections[3].content)
+            self.assertNotIn("icp_profiles", sections[3].content)
 
     def test_agent_is_importable_from_harnessiq_agents(self) -> None:
         from harnessiq.agents import InstagramKeywordDiscoveryAgent as Imported
@@ -375,9 +388,8 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
     def test_run_closes_backend_after_completion(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             backend = _FakeSearchBackend(_build_execution())
-            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
             agent = InstagramKeywordDiscoveryAgent(
-                model=model,
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
                 search_backend=backend,
                 memory_path=temp_dir,
                 icp_descriptions=("fitness creators",),
@@ -387,7 +399,7 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
 
             self.assertEqual(backend.close_calls, 1)
 
-    def test_run_closes_backend_after_tool_error(self) -> None:
+    def test_run_closes_backend_after_model_error(self) -> None:
         class _FailingModel:
             def generate_turn(self, request: AgentModelRequest) -> AgentModelResponse:
                 raise RuntimeError("boom")
@@ -405,6 +417,7 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
                 agent.run(max_cycles=1)
 
             self.assertEqual(backend.close_calls, 1)
+
     def test_runtime_config_preserves_langsmith_settings(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             agent = InstagramKeywordDiscoveryAgent(

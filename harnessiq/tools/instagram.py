@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Mapping
 
 from harnessiq.shared.instagram import DEFAULT_SEARCH_RESULT_LIMIT
@@ -16,6 +17,7 @@ def create_instagram_tools(
     memory_store: "InstagramMemoryStore | None" = None,
     search_backend: "InstagramSearchBackend | None" = None,
     search_result_limit: int = DEFAULT_SEARCH_RESULT_LIMIT,
+    current_icp_key: Callable[[], str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the Instagram search tool set.
 
@@ -31,6 +33,7 @@ def create_instagram_tools(
                 memory_store=memory_store,
                 search_backend=search_backend,
                 search_result_limit=search_result_limit,
+                current_icp_key=current_icp_key,
             ),
         ),
     )
@@ -68,6 +71,7 @@ def _build_search_keyword_handler(
     memory_store: "InstagramMemoryStore | None",
     search_backend: "InstagramSearchBackend | None",
     search_result_limit: int,
+    current_icp_key: Callable[[], str] | None,
 ):
     def handler(arguments: ToolArguments) -> dict[str, Any]:
         if memory_store is None or search_backend is None:
@@ -76,8 +80,10 @@ def _build_search_keyword_handler(
             )
 
         keyword = _require_string(arguments, "keyword")
-        if memory_store.has_searched(keyword):
+        icp_key = (current_icp_key().strip() or None) if current_icp_key is not None else None
+        if memory_store.has_searched(keyword, icp_key=icp_key):
             return {
+                "icp_key": icp_key,
                 "keyword": keyword,
                 "message": "Keyword already exists in durable search history.",
                 "status": "already_searched",
@@ -85,10 +91,11 @@ def _build_search_keyword_handler(
 
         max_results = _optional_positive_int(arguments, "max_results", default=search_result_limit)
         execution = search_backend.search_keyword(keyword=keyword, max_results=max_results)
-        memory_store.append_search(execution.search_record)
+        memory_store.append_search(execution.search_record, icp_key=icp_key)
         merge_summary = memory_store.merge_leads(execution.leads)
         return {
             "email_count": execution.search_record.email_count,
+            "icp_key": icp_key,
             "keyword": execution.search_record.keyword,
             "lead_count": execution.search_record.lead_count,
             "merge_summary": merge_summary.as_dict(),
