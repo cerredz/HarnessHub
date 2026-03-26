@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from datetime import datetime
 import unittest
 
 
@@ -64,6 +65,7 @@ class PromptRegistryGeneratorTests(unittest.TestCase):
                 self.assertTrue(entry["name"])
                 self.assertTrue(entry["description"])
                 self.assertTrue(entry["updated_at"])
+                datetime.fromisoformat(entry["updated_at"].replace("Z", "+00:00"))
 
     def test_description_derivation_skips_heading_only_blocks(self) -> None:
         prompt_text = "\n\n".join(

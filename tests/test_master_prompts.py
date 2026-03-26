@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import unittest
 
@@ -118,6 +119,23 @@ class ArtifactBackedRegistryTests(unittest.TestCase):
                 self.assertTrue(prompt.title.strip())
                 self.assertTrue(prompt.description.strip())
                 self.assertTrue(prompt.prompt.strip())
+
+    def test_registry_descriptions_match_registry_json(self) -> None:
+        registry = MasterPromptRegistry()
+        payload = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+        descriptions = {entry["name"]: entry["description"] for entry in payload["harnesses"]}
+
+        for prompt in registry.list():
+            with self.subTest(prompt=prompt.key):
+                self.assertEqual(prompt.description, descriptions[prompt.key])
+
+    def test_registry_titles_are_derived_from_prompt_slug(self) -> None:
+        registry = MasterPromptRegistry()
+
+        for prompt in registry.list():
+            with self.subTest(prompt=prompt.key):
+                expected_title = prompt.key.replace("_", " ").replace("-", " ").title()
+                self.assertEqual(prompt.title, expected_title)
 
     def test_get_unknown_prompt_raises_key_error(self) -> None:
         registry = MasterPromptRegistry()
