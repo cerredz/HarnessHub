@@ -32,12 +32,12 @@ print(result.output)
 | --- | --- |
 | Concrete harness manifests | 7 |
 | Top-level CLI commands | 18 |
-| Registered CLI command paths | 128 |
+| Registered CLI command paths | 131 |
 | Model providers | 4 |
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 9 |
-| Test modules | 86 |
+| Test modules | 87 |
 
 ## Agent Matrix
 
@@ -119,7 +119,7 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 | harnessiq models | add, list | Manage reusable provider-backed model profiles |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent |
 | harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Prepare and persist generic config for a harness |
-| harnessiq prompts | list, show, text | Inspect bundled master prompts |
+| harnessiq prompts | activate, clear, current, list, show, text | Inspect bundled master prompts |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent |
 | harnessiq report | - | Build a cross-agent report from the local ledger |
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness |
