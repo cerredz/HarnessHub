@@ -26,6 +26,7 @@ EXPECTED_PROMPT_KEYS = {
     "highest_form_of_leverage",
     "hybrid_academic_and_web_research",
     "implement_and_critique_solutions",
+    "mission_driven",
     "parallel_problem_decomposition",
     "phased_code_review",
     "principal_software_engineer_design_patterns",
@@ -35,6 +36,7 @@ EXPECTED_PROMPT_KEYS = {
     "spawn_specialized_subagents",
     "surgical_bugfix",
 }
+STANDARD_STRUCTURE_PROMPT_KEYS = EXPECTED_PROMPT_KEYS - {"mission_driven"}
 REQUIRED_PROMPT_SECTIONS = (
     "Identity",
     "Goal",
@@ -42,6 +44,16 @@ REQUIRED_PROMPT_SECTIONS = (
     "Things Not To Do",
     "Success Criteria",
     "Artifacts",
+    "Inputs",
+)
+MISSION_DRIVEN_REQUIRED_SECTIONS = (
+    "Identity / Persona",
+    "Goal",
+    "Component Reference",
+    "Storage Layout",
+    "Checklist",
+    "Things Not To Do",
+    "Success Criteria",
     "Inputs",
 )
 class MasterPromptDataclassTests(unittest.TestCase):
@@ -150,6 +162,8 @@ class BundledMasterPromptStructureTests(unittest.TestCase):
         registry = MasterPromptRegistry()
 
         for prompt in registry.list():
+            if prompt.key not in STANDARD_STRUCTURE_PROMPT_KEYS:
+                continue
             with self.subTest(prompt=prompt.key):
                 for section_name in REQUIRED_PROMPT_SECTIONS:
                     self.assertIn(section_name, prompt.prompt)
@@ -158,6 +172,8 @@ class BundledMasterPromptStructureTests(unittest.TestCase):
         registry = MasterPromptRegistry()
 
         for prompt in registry.list():
+            if prompt.key not in STANDARD_STRUCTURE_PROMPT_KEYS:
+                continue
             with self.subTest(prompt=prompt.key):
                 positions = [prompt.prompt.index(section_name) for section_name in REQUIRED_PROMPT_SECTIONS]
                 self.assertEqual(positions, sorted(positions))
@@ -205,7 +221,7 @@ class BundledPromptStructureTests(unittest.TestCase):
     def test_all_expected_prompts_include_core_section_markers(self) -> None:
         registry = MasterPromptRegistry()
 
-        for key in EXPECTED_PROMPT_KEYS:
+        for key in STANDARD_STRUCTURE_PROMPT_KEYS:
             with self.subTest(key=key):
                 text = registry.get(key).prompt
                 self.assertIn("Identity", text)
@@ -215,6 +231,20 @@ class BundledPromptStructureTests(unittest.TestCase):
                 self.assertIn("Success Criteria", text)
                 self.assertIn("Artifacts", text)
                 self.assertIn("Inputs", text)
+
+
+class MissionDrivenPromptTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.prompt = MasterPromptRegistry().get("mission_driven")
+
+    def test_mission_driven_contains_expected_sections(self) -> None:
+        for section_name in MISSION_DRIVEN_REQUIRED_SECTIONS:
+            with self.subTest(section=section_name):
+                self.assertIn(section_name, self.prompt.prompt)
+
+    def test_mission_driven_sections_appear_in_order(self) -> None:
+        positions = [self.prompt.prompt.index(section_name) for section_name in MISSION_DRIVEN_REQUIRED_SECTIONS]
+        self.assertEqual(positions, sorted(positions))
 
 
 class ModuleLevelAPITests(unittest.TestCase):
