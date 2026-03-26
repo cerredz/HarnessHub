@@ -17,7 +17,7 @@ from harnessiq.shared.agents import AgentRuntimeConfig
 from harnessiq.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW, LinkedInAgentConfig
 from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
 
-_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
+_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent_helpers.build_langsmith_client", return_value=None)
 
 
 def setUpModule() -> None:

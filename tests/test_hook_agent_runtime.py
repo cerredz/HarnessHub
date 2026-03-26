@@ -74,7 +74,7 @@ def _constant_tool(tool_key: str, name: str, handler) -> RegisteredTool:
 
 @pytest.fixture(autouse=True)
 def _disable_langsmith_client() -> None:
-    with patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None):
+    with patch("harnessiq.agents.base.agent_helpers.build_langsmith_client", return_value=None):
         yield
 
 

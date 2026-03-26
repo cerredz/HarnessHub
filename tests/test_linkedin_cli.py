@@ -15,7 +15,7 @@ from harnessiq.agents import AgentModelRequest, AgentModelResponse
 from harnessiq.cli.main import main
 
 _LAST_LANGSMITH_ENV: dict[str, str] = {}
-_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
+_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent_helpers.build_langsmith_client", return_value=None)
 
 
 def setUpModule() -> None:
