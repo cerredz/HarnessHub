@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, Mapping
 from urllib.parse import quote, urlencode
@@ -16,6 +17,8 @@ from harnessiq.shared.output_sinks import (
     LINEAR_DEFAULT_BASE_URL,
     NOTION_DEFAULT_BASE_URL,
 )
+
+MongoClientFactory = Callable[..., Any]
 
 
 @dataclass(slots=True)
@@ -277,6 +280,50 @@ class GoogleSheetsClient:
         return {"Authorization": f"Bearer {self.refresh_access_token()}"}
 
 
+@dataclass(slots=True)
+class MongoDBClient:
+    """Minimal MongoDB client wrapper for inserting ledger documents."""
+
+    connection_uri: str
+    database: str
+    collection: str
+    app_name: str = "HarnessIQ"
+    collection_handle: Any | None = None
+    mongo_client_factory: MongoClientFactory | None = None
+
+    def insert_documents(self, *, documents: Sequence[Mapping[str, Any]]) -> Any:
+        payload = [dict(document) for document in documents]
+        if not payload:
+            return None
+        collection, managed_client = self._resolve_collection()
+        try:
+            if len(payload) == 1:
+                return collection.insert_one(payload[0])
+            return collection.insert_many(payload)
+        finally:
+            if managed_client is not None:
+                closer = getattr(managed_client, "close", None)
+                if callable(closer):
+                    closer()
+
+    def _resolve_collection(self) -> tuple[Any, Any | None]:
+        if self.collection_handle is not None:
+            return self.collection_handle, None
+        client_factory = self.mongo_client_factory or _build_pymongo_client
+        client = client_factory(self.connection_uri, appname=self.app_name)
+        return client[self.database][self.collection], client
+
+
+def _build_pymongo_client(connection_uri: str, **kwargs: Any) -> Any:
+    try:
+        from pymongo import MongoClient
+    except ImportError as exc:  # pragma: no cover - depends on optional environment state
+        raise RuntimeError(
+            "MongoDB support requires the 'pymongo' package. Install HarnessIQ with its MongoDB dependency."
+        ) from exc
+    return MongoClient(connection_uri, **kwargs)
+
+
 def _google_sheets_values_url(
     base_url: str,
     *,
@@ -316,6 +363,7 @@ __all__ = [
     "GoogleSheetsClient",
     "LINEAR_DEFAULT_BASE_URL",
     "LinearClient",
+    "MongoDBClient",
     "NOTION_DEFAULT_BASE_URL",
     "NotionClient",
     "SupabaseClient",

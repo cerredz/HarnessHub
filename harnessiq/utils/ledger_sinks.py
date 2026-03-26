@@ -14,6 +14,7 @@ from harnessiq.providers.output_sinks import (
     ConfluenceClient,
     GoogleSheetsClient,
     LinearClient,
+    MongoDBClient,
     NotionClient,
     SupabaseClient,
     WebhookDeliveryClient,
@@ -24,6 +25,7 @@ from harnessiq.utils.ledger_models import (
     OutputSink,
     _format_duration,
     _isoformat_z,
+    _json_safe,
     _safe_slug,
     _truncate,
 )
@@ -235,6 +237,25 @@ class GoogleSheetsSink:
         return GoogleSheetsClient(**kwargs)
 
 
+@dataclass(slots=True)
+class MongoDBSink:
+    """Insert one or more ledger documents into MongoDB."""
+
+    connection_uri: str
+    database: str
+    collection: str
+    explode_field: str | None = None
+    client: MongoDBClient | None = None
+
+    def on_run_complete(self, entry: LedgerEntry) -> None:
+        client = self.client or MongoDBClient(
+            connection_uri=self.connection_uri,
+            database=self.database,
+            collection=self.collection,
+        )
+        client.insert_documents(documents=_render_mongodb_documents(entry, explode_field=self.explode_field))
+
+
 def register_output_sink(
     sink_type: str,
     factory: OutputSinkFactory,
@@ -341,6 +362,12 @@ def _register_builtin_sinks() -> None:
                 api_key=str(data["api_key"]),
                 table=str(data.get("table", "agent_runs")),
                 schema=str(data.get("schema", "public")),
+            ),
+            "mongodb": lambda data: MongoDBSink(
+                connection_uri=str(data["connection_uri"]),
+                database=str(data["database"]),
+                collection=str(data["collection"]),
+                explode_field=str(data["explode_field"]) if data.get("explode_field") is not None else None,
             ),
             "linear": lambda data: LinearSink(
                 api_key=str(data["api_key"]),
@@ -512,6 +539,23 @@ def _render_linear_description(entry: LedgerEntry, record: Any) -> str:
         "status": entry.status,
     }
     return "```json\n" + json.dumps(body, indent=2, sort_keys=True) + "\n```"
+
+
+def _render_mongodb_documents(
+    entry: LedgerEntry,
+    *,
+    explode_field: str | None,
+) -> list[dict[str, Any]]:
+    records = _explode_entry(entry, explode_field)
+    if not records:
+        return [entry.as_dict()]
+    documents: list[dict[str, Any]] = []
+    for item in records:
+        document = entry.as_dict()
+        document["explode_field"] = explode_field
+        document["record"] = _json_safe(item.get("record"))
+        documents.append(document)
+    return documents
 
 
 def _render_google_sheets_row(entry: LedgerEntry, record: Any) -> dict[str, Any]:
@@ -710,6 +754,7 @@ __all__ = [
     "GoogleSheetsSink",
     "JSONLLedgerSink",
     "LinearSink",
+    "MongoDBSink",
     "NotionSink",
     "ObsidianSink",
     "SlackSink",

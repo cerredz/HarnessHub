@@ -44,6 +44,11 @@ def register_ledger_commands(subparsers: argparse._SubParsersAction[argparse.Arg
     )
     _register_connect_command(
         connect_subparsers,
+        "mongodb",
+        [("connection-uri", True), ("database", True), ("collection", True), ("explode-field", False)],
+    )
+    _register_connect_command(
+        connect_subparsers,
         "linear",
         [("api-key", True), ("team-id", True), ("explode-field", False)],
     )

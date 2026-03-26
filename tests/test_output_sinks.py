@@ -11,11 +11,13 @@ from unittest.mock import MagicMock
 
 from harnessiq.providers import GoogleSheetsClient as ProviderGoogleSheetsClient
 from harnessiq.providers import LinearClient as ProviderLinearClient
+from harnessiq.providers import MongoDBClient as ProviderMongoDBClient
 from harnessiq.providers import WebhookDeliveryClient as ProviderWebhookDeliveryClient
 from harnessiq.providers import extract_model_metadata as provider_extract_model_metadata
 from harnessiq.providers.output_sinks import (
     GoogleSheetsClient,
     LinearClient,
+    MongoDBClient,
     WebhookDeliveryClient,
     extract_model_metadata,
 )
@@ -26,6 +28,7 @@ from harnessiq.utils import (
     JSONLLedgerSink,
     LedgerEntry,
     LinearSink,
+    MongoDBSink,
     NotionSink,
     ObsidianSink,
     SlackSink,
@@ -85,10 +88,12 @@ class OutputSinkTests(unittest.TestCase):
     def test_provider_output_sink_facades_preserve_public_imports(self) -> None:
         self.assertIs(GoogleSheetsClient, ProviderGoogleSheetsClient)
         self.assertIs(LinearClient, ProviderLinearClient)
+        self.assertIs(MongoDBClient, ProviderMongoDBClient)
         self.assertIs(WebhookDeliveryClient, ProviderWebhookDeliveryClient)
         self.assertIs(extract_model_metadata, provider_extract_model_metadata)
         self.assertEqual(GoogleSheetsClient.__module__, "harnessiq.providers.output_sinks")
         self.assertEqual(LinearClient.__module__, "harnessiq.providers.output_sinks")
+        self.assertEqual(MongoDBClient.__module__, "harnessiq.providers.output_sinks")
         self.assertEqual(WebhookDeliveryClient.__module__, "harnessiq.providers.output_sinks")
         self.assertEqual(extract_model_metadata.__module__, "harnessiq.providers.output_sinks")
 
@@ -132,12 +137,19 @@ class OutputSinkTests(unittest.TestCase):
         confluence_client = MagicMock()
         supabase_client = MagicMock()
         linear_client = MagicMock()
+        mongo_client = MagicMock()
         google_sheets_client = MagicMock()
         google_sheets_client.get_values.return_value = []
 
         NotionSink(api_token="token", database_id="db", client=notion_client).on_run_complete(_entry())
         ConfluenceSink(base_url="https://conf.example", api_token="token", space_key="ENG", client=confluence_client).on_run_complete(_entry())
         SupabaseSink(base_url="https://supabase.example", api_key="key", client=supabase_client).on_run_complete(_entry())
+        MongoDBSink(
+            connection_uri="mongodb://localhost:27017",
+            database="harnessiq",
+            collection="agent_runs",
+            client=mongo_client,
+        ).on_run_complete(_entry())
         LinearSink(api_key="key", team_id="team", client=linear_client).on_run_complete(_entry())
         GoogleSheetsSink(
             client_id="cid",
@@ -150,9 +162,46 @@ class OutputSinkTests(unittest.TestCase):
         self.assertTrue(notion_client.create_page.called)
         self.assertTrue(confluence_client.create_page.called)
         self.assertTrue(supabase_client.insert_row.called)
+        self.assertTrue(mongo_client.insert_documents.called)
         self.assertTrue(linear_client.create_issue.called)
         self.assertTrue(google_sheets_client.update_values.called)
         self.assertTrue(google_sheets_client.append_values.called)
+
+    def test_mongodb_client_inserts_documents_and_closes_managed_client(self) -> None:
+        collection = MagicMock()
+        database = MagicMock()
+        database.__getitem__.return_value = collection
+        managed_client = MagicMock()
+        managed_client.__getitem__.return_value = database
+
+        client = MongoDBClient(
+            connection_uri="mongodb://localhost:27017",
+            database="harnessiq",
+            collection="agent_runs",
+            mongo_client_factory=lambda *args, **kwargs: managed_client,
+        )
+
+        client.insert_documents(documents=[{"run_id": "run-1"}, {"run_id": "run-2"}])
+
+        self.assertTrue(collection.insert_many.called)
+        self.assertTrue(managed_client.close.called)
+
+    def test_mongodb_sink_can_explode_output_records(self) -> None:
+        client = MagicMock()
+        sink = MongoDBSink(
+            connection_uri="mongodb://localhost:27017",
+            database="harnessiq",
+            collection="agent_runs",
+            explode_field="outputs.jobs_applied",
+            client=client,
+        )
+
+        sink.on_run_complete(_entry())
+
+        documents = client.insert_documents.call_args.kwargs["documents"]
+        self.assertEqual(len(documents), 1)
+        self.assertEqual(documents[0]["explode_field"], "outputs.jobs_applied")
+        self.assertEqual(documents[0]["record"]["company"], "Stripe")
 
     def test_linear_sink_can_explode_output_records(self) -> None:
         client = MagicMock()
@@ -276,6 +325,21 @@ class OutputSinkTests(unittest.TestCase):
         )
         self.assertIsInstance(sink, GoogleSheetsSink)
         self.assertFalse(sink.include_header)
+
+    def test_mongodb_sink_is_listed_and_buildable(self) -> None:
+        self.assertIn("mongodb", list_output_sink_types())
+        sink = build_output_sink(
+            "mongodb",
+            {
+                "connection_uri": "mongodb://localhost:27017",
+                "database": "harnessiq",
+                "collection": "agent_runs",
+                "explode_field": "outputs.jobs_applied",
+            },
+        )
+        self.assertIsInstance(sink, MongoDBSink)
+        self.assertEqual(sink.collection, "agent_runs")
+        self.assertEqual(sink.explode_field, "outputs.jobs_applied")
 
 
 if __name__ == "__main__":
