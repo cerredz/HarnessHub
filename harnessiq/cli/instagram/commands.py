@@ -340,6 +340,7 @@ def _build_summary(store: InstagramMemoryStore) -> dict[str, Any]:
     search_history = store.read_search_history()
     lead_database = store.read_lead_database()
     custom_parameters = store.read_custom_parameters()
+    run_state = store.read_run_state().as_dict() if store.run_state_path.exists() else None
     return {
         "additional_prompt": store.read_additional_prompt(),
         "agent_identity": store.read_agent_identity(),
@@ -349,6 +350,8 @@ def _build_summary(store: InstagramMemoryStore) -> dict[str, Any]:
         "lead_count": len(lead_database.leads),
         "memory_path": str(store.memory_path.resolve()),
         "recent_searches": [record.as_dict() for record in search_history[-5:]],
+        "recent_searches_by_icp": store.read_recent_searches_by_icp(5),
+        "run_state": run_state,
         "runtime_parameters": store.read_runtime_parameters(),
         "search_count": len(search_history),
     }

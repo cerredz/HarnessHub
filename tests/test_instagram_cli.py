@@ -10,7 +10,12 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from harnessiq.cli.main import build_parser, main
-from harnessiq.shared.instagram import InstagramLeadRecord, InstagramMemoryStore
+from harnessiq.shared.instagram import (
+    InstagramLeadRecord,
+    InstagramMemoryStore,
+    InstagramRunState,
+    InstagramSearchRecord,
+)
 
 _LAST_LANGSMITH_ENV: dict[str, str] = {}
 _LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent_helpers.build_langsmith_client", return_value=None)
@@ -59,8 +64,7 @@ class InstagramCliTests(unittest.TestCase):
                 result = _run(["instagram", "prepare", "--agent", "my-agent", "--memory-root", temp_dir])
             self.assertEqual(result, 0)
             self.assertTrue((Path(temp_dir) / "my-agent").is_dir())
-            rendered = "".join(call.args[0] for call in mock_write.call_args_list)
-            payload = json.loads(rendered)
+            payload = json.loads("".join(call.args[0] for call in mock_write.call_args_list))
             self.assertEqual(payload["status"], "prepared")
 
     def test_configure_sets_icps_and_runtime_parameters(self) -> None:
@@ -91,14 +95,33 @@ class InstagramCliTests(unittest.TestCase):
             self.assertEqual(payload["custom_parameters"]["target_segment"], "micro-creators")
             self.assertEqual(payload["runtime_parameters"]["search_result_limit"], 3)
 
-    def test_show_returns_counts(self) -> None:
+    def test_show_returns_per_icp_search_summary(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            _run(["instagram", "prepare", "--agent", "a", "--memory-root", temp_dir])
+            store = InstagramMemoryStore(memory_path=Path(temp_dir) / "a")
+            store.prepare()
+            icps = store.initialize_icp_states(["fitness creators", "ugc skincare creators"])
+            store.write_run_state(
+                InstagramRunState(
+                    run_id="run_1",
+                    active_icp_index=1,
+                    status="running",
+                    started_at="2026-03-19T00:00:00Z",
+                )
+            )
+            store.append_search(
+                InstagramSearchRecord(
+                    keyword="fitness coach",
+                    query='site:instagram.com "@gmail.com" "fitness coach"',
+                    searched_at="2026-03-19T00:00:00Z",
+                ),
+                icp_key=icps[0].key,
+            )
             with patch("sys.stdout.write") as mock_write:
                 _run(["instagram", "show", "--agent", "a", "--memory-root", temp_dir])
             payload = json.loads("".join(call.args[0] for call in mock_write.call_args_list))
-            self.assertEqual(payload["search_count"], 0)
-            self.assertEqual(payload["email_count"], 0)
+            self.assertEqual(payload["search_count"], 1)
+            self.assertEqual(payload["recent_searches_by_icp"][0]["icp_description"], "fitness creators")
+            self.assertEqual(payload["run_state"]["active_icp_index"], 1)
 
     def test_get_emails_reads_persisted_memory(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -147,14 +170,8 @@ class InstagramCliTests(unittest.TestCase):
             mock_agent.get_emails.return_value = ("creator@example.com",)
 
             with (
-                patch(
-                    "harnessiq.cli.common.load_factory",
-                    return_value=lambda: MagicMock(),
-                ),
-                patch(
-                    "harnessiq.cli.instagram.commands._load_factory",
-                    return_value=lambda: object(),
-                ),
+                patch("harnessiq.cli.common.load_factory", return_value=lambda: MagicMock()),
+                patch("harnessiq.cli.instagram.commands._load_factory", return_value=lambda: object()),
                 patch(
                     "harnessiq.agents.instagram.InstagramKeywordDiscoveryAgent.from_memory",
                     return_value=mock_agent,
@@ -221,14 +238,8 @@ class InstagramCliTests(unittest.TestCase):
 
             with (
                 patch.dict(os.environ, {}, clear=True),
-                patch(
-                    "harnessiq.cli.common.load_factory",
-                    return_value=_recording_model_factory,
-                ),
-                patch(
-                    "harnessiq.cli.instagram.commands._load_factory",
-                    return_value=lambda: object(),
-                ),
+                patch("harnessiq.cli.common.load_factory", return_value=_recording_model_factory),
+                patch("harnessiq.cli.instagram.commands._load_factory", return_value=lambda: object()),
                 patch(
                     "harnessiq.agents.instagram.InstagramKeywordDiscoveryAgent.from_memory",
                     return_value=mock_agent,

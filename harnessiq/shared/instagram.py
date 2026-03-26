@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
 from urllib.parse import urlparse
@@ -19,6 +19,8 @@ RUNTIME_PARAMETERS_FILENAME = "runtime_parameters.json"
 CUSTOM_PARAMETERS_FILENAME = "custom_parameters.json"
 AGENT_IDENTITY_FILENAME = "agent_identity.txt"
 ADDITIONAL_PROMPT_FILENAME = "additional_prompt.txt"
+RUN_STATE_FILENAME = "run_state.json"
+ICPS_DIRNAME = "icps"
 INSTAGRAM_GOOGLE_SEARCH_URL = "https://www.google.com/search"
 DEFAULT_INSTAGRAM_BROWSER_CHANNEL = "chrome"
 DEFAULT_INSTAGRAM_HEADLESS = False
@@ -48,6 +50,8 @@ _EMAIL_PATTERN = re.compile(
     r"[A-Z0-9._%+-]+\s*@\s*(?:[A-Z0-9-]+\s*\.(?!\s))+[A-Z]{2,63}\b",
     re.IGNORECASE,
 )
+_ICP_STATUS_VALUES = frozenset({"pending", "active", "completed"})
+_RUN_STATUS_VALUES = frozenset({"pending", "running", "completed"})
 _RESERVED_INSTAGRAM_PATH_SEGMENTS = {
     "accounts",
     "directory",
@@ -160,6 +164,102 @@ class InstagramSearchRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class InstagramICP:
+    """One deterministic ICP tracked by the Instagram harness."""
+
+    description: str
+    key: str = ""
+
+    def __post_init__(self) -> None:
+        description = self.description.strip()
+        if not description:
+            raise ValueError("InstagramICP description must not be blank.")
+        object.__setattr__(self, "description", description)
+        resolved_key = self.key.strip() or _slugify(description)
+        if not resolved_key:
+            raise ValueError("InstagramICP key must not be blank.")
+        object.__setattr__(self, "key", resolved_key)
+
+    def as_dict(self) -> dict[str, str]:
+        return {"description": self.description, "key": self.key}
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "InstagramICP":
+        return cls(description=str(data["description"]), key=str(data.get("key", "")))
+
+
+@dataclass(slots=True)
+class InstagramICPState:
+    """Durable per-ICP search state for the Instagram harness."""
+
+    icp: InstagramICP
+    status: str = "pending"
+    searches: list[InstagramSearchRecord] = field(default_factory=list)
+    completed_at: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.status not in _ICP_STATUS_VALUES:
+            allowed = ", ".join(sorted(_ICP_STATUS_VALUES))
+            raise ValueError(f"InstagramICPState status must be one of: {allowed}.")
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "completed_at": self.completed_at,
+            "icp": self.icp.as_dict(),
+            "searches": [entry.as_dict() for entry in self.searches],
+            "status": self.status,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "InstagramICPState":
+        return cls(
+            icp=InstagramICP.from_dict(dict(data["icp"])),
+            status=str(data.get("status", "pending")),
+            searches=[InstagramSearchRecord.from_dict(dict(item)) for item in data.get("searches", [])],
+            completed_at=str(data["completed_at"]) if data.get("completed_at") else None,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class InstagramRunState:
+    """Progress tracking for one deterministic multi-ICP Instagram run."""
+
+    run_id: str
+    active_icp_index: int = 0
+    status: str = "pending"
+    started_at: str | None = None
+    completed_at: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.run_id.strip():
+            raise ValueError("InstagramRunState run_id must not be blank.")
+        if self.active_icp_index < 0:
+            raise ValueError("InstagramRunState active_icp_index must be zero or greater.")
+        if self.status not in _RUN_STATUS_VALUES:
+            allowed = ", ".join(sorted(_RUN_STATUS_VALUES))
+            raise ValueError(f"InstagramRunState status must be one of: {allowed}.")
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "active_icp_index": self.active_icp_index,
+            "completed_at": self.completed_at,
+            "run_id": self.run_id,
+            "started_at": self.started_at,
+            "status": self.status,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "InstagramRunState":
+        return cls(
+            run_id=str(data["run_id"]),
+            active_icp_index=int(data.get("active_icp_index", 0)),
+            status=str(data.get("status", "pending")),
+            started_at=str(data["started_at"]) if data.get("started_at") else None,
+            completed_at=str(data["completed_at"]) if data.get("completed_at") else None,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class InstagramLeadDatabase:
     """Canonical persisted lead/email store."""
 
@@ -254,8 +354,17 @@ class InstagramMemoryStore:
     def additional_prompt_path(self) -> Path:
         return self.memory_path / ADDITIONAL_PROMPT_FILENAME
 
+    @property
+    def run_state_path(self) -> Path:
+        return self.memory_path / RUN_STATE_FILENAME
+
+    @property
+    def icps_dir(self) -> Path:
+        return self.memory_path / ICPS_DIRNAME
+
     def prepare(self) -> None:
         self.memory_path.mkdir(parents=True, exist_ok=True)
+        self.icps_dir.mkdir(parents=True, exist_ok=True)
         _ensure_json_file(self.icp_profiles_path, [])
         _ensure_json_file(self.search_history_path, [])
         _ensure_json_file(self.lead_database_path, InstagramLeadDatabase().as_dict())
@@ -272,23 +381,145 @@ class InstagramMemoryStore:
         cleaned = [value.strip() for value in profiles if value and value.strip()]
         _write_json(self.icp_profiles_path, cleaned)
 
+    def write_run_state(self, state: InstagramRunState) -> None:
+        self.prepare()
+        _write_json(self.run_state_path, state.as_dict())
+
+    def read_run_state(self) -> InstagramRunState:
+        data = _read_json_file(self.run_state_path, expected_type=dict)
+        return InstagramRunState.from_dict(data)
+
+    def initialize_icp_states(self, descriptions: Sequence[str]) -> tuple[InstagramICP, ...]:
+        self.prepare()
+        icps = tuple(InstagramICP(description=value) for value in descriptions if value.strip())
+        for icp in icps:
+            path = self._icp_state_path(icp.key)
+            if not path.exists():
+                self.write_icp_state(InstagramICPState(icp=icp))
+                continue
+            state = InstagramICPState.from_dict(_read_json_file(path, expected_type=dict))
+            if state.icp != icp:
+                state.icp = icp
+                self.write_icp_state(state)
+        return icps
+
+    def read_icp_state(self, icp_key: str) -> InstagramICPState:
+        path = self._icp_state_path(icp_key)
+        data = _read_json_file(path, expected_type=dict)
+        return InstagramICPState.from_dict(data)
+
+    def write_icp_state(self, state: InstagramICPState) -> None:
+        self.prepare()
+        _write_json(self._icp_state_path(state.icp.key), state.as_dict())
+
+    def resolved_icps(
+        self,
+        *,
+        custom_parameters: Mapping[str, Any] | None = None,
+    ) -> tuple[InstagramICP, ...]:
+        resolved_profiles = resolve_instagram_icp_profiles(
+            self.read_icp_profiles(),
+            self.read_custom_parameters() if custom_parameters is None else custom_parameters,
+        )
+        if not resolved_profiles:
+            return tuple(state.icp for state in self.list_icp_states(current_only=False))
+        return tuple(InstagramICP(description=value) for value in resolved_profiles)
+
+    def list_icp_states(
+        self,
+        *,
+        current_only: bool = False,
+        custom_parameters: Mapping[str, Any] | None = None,
+    ) -> list[InstagramICPState]:
+        if not self.icps_dir.exists():
+            return []
+        if current_only:
+            states: list[InstagramICPState] = []
+            for icp in self.resolved_icps(custom_parameters=custom_parameters):
+                state = self._read_icp_state_or_none(icp.key)
+                if state is None:
+                    continue
+                states.append(state)
+            return states
+        paths = sorted(self.icps_dir.glob("*.json"))
+        return [InstagramICPState.from_dict(_read_json_file(path, expected_type=dict)) for path in paths]
+
     def read_search_history(self) -> list[InstagramSearchRecord]:
+        icp_states = self.list_icp_states(current_only=True)
+        flattened = [record for state in icp_states for record in state.searches]
+        if flattened:
+            return sorted(flattened, key=lambda item: (item.searched_at, item.keyword.lower(), item.query))
+        return self.read_legacy_search_history()
+
+    def read_legacy_search_history(self) -> list[InstagramSearchRecord]:
         payload = _read_json_file(self.search_history_path, expected_type=list)
         return [InstagramSearchRecord.from_dict(item) for item in payload]
 
-    def read_recent_searches(self, limit: int) -> list[InstagramSearchRecord]:
-        return self.read_search_history()[-limit:]
+    def read_recent_searches(
+        self,
+        limit: int,
+        *,
+        icp_key: str | None = None,
+    ) -> list[InstagramSearchRecord]:
+        if icp_key is None:
+            return self.read_search_history()[-limit:]
+        state = self._read_icp_state_or_none(icp_key)
+        if state is not None and state.searches:
+            return state.searches[-limit:]
+        icp_states = self.list_icp_states(current_only=True)
+        if len(icp_states) <= 1:
+            return self.read_legacy_search_history()[-limit:]
+        return []
 
-    def append_search(self, record: InstagramSearchRecord) -> None:
-        history = self.read_search_history()
-        history.append(record)
-        _write_json(self.search_history_path, [item.as_dict() for item in history])
+    def append_search(
+        self,
+        record: InstagramSearchRecord,
+        *,
+        icp_key: str | None = None,
+    ) -> None:
+        if icp_key is None:
+            history = self.read_legacy_search_history()
+            history.append(record)
+            _write_json(self.search_history_path, [item.as_dict() for item in history])
+            return
+        state = self.read_icp_state(icp_key)
+        state.searches.append(record)
+        self.write_icp_state(state)
 
-    def has_searched(self, keyword: str) -> bool:
+    def has_searched(self, keyword: str, *, icp_key: str | None = None) -> bool:
         normalized_keyword = keyword.strip().lower()
         if not normalized_keyword:
             return False
-        return any(record.keyword.lower() == normalized_keyword for record in self.read_search_history())
+        return any(
+            record.keyword.lower() == normalized_keyword
+            for record in self.read_recent_searches_for_dedupe(icp_key=icp_key)
+        )
+
+    def read_recent_searches_for_dedupe(self, *, icp_key: str | None = None) -> list[InstagramSearchRecord]:
+        if icp_key is None:
+            return self.read_search_history()
+        state = self._read_icp_state_or_none(icp_key)
+        if state is not None and state.searches:
+            return list(state.searches)
+        icp_states = self.list_icp_states(current_only=True)
+        if len(icp_states) <= 1:
+            return self.read_legacy_search_history()
+        return []
+
+    def read_recent_searches_by_icp(self, limit: int) -> list[dict[str, Any]]:
+        payload: list[dict[str, Any]] = []
+        for state in self.list_icp_states(current_only=True):
+            payload.append(
+                {
+                    "completed_at": state.completed_at,
+                    "icp_description": state.icp.description,
+                    "icp_key": state.icp.key,
+                    "recent_searches": [entry.as_dict() for entry in state.searches[-limit:]],
+                    "search_count": len(state.searches),
+                    "status": state.status,
+                }
+            )
+        return payload
 
     def read_lead_database(self) -> InstagramLeadDatabase:
         payload = _read_json_file(self.lead_database_path, expected_type=dict)
@@ -374,6 +605,15 @@ class InstagramMemoryStore:
 
     def write_additional_prompt(self, text: str) -> None:
         _write_text(self.additional_prompt_path, text)
+
+    def _icp_state_path(self, icp_key: str) -> Path:
+        return self.icps_dir / f"{icp_key}.json"
+
+    def _read_icp_state_or_none(self, icp_key: str) -> InstagramICPState | None:
+        path = self._icp_state_path(icp_key)
+        if not path.exists():
+            return None
+        return InstagramICPState.from_dict(_read_json_file(path, expected_type=dict))
 
 
 def build_instagram_google_query(keyword: str) -> str:
@@ -472,7 +712,9 @@ INSTAGRAM_HARNESS_MANIFEST = HarnessManifest(
     custom_parameters_open_ended=True,
     memory_files=(
         HarnessMemoryFileSpec("icp_profiles", ICP_PROFILES_FILENAME, "Persisted ICP descriptions.", format="json"),
-        HarnessMemoryFileSpec("search_history", SEARCH_HISTORY_FILENAME, "Durable Instagram search history.", format="json"),
+        HarnessMemoryFileSpec("search_history", SEARCH_HISTORY_FILENAME, "Legacy flat Instagram search history kept for backward compatibility.", format="json"),
+        HarnessMemoryFileSpec("run_state", RUN_STATE_FILENAME, "Durable multi-ICP Instagram run state.", format="json"),
+        HarnessMemoryFileSpec("icp_states", f"{ICPS_DIRNAME}/*.json", "Per-ICP Instagram search history and completion state.", format="json"),
         HarnessMemoryFileSpec("lead_database", LEAD_DATABASE_FILENAME, "Persisted deduplicated leads and emails.", format="json"),
         HarnessMemoryFileSpec("runtime_parameters", RUNTIME_PARAMETERS_FILENAME, "Persisted typed runtime overrides.", format="json"),
         HarnessMemoryFileSpec("custom_parameters", CUSTOM_PARAMETERS_FILENAME, "Open-ended user custom parameter payload.", format="json"),
@@ -595,9 +837,14 @@ def _normalize_email_match(value: str) -> str:
     return re.sub(r"\s+", "", value.strip()).lower()
 
 
+def _slugify(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+
+
 __all__ = [
     "ADDITIONAL_PROMPT_FILENAME",
     "AGENT_IDENTITY_FILENAME",
+    "CUSTOM_PARAMETERS_FILENAME",
     "DEFAULT_AGENT_IDENTITY",
     "DEFAULT_INSTAGRAM_BROWSER_CHANNEL",
     "DEFAULT_INSTAGRAM_BROWSER_INIT_SCRIPT",
@@ -609,20 +856,24 @@ __all__ = [
     "DEFAULT_RECENT_RESULT_WINDOW",
     "DEFAULT_RECENT_SEARCH_WINDOW",
     "DEFAULT_SEARCH_RESULT_LIMIT",
-    "CUSTOM_PARAMETERS_FILENAME",
+    "ICPS_DIRNAME",
     "ICP_PROFILES_FILENAME",
     "INSTAGRAM_HARNESS_MANIFEST",
     "INSTAGRAM_GOOGLE_SEARCH_URL",
+    "InstagramICP",
+    "InstagramICPState",
     "InstagramKeywordAgentConfig",
     "InstagramLeadDatabase",
     "InstagramLeadRecord",
     "InstagramMemoryStore",
+    "InstagramRunState",
     "InstagramSearchBackend",
     "InstagramSearchExecution",
     "InstagramSearchRecord",
     "LEAD_DATABASE_FILENAME",
     "LeadMergeSummary",
     "RUNTIME_PARAMETERS_FILENAME",
+    "RUN_STATE_FILENAME",
     "SEARCH_HISTORY_FILENAME",
     "build_instagram_google_fallback_query",
     "build_instagram_google_query",
