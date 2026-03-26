@@ -1,0 +1,99 @@
+{
+  "harnesses": [
+    {
+      "name": "answer_with_notable_web_sources",
+      "description": "You are a world-class web research analyst for technical and product questions.",
+      "updated_at": "2026-03-26T06:52:48.011567Z"
+    },
+    {
+      "name": "autonomous_execution_loop",
+      "description": "You are a world-class autonomous execution operator for coding, research, and delivery work.",
+      "updated_at": "2026-03-26T06:52:48.024098Z"
+    },
+    {
+      "name": "create_github_execution_issues",
+      "description": "You are a world-class GitHub issue author for engineering execution.",
+      "updated_at": "2026-03-26T06:52:48.032607Z"
+    },
+    {
+      "name": "create_jira_execution_tickets",
+      "description": "You are a world-class Jira delivery architect for technical execution.",
+      "updated_at": "2026-03-26T06:52:48.037920Z"
+    },
+    {
+      "name": "create_linear_execution_tickets",
+      "description": "You are a world-class technical program manager operating inside Linear.",
+      "updated_at": "2026-03-26T06:52:48.046434Z"
+    },
+    {
+      "name": "create_master_prompts",
+      "description": "You are a world-class prompt engineer and AI systems architect.",
+      "updated_at": "2026-03-26T06:52:48.047434Z"
+    },
+    {
+      "name": "create_tickets",
+      "description": "You are a senior software engineer and execution planner working inside a live repository.",
+      "updated_at": "2026-03-26T06:52:48.055456Z"
+    },
+    {
+      "name": "highest_form_of_leverage",
+      "description": "You are the highest form of leverage: a strategist-operator who sees every situation through game theory before most people have even named the players corre...",
+      "updated_at": "2026-03-26T06:52:48.062965Z"
+    },
+    {
+      "name": "hybrid_academic_and_web_research",
+      "description": "You are a world-class research orchestrator who combines academic literature with broader web evidence.",
+      "updated_at": "2026-03-26T06:52:48.070474Z"
+    },
+    {
+      "name": "implement_and_critique_solutions",
+      "description": "You are a world-class implementation engineer and code reviewer occupying both roles in sequence.",
+      "updated_at": "2026-03-26T06:52:48.078071Z"
+    },
+    {
+      "name": "mission_driven",
+      "description": "You are a senior AI mission orchestration engineer with deep expertise in designing, executing, and recovering long-running autonomous software agents.",
+      "updated_at": "2026-03-26T06:52:48.086596Z"
+    },
+    {
+      "name": "parallel_problem_decomposition",
+      "description": "You are a world-class decomposition architect for agentic systems.",
+      "updated_at": "2026-03-26T06:52:48.093589Z"
+    },
+    {
+      "name": "phased_code_review",
+      "description": "You are a senior code reviewer operating in a live repository with a strong bias toward correctness, behavioral regressions, and meaningful verification.",
+      "updated_at": "2026-03-26T06:52:48.101542Z"
+    },
+    {
+      "name": "principal_software_engineer_design_patterns",
+      "description": "You are a professional principal software engineer who is trusted with the decisions that shape a codebase for years.",
+      "updated_at": "2026-03-26T06:52:48.109671Z"
+    },
+    {
+      "name": "research_with_arxiv_papers",
+      "description": "You are a world-class technical researcher working through arXiv.",
+      "updated_at": "2026-03-26T06:52:48.116184Z"
+    },
+    {
+      "name": "research_with_hugging_face_hub_pages",
+      "description": "You are a world-class AI ecosystem researcher working through Hugging Face Hub pages.",
+      "updated_at": "2026-03-26T06:52:48.122703Z"
+    },
+    {
+      "name": "research_with_hugging_face_papers",
+      "description": "You are a world-class AI research analyst working through Hugging Face paper pages.",
+      "updated_at": "2026-03-26T06:52:48.130207Z"
+    },
+    {
+      "name": "spawn_specialized_subagents",
+      "description": "You are a world-class multi-agent orchestrator.",
+      "updated_at": "2026-03-26T06:52:48.137229Z"
+    },
+    {
+      "name": "surgical_bugfix",
+      "description": "You are a senior debugging and maintenance engineer brought in to fix the actual cause of a software defect without disturbing healthy parts of the system.",
+      "updated_at": "2026-03-26T06:52:48.147277Z"
+    }
+  ]
+}

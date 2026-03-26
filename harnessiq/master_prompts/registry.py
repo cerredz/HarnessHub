@@ -1,12 +1,15 @@
-"""MasterPrompt dataclass and registry for loading bundled master prompts."""
+"""MasterPrompt dataclass and registry for loading artifact-backed master prompts."""
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from importlib import resources
 from pathlib import Path
 from typing import Iterator
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PROMPTS_DIR = REPO_ROOT / "artifacts" / "prompts"
+REGISTRY_PATH = PROMPTS_DIR / "registry.json"
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,11 +30,11 @@ class MasterPrompt:
 
 
 class MasterPromptRegistry:
-    """Load and retrieve master prompts bundled with the harnessiq package.
+    """Load and retrieve master prompts from repository prompt artifacts.
 
-    Prompts are stored as JSON files under ``harnessiq/master_prompts/prompts/``.
-    Each file must contain ``title``, ``description``, and ``prompt`` fields.
-    The prompt key is the filename without the ``.json`` extension.
+    Prompts are stored as Markdown files under ``artifacts/prompts/``.
+    The registry metadata is read from ``artifacts/prompts/registry.json`` when present.
+    The prompt key is the filename without the ``.md`` extension.
 
     Example::
 
@@ -78,35 +81,49 @@ class MasterPromptRegistry:
     def _load_all(self) -> dict[str, MasterPrompt]:
         if self._cache is not None:
             return self._cache
+        descriptions = _load_registry_descriptions()
         self._cache = {}
-        for key, data in _iter_prompt_files():
+        for key, prompt_text in _iter_prompt_files():
             self._cache[key] = MasterPrompt(
                 key=key,
-                title=str(data["title"]),
-                description=str(data["description"]),
-                prompt=str(data["prompt"]),
+                title=_slug_to_title(key),
+                description=descriptions.get(key, "HarnessHub master prompt"),
+                prompt=prompt_text,
             )
         return self._cache
 
 
-def _iter_prompt_files() -> Iterator[tuple[str, dict]]:
-    """Yield (key, parsed_json) for every .json file in the prompts package."""
+def _iter_prompt_files() -> Iterator[tuple[str, str]]:
+    """Yield ``(key, prompt_text)`` for every prompt artifact."""
+    for prompt_path in sorted(PROMPTS_DIR.glob("*.md")):
+        yield prompt_path.stem, prompt_path.read_text(encoding="utf-8")
+
+
+def _load_registry_descriptions() -> dict[str, str]:
+    if not REGISTRY_PATH.exists():
+        return {}
     try:
-        # importlib.resources is the correct way to locate package data files
-        # in both editable installs and built distributions.
-        prompts_package = resources.files("harnessiq.master_prompts.prompts")
-        for item in prompts_package.iterdir():
-            if item.name.endswith(".json"):
-                key = item.name[: -len(".json")]
-                data = json.loads(item.read_text(encoding="utf-8"))
-                yield key, data
-    except (TypeError, FileNotFoundError):
-        # Fallback for environments where importlib.resources.files is unavailable
-        prompts_dir = Path(__file__).parent / "prompts"
-        for json_path in sorted(prompts_dir.glob("*.json")):
-            key = json_path.stem
-            data = json.loads(json_path.read_text(encoding="utf-8"))
-            yield key, data
+        import json
+
+        payload = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    harnesses = payload.get("harnesses")
+    if not isinstance(harnesses, list):
+        return {}
+    descriptions: dict[str, str] = {}
+    for item in harnesses:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name", "")).strip()
+        description = str(item.get("description", "")).strip()
+        if name and description:
+            descriptions[name] = description
+    return descriptions
+
+
+def _slug_to_title(slug: str) -> str:
+    return slug.replace("_", " ").replace("-", " ").title()
 
 
 __all__ = [
