@@ -54,7 +54,7 @@ class DocsSyncTests(unittest.TestCase):
     def test_check_outputs_flags_stale_live_inventory_artifact(self) -> None:
         legacy_path = ROOT / "artifacts" / "live_inventory.json"
         legacy_path.write_text("stale\n", encoding="utf-8")
-        self.addCleanup(legacy_path.unlink, True)
+        self.addCleanup(legacy_path.unlink, missing_ok=True)
 
         drifted = self.sync_repo_docs.check_outputs(self.sync_repo_docs.expected_outputs())
 
@@ -63,7 +63,7 @@ class DocsSyncTests(unittest.TestCase):
     def test_write_outputs_removes_stale_live_inventory_artifact(self) -> None:
         legacy_path = ROOT / "artifacts" / "live_inventory.json"
         legacy_path.write_text("stale\n", encoding="utf-8")
-        self.addCleanup(legacy_path.unlink, True)
+        self.addCleanup(legacy_path.unlink, missing_ok=True)
 
         self.sync_repo_docs.write_outputs({})
 
@@ -123,6 +123,31 @@ class DocsSyncTests(unittest.TestCase):
         self.assertIn("harnessiq/cli/adapters/utils/", focused_subpackages)
         self.assertIn("harnessiq/config/provider_credentials/", focused_subpackages)
         self.assertIn("harnessiq/utils/harness_manifest/", focused_subpackages)
+
+    def test_top_level_directory_classifier_preserves_exact_match_metadata(self) -> None:
+        classified = self.sync_repo_docs.classify_top_level_directory(ROOT / "artifacts")
+        self.assertEqual(classified["kind"], "repo docs")
+        self.assertEqual(
+            classified["description"],
+            "Generated and curated repository reference artifacts.",
+        )
+
+    def test_top_level_directory_classifier_handles_local_state_overrides(self) -> None:
+        worktrees = self.sync_repo_docs.classify_top_level_directory(ROOT / ".worktrees")
+        self.assertEqual(worktrees["kind"], "local state")
+        self.assertIn("Git worktree checkouts", worktrees["description"])
+
+        data = self.sync_repo_docs.classify_top_level_directory(ROOT / "data")
+        self.assertEqual(data["kind"], "local state")
+        self.assertIn("Local datasets, exports, and scratch runtime artifacts", data["description"])
+
+    def test_top_level_directory_classifier_uses_generic_fallback_for_unknown_names(self) -> None:
+        classified = self.sync_repo_docs.classify_top_level_directory(ROOT / "unclassified-root")
+        self.assertEqual(classified["kind"], "other")
+        self.assertEqual(
+            classified["description"],
+            "Repository directory not yet classified in the generated file index.",
+        )
 
     def test_google_drive_operation_count_matches_live_catalog(self) -> None:
         inventory = self.sync_repo_docs.build_inventory()
