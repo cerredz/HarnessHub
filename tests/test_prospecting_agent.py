@@ -8,7 +8,7 @@ from pathlib import Path
 
 from harnessiq.agents.prospecting.agent import GoogleMapsProspectingAgent
 from harnessiq.shared.agents import AgentModelRequest, AgentModelResponse, AgentRuntimeConfig
-from harnessiq.shared.prospecting import ProspectingMemoryStore
+from harnessiq.shared.prospecting import DEFAULT_QUALIFICATION_THRESHOLD, ProspectingMemoryStore
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
 
 
@@ -34,6 +34,9 @@ def _runner(system_prompt, sections, label):  # noqa: ANN001
 
 
 class GoogleMapsProspectingAgentTests(unittest.TestCase):
+    def test_default_qualification_threshold_matches_thirty_point_rubric(self) -> None:
+        self.assertEqual(DEFAULT_QUALIFICATION_THRESHOLD, 16)
+
     def test_custom_tools_are_added_to_the_agent_surface(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             custom_tool = RegisteredTool(
@@ -80,6 +83,22 @@ class GoogleMapsProspectingAgentTests(unittest.TestCase):
                     "Recent Qualified Leads",
                 ],
             )
+
+    def test_build_system_prompt_uses_updated_ai_discoverability_prompt(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = GoogleMapsProspectingAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                memory_path=temp_dir,
+                company_description="Owner-operated dental practices in New Jersey",
+                json_subcall_runner=_runner,
+            )
+            agent.prepare()
+
+            prompt = agent.build_system_prompt()
+
+            self.assertIn("AI discoverability services", prompt)
+            self.assertIn("PHASE 2 - PROSPECTING WORKFLOW", prompt)
+            self.assertIn("Run State.searches_completed_count", prompt)
 
     def test_shared_and_internal_tools_persist_state(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -198,6 +217,54 @@ class GoogleMapsProspectingAgentTests(unittest.TestCase):
 
             self.assertEqual(result.status, "completed")
             self.assertEqual(agent.memory_store.read_state().run_status, "in_progress")
+
+    def test_evaluate_company_replaces_threshold_placeholder_in_subcall_prompt(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            captured: dict[str, str] = {}
+
+            def runner(system_prompt, sections, label):  # noqa: ANN001
+                del sections
+                if label == "evaluate_company":
+                    captured["system_prompt"] = system_prompt
+                    return {
+                        "score": 21,
+                        "verdict": "QUALIFIED",
+                        "score_breakdown": {
+                            "competitive_burial_depth": 2,
+                            "review_volume_gap": 2,
+                            "review_language_and_ai_query_match": 2,
+                            "website_quality_and_ai_scrapability": 2,
+                            "business_description_quality": 2,
+                            "category_specificity_and_query_surface_area": 2,
+                            "profile_attribute_completeness": 2,
+                            "content_freshness_and_ai_crawl_signal": 2,
+                            "qa_section_quality": 2,
+                            "industry_margin_and_ai_query_frequency": 3,
+                        },
+                        "pitch_hook": "Specific gap summary.",
+                    }
+                return _runner(system_prompt, sections, label)
+
+            agent = GoogleMapsProspectingAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                memory_path=temp_dir,
+                company_description="Owner-operated dental practices in New Jersey",
+                qualification_threshold=21,
+                eval_system_prompt="Qualification threshold: score >= {{qualification_threshold}} out of 30.",
+                json_subcall_runner=runner,
+            )
+            agent.prepare()
+
+            result = agent.tool_executor.execute(
+                "eval.evaluate_company",
+                {"listing_data": {"business_name": "Edison Family Dental"}},
+            )
+
+            self.assertEqual(result.output["score"], 21)
+            self.assertEqual(
+                captured["system_prompt"],
+                "Qualification threshold: score >= 21 out of 30.",
+            )
 
     def test_runtime_config_preserves_langsmith_settings(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -273,6 +273,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
 
     def load_parameter_sections(self) -> Sequence[AgentParameterSection]:
         state = self._memory_store.read_state()
+        searches_completed_count = max(0, state.last_completed_search_index + 1)
         recent_searches = [
             {
                 "index": record.index,
@@ -304,6 +305,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
                 "Run State",
                 {
                     "last_completed_search_index": state.last_completed_search_index,
+                    "searches_completed_count": searches_completed_count,
                     "current_search_in_progress": (
                         state.current_search_in_progress.as_dict()
                         if state.current_search_in_progress is not None
@@ -314,6 +316,8 @@ class GoogleMapsProspectingAgent(BaseAgent):
                     "qualified_leads_posted": state.qualified_leads_posted,
                     "disqualified_leads_count": state.disqualified_leads_count,
                     "session_reset_count": state.session_reset_count,
+                    "run_status": state.run_status,
+                    "error_log": list(state.error_log),
                 },
             ),
             json_parameter_section("Recent Completed Searches", recent_searches),
@@ -446,7 +450,10 @@ class GoogleMapsProspectingAgent(BaseAgent):
 
     def _handle_evaluate_company(self, arguments: dict[str, Any]) -> dict[str, Any]:
         payload = self._run_json_subcall(
-            system_prompt=self._config.eval_system_prompt,
+            system_prompt=self._config.eval_system_prompt.replace(
+                "{{qualification_threshold}}",
+                str(self._config.qualification_threshold),
+            ),
             sections=(
                 AgentParameterSection(
                     title="Company Description",
