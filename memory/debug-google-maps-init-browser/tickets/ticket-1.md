@@ -1,5 +1,6 @@
 Title: Open Google Maps during prospecting browser session bootstrap
 Issue URL: https://github.com/cerredz/HarnessHub/issues/275
+PR URL: https://github.com/cerredz/HarnessHub/pull/277
 
 Intent:
 Restore a usable operator bootstrap flow for the Google Maps prospecting agent so `harnessiq prospecting init-browser` opens directly into Google Maps and lets the user authenticate or inspect the session without landing on a blank page.
