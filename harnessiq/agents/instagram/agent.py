@@ -8,6 +8,17 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from harnessiq.agents.base import BaseAgent
+from harnessiq.agents.helpers import (
+    find_repo_root as _find_repo_root,
+    resolve_memory_path as _resolve_memory_path,
+    utc_now_z as _utcnow,
+)
+from harnessiq.agents.instagram.helpers import (
+    build_instagram_instance_payload as _build_instagram_instance_payload,
+    is_search_only_response as _is_search_only_response,
+    merge_recent_keywords as _merge_recent_keywords,
+    normalize_icp_descriptions as _normalize_icp_descriptions,
+)
 from harnessiq.shared.agents import (
     DEFAULT_AGENT_MAX_TOKENS,
     DEFAULT_AGENT_RESET_THRESHOLD,
@@ -149,7 +160,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> "InstagramKeywordDiscoveryAgent":
-        resolved_path = _resolve_memory_path(memory_path)
+        resolved_path = _resolve_memory_path(memory_path, default_path=_DEFAULT_MEMORY_PATH)
         store = InstagramMemoryStore(memory_path=resolved_path)
         store.prepare()
         runtime_parameters = store.read_runtime_parameters()
@@ -225,21 +236,21 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
                 f"Instagram master prompt not found at '{_MASTER_PROMPT_PATH}'. "
                 "Ensure the prompt file exists."
             )
-        prompt = _MASTER_PROMPT_PATH.read_text(encoding="utf-8").strip()
+        prompt_template = _MASTER_PROMPT_PATH.read_text(encoding="utf-8").strip()
         identity = (
             self._memory_store.read_agent_identity()
             if self._memory_store.agent_identity_path.exists()
             else DEFAULT_AGENT_IDENTITY
-        ).strip()
-        parts = [part for part in (identity, prompt) if part]
+        ).strip() or DEFAULT_AGENT_IDENTITY
+        prompt = prompt_template.replace("{{IDENTITY}}", identity)
         additional_prompt = (
             self._memory_store.read_additional_prompt()
             if self._memory_store.additional_prompt_path.exists()
             else ""
         ).strip()
         if additional_prompt:
-            parts.append(additional_prompt)
-        return "\n\n".join(parts)
+            prompt = f"{prompt}\n\n## Additional Instructions\n{additional_prompt}"
+        return prompt
 
     def load_parameter_sections(self) -> Sequence[AgentParameterSection]:
         recent_searches = ", ".join(self._recent_search_keywords_for_context())
@@ -323,71 +334,39 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
 
         cycles_completed = 0
         try:
+            # Rotate through each configured ICP in persisted order.
             for icp_index in range(self._active_icp_index, len(self._icps)):
                 self._activate_icp(icp_index)
                 self._transcript.clear()
                 self.refresh_parameters()
 
+                # Work the active ICP until it completes, pauses, or hits max_cycles.
                 while max_cycles is None or cycles_completed < max_cycles:
-                    self._cycle_index = cycles_completed + 1
-                    request = self.build_model_request()
-                    total_estimated_request_tokens += request.estimated_tokens()
-                    response = self._model.generate_turn(request)
+                    response, pause_reason, token_count = self._run_active_icp_iteration(
+                        cycles_completed=cycles_completed
+                    )
+                    total_estimated_request_tokens += token_count
                     cycles_completed += 1
-                    self._record_assistant_response(response)
 
-                    if response.pause_reason is not None:
+                    if pause_reason is not None:
                         self._persist_run_state(status="running", active_icp_index=icp_index)
                         return self._complete_run(
                             AgentRunResult(
                                 status="paused",
                                 cycles_completed=cycles_completed,
                                 resets=self._reset_count,
-                                pause_reason=response.pause_reason,
+                                pause_reason=pause_reason,
                             ),
                             started_at=started_at,
                             total_estimated_request_tokens=total_estimated_request_tokens,
                         )
 
-                    pause_signal: AgentPauseSignal | None = None
-                    for requested_tool_call in response.tool_calls:
-                        tool_call, result, pause_signal = self._prepare_tool_call(requested_tool_call)
-                        if pause_signal is not None:
-                            break
-                        assert tool_call is not None  # noqa: S101
-                        if result is None:
-                            result = self._execute_tool(tool_call)
-                        result, hook_pause_signal = self._finalize_tool_result(tool_call, result)
-                        if self._apply_compaction_result(result):
-                            if hook_pause_signal is not None:
-                                pause_signal = hook_pause_signal
-                                break
-                            continue
-                        self._record_tool_result(result)
-                        if hook_pause_signal is not None:
-                            pause_signal = hook_pause_signal
-                            break
-                        if isinstance(result.output, AgentPauseSignal):
-                            pause_signal = result.output
-                            break
-
-                    if pause_signal is not None:
-                        self._persist_run_state(status="running", active_icp_index=icp_index)
-                        return self._complete_run(
-                            AgentRunResult(
-                                status="paused",
-                                cycles_completed=cycles_completed,
-                                resets=self._reset_count,
-                                pause_reason=pause_signal.reason,
-                            ),
-                            started_at=started_at,
-                            total_estimated_request_tokens=total_estimated_request_tokens,
-                        )
-
+                    # Advance to the next ICP once the model says this one is done.
                     if not response.should_continue:
                         self._complete_icp(icp_index)
                         break
 
+                    # Only prune or reset context when the active ICP still has more work.
                     if self._should_prune_context():
                         self.reset_context()
                     if self._should_reset_context():
@@ -415,6 +394,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             )
             raise
 
+        # Mark the full run complete once every ICP has finished.
         completed_at = _utcnow()
         existing_state = self._read_existing_run_state()
         self._memory_store.write_run_state(
@@ -435,6 +415,47 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             started_at=started_at,
             total_estimated_request_tokens=total_estimated_request_tokens,
         )
+
+    def _run_active_icp_iteration(
+        self,
+        *,
+        cycles_completed: int,
+    ) -> tuple[AgentModelResponse, str | None, int]:
+        self._cycle_index = cycles_completed + 1
+        request = self.build_model_request()
+        token_count = request.estimated_tokens()
+        response = self._model.generate_turn(request)
+        self._record_assistant_response(response)
+        if response.pause_reason is not None:
+            return response, response.pause_reason, token_count
+        pause_signal = self._process_tool_calls(response)
+        if pause_signal is not None:
+            return response, pause_signal.reason, token_count
+        return response, None, token_count
+
+    def _process_tool_calls(self, response: AgentModelResponse) -> AgentPauseSignal | None:
+        pause_signal: AgentPauseSignal | None = None
+        for requested_tool_call in response.tool_calls:
+            tool_call, result, pause_signal = self._prepare_tool_call(requested_tool_call)
+            if pause_signal is not None:
+                break
+            assert tool_call is not None  # noqa: S101
+            if result is None:
+                result = self._execute_tool(tool_call)
+            result, hook_pause_signal = self._finalize_tool_result(tool_call, result)
+            if self._apply_compaction_result(result):
+                if hook_pause_signal is not None:
+                    pause_signal = hook_pause_signal
+                    break
+                continue
+            self._record_tool_result(result)
+            if hook_pause_signal is not None:
+                pause_signal = hook_pause_signal
+                break
+            if isinstance(result.output, AgentPauseSignal):
+                pause_signal = result.output
+                break
+        return pause_signal
 
     def _execute_tool(self, tool_call: ToolCall) -> ToolResult:
         if tool_call.tool_key == INSTAGRAM_SEARCH_KEYWORD:
@@ -563,126 +584,6 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
     def _current_icp_description(self) -> str:
         icp = self._current_icp()
         return icp.description if icp is not None else ""
-
-
-def _resolve_memory_path(memory_path: str | Path | None) -> Path:
-    if memory_path is None:
-        return _DEFAULT_MEMORY_PATH
-    return Path(memory_path)
-
-
-def _normalize_icp_descriptions(icp_descriptions: Iterable[str]) -> tuple[str, ...]:
-    normalized: list[str] = []
-    for description in icp_descriptions:
-        cleaned = str(description).strip()
-        if cleaned:
-            normalized.append(cleaned)
-    return tuple(normalized)
-
-
-def _is_search_only_response(response: AgentModelResponse) -> bool:
-    return bool(response.tool_calls) and all(
-        tool_call.tool_key == INSTAGRAM_SEARCH_KEYWORD for tool_call in response.tool_calls
-    )
-
-
-def _merge_recent_keywords(
-    *keyword_groups: Iterable[str],
-    limit: int,
-) -> tuple[str, ...]:
-    merged: list[str] = []
-    seen: set[str] = set()
-    for group in keyword_groups:
-        for keyword in group:
-            cleaned = str(keyword).strip()
-            if not cleaned:
-                continue
-            normalized = cleaned.lower()
-            if normalized in seen:
-                continue
-            seen.add(normalized)
-            merged.append(cleaned)
-    if limit <= 0:
-        return tuple(merged)
-    return tuple(merged[-limit:])
-
-
-def _build_instagram_instance_payload(
-    *,
-    memory_path: Path | None,
-    icp_descriptions: tuple[str, ...],
-    max_tokens: int,
-    reset_threshold: float,
-    recent_search_window: int,
-    recent_result_window: int,
-    search_result_limit: int,
-    custom_parameters: Mapping[str, Any] | None = None,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "icp_descriptions": list(icp_descriptions),
-        "runtime": {
-            "max_tokens": max_tokens,
-            "recent_result_window": recent_result_window,
-            "recent_search_window": recent_search_window,
-            "reset_threshold": reset_threshold,
-            "search_result_limit": search_result_limit,
-        },
-    }
-    if custom_parameters:
-        payload["custom_parameters"] = dict(custom_parameters)
-    if memory_path is not None:
-        payload["memory_path"] = str(memory_path)
-    if memory_path is None or not memory_path.exists():
-        return payload
-
-    store = InstagramMemoryStore(memory_path=memory_path)
-    resolved_custom_parameters = (
-        dict(custom_parameters) if custom_parameters is not None else store.read_custom_parameters()
-    )
-    payload["icp_descriptions"] = resolve_instagram_icp_profiles(
-        store.read_icp_profiles(),
-        resolved_custom_parameters,
-    )
-    payload["agent_identity"] = _read_optional_text(store.agent_identity_path)
-    payload["additional_prompt"] = _read_optional_text(store.additional_prompt_path)
-    if resolved_custom_parameters:
-        payload["custom_parameters"] = resolved_custom_parameters
-    if store.run_state_path.exists():
-        payload["run_state"] = store.read_run_state().as_dict()
-    icp_states = store.list_icp_states(current_only=True, custom_parameters=resolved_custom_parameters)
-    if icp_states:
-        payload["icp_progress"] = [
-            {
-                "completed_at": state.completed_at,
-                "icp": state.icp.as_dict(),
-                "search_count": len(state.searches),
-                "status": state.status,
-            }
-            for state in icp_states
-        ]
-    return payload
-
-
-def _read_optional_text(path: Path) -> str:
-    if not path.exists():
-        return ""
-    return path.read_text(encoding="utf-8").strip()
-
-
-def _find_repo_root(path: Path | None) -> Path:
-    if path is None:
-        return Path.cwd()
-    resolved = path.resolve()
-    for candidate in (resolved, *resolved.parents):
-        if (candidate / ".git").exists():
-            return candidate
-    if resolved.parent.name == "instagram" and resolved.parent.parent.name == "memory":
-        return resolved.parent.parent.parent
-    return Path.cwd()
-
-
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 __all__ = [

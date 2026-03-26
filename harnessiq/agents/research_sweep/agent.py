@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
 from harnessiq.agents.base import BaseAgent
+from harnessiq.agents.research_sweep.helpers import (
+    append_transcript_entry as _append_transcript_entry,
+    utc_today as _utc_today,
+)
 from harnessiq.shared.agents import (
     DEFAULT_AGENT_CONTEXT_MEMORY_FIELD_RULES,
     AgentContextRuntimeState,
@@ -48,8 +51,6 @@ from harnessiq.tools.context import (
     BoundContextToolExecutor,
     build_tool_definition,
     create_context_tools,
-    rebuild_context_window,
-    split_context_window,
 )
 from harnessiq.tools.registry import create_tool_registry
 from harnessiq.tools.serper import create_serper_tools
@@ -463,15 +464,4 @@ class ResearchSweepAgent(BaseAgent):
         memory_store.write_additional_prompt(additional_prompt)
         memory_store.write_runtime_parameters(runtime_parameters)
         memory_store.write_custom_parameters(custom_parameters)
-
-
-def _append_transcript_entry(agent: ResearchSweepAgent, entry: dict[str, Any]) -> list[dict[str, Any]]:
-    parameter_entries, transcript_entries = split_context_window(agent.build_context_window())
-    copied_transcript = [deepcopy(item) for item in transcript_entries]
-    copied_transcript.append(entry)
-    return rebuild_context_window(parameter_entries, copied_transcript)
-
-
-def _utc_today() -> str:
-    return datetime.now(timezone.utc).date().isoformat()
 __all__ = ["ResearchSweepAgent"]

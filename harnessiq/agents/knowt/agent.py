@@ -1,10 +1,13 @@
 """Knowt TikTok content creation agent harness."""
 
 from __future__ import annotations
+
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Sequence
 
 from harnessiq.agents.base import BaseAgent
+from harnessiq.agents.helpers import find_repo_root as _find_repo_root
+from harnessiq.agents.knowt.helpers import build_knowt_instance_payload as _build_knowt_instance_payload
 from harnessiq.shared.agents import (
     DEFAULT_AGENT_MAX_TOKENS,
     DEFAULT_AGENT_RESET_THRESHOLD,
@@ -152,40 +155,3 @@ class KnowtAgent(BaseAgent):
 
 
 __all__ = ["KnowtAgent"]
-
-
-def _build_knowt_instance_payload(
-    *,
-    memory_path: Path,
-    max_tokens: int,
-    reset_threshold: float,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "memory_path": str(memory_path),
-        "runtime": {
-            "max_tokens": max_tokens,
-            "reset_threshold": reset_threshold,
-        },
-    }
-    store = KnowtMemoryStore(memory_path=memory_path)
-    payload["files"] = {
-        "current_avatar_description": _read_optional_text(store.current_avatar_description_path),
-        "current_script": _read_optional_text(store.current_script_path),
-    }
-    return payload
-
-
-def _read_optional_text(path: Path) -> str:
-    if not path.exists():
-        return ""
-    return path.read_text(encoding="utf-8").strip()
-
-
-def _find_repo_root(path: Path) -> Path:
-    resolved = path.resolve()
-    for candidate in (resolved, *resolved.parents):
-        if (candidate / ".git").exists():
-            return candidate
-    if resolved.parent.name == "knowt" and resolved.parent.parent.name == "memory":
-        return resolved.parent.parent.parent
-    return Path.cwd()
