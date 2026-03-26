@@ -3600,6 +3600,12 @@
   },
   "top_level_directories": [
     {
+      "description": "Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable.",
+      "kind": "generated/cache",
+      "name": ".harnessiq",
+      "path": ".harnessiq/"
+    },
+    {
       "description": "Test runner cache; generated, not part of the source of truth.",
       "kind": "generated/cache",
       "name": ".pytest_cache",
