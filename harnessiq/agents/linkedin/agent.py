@@ -3,13 +3,25 @@
 from __future__ import annotations
 
 import json
-import re
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 from urllib import request
 
 from harnessiq.agents.base import BaseAgent
+from harnessiq.agents.helpers import (
+    find_repo_root as _find_repo_root,
+    resolve_memory_path as _resolve_memory_path,
+    utc_now_z as _utcnow,
+    utc_timestamp_for_filename as _timestamp_for_filename,
+)
+from harnessiq.agents.linkedin.helpers import (
+    build_linkedin_instance_payload as _build_linkedin_instance_payload,
+    or_placeholder as _or_placeholder,
+    relative_path_text as _relative_path_text,
+    sanitize_label as _sanitize_label,
+    tool_definition as _tool_definition,
+    unavailable_browser_handler as _unavailable_browser_handler,
+)
 from harnessiq.shared.agents import (
     DEFAULT_AGENT_MAX_TOKENS,
     DEFAULT_AGENT_RESET_THRESHOLD,
@@ -138,7 +150,7 @@ class LinkedInJobApplierAgent(BaseAgent):
         runtime_overrides: Mapping[str, Any] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> "LinkedInJobApplierAgent":
-        resolved_path = _resolve_memory_path(memory_path)
+        resolved_path = _resolve_memory_path(memory_path, default_path=_DEFAULT_MEMORY_PATH)
         memory_store = LinkedInMemoryStore(memory_path=resolved_path)
         memory_store.prepare()
         runtime_parameters = memory_store.read_runtime_parameters()
@@ -513,124 +525,6 @@ def build_linkedin_browser_tool_definitions() -> tuple[ToolDefinition, ...]:
             properties={},
         ),
     )
-
-
-def _resolve_memory_path(memory_path: str | Path | None) -> Path:
-    """Resolve a memory path argument to an absolute Path.
-
-    When ``memory_path`` is ``None`` the agent's default memory directory
-    (``harnessiq/agents/linkedin/memory/``) is used.
-    """
-    if memory_path is None:
-        return _DEFAULT_MEMORY_PATH
-    return Path(memory_path)
-
-
-def _build_linkedin_instance_payload(
-    *,
-    memory_path: Path | None,
-    max_tokens: int,
-    reset_threshold: float,
-    action_log_window: int,
-    linkedin_start_url: str,
-    notify_on_pause: bool,
-    pause_webhook: str | None,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "runtime": {
-            "action_log_window": action_log_window,
-            "linkedin_start_url": linkedin_start_url,
-            "max_tokens": max_tokens,
-            "notify_on_pause": notify_on_pause,
-            "pause_webhook": pause_webhook,
-            "reset_threshold": reset_threshold,
-        }
-    }
-    if memory_path is not None:
-        payload["memory_path"] = str(memory_path)
-    if memory_path is None or not memory_path.exists():
-        return payload
-
-    store = LinkedInMemoryStore(memory_path=memory_path)
-    payload["job_preferences"] = _read_optional_text(store.job_preferences_path)
-    payload["user_profile"] = _read_optional_text(store.user_profile_path)
-    payload["agent_identity"] = _read_optional_text(store.agent_identity_path)
-    payload["additional_prompt"] = _read_optional_text(store.additional_prompt_path)
-    runtime_parameters = store.read_runtime_parameters() if store.runtime_parameters_path.exists() else {}
-    custom_parameters = store.read_custom_parameters() if store.custom_parameters_path.exists() else {}
-    if runtime_parameters:
-        payload["runtime"] = runtime_parameters
-    if custom_parameters:
-        payload["custom"] = custom_parameters
-    return payload
-
-
-def _unavailable_browser_handler(tool_name: str):
-    def handler(arguments: dict[str, Any]) -> dict[str, Any]:
-        message = f"Browser tool '{tool_name}' requires a runtime handler."
-        raise RuntimeError(message)
-
-    return handler
-
-
-def _tool_definition(
-    *,
-    key: str,
-    name: str,
-    description: str,
-    properties: dict[str, Any],
-    required: Sequence[str] = (),
-) -> ToolDefinition:
-    return ToolDefinition(
-        key=key,
-        name=name,
-        description=description,
-        input_schema={
-            "type": "object",
-            "properties": properties,
-            "required": list(required),
-            "additionalProperties": False,
-        },
-    )
-
-
-def _or_placeholder(value: str, placeholder: str) -> str:
-    return value if value else placeholder
-
-
-def _sanitize_label(label: str) -> str:
-    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", label).strip("-")
-    return cleaned or "screenshot"
-
-
-def _relative_path_text(path: Path, root: Path) -> str:
-    return path.resolve().relative_to(root.resolve()).as_posix()
-
-
-def _read_optional_text(path: Path) -> str:
-    if not path.exists():
-        return ""
-    return path.read_text(encoding="utf-8").strip()
-
-
-def _find_repo_root(path: Path | None) -> Path:
-    if path is None:
-        return Path.cwd()
-    resolved = path.resolve()
-    for candidate in (resolved, *resolved.parents):
-        if (candidate / ".git").exists():
-            return candidate
-    if resolved.parent.name == "linkedin" and resolved.parent.parent.name == "memory":
-        return resolved.parent.parent.parent
-    return Path.cwd()
-
-
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def _timestamp_for_filename() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
 __all__ = [

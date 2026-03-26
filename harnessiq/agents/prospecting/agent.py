@@ -3,11 +3,20 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
 from harnessiq.agents.base import BaseAgent
+from harnessiq.agents.helpers import (
+    find_repo_root as _find_repo_root,
+    resolve_memory_path as _resolve_memory_path,
+)
+from harnessiq.agents.prospecting.helpers import (
+    build_instance_payload as _build_instance_payload,
+    create_browser_stub_tools as _create_browser_stub_tools,
+    parse_json_object as _parse_json_object,
+    tool as _tool,
+)
 from harnessiq.shared.agents import (
     DEFAULT_AGENT_MAX_TOKENS,
     DEFAULT_AGENT_RESET_THRESHOLD,
@@ -43,12 +52,8 @@ from harnessiq.shared.prospecting import (
     normalize_prospecting_runtime_parameters,
     utcnow,
 )
-from harnessiq.shared.tools import RegisteredTool, SEARCH_OR_SUMMARIZE, ToolDefinition, ToolResult
-from harnessiq.tools import (
-    build_browser_tool_definitions,
-    create_evaluate_company_tool,
-    create_search_or_summarize_tool,
-)
+from harnessiq.shared.tools import RegisteredTool, SEARCH_OR_SUMMARIZE, ToolResult
+from harnessiq.tools import create_evaluate_company_tool, create_search_or_summarize_tool
 from harnessiq.tools.registry import create_tool_registry
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
@@ -174,7 +179,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
         runtime_config: AgentRuntimeConfig | None = None,
         json_subcall_runner: JsonSubcallRunner | None = None,
     ) -> "GoogleMapsProspectingAgent":
-        resolved_path = _resolve_memory_path(memory_path)
+        resolved_path = _resolve_memory_path(memory_path, default_path=_DEFAULT_MEMORY_PATH)
         store = ProspectingMemoryStore(memory_path=resolved_path)
         store.prepare()
         runtime_parameters = store.read_runtime_parameters()
@@ -687,121 +692,6 @@ class GoogleMapsProspectingAgent(BaseAgent):
         if not response.assistant_message.strip():
             raise ValueError(f"{label} returned empty assistant content.")
         return _parse_json_object(response.assistant_message)
-
-
-def _resolve_memory_path(memory_path: str | Path | None) -> Path:
-    if memory_path is None:
-        return _DEFAULT_MEMORY_PATH
-    return Path(memory_path)
-
-
-def _create_browser_stub_tools() -> tuple[RegisteredTool, ...]:
-    return tuple(
-        RegisteredTool(definition=definition, handler=_unavailable_browser_handler(definition.name))
-        for definition in build_browser_tool_definitions()
-    )
-
-
-def _unavailable_browser_handler(tool_name: str):
-    def handler(arguments: dict[str, Any]) -> dict[str, Any]:
-        del arguments
-        raise RuntimeError(f"Browser tool '{tool_name}' requires a runtime handler.")
-
-    return handler
-
-
-def _tool(
-    *,
-    key: str,
-    name: str,
-    description: str,
-    properties: dict[str, Any],
-    required: Sequence[str],
-    handler: Callable[[dict[str, Any]], dict[str, Any]],
-) -> RegisteredTool:
-    return RegisteredTool(
-        definition=ToolDefinition(
-            key=key,
-            name=name,
-            description=description,
-            input_schema={
-                "type": "object",
-                "properties": properties,
-                "required": list(required),
-                "additionalProperties": False,
-            },
-        ),
-        handler=handler,
-    )
-
-
-def _parse_json_object(raw_text: str) -> dict[str, Any]:
-    text = raw_text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    payload = json.loads(text)
-    if not isinstance(payload, dict):
-        raise ValueError("Expected JSON object response.")
-    return payload
-
-
-def _build_instance_payload(
-    *,
-    memory_path: Path | None,
-    company_description: str | None,
-    max_tokens: int,
-    reset_threshold: float,
-    qualification_threshold: int,
-    summarize_at_x: int,
-    max_searches_per_run: int,
-    max_listings_per_search: int,
-    website_inspect_enabled: bool,
-    sink_record_type: str,
-    eval_system_prompt: str,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "company_description": company_description or "",
-        "runtime": {
-            "max_tokens": max_tokens,
-            "reset_threshold": reset_threshold,
-        },
-        "custom": {
-            "qualification_threshold": qualification_threshold,
-            "summarize_at_x": summarize_at_x,
-            "max_searches_per_run": max_searches_per_run,
-            "max_listings_per_search": max_listings_per_search,
-            "website_inspect_enabled": website_inspect_enabled,
-            "sink_record_type": sink_record_type,
-            "eval_system_prompt": eval_system_prompt,
-        },
-    }
-    if memory_path is not None:
-        payload["memory_path"] = str(memory_path)
-    if memory_path is None or not memory_path.exists():
-        return payload
-    store = ProspectingMemoryStore(memory_path=memory_path)
-    store.prepare()
-    payload["company_description"] = store.read_company_description()
-    payload["agent_identity"] = store.read_agent_identity()
-    payload["additional_prompt"] = store.read_additional_prompt()
-    payload["runtime"] = store.read_runtime_parameters() or payload["runtime"]
-    payload["custom"] = store.read_custom_parameters() or payload["custom"]
-    return payload
-
-
-def _find_repo_root(path: Path | None) -> Path:
-    if path is None:
-        return Path.cwd()
-    resolved = path.resolve()
-    for candidate in (resolved, *resolved.parents):
-        if (candidate / ".git").exists():
-            return candidate
-    if resolved.parent.name == "prospecting" and resolved.parent.parent.name == "memory":
-        return resolved.parent.parent.parent
-    return Path.cwd()
-
-
 __all__ = [
     "GoogleMapsProspectingAgent",
     "ProspectingAgentConfig",

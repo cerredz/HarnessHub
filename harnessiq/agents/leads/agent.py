@@ -7,6 +7,13 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from harnessiq.agents.base import BaseAgent
+from harnessiq.agents.leads.helpers import (
+    build_leads_instance_payload as _build_leads_instance_payload,
+    render_search_history as _render_search_history,
+    timestamped_run_id as _timestamped_run_id,
+    total_searches_for_state as _total_searches_for_state,
+    utc_now_z as _utcnow,
+)
 from harnessiq.shared.agents import (
     DEFAULT_AGENT_MAX_TOKENS,
     DEFAULT_AGENT_RESET_THRESHOLD,
@@ -17,7 +24,6 @@ from harnessiq.shared.agents import (
     AgentRuntimeConfig,
     json_parameter_section,
     merge_agent_runtime_config,
-    render_json_parameter_content,
 )
 from harnessiq.shared.leads import (
     DEFAULT_LEADS_SEARCH_SUMMARY_EVERY,
@@ -26,8 +32,6 @@ from harnessiq.shared.leads import (
     LeadICPState,
     LeadsAgentConfig,
     LeadRunState,
-    LeadSearchRecord,
-    LeadSearchSummary,
     LeadsMemoryStore,
     LeadsStorageBackend,
 )
@@ -415,69 +419,6 @@ class LeadsAgent(BaseAgent):
 
     def _current_icp_state(self) -> LeadICPState:
         return self._memory_store.read_icp_state(self._current_icp().key)
-
-
-def _render_search_history(
-    summaries: Sequence[LeadSearchSummary],
-    recent_searches: Sequence[LeadSearchRecord],
-) -> str:
-    payload = {
-        "summaries": [summary.as_dict() for summary in summaries],
-        "recent_searches": [search.as_dict() for search in recent_searches],
-    }
-    if not payload["summaries"] and not payload["recent_searches"]:
-        return "(no search history recorded yet)"
-    return render_json_parameter_content(payload)
-
-
-def _build_leads_instance_payload(*, config: LeadsAgentConfig) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "memory_path": str(config.memory_path),
-        "run_config": config.run_config.as_dict(),
-        "runtime": {
-            "max_tokens": config.max_tokens,
-            "reset_threshold": config.reset_threshold,
-            "prune_search_interval": config.prune_search_interval,
-            "prune_token_limit": config.prune_token_limit,
-        },
-    }
-    if not config.memory_path.exists():
-        return payload
-
-    store = LeadsMemoryStore(memory_path=config.memory_path)
-    if store.run_state_path.exists():
-        payload["run_state"] = store.read_run_state().as_dict()
-
-    icp_states = store.list_icp_states()
-    if icp_states:
-        payload["icp_progress"] = [
-            {
-                "icp": state.icp.as_dict(),
-                "status": state.status,
-                "search_count": len(state.searches),
-                "summary_count": len(state.summaries),
-                "saved_lead_count": len(state.saved_lead_keys),
-                "completed_at": state.completed_at,
-            }
-            for state in icp_states
-        ]
-    return payload
-
-
-def _total_searches_for_state(state: LeadICPState) -> int:
-    last_search = state.searches[-1].sequence if state.searches else 0
-    last_summary = state.summaries[-1].last_sequence or 0 if state.summaries else 0
-    return max(last_search, last_summary)
-
-
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def _timestamped_run_id() -> str:
-    return f"run_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
-
-
 __all__ = [
     "LEADS_CHECK_SEEN",
     "LEADS_COMPACT_SEARCH_HISTORY",

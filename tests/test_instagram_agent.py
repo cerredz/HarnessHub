@@ -15,7 +15,12 @@ from harnessiq.agents import (
     InstagramMemoryStore,
 )
 from harnessiq.shared.agents import AgentRuntimeConfig
-from harnessiq.shared.instagram import InstagramLeadRecord, InstagramSearchExecution, InstagramSearchRecord
+from harnessiq.shared.instagram import (
+    DEFAULT_AGENT_IDENTITY,
+    InstagramLeadRecord,
+    InstagramSearchExecution,
+    InstagramSearchRecord,
+)
 from harnessiq.shared.instagram import build_instagram_lead_export_rows
 from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
 
@@ -227,6 +232,22 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
 
             self.assertEqual(result.status, "completed")
             self.assertEqual(backend.calls, [("fitness coach", 5), ("fitness coach", 5)])
+
+    def test_system_prompt_uses_structured_identity_goal_and_checklist_sections(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = InstagramKeywordDiscoveryAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                search_backend=_FakeSearchBackend(_build_execution()),
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators",),
+            )
+
+            prompt = agent.build_system_prompt()
+
+            self.assertIn("## Identity", prompt)
+            self.assertIn("## Goal", prompt)
+            self.assertIn("## Action Checklist", prompt)
+            self.assertIn(DEFAULT_AGENT_IDENTITY, prompt)
 
     def test_recent_searches_are_scoped_to_the_active_icp(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

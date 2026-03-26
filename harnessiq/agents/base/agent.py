@@ -35,7 +35,7 @@ from harnessiq.shared.tools import (
 from harnessiq.utils.agent_instances import AgentInstanceRecord, AgentInstanceStore
 from harnessiq.utils.ledger import new_run_id
 
-from .agent_helpers import BaseAgentHelpersMixin, _resolve_repo_root, _utcnow
+from .helpers import BaseAgentHelpersMixin, _resolve_repo_root, _utcnow
 
 
 class BaseAgent(BaseAgentHelpersMixin, ABC):

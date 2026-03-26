@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 from harnessiq.agents.base import BaseAgent
+from harnessiq.agents.exa_outreach.helpers import (
+    build_exa_outreach_instance_payload as _build_exa_outreach_instance_payload,
+    coerce_email_data as _coerce_email_data,
+    create_exa_tools as _create_exa_tools,
+    create_resend_tools as _create_resend_tools,
+    tool_definition as _tool_definition,
+)
+from harnessiq.agents.helpers import find_repo_root as _find_repo_root
+from harnessiq.agents.helpers import utc_now_z as _utcnow
 from harnessiq.shared.agents import (
     DEFAULT_AGENT_MAX_TOKENS,
     DEFAULT_AGENT_RESET_THRESHOLD,
@@ -36,7 +44,6 @@ from harnessiq.shared.tools import (
     EXA_OUTREACH_LOG_EMAIL_SENT,
     EXA_OUTREACH_LOG_LEAD,
     RegisteredTool,
-    ToolDefinition,
 )
 from harnessiq.tools.registry import create_tool_registry
 
@@ -436,122 +443,6 @@ class ExaOutreachAgent(BaseAgent):
             return self._memory_store.read_run(run_id)
         except FileNotFoundError:
             return None
-
-
-def _tool_definition(
-    *,
-    key: str,
-    name: str,
-    description: str,
-    properties: dict[str, Any],
-    required: Sequence[str] = (),
-) -> ToolDefinition:
-    return ToolDefinition(
-        key=key,
-        name=name,
-        description=description,
-        input_schema={
-            "type": "object",
-            "properties": properties,
-            "required": list(required),
-            "additionalProperties": False,
-        },
-    )
-
-
-def _coerce_email_data(
-    email_data: Iterable[EmailTemplate | dict[str, Any]] | None,
-) -> tuple[EmailTemplate, ...]:
-    if email_data is None:
-        return ()
-    templates: list[EmailTemplate] = []
-    for item in email_data:
-        if isinstance(item, EmailTemplate):
-            templates.append(item)
-            continue
-        if isinstance(item, dict):
-            templates.append(EmailTemplate.from_dict(item))
-            continue
-        raise TypeError(f"email_data items must be EmailTemplate or dict, got {type(item)!r}.")
-    return tuple(templates)
-
-
-def _build_exa_outreach_instance_payload(
-    *,
-    memory_path: Path | None,
-    email_data: tuple[EmailTemplate, ...],
-    search_query: str,
-    max_tokens: int,
-    reset_threshold: float,
-    allowed_resend_operations: tuple[str, ...] | None,
-    allowed_exa_operations: tuple[str, ...] | None,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "allowed_exa_operations": list(allowed_exa_operations) if allowed_exa_operations is not None else None,
-        "allowed_resend_operations": list(allowed_resend_operations) if allowed_resend_operations is not None else None,
-        "email_data": [item.as_dict() for item in email_data],
-        "max_tokens": max_tokens,
-        "reset_threshold": reset_threshold,
-        "search_query": search_query,
-    }
-    if memory_path is not None:
-        payload["memory_path"] = str(memory_path)
-    if memory_path is None or not memory_path.exists():
-        return payload
-
-    store = ExaOutreachMemoryStore(memory_path=memory_path)
-    payload["agent_identity"] = _read_optional_text(store.agent_identity_path)
-    payload["additional_prompt"] = _read_optional_text(store.additional_prompt_path)
-    query_config = store.read_query_config() if store.query_config_path.exists() else {}
-    if query_config:
-        payload["query_config"] = query_config
-    return payload
-
-
-def _create_exa_tools(
-    *,
-    credentials: Any | None,
-    client: Any | None,
-    allowed_operations: Sequence[str] | None,
-) -> tuple[RegisteredTool, ...]:
-    from harnessiq.providers.exa.operations import create_exa_tools
-
-    return create_exa_tools(credentials=credentials, client=client, allowed_operations=allowed_operations)
-
-
-def _create_resend_tools(
-    *,
-    credentials: Any | None,
-    client: Any | None,
-    allowed_operations: tuple[str, ...] | None,
-) -> tuple[RegisteredTool, ...]:
-    if credentials is None and client is None:
-        return ()
-    from harnessiq.tools.resend import create_resend_tools
-
-    return create_resend_tools(credentials=credentials, client=client, allowed_operations=allowed_operations)
-
-
-def _read_optional_text(path: Path) -> str:
-    if not path.exists():
-        return ""
-    return path.read_text(encoding="utf-8").strip()
-
-
-def _find_repo_root(path: Path | None) -> Path:
-    if path is None:
-        return Path.cwd()
-    resolved = path.resolve()
-    for candidate in (resolved, *resolved.parents):
-        if (candidate / ".git").exists():
-            return candidate
-    if resolved.parent.name == "outreach" and resolved.parent.parent.name == "memory":
-        return resolved.parent.parent.parent
-    return Path.cwd()
-
-
-def _utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 __all__ = [
