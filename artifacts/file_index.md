@@ -10,12 +10,12 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | --- | --- |
 | Concrete harness manifests | 7 |
 | Top-level CLI commands | 18 |
-| Registered CLI command paths | 128 |
+| Registered CLI command paths | 131 |
 | Model providers | 4 |
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 9 |
-| Test modules | 86 |
+| Test modules | 87 |
 
 ## Codebase Standards
 
@@ -31,7 +31,6 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Kind | Responsibility |
 | --- | --- | --- |
-| `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
 | `.pytest_cache/` | generated/cache | Test runner cache; generated, not part of the source of truth. |
 | `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
 | `docs/` | repo docs | Focused usage and architecture notes for the package. |
@@ -106,7 +105,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | harnessiq models | add, list | Manage reusable provider-backed model profiles | `harnessiq/cli/models/commands.py` |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent | `harnessiq/cli/exa_outreach/commands.py` |
 | harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
-| harnessiq prompts | list, show, text | Inspect bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
+| harnessiq prompts | activate, clear, current, list, show, text | Inspect bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent | `harnessiq/cli/prospecting/commands.py` |
 | harnessiq report | - | Build a cross-agent report from the local ledger | `harnessiq/cli/ledger/commands.py` |
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness | `harnessiq/cli/research_sweep/commands.py` |
@@ -177,7 +176,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 ## Test Surface
 
-`tests/` currently contains 86 test modules. The table below groups them by dominant responsibility.
+`tests/` currently contains 87 test modules. The table below groups them by dominant responsibility.
 
 | Area | Count | Examples |
 | --- | --- | --- |
@@ -185,5 +184,5 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | cli | 9 | `tests/test_exa_outreach_cli.py`, `tests/test_instagram_cli.py`, `tests/test_leads_cli.py` |
 | ledger | 1 | `tests/test_output_sinks.py` |
 | providers | 31 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
-| support | 16 | `tests/test_cli_common.py`, `tests/test_cli_environment.py`, `tests/test_config_loader.py` |
+| support | 17 | `tests/test_cli_common.py`, `tests/test_cli_environment.py`, `tests/test_config_loader.py` |
 | tools | 12 | `tests/test_context_compaction_tools.py`, `tests/test_context_window_tools.py`, `tests/test_general_tools.py` |

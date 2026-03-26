@@ -7,7 +7,7 @@ This artifact is generated from the live `harnessiq/cli/` source tree by `python
 | Metric | Count |
 | --- | --- |
 | Top-level commands | 18 |
-| Registered command paths | 128 |
+| Registered command paths | 131 |
 
 Alias paths are included in the registered command total. Canonical commands list aliases where they exist.
 
@@ -27,7 +27,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq models | add, list | Manage reusable provider-backed model profiles | `harnessiq/cli/models/commands.py` |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent | `harnessiq/cli/exa_outreach/commands.py` |
 | harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
-| harnessiq prompts | list, show, text | Inspect bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
+| harnessiq prompts | activate, clear, current, list, show, text | Inspect bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent | `harnessiq/cli/prospecting/commands.py` |
 | harnessiq report | - | Build a cross-agent report from the local ledger | `harnessiq/cli/ledger/commands.py` |
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness | `harnessiq/cli/research_sweep/commands.py` |
@@ -157,6 +157,9 @@ Alias paths are included in the registered command total. Canonical commands lis
 
 | Command | Description | Source |
 | --- | --- | --- |
+| harnessiq prompts activate | Activate one bundled prompt as always-on project session context for Claude Code and Codex | `harnessiq/cli/master_prompts/commands.py` |
+| harnessiq prompts clear | Remove generated Claude Code and Codex prompt injection overlays | `harnessiq/cli/master_prompts/commands.py` |
+| harnessiq prompts current | Show the currently active project-scoped master prompt, if any | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prompts list | List bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prompts show | Render one bundled master prompt as JSON | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prompts text | Print the raw prompt text for one prompt | `harnessiq/cli/master_prompts/commands.py` |
