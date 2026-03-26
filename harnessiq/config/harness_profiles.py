@@ -32,7 +32,7 @@ class HarnessRunSnapshot:
     """Persisted replay metadata for one platform-first run."""
 
     model_factory: str | None = None
-    model_spec: str | None = None
+    model: str | None = None
     model_profile: str | None = None
     sink_specs: tuple[str, ...] = ()
     max_cycles: int | None = None
@@ -44,21 +44,17 @@ class HarnessRunSnapshot:
 
     def __post_init__(self) -> None:
         normalized_model_factory = _normalize_optional_string(self.model_factory)
-        normalized_model_spec = _normalize_optional_string(self.model_spec)
+        normalized_model = _normalize_optional_string(self.model)
         normalized_model_profile = _normalize_optional_string(self.model_profile)
         selected_count = sum(
             1
-            for value in (
-                normalized_model_factory,
-                normalized_model_spec,
-                normalized_model_profile,
-            )
+            for value in (normalized_model_factory, normalized_model, normalized_model_profile)
             if value is not None
         )
         if selected_count != 1:
-            raise ValueError("Exactly one of model_factory, model_spec, or model_profile must be provided.")
+            raise ValueError("Exactly one of model_factory, model, or model_profile must be provided.")
         object.__setattr__(self, "model_factory", normalized_model_factory)
-        object.__setattr__(self, "model_spec", normalized_model_spec)
+        object.__setattr__(self, "model", normalized_model)
         object.__setattr__(self, "model_profile", normalized_model_profile)
         object.__setattr__(self, "sink_specs", tuple(str(spec) for spec in self.sink_specs))
         object.__setattr__(self, "adapter_arguments", dict(self.adapter_arguments or {}))
@@ -79,8 +75,8 @@ class HarnessRunSnapshot:
         }
         if self.model_factory is not None:
             payload["model_factory"] = self.model_factory
-        if self.model_spec is not None:
-            payload["model_spec"] = self.model_spec
+        if self.model is not None:
+            payload["model"] = self.model
         if self.model_profile is not None:
             payload["model_profile"] = self.model_profile
         if self.run_number is not None:
@@ -90,7 +86,7 @@ class HarnessRunSnapshot:
     def with_run_number(self, run_number: int) -> "HarnessRunSnapshot":
         return HarnessRunSnapshot(
             model_factory=self.model_factory,
-            model_spec=self.model_spec,
+            model=self.model,
             model_profile=self.model_profile,
             sink_specs=self.sink_specs,
             max_cycles=self.max_cycles,
@@ -112,6 +108,9 @@ class HarnessRunSnapshot:
     def from_dict(cls, payload: Mapping[str, Any]) -> "HarnessRunSnapshot":
         sink_specs = payload.get("sink_specs", ())
         adapter_arguments = payload.get("adapter_arguments", {})
+        model_factory = _normalize_optional_string(payload.get("model_factory"))
+        model = _normalize_optional_string(payload.get("model"))
+        model_profile = _normalize_optional_string(payload.get("model_profile"))
         runtime_parameters = payload.get("runtime_parameters", {})
         custom_parameters = payload.get("custom_parameters", {})
         if not isinstance(sink_specs, (list, tuple)):
@@ -132,21 +131,9 @@ class HarnessRunSnapshot:
         if run_number is not None and not isinstance(run_number, int):
             raise ValueError("Harness run snapshot 'run_number' must be an integer when present.")
         return cls(
-            model_factory=(
-                str(payload["model_factory"])
-                if payload.get("model_factory") is not None
-                else None
-            ),
-            model_spec=(
-                str(payload["model_spec"])
-                if payload.get("model_spec") is not None
-                else None
-            ),
-            model_profile=(
-                str(payload["model_profile"])
-                if payload.get("model_profile") is not None
-                else None
-            ),
+            model_factory=model_factory,
+            model=model,
+            model_profile=model_profile,
             sink_specs=tuple(str(spec) for spec in sink_specs),
             max_cycles=max_cycles,
             adapter_arguments=dict(adapter_arguments),
@@ -246,6 +233,8 @@ class HarnessProfile:
             if "runtime_parameters" not in last_run_payload:
                 last_run = HarnessRunSnapshot(
                     model_factory=last_run.model_factory,
+                    model=last_run.model,
+                    model_profile=last_run.model_profile,
                     sink_specs=last_run.sink_specs,
                     max_cycles=last_run.max_cycles,
                     adapter_arguments=last_run.adapter_arguments,
@@ -257,6 +246,8 @@ class HarnessProfile:
             if "custom_parameters" not in last_run_payload:
                 last_run = HarnessRunSnapshot(
                     model_factory=last_run.model_factory,
+                    model=last_run.model,
+                    model_profile=last_run.model_profile,
                     sink_specs=last_run.sink_specs,
                     max_cycles=last_run.max_cycles,
                     adapter_arguments=last_run.adapter_arguments,
@@ -480,7 +471,7 @@ def _normalize_run_history(
 def _run_snapshots_match(left: HarnessRunSnapshot, right: HarnessRunSnapshot) -> bool:
     return (
         left.model_factory == right.model_factory
-        and left.model_spec == right.model_spec
+        and left.model == right.model
         and left.model_profile == right.model_profile
         and left.sink_specs == right.sink_specs
         and left.max_cycles == right.max_cycles
@@ -489,6 +480,13 @@ def _run_snapshots_match(left: HarnessRunSnapshot, right: HarnessRunSnapshot) ->
         and left.custom_parameters == right.custom_parameters
         and left.recorded_at == right.recorded_at
     )
+
+
+def _normalize_optional_string(value: Any) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
 
 
 @dataclass(slots=True)
@@ -556,13 +554,6 @@ class HarnessProfileIndexStore:
 
 def _utcnow() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def _normalize_optional_string(value: str | None) -> str | None:
-    if value is None:
-        return None
-    normalized = value.strip()
-    return normalized or None
 
 
 __all__ = [

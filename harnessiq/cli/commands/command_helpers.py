@@ -39,7 +39,7 @@ _UNSET = object()
 @dataclass(frozen=True, slots=True)
 class _ResolvedRunRequest:
     model_factory: str | None
-    model_spec: str | None
+    model: str | None
     model_profile: str | None
     sink_specs: tuple[str, ...]
     max_cycles: int | None
@@ -74,7 +74,7 @@ def _execute_run(
     seed_cli_environment(context.repo_root)
     model = resolve_agent_model(
         model_factory=run_request.model_factory,
-        model_spec=run_request.model_spec,
+        model_spec=run_request.model,
         profile_name=run_request.model_profile,
     )
     runtime_config = _build_runtime_config(run_request.sink_specs)
@@ -86,8 +86,8 @@ def _execute_run(
     }
     if run_request.model_factory is not None:
         payload["resume"]["model_factory"] = run_request.model_factory
-    if run_request.model_spec is not None:
-        payload["resume"]["model"] = run_request.model_spec
+    if run_request.model is not None:
+        payload["resume"]["model"] = run_request.model
     if run_request.model_profile is not None:
         payload["resume"]["profile"] = run_request.model_profile
     if source_snapshot is not None:
@@ -211,7 +211,7 @@ def _persist_run_snapshot(
     profile = context.profile.append_run_snapshot(
         HarnessRunSnapshot(
             model_factory=run_request.model_factory,
-            model_spec=run_request.model_spec,
+            model=run_request.model,
             model_profile=run_request.model_profile,
             sink_specs=run_request.sink_specs,
             max_cycles=run_request.max_cycles,
@@ -264,10 +264,10 @@ def _resolve_run_request(
         )
 
     if resume_requested:
-        model_factory, model_spec, model_profile = _merge_model_selection(
+        model_factory, model, model_profile = _merge_model_selection(
             snapshot=snapshot,
             override_model_factory=getattr(args, "model_factory", None),
-            override_model_spec=getattr(args, "model", None),
+            override_model=getattr(args, "model", None),
             override_model_profile=getattr(args, "model_profile", None),
         )
         sink_specs = tuple(args.sink) if args.sink else snapshot.sink_specs
@@ -280,16 +280,16 @@ def _resolve_run_request(
         adapter_arguments.update(run_argument_overrides)
         return _ResolvedRunRequest(
             model_factory=model_factory,
-            model_spec=model_spec,
+            model=model,
             model_profile=model_profile,
             sink_specs=tuple(sink_specs),
             max_cycles=max_cycles,
             adapter_arguments=adapter_arguments,
         )
 
-    model_factory, model_spec, model_profile = _collect_model_selection(
+    model_factory, model, model_profile = _collect_model_selection(
         model_factory=getattr(args, "model_factory", None),
-        model_spec=getattr(args, "model", None),
+        model=getattr(args, "model", None),
         model_profile=getattr(args, "model_profile", None),
         required=True,
     )
@@ -297,7 +297,7 @@ def _resolve_run_request(
     adapter_arguments.update(run_argument_overrides)
     return _ResolvedRunRequest(
         model_factory=model_factory,
-        model_spec=model_spec,
+        model=model,
         model_profile=model_profile,
         sink_specs=tuple(args.sink),
         max_cycles=args.max_cycles,
@@ -309,7 +309,7 @@ def _resolve_resume_request_from_snapshot(
     *,
     snapshot: HarnessRunSnapshot | None,
     model_factory: str | None,
-    model_spec: str | None,
+    model: str | None,
     model_profile: str | None,
     sink_specs: list[str],
     max_cycles: int | None,
@@ -317,10 +317,10 @@ def _resolve_resume_request_from_snapshot(
 ) -> _ResolvedRunRequest:
     if snapshot is None:
         raise ValueError("The selected profile has no persisted run payload to resume.")
-    resolved_model_factory, resolved_model_spec, resolved_model_profile = _merge_model_selection(
+    resolved_model_factory, resolved_model, resolved_model_profile = _merge_model_selection(
         snapshot=snapshot,
         override_model_factory=model_factory,
-        override_model_spec=model_spec,
+        override_model=model,
         override_model_profile=model_profile,
     )
     resolved_sink_specs = tuple(sink_specs) if sink_specs else snapshot.sink_specs
@@ -329,7 +329,7 @@ def _resolve_resume_request_from_snapshot(
     adapter_arguments.update(run_argument_overrides)
     return _ResolvedRunRequest(
         model_factory=resolved_model_factory,
-        model_spec=resolved_model_spec,
+        model=resolved_model,
         model_profile=resolved_model_profile,
         sink_specs=tuple(resolved_sink_specs),
         max_cycles=resolved_max_cycles,
@@ -385,7 +385,7 @@ def _clone_args_with_run_request(
 ) -> argparse.Namespace:
     payload = vars(args).copy()
     payload["model_factory"] = run_request.model_factory
-    payload["model"] = run_request.model_spec
+    payload["model"] = run_request.model
     payload["model_profile"] = run_request.model_profile
     payload["sink"] = list(run_request.sink_specs)
     payload["max_cycles"] = run_request.max_cycles
@@ -396,18 +396,18 @@ def _clone_args_with_run_request(
 def _collect_model_selection(
     *,
     model_factory: str | None,
-    model_spec: str | None,
+    model: str | None,
     model_profile: str | None,
     required: bool,
 ) -> tuple[str | None, str | None, str | None]:
     normalized_model_factory = _normalize_optional_string(model_factory)
-    normalized_model_spec = _normalize_optional_string(model_spec)
+    normalized_model = _normalize_optional_string(model)
     normalized_model_profile = _normalize_optional_string(model_profile)
     selected_count = sum(
         1
         for value in (
             normalized_model_factory,
-            normalized_model_spec,
+            normalized_model,
             normalized_model_profile,
         )
         if value is not None
@@ -416,25 +416,25 @@ def _collect_model_selection(
         raise ValueError("Exactly one of --model, --profile, or --model-factory must be provided.")
     if not required and selected_count > 1:
         raise ValueError("Exactly one of --model, --profile, or --model-factory may be provided.")
-    return normalized_model_factory, normalized_model_spec, normalized_model_profile
+    return normalized_model_factory, normalized_model, normalized_model_profile
 
 
 def _merge_model_selection(
     *,
     snapshot: HarnessRunSnapshot,
     override_model_factory: str | None,
-    override_model_spec: str | None,
+    override_model: str | None,
     override_model_profile: str | None,
 ) -> tuple[str | None, str | None, str | None]:
-    model_factory, model_spec, model_profile = _collect_model_selection(
+    model_factory, model, model_profile = _collect_model_selection(
         model_factory=override_model_factory,
-        model_spec=override_model_spec,
+        model=override_model,
         model_profile=override_model_profile,
         required=False,
     )
-    if any(value is not None for value in (model_factory, model_spec, model_profile)):
-        return model_factory, model_spec, model_profile
-    return snapshot.model_factory, snapshot.model_spec, snapshot.model_profile
+    if any(value is not None for value in (model_factory, model, model_profile)):
+        return model_factory, model, model_profile
+    return snapshot.model_factory, snapshot.model, snapshot.model_profile
 
 
 def _normalize_optional_string(value: str | None) -> str | None:

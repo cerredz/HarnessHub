@@ -360,7 +360,7 @@ def _handle_resume(args: argparse.Namespace) -> int:
     run_request = _resolve_resume_request_from_snapshot(
         snapshot=selected_snapshot,
         model_factory=args.model_factory,
-        model_spec=args.model,
+        model=args.model,
         model_profile=args.model_profile,
         sink_specs=args.sink,
         max_cycles=args.max_cycles,
@@ -371,7 +371,7 @@ def _handle_resume(args: argparse.Namespace) -> int:
         agent=context.agent_name,
         harness=context.manifest.manifest_id,
         max_cycles=run_request.max_cycles,
-        model=run_request.model_spec,
+        model=run_request.model,
         model_factory=run_request.model_factory,
         model_profile=run_request.model_profile,
         sink=list(run_request.sink_specs),

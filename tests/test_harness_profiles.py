@@ -60,6 +60,26 @@ def test_harness_profile_store_persists_last_run_snapshot(tmp_path: Path) -> Non
     assert len(reloaded.run_history) == 1
 
 
+def test_harness_run_snapshot_round_trips_model_spec_selection() -> None:
+    snapshot = HarnessRunSnapshot(
+        model="grok:grok-4-1-fast-reasoning",
+        sink_specs=("jsonl:data/runs.jsonl",),
+        max_cycles=12,
+        adapter_arguments={"search_backend_factory": "tests.test_platform_cli:create_special_instagram_search_backend"},
+        runtime_parameters={"max_tokens": 4096},
+        custom_parameters={"segment": "fitness"},
+        recorded_at="2026-03-24T00:00:00Z",
+    )
+
+    payload = snapshot.as_dict()
+    reloaded = HarnessRunSnapshot.from_dict(payload)
+
+    assert "model_factory" not in payload
+    assert payload["model"] == "grok:grok-4-1-fast-reasoning"
+    assert reloaded.model == "grok:grok-4-1-fast-reasoning"
+    assert reloaded.model_factory is None
+
+
 def test_harness_profile_from_legacy_last_run_populates_run_history() -> None:
     profile = HarnessProfile.from_dict(
         {

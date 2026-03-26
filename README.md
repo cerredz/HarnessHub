@@ -135,4 +135,3 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 - `docs/leads-agent.md`: Leads harness memory model and CLI workflow.
 - `artifacts/file_index.md`: Generated architecture map for the live repository.
 - `artifacts/commands.md`: Generated CLI command catalog.
-- `artifacts/live_inventory.json`: Machine-readable source of truth for generated repo docs.
