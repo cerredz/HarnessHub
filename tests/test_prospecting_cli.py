@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -228,6 +230,46 @@ class ProspectingCliTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             self.assertEqual(_LAST_PROVIDER_ENV["XAI_API_KEY"], "local-xai-key")
+
+    def test_init_browser_uses_persistent_session_dir_and_emits_saved_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            session = MagicMock()
+            stdout = io.StringIO()
+
+            with (
+                patch(
+                    "harnessiq.integrations.google_maps_playwright.PlaywrightGoogleMapsSession",
+                    return_value=session,
+                ) as mock_session_class,
+                patch("harnessiq.cli.prospecting.commands.emit_json") as mock_emit_json,
+                patch("builtins.input", return_value=""),
+                redirect_stdout(stdout),
+            ):
+                result = _run(
+                    [
+                        "prospecting",
+                        "init-browser",
+                        "--agent",
+                        "nj-dentists",
+                        "--memory-root",
+                        temp_dir,
+                    ]
+                )
+
+        self.assertEqual(result, 0)
+        browser_data_dir = str(Path(temp_dir, "nj-dentists", "browser-data").resolve())
+        mock_session_class.assert_called_once_with(
+            session_dir=Path(temp_dir, "nj-dentists", "browser-data"),
+            channel="chrome",
+            headless=False,
+        )
+        session.start.assert_called_once_with()
+        session.stop.assert_called_once_with()
+        self.assertIn("Open Google Maps", stdout.getvalue())
+        self.assertIn("Browser session saved to:", stdout.getvalue())
+        payload = mock_emit_json.call_args.args[0]
+        self.assertEqual(payload["browser_data_dir"], browser_data_dir)
+        self.assertEqual(payload["status"], "session_saved")
 
 
 if __name__ == "__main__":
