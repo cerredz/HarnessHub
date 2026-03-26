@@ -16,6 +16,7 @@ _DEFAULT_TIMEOUT_MS = 30_000
 _NETWORK_IDLE_TIMEOUT_MS = 5_000
 _MAX_HTML_CHARS = 50_000
 _MAX_TEXT_CHARS = 20_000
+_GOOGLE_MAPS_BOOTSTRAP_URL = "https://www.google.com/maps"
 _SEARCH_RESULTS_SCRIPT = """
 elements => elements.map((element, index) => {
   const container = element.closest('div.Nv2PK') || element.closest('div[role="article"]') || element.parentElement;
@@ -109,6 +110,7 @@ class PlaywrightGoogleMapsSession:
             )
             self._context = self._browser.new_context(viewport={"width": 1440, "height": 960})
             self._page = self._context.new_page()
+        self._navigate(self.page, _GOOGLE_MAPS_BOOTSTRAP_URL)
 
     def stop(self) -> None:
         try:
@@ -144,8 +146,7 @@ class PlaywrightGoogleMapsSession:
 
     def _handle_navigate(self, arguments: dict[str, Any]) -> dict[str, Any]:
         url = str(arguments["url"])
-        self.page.goto(url, wait_until="domcontentloaded", timeout=self._timeout_ms)
-        self._wait_for_page_ready(self.page)
+        self._navigate(self.page, url)
         return {"url": url, "current_url": self.page.url, "status": "navigated"}
 
     def _handle_click(self, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -253,6 +254,10 @@ class PlaywrightGoogleMapsSession:
             page.wait_for_load_state("networkidle", timeout=self._network_idle_timeout_ms)
         except Exception:
             pass
+
+    def _navigate(self, page: Any, url: str) -> None:
+        page.goto(url, wait_until="domcontentloaded", timeout=self._timeout_ms)
+        self._wait_for_page_ready(page)
 
     def _extract_maps_search_results(self, *, max_items: int) -> dict[str, Any]:
         raw_entries = self.page.eval_on_selector_all('a[href*="/maps/place"], a[href*="google.com/maps/place"]', _SEARCH_RESULTS_SCRIPT)
@@ -456,4 +461,8 @@ def _parse_bool(value: str | None, *, default: bool) -> bool:
     raise ValueError(f"Unsupported boolean value '{value}'.")
 
 
-__all__ = ["PlaywrightGoogleMapsSession", "create_browser_tools"]
+__all__ = [
+    "PlaywrightGoogleMapsSession",
+    "_GOOGLE_MAPS_BOOTSTRAP_URL",
+    "create_browser_tools",
+]

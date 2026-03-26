@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
-from harnessiq.integrations.google_maps_playwright import PlaywrightGoogleMapsSession
+from harnessiq.integrations.google_maps_playwright import (
+    PlaywrightGoogleMapsSession,
+    _GOOGLE_MAPS_BOOTSTRAP_URL,
+)
 from harnessiq.tools.browser import build_browser_tool_definitions
 
 
@@ -14,11 +19,13 @@ class _FakeKeyboard:
 
 
 class _FakePage:
-    def __init__(self) -> None:
-        self.url = "https://www.google.com/maps/search/dentist+edison+nj"
+    def __init__(self, url: str = "https://www.google.com/maps/search/dentist+edison+nj") -> None:
+        self.url = url
         self.keyboard = _FakeKeyboard()
+        self.goto_calls: list[tuple[str, dict[str, object]]] = []
 
     def goto(self, url, **kwargs):  # noqa: ANN001
+        self.goto_calls.append((url, kwargs))
         self.url = url
 
     def wait_for_load_state(self, *args, **kwargs):  # noqa: ANN001
@@ -106,7 +113,67 @@ class _FakePage:
         return []
 
 
+class _FakeContext:
+    def __init__(self, pages: list[_FakePage] | None = None) -> None:
+        self.pages = list(pages or [])
+        self.new_page_calls = 0
+
+    def new_page(self):
+        self.new_page_calls += 1
+        page = _FakePage(url="about:blank")
+        self.pages.append(page)
+        return page
+
+    def close(self) -> None:
+        return None
+
+
+class _FakeChromium:
+    def __init__(self, context: _FakeContext) -> None:
+        self._context = context
+        self.persistent_launches: list[dict[str, object]] = []
+
+    def launch_persistent_context(self, user_data_dir, **kwargs):  # noqa: ANN001
+        self.persistent_launches.append({"user_data_dir": user_data_dir, **kwargs})
+        return self._context
+
+
+class _FakePlaywright:
+    def __init__(self, context: _FakeContext) -> None:
+        self.chromium = _FakeChromium(context)
+
+    def stop(self) -> None:
+        return None
+
+
+class _FakePlaywrightStarter:
+    def __init__(self, context: _FakeContext) -> None:
+        self._playwright = _FakePlaywright(context)
+
+    def start(self) -> _FakePlaywright:
+        return self._playwright
+
+
 class GoogleMapsPlaywrightTests(unittest.TestCase):
+    def test_start_navigates_bootstrap_page_to_google_maps(self) -> None:
+        page = _FakePage(url="about:blank")
+        context = _FakeContext([page])
+
+        with patch(
+            "playwright.sync_api.sync_playwright",
+            return_value=_FakePlaywrightStarter(context),
+        ):
+            session = PlaywrightGoogleMapsSession(
+                session_dir=Path("memory/prospecting/test/browser-data"),
+                headless=True,
+                channel="chrome",
+            )
+            session.start()
+
+        self.assertEqual(session.page.url, _GOOGLE_MAPS_BOOTSTRAP_URL)
+        self.assertEqual(page.goto_calls[0][0], _GOOGLE_MAPS_BOOTSTRAP_URL)
+        self.assertEqual(page.goto_calls[0][1]["wait_until"], "domcontentloaded")
+
     def test_build_tools_binds_all_shared_browser_handlers(self) -> None:
         session = PlaywrightGoogleMapsSession()
         session._page = _FakePage()  # type: ignore[attr-defined]
