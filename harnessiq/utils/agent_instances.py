@@ -16,6 +16,7 @@ from harnessiq.utils.agent_ids import (
     normalize_agent_name,
     normalize_agent_payload,
 )
+from harnessiq.utils.path_serialization import deserialize_repo_path, serialize_repo_path
 
 DEFAULT_AGENT_INSTANCE_REGISTRY_FILENAME = "agent_instances.json"
 DEFAULT_AGENT_INSTANCE_MEMORY_DIRNAME = "agents"
@@ -53,7 +54,7 @@ class AgentInstanceRecord:
             "created_at": self.created_at,
             "instance_id": self.instance_id,
             "instance_name": self.instance_name,
-            "memory_path": _serialize_path(self.memory_path, repo_root=repo_root),
+            "memory_path": serialize_repo_path(self.memory_path, repo_root=repo_root),
             "payload": self.payload,
             "payload_fingerprint": self.payload_fingerprint,
             "updated_at": self.updated_at,
@@ -67,7 +68,7 @@ class AgentInstanceRecord:
             instance_name=str(payload["instance_name"]),
             payload_fingerprint=str(payload["payload_fingerprint"]),
             payload=dict(payload.get("payload", {})),
-            memory_path=_deserialize_path(str(payload["memory_path"]), repo_root=repo_root),
+            memory_path=deserialize_repo_path(str(payload["memory_path"]), repo_root=repo_root),
             created_at=str(payload["created_at"]),
             updated_at=str(payload["updated_at"]),
         )
@@ -268,23 +269,6 @@ class AgentInstanceStore:
         instance_id: str,
     ) -> Path:
         return self.default_instances_root / normalize_agent_name(agent_name) / instance_id
-
-
-def _serialize_path(path: Path, *, repo_root: Path) -> str:
-    resolved = path.expanduser()
-    if not resolved.is_absolute():
-        resolved = repo_root / resolved
-    try:
-        return resolved.relative_to(repo_root).as_posix()
-    except ValueError:
-        return resolved.as_posix()
-
-
-def _deserialize_path(serialized: str, *, repo_root: Path) -> Path:
-    candidate = Path(serialized)
-    if candidate.is_absolute():
-        return candidate
-    return repo_root / candidate
 
 
 def _utcnow() -> str:

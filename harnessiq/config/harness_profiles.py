@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
+from harnessiq.utils.path_serialization import deserialize_repo_path, serialize_repo_path
+
 DEFAULT_HARNESS_PROFILE_FILENAME = ".harnessiq-profile.json"
 DEFAULT_HARNESS_PROFILE_INDEX_FILENAME = "harness_profiles.json"
 DEFAULT_MEMORY_ROOT_DIRNAME = "memory"
@@ -300,7 +302,7 @@ class HarnessProfileIndexRecord:
         return {
             "agent_name": self.agent_name,
             "manifest_id": self.manifest_id,
-            "memory_path": _serialize_path(self.memory_path, repo_root=repo_root),
+            "memory_path": serialize_repo_path(self.memory_path, repo_root=repo_root),
             "updated_at": self.updated_at,
         }
 
@@ -309,7 +311,7 @@ class HarnessProfileIndexRecord:
         return cls(
             manifest_id=str(payload["manifest_id"]),
             agent_name=str(payload["agent_name"]),
-            memory_path=_deserialize_path(str(payload["memory_path"]), repo_root=repo_root),
+            memory_path=deserialize_repo_path(str(payload["memory_path"]), repo_root=repo_root),
             updated_at=str(payload["updated_at"]),
         )
 
@@ -548,23 +550,6 @@ class HarnessProfileIndexStore:
         index = self.load()
         self.save(index.upsert(record))
         return record
-
-
-def _serialize_path(path: Path, *, repo_root: Path) -> str:
-    resolved = path.expanduser()
-    if not resolved.is_absolute():
-        resolved = repo_root / resolved
-    try:
-        return resolved.relative_to(repo_root).as_posix()
-    except ValueError:
-        return resolved.as_posix()
-
-
-def _deserialize_path(serialized: str, *, repo_root: Path) -> Path:
-    candidate = Path(serialized)
-    if candidate.is_absolute():
-        return candidate
-    return repo_root / candidate
 
 
 def _utcnow() -> str:
