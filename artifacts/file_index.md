@@ -31,6 +31,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Kind | Responsibility |
 | --- | --- | --- |
+| `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
 | `.pytest_cache/` | generated/cache | Test runner cache; generated, not part of the source of truth. |
 | `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
 | `docs/` | repo docs | Focused usage and architecture notes for the package. |
@@ -44,7 +45,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Path | Live Subpackages | Responsibility |
 | --- | --- | --- |
 | `harnessiq/agents/` | apollo, base, email, exa, exa_outreach, instagram, instantly, knowt, leads, linkedin, outreach, prospecting, provider_base, research_sweep | Shared runtime bases plus the concrete harness packages exported by the SDK. |
-| `harnessiq/cli/` | adapters, exa_outreach, instagram, leads, ledger, linkedin, master_prompts, models, prospecting, research_sweep | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
+| `harnessiq/cli/` | adapters, commands, exa_outreach, instagram, leads, ledger, linkedin, master_prompts, models, prospecting, research_sweep | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
 | `harnessiq/config/` | provider_credentials | Environment loading, credential binding, and provider-credential spec models. |
 | `harnessiq/integrations/` | - | Concrete external runtime adapters such as Playwright backends and model factories. |
 | `harnessiq/master_prompts/` | prompts | Packaged prompt assets and prompt registry helpers. |
