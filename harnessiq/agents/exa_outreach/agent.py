@@ -14,6 +14,7 @@ from harnessiq.shared.agents import (
     AgentModel,
     AgentParameterSection,
     AgentRuntimeConfig,
+    merge_agent_runtime_config,
     json_parameter_section,
 )
 from harnessiq.shared.exa_outreach import (
@@ -100,37 +101,15 @@ class ExaOutreachAgent(BaseAgent):
             self._build_internal_tools(),
             tuple(tools or ()),
         )
-        runtime_config = AgentRuntimeConfig(
-            max_tokens=max_tokens,
-            reset_threshold=reset_threshold,
-            output_sinks=runtime_config.output_sinks if runtime_config is not None else (),
-            include_default_output_sink=(
-                runtime_config.include_default_output_sink if runtime_config is not None else True
-            ),
-            prune_progress_interval=(
-                runtime_config.prune_progress_interval if runtime_config is not None else None
-            ),
-            prune_token_limit=(
-                runtime_config.prune_token_limit if runtime_config is not None else None
-            ),
-            langsmith_tracing_enabled=(
-                runtime_config.langsmith_tracing_enabled if runtime_config is not None else True
-            ),
-            langsmith_api_key=(
-                runtime_config.langsmith_api_key if runtime_config is not None else None
-            ),
-            langsmith_project=(
-                runtime_config.langsmith_project if runtime_config is not None else None
-            ),
-            langsmith_api_url=(
-                runtime_config.langsmith_api_url if runtime_config is not None else None
-            ),
-        )
         super().__init__(
             name="exa_outreach",
             model=model,
             tool_executor=tool_registry,
-            runtime_config=runtime_config,
+            runtime_config=merge_agent_runtime_config(
+                runtime_config,
+                max_tokens=max_tokens,
+                reset_threshold=reset_threshold,
+            ),
             memory_path=self._candidate_memory_path,
             repo_root=_find_repo_root(self._candidate_memory_path),
         )

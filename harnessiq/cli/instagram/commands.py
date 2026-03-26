@@ -13,8 +13,10 @@ from typing import Any
 from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.common import (
     add_agent_options,
+    add_policy_options,
     add_model_selection_options,
     add_text_or_file_options,
+    build_runtime_config,
     emit_json,
     format_manifest_parameter_keys,
     parse_manifest_parameter_assignments,
@@ -152,6 +154,7 @@ def register_instagram_commands(
         help="Path to a JSON array or newline-delimited UTF-8 text file containing ICP descriptions for this run.",
     )
     run_parser.add_argument("--max-cycles", type=int, help="Optional max cycle count passed to agent.run().")
+    add_policy_options(run_parser)
     run_parser.set_defaults(command_handler=_handle_run)
 
     get_emails_parser = instagram_subparsers.add_parser(
@@ -260,6 +263,10 @@ def _handle_run(args: argparse.Namespace) -> int:
         memory_path=store.memory_path,
         runtime_overrides=runtime_overrides,
         custom_overrides=custom_overrides,
+        runtime_config=build_runtime_config(
+            approval_policy=args.approval_policy,
+            allowed_tools=args.allowed_tools,
+        ),
     )
     result = agent.run(max_cycles=args.max_cycles)
     emit_json(

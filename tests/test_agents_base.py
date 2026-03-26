@@ -31,7 +31,7 @@ from harnessiq.tools import create_context_compaction_tools, create_general_purp
 from harnessiq.tools.registry import ToolRegistry
 from harnessiq.utils import LedgerEntry, build_agent_instance_dirname
 
-_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
+_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent_helpers.build_langsmith_client", return_value=None)
 
 
 def setUpModule() -> None:
@@ -247,9 +247,9 @@ class BaseAgentTests(unittest.TestCase):
             return operation()
 
         with (
-            patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=object()) as mock_client,
-            patch("harnessiq.agents.base.agent.trace_agent_run", side_effect=_wrap_agent) as mock_trace_agent,
-            patch("harnessiq.agents.base.agent.trace_tool_call", side_effect=_wrap_tool) as mock_trace_tool,
+            patch("harnessiq.agents.base.agent_helpers.build_langsmith_client", return_value=object()) as mock_client,
+            patch("harnessiq.agents.base.agent_helpers.trace_agent_run", side_effect=_wrap_agent) as mock_trace_agent,
+            patch("harnessiq.agents.base.agent_helpers.trace_tool_call", side_effect=_wrap_tool) as mock_trace_tool,
         ):
             result = agent.run(max_cycles=5)
 

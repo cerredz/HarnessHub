@@ -19,7 +19,7 @@ from harnessiq.shared.instagram import InstagramLeadRecord, InstagramSearchExecu
 from harnessiq.shared.instagram import build_instagram_lead_export_rows
 from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
 
-_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
+_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent_helpers.build_langsmith_client", return_value=None)
 
 
 def setUpModule() -> None:

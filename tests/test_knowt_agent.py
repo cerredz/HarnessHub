@@ -22,7 +22,7 @@ from harnessiq.shared.tools import (
     FILES_EDIT_FILE,
 )
 
-_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent.build_langsmith_client", return_value=None)
+_LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent_helpers.build_langsmith_client", return_value=None)
 
 
 def setUpModule() -> None:

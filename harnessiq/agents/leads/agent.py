@@ -40,6 +40,7 @@ from harnessiq.shared.tools import (
 )
 from harnessiq.tools.leads import create_leads_tools
 from harnessiq.tools.registry import create_tool_registry
+from harnessiq.utils.ledger import new_run_id
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
@@ -220,69 +221,129 @@ class LeadsAgent(BaseAgent):
         return total
 
     def run(self, *, max_cycles: int | None = None) -> AgentRunResult:
+        return self._trace_run(lambda: self._run_leads_loop(max_cycles=max_cycles))
+
+    def _run_leads_loop(self, *, max_cycles: int | None = None) -> AgentRunResult:
         self.prepare()
         self._reset_count = 0
+        self._cycle_index = 0
         self._transcript.clear()
+        self.refresh_parameters()
+        self._last_run_id = new_run_id()
+        started_at = datetime.now(timezone.utc)
+        total_estimated_request_tokens = 0
+        self._last_prune_progress = self.pruning_progress_value()
+        before_run_pause = self._apply_before_run_hooks()
+        if before_run_pause is not None:
+            self._persist_run_state(status="running", active_icp_index=self._active_icp_index)
+            return self._complete_run(
+                AgentRunResult(
+                    status="paused",
+                    cycles_completed=0,
+                    resets=self._reset_count,
+                    pause_reason=before_run_pause.reason,
+                ),
+                started_at=started_at,
+                total_estimated_request_tokens=total_estimated_request_tokens,
+            )
 
         cycles_completed = 0
-        for icp_index in range(self._active_icp_index, len(self._config.run_config.icps)):
-            self._activate_icp(icp_index)
-            self._transcript.clear()
-            self.refresh_parameters()
-            self._last_prune_progress = self.pruning_progress_value()
+        try:
+            for icp_index in range(self._active_icp_index, len(self._config.run_config.icps)):
+                self._activate_icp(icp_index)
+                self._transcript.clear()
+                self.refresh_parameters()
+                self._last_prune_progress = self.pruning_progress_value()
 
-            while max_cycles is None or cycles_completed < max_cycles:
-                request = self.build_model_request()
-                response = self._model.generate_turn(request)
-                cycles_completed += 1
-                self._record_assistant_response(response)
+                while max_cycles is None or cycles_completed < max_cycles:
+                    self._cycle_index = cycles_completed + 1
+                    request = self.build_model_request()
+                    total_estimated_request_tokens += request.estimated_tokens()
+                    response = self._model.generate_turn(request)
+                    cycles_completed += 1
+                    self._record_assistant_response(response)
 
-                if response.pause_reason is not None:
-                    self._persist_run_state(status="running", active_icp_index=icp_index)
-                    return AgentRunResult(
-                        status="paused",
-                        cycles_completed=cycles_completed,
-                        resets=self._reset_count,
-                        pause_reason=response.pause_reason,
-                    )
+                    if response.pause_reason is not None:
+                        self._persist_run_state(status="running", active_icp_index=icp_index)
+                        return self._complete_run(
+                            AgentRunResult(
+                                status="paused",
+                                cycles_completed=cycles_completed,
+                                resets=self._reset_count,
+                                pause_reason=response.pause_reason,
+                            ),
+                            started_at=started_at,
+                            total_estimated_request_tokens=total_estimated_request_tokens,
+                        )
 
-                pause_signal: AgentPauseSignal | None = None
-                for tool_call in response.tool_calls:
-                    result = self._execute_tool(tool_call)
-                    if self._apply_compaction_result(result):
-                        continue
-                    self._record_tool_result(result)
-                    if isinstance(result.output, AgentPauseSignal):
-                        pause_signal = result.output
+                    pause_signal: AgentPauseSignal | None = None
+                    for requested_tool_call in response.tool_calls:
+                        tool_call, result, pause_signal = self._prepare_tool_call(requested_tool_call)
+                        if pause_signal is not None:
+                            break
+                        assert tool_call is not None  # noqa: S101
+                        if result is None:
+                            result = self._execute_tool(tool_call)
+                        result, hook_pause_signal = self._finalize_tool_result(tool_call, result)
+                        if self._apply_compaction_result(result):
+                            if hook_pause_signal is not None:
+                                pause_signal = hook_pause_signal
+                                break
+                            continue
+                        self._record_tool_result(result)
+                        if hook_pause_signal is not None:
+                            pause_signal = hook_pause_signal
+                            break
+                        if isinstance(result.output, AgentPauseSignal):
+                            pause_signal = result.output
+                            break
+
+                    if pause_signal is not None:
+                        self._persist_run_state(status="running", active_icp_index=icp_index)
+                        return self._complete_run(
+                            AgentRunResult(
+                                status="paused",
+                                cycles_completed=cycles_completed,
+                                resets=self._reset_count,
+                                pause_reason=pause_signal.reason,
+                            ),
+                            started_at=started_at,
+                            total_estimated_request_tokens=total_estimated_request_tokens,
+                        )
+
+                    if not response.should_continue:
+                        self._complete_icp(icp_index)
                         break
 
-                if pause_signal is not None:
+                    if self._should_prune_context():
+                        self.reset_context()
+                        self._last_prune_progress = self.pruning_progress_value()
+
+                    if self._should_reset_context():
+                        self.reset_context()
+                        self._last_prune_progress = self.pruning_progress_value()
+                else:
                     self._persist_run_state(status="running", active_icp_index=icp_index)
-                    return AgentRunResult(
-                        status="paused",
-                        cycles_completed=cycles_completed,
-                        resets=self._reset_count,
-                        pause_reason=pause_signal.reason,
+                    return self._complete_run(
+                        AgentRunResult(
+                            status="max_cycles_reached",
+                            cycles_completed=cycles_completed,
+                            resets=self._reset_count,
+                        ),
+                        started_at=started_at,
+                        total_estimated_request_tokens=total_estimated_request_tokens,
                     )
-
-                if not response.should_continue:
-                    self._complete_icp(icp_index)
-                    break
-
-                if self._should_prune_context():
-                    self.reset_context()
-                    self._last_prune_progress = self.pruning_progress_value()
-
-                if self._should_reset_context():
-                    self.reset_context()
-                    self._last_prune_progress = self.pruning_progress_value()
-            else:
-                self._persist_run_state(status="running", active_icp_index=icp_index)
-                return AgentRunResult(
-                    status="max_cycles_reached",
-                    cycles_completed=cycles_completed,
-                    resets=self._reset_count,
-                )
+        except Exception as exc:
+            self._emit_ledger_entry(
+                started_at=started_at,
+                finished_at=datetime.now(timezone.utc),
+                status="error",
+                cycles_completed=cycles_completed,
+                total_estimated_request_tokens=total_estimated_request_tokens,
+                pause_reason=None,
+                error=exc,
+            )
+            raise
 
         completed_at = _utcnow()
         if self._run_id is not None:
@@ -297,10 +358,14 @@ class LeadsAgent(BaseAgent):
                 completed_at=completed_at,
             )
         )
-        return AgentRunResult(
-            status="completed",
-            cycles_completed=cycles_completed,
-            resets=self._reset_count,
+        return self._complete_run(
+            AgentRunResult(
+                status="completed",
+                cycles_completed=cycles_completed,
+                resets=self._reset_count,
+            ),
+            started_at=started_at,
+            total_estimated_request_tokens=total_estimated_request_tokens,
         )
 
     def _activate_icp(self, icp_index: int) -> None:

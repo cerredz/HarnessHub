@@ -10,8 +10,10 @@ from typing import Any
 
 from harnessiq.cli.common import (
     add_agent_options,
+    add_policy_options,
     add_model_selection_options,
     add_text_or_file_options,
+    build_runtime_config,
     emit_json,
     format_manifest_parameter_keys,
     parse_manifest_parameter_assignments,
@@ -20,9 +22,7 @@ from harnessiq.cli.common import (
     resolve_text_argument,
 )
 from harnessiq.cli._langsmith import seed_cli_environment
-from harnessiq.agents import AgentRuntimeConfig
 from harnessiq.shared.exa_outreach import EXA_OUTREACH_HARNESS_MANIFEST, ExaOutreachMemoryStore
-from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
 SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS = EXA_OUTREACH_HARNESS_MANIFEST.runtime_parameter_names
 
@@ -129,6 +129,7 @@ def register_exa_outreach_commands(
     run_parser.add_argument(
         "--max-cycles", type=int, help="Optional max cycle count passed to agent.run()."
     )
+    add_policy_options(run_parser)
     run_parser.set_defaults(command_handler=_handle_run)
 
 
@@ -249,7 +250,11 @@ def _handle_run(args: argparse.Namespace) -> int:
         memory_path=store.memory_path,
         max_tokens=max_tokens,
         reset_threshold=reset_threshold,
-        runtime_config=_build_runtime_config(args.sink),
+        runtime_config=build_runtime_config(
+            sink_specs=args.sink,
+            approval_policy=args.approval_policy,
+            allowed_tools=args.allowed_tools,
+        ),
     )
     result = agent.run(max_cycles=args.max_cycles)
 
@@ -350,15 +355,6 @@ def _print_run_summary(store: ExaOutreachMemoryStore, run_id: str) -> None:
     print(f"  Run files saved to: {store.runs_dir.resolve()}")
     print("=" * 64)
     print()
-
-
-def _build_runtime_config(sink_specs: Sequence[str]) -> AgentRuntimeConfig:
-    if not sink_specs:
-        return AgentRuntimeConfig()
-    connections = ConnectionsConfigStore().load().enabled_connections()
-    return AgentRuntimeConfig(
-        output_sinks=build_output_sinks(connections=connections, sink_specs=sink_specs),
-    )
 
 
 def normalize_exa_outreach_runtime_parameters(parameters: dict[str, Any]) -> dict[str, Any]:

@@ -14,6 +14,7 @@ from harnessiq.cli.adapters import HarnessAdapterContext
 from harnessiq.cli.common import (
     emit_json,
     load_factory,
+    parse_allowed_tool_values,
     parse_manifest_parameter_assignments,
     resolve_agent_model,
     resolve_memory_path,
@@ -30,6 +31,7 @@ from harnessiq.config import (
     get_provider_credential_spec,
 )
 from harnessiq.shared.harness_manifest import HarnessManifest
+from harnessiq.shared.hooks import DEFAULT_APPROVAL_POLICY
 from harnessiq.shared.harness_manifests import get_harness_manifest, list_harness_manifests
 from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
@@ -77,7 +79,11 @@ def _execute_run(
         model_spec=run_request.model,
         profile_name=run_request.model_profile,
     )
-    runtime_config = _build_runtime_config(run_request.sink_specs)
+    runtime_config = _build_runtime_config(
+        run_request.sink_specs,
+        approval_policy=getattr(args, "approval_policy", None),
+        allowed_tools=getattr(args, "allowed_tools", ()),
+    )
     payload = _base_payload(context)
     payload["resume"] = {
         "adapter_arguments": dict(run_request.adapter_arguments),
@@ -643,9 +649,16 @@ def _binding_name(manifest: HarnessManifest, agent_name: str) -> str:
     ).credential_binding_name
 
 
-def _build_runtime_config(sink_specs: tuple[str, ...] | list[str]) -> AgentRuntimeConfig:
+def _build_runtime_config(
+    sink_specs: tuple[str, ...] | list[str],
+    *,
+    approval_policy: str | None = None,
+    allowed_tools: tuple[str, ...] | list[str] = (),
+) -> AgentRuntimeConfig:
     connections = ConnectionsConfigStore().load().enabled_connections()
     return AgentRuntimeConfig(
+        approval_policy=approval_policy or DEFAULT_APPROVAL_POLICY,
+        allowed_tools=parse_allowed_tool_values(allowed_tools),
         output_sinks=build_output_sinks(connections=connections, sink_specs=list(sink_specs)),
     )
 

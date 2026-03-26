@@ -9,6 +9,7 @@ from typing import Any
 from harnessiq.cli.common import (
     add_agent_options,
     add_manifest_parameter_options,
+    add_policy_options,
     add_model_selection_options,
     collect_manifest_parameter_values,
     emit_json,
@@ -185,6 +186,7 @@ def _register_manifest_subcommands(
             )
             add_manifest_parameter_options(parser, manifest=manifest, scope="runtime")
             add_manifest_parameter_options(parser, manifest=manifest, scope="custom")
+            add_policy_options(parser)
             adapter = _build_adapter(manifest)
             existing_action_ids = {id(action) for action in parser._actions}
             adapter.register_run_arguments(parser)
