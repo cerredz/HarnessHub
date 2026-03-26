@@ -2,6 +2,8 @@ Title: Apply PR 278 review feedback across Instagram and agent helper modules
 
 Issue URL: https://github.com/cerredz/HarnessHub/issues/279
 
+PR URL: https://github.com/cerredz/HarnessHub/pull/280
+
 Intent:
 Implement all owner comments left on PR `#278` by bringing the Instagram ICP-rotation work onto a fresh branch from `main`, revising the Instagram prompt and loop structure per review, and performing the requested cross-agent helper-file refactor under `harnessiq/agents/`.
 
