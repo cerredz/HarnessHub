@@ -11,11 +11,13 @@ from typing import Any
 from harnessiq.cli.common import (
     add_agent_options,
     add_policy_options,
+    add_model_selection_options,
     add_text_or_file_options,
     build_runtime_config,
     emit_json,
     format_manifest_parameter_keys,
     parse_manifest_parameter_assignments,
+    resolve_agent_model_from_args,
     resolve_memory_path,
     resolve_text_argument,
 )
@@ -88,11 +90,7 @@ def register_exa_outreach_commands(
         memory_root_default="memory/outreach",
         memory_root_help="Root directory that holds per-agent outreach memory folders.",
     )
-    run_parser.add_argument(
-        "--model-factory",
-        required=True,
-        help="Import path (module:callable) that returns an AgentModel instance.",
-    )
+    add_model_selection_options(run_parser)
     run_parser.add_argument(
         "--exa-credentials-factory",
         required=True,
@@ -221,9 +219,7 @@ def _handle_run(args: argparse.Namespace) -> int:
         if not args.email_data_factory:
             raise ValueError("--email-data-factory is required unless --search-only is set.")
 
-    model = _load_factory(args.model_factory)()
-    if not hasattr(model, "generate_turn"):
-        raise TypeError("Model factory must return an object that implements generate_turn(request).")
+    model = resolve_agent_model_from_args(args)
 
     exa_credentials = _load_factory(args.exa_credentials_factory)()
     resend_credentials = _load_factory(args.resend_credentials_factory)() if not search_only else None

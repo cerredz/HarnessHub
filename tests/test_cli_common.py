@@ -3,20 +3,30 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from harnessiq.cli.common import (
     add_agent_options,
+    add_model_selection_options,
     add_text_or_file_options,
     emit_json,
     parse_generic_assignments,
     parse_scalar,
+    resolve_agent_model,
     resolve_memory_path,
     resolve_text_argument,
     slugify_agent_name,
     split_assignment,
 )
+from harnessiq.config import ModelProfile, ModelProfileStore
+
+
+class _Model:
+    def generate_turn(self, request):  # pragma: no cover - behavior is irrelevant here
+        del request
+        return None
 
 
 def test_slugify_agent_name_normalizes_whitespace_and_symbols() -> None:
@@ -108,3 +118,51 @@ def test_add_text_or_file_options_registers_expected_flags() -> None:
     add_text_or_file_options(parser, "agent_identity", "Agent identity")
     args = parser.parse_args(["--agent-identity-text", "inline"])
     assert args.agent_identity_text == "inline"
+
+
+def test_add_model_selection_options_registers_expected_flags() -> None:
+    parser = argparse.ArgumentParser()
+    add_model_selection_options(parser)
+    args = parser.parse_args(["--model", "openai:gpt-5.4"])
+    assert args.model == "openai:gpt-5.4"
+    assert args.model_profile is None
+    assert args.model_factory is None
+
+
+def test_resolve_agent_model_requires_exactly_one_selection() -> None:
+    with pytest.raises(ValueError, match="Exactly one"):
+        resolve_agent_model()
+    with pytest.raises(ValueError, match="Exactly one"):
+        resolve_agent_model(model_factory="a:b", model_spec="openai:gpt-5.4")
+
+
+def test_resolve_agent_model_uses_model_spec() -> None:
+    model = _Model()
+    with patch("harnessiq.cli.common.create_model_from_spec", return_value=model) as patched:
+        resolved = resolve_agent_model(model_spec="openai:gpt-5.4")
+    assert resolved is model
+    patched.assert_called_once_with("openai:gpt-5.4")
+
+
+def test_resolve_agent_model_uses_profile_lookup(tmp_path: Path) -> None:
+    profile = ModelProfile(
+        name="work",
+        provider="grok",
+        model_name="grok-4-1-fast-reasoning",
+        reasoning_effort="high",
+    )
+    ModelProfileStore(home_dir=tmp_path).upsert(profile)
+
+    resolved_model = _Model()
+    with patch("harnessiq.cli.common.create_model_from_profile", return_value=resolved_model) as patched:
+        resolved = resolve_agent_model(profile_name="work", home_dir=tmp_path)
+
+    assert resolved is resolved_model
+    patched.assert_called_once()
+    assert patched.call_args.args[0].as_dict() == profile.as_dict()
+
+
+def test_resolve_agent_model_rejects_non_agent_model() -> None:
+    with patch("harnessiq.cli.common.create_model_from_spec", return_value=object()):
+        with pytest.raises(TypeError, match="generate_turn"):
+            resolve_agent_model(model_spec="openai:gpt-5.4")

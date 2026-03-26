@@ -102,10 +102,10 @@ Run the agent from persisted state:
 harnessiq leads run \
   --agent campaign-a \
   --memory-root ./memory/leads \
-  --model-factory my_module:create_model \
+  --model openai:gpt-5.4 \
   --provider-credentials-factory apollo=my_module:create_apollo_credentials \
   --storage-backend-factory my_module:create_leads_storage_backend \
   --max-cycles 40
 ```
 
-If `--provider-tools-factory` is omitted, the CLI constructs provider tools from the configured `platforms` list plus any injected provider credentials or prebuilt clients.
+If `--provider-tools-factory` is omitted, the CLI constructs provider tools from the configured `platforms` list plus any injected provider credentials or prebuilt clients. Use `harnessiq models add ...` plus `--profile <name>` when you want reusable model defaults instead of repeating them inline.

@@ -15,6 +15,7 @@ from harnessiq.agents import AgentModelRequest, AgentModelResponse
 from harnessiq.cli.main import main
 
 _LAST_LANGSMITH_ENV: dict[str, str] = {}
+_LAST_MODEL_PROFILE: dict[str, object] = {}
 _LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent_helpers.build_langsmith_client", return_value=None)
 
 
@@ -47,6 +48,12 @@ def create_static_model_recording_langsmith_env() -> _StaticModel:
         "LANGSMITH_PROJECT": os.environ.get("LANGSMITH_PROJECT", ""),
         "LANGCHAIN_PROJECT": os.environ.get("LANGCHAIN_PROJECT", ""),
     }
+    return _StaticModel()
+
+
+def create_static_model_from_profile(profile) -> _StaticModel:
+    global _LAST_MODEL_PROFILE
+    _LAST_MODEL_PROFILE = profile.as_dict()
     return _StaticModel()
 
 
@@ -201,7 +208,7 @@ class LinkedInCLITests(unittest.TestCase):
                 run_stdout = io.StringIO()
                 with (
                     patch(
-                        "harnessiq.cli.linkedin.commands._load_factory",
+                        "harnessiq.cli.common.load_factory",
                         return_value=create_static_model_recording_langsmith_env,
                     ),
                     redirect_stdout(run_stdout),
@@ -226,6 +233,69 @@ class LinkedInCLITests(unittest.TestCase):
             self.assertEqual(_LAST_LANGSMITH_ENV["LANGCHAIN_API_KEY"], "ls_test_cli")
             self.assertEqual(_LAST_LANGSMITH_ENV["LANGSMITH_PROJECT"], "cli-project")
             self.assertEqual(_LAST_LANGSMITH_ENV["LANGCHAIN_PROJECT"], "cli-project")
+
+    def test_run_accepts_persisted_model_profile(self) -> None:
+        global _LAST_MODEL_PROFILE
+        _LAST_MODEL_PROFILE = {}
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            home_dir = Path(temp_dir, "home")
+            with patch.dict(os.environ, {"HARNESSIQ_HOME": str(home_dir)}):
+                with redirect_stdout(io.StringIO()):
+                    main(
+                        [
+                            "models",
+                            "add",
+                            "--name",
+                            "work",
+                            "--model",
+                            "grok:grok-4-1-fast-reasoning",
+                            "--reasoning-effort",
+                            "high",
+                        ]
+                    )
+                    main(
+                        [
+                            "linkedin",
+                            "configure",
+                            "--agent",
+                            "candidate-d",
+                            "--memory-root",
+                            temp_dir,
+                            "--job-preferences-text",
+                            "Distributed systems roles.",
+                            "--user-profile-text",
+                            "Backend engineer profile.",
+                        ]
+                    )
+
+                run_stdout = io.StringIO()
+                with (
+                    patch("harnessiq.cli.common.create_model_from_profile", side_effect=create_static_model_from_profile),
+                    redirect_stdout(run_stdout),
+                ):
+                    exit_code = main(
+                        [
+                            "linkedin",
+                            "run",
+                            "--agent",
+                            "candidate-d",
+                            "--memory-root",
+                            temp_dir,
+                            "--profile",
+                            "work",
+                            "--max-cycles",
+                            "1",
+                        ]
+                    )
+
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(run_stdout.getvalue())
+            self.assertEqual(payload["result"]["status"], "completed")
+            self.assertEqual(_LAST_MODEL_PROFILE["name"], "work")
+            self.assertEqual(_LAST_MODEL_PROFILE["provider"], "grok")
+            self.assertEqual(_LAST_MODEL_PROFILE["model_name"], "grok-4-1-fast-reasoning")
+            self.assertEqual(_LAST_MODEL_PROFILE["reasoning_effort"], "high")
 
 
 if __name__ == "__main__":

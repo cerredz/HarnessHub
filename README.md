@@ -31,13 +31,13 @@ print(result.output)
 | Metric | Count |
 | --- | --- |
 | Concrete harness manifests | 7 |
-| Top-level CLI commands | 17 |
-| Registered CLI command paths | 125 |
+| Top-level CLI commands | 18 |
+| Registered CLI command paths | 131 |
 | Model providers | 4 |
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 9 |
-| Test modules | 86 |
+| Test modules | 90 |
 
 ## Agent Matrix
 
@@ -116,9 +116,10 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent |
 | harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent |
 | harnessiq logs | - | Inspect the local audit ledger |
+| harnessiq models | add, list | Manage reusable provider-backed model profiles |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent |
 | harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Prepare and persist generic config for a harness |
-| harnessiq prompts | list, show, text | Inspect bundled master prompts |
+| harnessiq prompts | activate, clear, current, list, show, text | Inspect bundled master prompts |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent |
 | harnessiq report | - | Build a cross-agent report from the local ledger |
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness |
@@ -134,4 +135,3 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 - `docs/leads-agent.md`: Leads harness memory model and CLI workflow.
 - `artifacts/file_index.md`: Generated architecture map for the live repository.
 - `artifacts/commands.md`: Generated CLI command catalog.
-- `artifacts/live_inventory.json`: Machine-readable source of truth for generated repo docs.

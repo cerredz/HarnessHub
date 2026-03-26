@@ -38,7 +38,28 @@ result = agent.run(max_cycles=1)
 print(result.status)
 ```
 
-For production usage, replace `StaticModel` with your own adapter around the provider/client layer you want to use.
+Harnessiq now ships provider-backed adapters under `harnessiq.integrations`, so most SDK consumers no longer need to write their own `AgentModel` wrapper just to get started.
+
+```python
+from harnessiq.integrations import create_model_from_spec
+
+model = create_model_from_spec("openai:gpt-5.4")
+
+agent = DemoAgent(
+    name="demo_agent",
+    model=model,
+    tool_executor=create_builtin_registry(),
+)
+```
+
+Supported first-class providers are `openai`, `anthropic`, `gemini`, and `grok`. The adapters read credentials from the corresponding environment variables, for example `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` / `GOOGLE_API_KEY`, or `XAI_API_KEY`.
+
+If you want reusable named settings such as `reasoning_effort`, `temperature`, or `max_output_tokens`, persist a profile once and reuse it from the CLI:
+
+```bash
+harnessiq models add --name work --model grok:grok-4-1-fast-reasoning --reasoning-effort high
+harnessiq models list
+```
 
 `BaseAgent` runtime behavior is configured with `AgentRuntimeConfig`:
 

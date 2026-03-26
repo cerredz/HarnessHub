@@ -15,12 +15,14 @@ from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.common import (
     add_agent_options,
     add_policy_options,
+    add_model_selection_options,
     add_text_or_file_options,
     build_runtime_config,
     emit_json,
     format_manifest_parameter_keys,
     parse_generic_assignments,
     parse_manifest_parameter_assignments,
+    resolve_agent_model_from_args,
     resolve_memory_path,
     resolve_text_argument,
     split_assignment,
@@ -108,11 +110,7 @@ def register_linkedin_commands(subparsers: argparse._SubParsersAction[argparse.A
         memory_root_default="memory/linkedin",
         memory_root_help="Root directory that holds per-agent LinkedIn memory folders.",
     )
-    run_parser.add_argument(
-        "--model-factory",
-        required=True,
-        help="Import path in the form module:callable that returns an AgentModel instance.",
-    )
+    add_model_selection_options(run_parser)
     run_parser.add_argument(
         "--browser-tools-factory",
         help="Optional import path in the form module:callable that returns an iterable of browser tools.",
@@ -225,9 +223,7 @@ def _handle_run(args: argparse.Namespace) -> int:
     if browser_data_dir.exists() and "HARNESSIQ_BROWSER_SESSION_DIR" not in os.environ:
         os.environ["HARNESSIQ_BROWSER_SESSION_DIR"] = str(browser_data_dir.resolve())
 
-    model = _load_factory(args.model_factory)()
-    if not hasattr(model, "generate_turn"):
-        raise TypeError("Model factory must return an object that implements generate_turn(request).")
+    model = resolve_agent_model_from_args(args)
     browser_tools: Iterable[Any] = ()
     if args.browser_tools_factory:
         created_tools = _load_factory(args.browser_tools_factory)()
@@ -296,7 +292,7 @@ def _handle_init_browser(args: argparse.Namespace) -> int:
     print("Session saved. You can now run the agent with:")
     print(f"  harnessiq linkedin run \\")
     print(f"    --agent {args.agent} \\")
-    print(f"    --model-factory harnessiq.integrations.grok_model:create_grok_model \\")
+    print(f"    --model grok:grok-4-1-fast-reasoning \\")
     print(f"    --browser-tools-factory harnessiq.integrations.linkedin_playwright:create_browser_tools \\")
     print(f"    --max-cycles 20")
     print()

@@ -97,7 +97,7 @@ def test_instagram_run_passes_policy_to_runtime_config(tmp_path, capsys) -> None
     with (
         patch(
             "harnessiq.cli.instagram.commands._load_factory",
-            side_effect=[lambda: MagicMock(), lambda: object()],
+            return_value=lambda: object(),
         ),
         patch(
             "harnessiq.agents.instagram.InstagramKeywordDiscoveryAgent.from_memory",
@@ -108,15 +108,15 @@ def test_instagram_run_passes_policy_to_runtime_config(tmp_path, capsys) -> None
             [
                 "instagram",
                 "run",
-                "--agent",
-                "creator-b",
-                "--memory-root",
-                str(tmp_path),
-                "--model-factory",
-                "mod:model",
-                "--approval",
-                "on-request",
-                "--allowed-tools",
+                    "--agent",
+                    "creator-b",
+                    "--memory-root",
+                    str(tmp_path),
+                    "--model-factory",
+                    "tests.test_cli_policy_options:create_static_model",
+                    "--approval",
+                    "on-request",
+                    "--allowed-tools",
                 "filesystem.*",
                 "--allowed-tools",
                 "context.select.checkpoint,text.normalize_whitespace",

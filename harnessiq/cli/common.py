@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from harnessiq.shared.agents import AgentRuntimeConfig
+from harnessiq.config import ModelProfileStore
+from harnessiq.integrations import create_model_from_profile, create_model_from_spec
 from harnessiq.shared.harness_manifest import HarnessManifest
 from harnessiq.shared.hooks import DEFAULT_APPROVAL_POLICY, SUPPORTED_APPROVAL_POLICIES
 from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
@@ -170,6 +172,28 @@ def add_policy_options(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_model_selection_options(
+    parser: argparse.ArgumentParser,
+    *,
+    required: bool = True,
+) -> None:
+    """Register one mutually-exclusive model-selection surface for run commands."""
+    group = parser.add_mutually_exclusive_group(required=required)
+    group.add_argument(
+        "--model",
+        help="Provider-backed model reference in the form provider:model_name, for example openai:gpt-5.4.",
+    )
+    group.add_argument(
+        "--profile",
+        dest="model_profile",
+        help="Name of a persisted model profile created with `harnessiq models add`.",
+    )
+    group.add_argument(
+        "--model-factory",
+        help="Import path in the form module:callable that returns an AgentModel instance.",
+    )
+
+
 def format_manifest_parameter_keys(
     manifest: HarnessManifest,
     *,
@@ -237,6 +261,49 @@ def load_factory(spec: str):
     if not callable(target):
         raise TypeError(f"Imported object '{spec}' is not callable.")
     return target
+
+
+def resolve_agent_model(
+    *,
+    model_factory: str | None = None,
+    model_spec: str | None = None,
+    profile_name: str | None = None,
+    home_dir: str | Path | None = None,
+):
+    """Construct an AgentModel from one shared CLI selection surface."""
+    selected_count = sum(
+        1
+        for value in (model_factory, model_spec, profile_name)
+        if isinstance(value, str) and value.strip()
+    )
+    if selected_count != 1:
+        raise ValueError(
+            "Exactly one of --model, --profile, or --model-factory must be provided."
+        )
+    if model_factory:
+        model = load_factory(model_factory)()
+    elif model_spec:
+        model = create_model_from_spec(model_spec)
+    else:
+        profile = ModelProfileStore(home_dir=home_dir).load().profile_for(str(profile_name))
+        model = create_model_from_profile(profile)
+    if not hasattr(model, "generate_turn"):
+        raise TypeError("Model selection must resolve to an object that implements generate_turn(request).")
+    return model
+
+
+def resolve_agent_model_from_args(
+    args: argparse.Namespace,
+    *,
+    home_dir: str | Path | None = None,
+):
+    """Construct an AgentModel from parsed argparse state."""
+    return resolve_agent_model(
+        model_factory=getattr(args, "model_factory", None),
+        model_spec=getattr(args, "model", None),
+        profile_name=getattr(args, "model_profile", None),
+        home_dir=home_dir,
+    )
 
 
 def resolve_repo_root(path: str | Path) -> Path:
@@ -314,6 +381,7 @@ __all__ = [
     "add_agent_options",
     "add_manifest_parameter_options",
     "add_policy_options",
+    "add_model_selection_options",
     "add_text_or_file_options",
     "build_runtime_config",
     "collect_manifest_parameter_values",
@@ -326,6 +394,8 @@ __all__ = [
     "parse_scalar",
     "resolve_repo_root",
     "resolve_memory_path",
+    "resolve_agent_model",
+    "resolve_agent_model_from_args",
     "resolve_text_argument",
     "slugify_agent_name",
     "split_assignment",
