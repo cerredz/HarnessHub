@@ -15,6 +15,7 @@ from harnessiq.cli.common import (
     emit_json,
     load_factory,
     parse_manifest_parameter_assignments,
+    resolve_agent_model,
     resolve_memory_path,
     resolve_repo_root,
 )
@@ -37,7 +38,9 @@ _UNSET = object()
 
 @dataclass(frozen=True, slots=True)
 class _ResolvedRunRequest:
-    model_factory: str
+    model_factory: str | None
+    model_spec: str | None
+    model_profile: str | None
     sink_specs: tuple[str, ...]
     max_cycles: int | None
     adapter_arguments: dict[str, Any]
@@ -69,17 +72,24 @@ def _execute_run(
     source_snapshot: HarnessRunSnapshot | None = None,
 ) -> int:
     seed_cli_environment(context.repo_root)
-    model = load_factory(run_request.model_factory)()
-    if not hasattr(model, "generate_turn"):
-        raise TypeError("Model factory must return an object that implements generate_turn(request).")
+    model = resolve_agent_model(
+        model_factory=run_request.model_factory,
+        model_spec=run_request.model_spec,
+        profile_name=run_request.model_profile,
+    )
     runtime_config = _build_runtime_config(run_request.sink_specs)
     payload = _base_payload(context)
     payload["resume"] = {
         "adapter_arguments": dict(run_request.adapter_arguments),
         "max_cycles": run_request.max_cycles,
-        "model_factory": run_request.model_factory,
         "sink_specs": list(run_request.sink_specs),
     }
+    if run_request.model_factory is not None:
+        payload["resume"]["model_factory"] = run_request.model_factory
+    if run_request.model_spec is not None:
+        payload["resume"]["model"] = run_request.model_spec
+    if run_request.model_profile is not None:
+        payload["resume"]["profile"] = run_request.model_profile
     if source_snapshot is not None:
         payload["resume"]["source_recorded_at"] = source_snapshot.recorded_at
         payload["resume"]["source_run_number"] = source_snapshot.run_number
@@ -201,6 +211,8 @@ def _persist_run_snapshot(
     profile = context.profile.append_run_snapshot(
         HarnessRunSnapshot(
             model_factory=run_request.model_factory,
+            model_spec=run_request.model_spec,
+            model_profile=run_request.model_profile,
             sink_specs=run_request.sink_specs,
             max_cycles=run_request.max_cycles,
             adapter_arguments=run_request.adapter_arguments,
@@ -252,7 +264,12 @@ def _resolve_run_request(
         )
 
     if resume_requested:
-        model_factory = args.model_factory or snapshot.model_factory
+        model_factory, model_spec, model_profile = _merge_model_selection(
+            snapshot=snapshot,
+            override_model_factory=getattr(args, "model_factory", None),
+            override_model_spec=getattr(args, "model", None),
+            override_model_profile=getattr(args, "model_profile", None),
+        )
         sink_specs = tuple(args.sink) if args.sink else snapshot.sink_specs
         max_cycles = args.max_cycles if args.max_cycles is not None else snapshot.max_cycles
         adapter_arguments = dict(snapshot.adapter_arguments)
@@ -263,17 +280,25 @@ def _resolve_run_request(
         adapter_arguments.update(run_argument_overrides)
         return _ResolvedRunRequest(
             model_factory=model_factory,
+            model_spec=model_spec,
+            model_profile=model_profile,
             sink_specs=tuple(sink_specs),
             max_cycles=max_cycles,
             adapter_arguments=adapter_arguments,
         )
 
-    if not args.model_factory:
-        raise ValueError("--model-factory is required unless --resume is set.")
+    model_factory, model_spec, model_profile = _collect_model_selection(
+        model_factory=getattr(args, "model_factory", None),
+        model_spec=getattr(args, "model", None),
+        model_profile=getattr(args, "model_profile", None),
+        required=True,
+    )
     adapter_arguments = {argument_name: getattr(args, argument_name) for argument_name in adapter_argument_names}
     adapter_arguments.update(run_argument_overrides)
     return _ResolvedRunRequest(
-        model_factory=args.model_factory,
+        model_factory=model_factory,
+        model_spec=model_spec,
+        model_profile=model_profile,
         sink_specs=tuple(args.sink),
         max_cycles=args.max_cycles,
         adapter_arguments=adapter_arguments,
@@ -284,19 +309,28 @@ def _resolve_resume_request_from_snapshot(
     *,
     snapshot: HarnessRunSnapshot | None,
     model_factory: str | None,
+    model_spec: str | None,
+    model_profile: str | None,
     sink_specs: list[str],
     max_cycles: int | None,
     run_argument_overrides: dict[str, Any],
 ) -> _ResolvedRunRequest:
     if snapshot is None:
         raise ValueError("The selected profile has no persisted run payload to resume.")
-    resolved_model_factory = model_factory or snapshot.model_factory
+    resolved_model_factory, resolved_model_spec, resolved_model_profile = _merge_model_selection(
+        snapshot=snapshot,
+        override_model_factory=model_factory,
+        override_model_spec=model_spec,
+        override_model_profile=model_profile,
+    )
     resolved_sink_specs = tuple(sink_specs) if sink_specs else snapshot.sink_specs
     resolved_max_cycles = max_cycles if max_cycles is not None else snapshot.max_cycles
     adapter_arguments = dict(snapshot.adapter_arguments)
     adapter_arguments.update(run_argument_overrides)
     return _ResolvedRunRequest(
         model_factory=resolved_model_factory,
+        model_spec=resolved_model_spec,
+        model_profile=resolved_model_profile,
         sink_specs=tuple(resolved_sink_specs),
         max_cycles=resolved_max_cycles,
         adapter_arguments=adapter_arguments,
@@ -351,10 +385,63 @@ def _clone_args_with_run_request(
 ) -> argparse.Namespace:
     payload = vars(args).copy()
     payload["model_factory"] = run_request.model_factory
+    payload["model"] = run_request.model_spec
+    payload["model_profile"] = run_request.model_profile
     payload["sink"] = list(run_request.sink_specs)
     payload["max_cycles"] = run_request.max_cycles
     payload.update(run_request.adapter_arguments)
     return argparse.Namespace(**payload)
+
+
+def _collect_model_selection(
+    *,
+    model_factory: str | None,
+    model_spec: str | None,
+    model_profile: str | None,
+    required: bool,
+) -> tuple[str | None, str | None, str | None]:
+    normalized_model_factory = _normalize_optional_string(model_factory)
+    normalized_model_spec = _normalize_optional_string(model_spec)
+    normalized_model_profile = _normalize_optional_string(model_profile)
+    selected_count = sum(
+        1
+        for value in (
+            normalized_model_factory,
+            normalized_model_spec,
+            normalized_model_profile,
+        )
+        if value is not None
+    )
+    if required and selected_count != 1:
+        raise ValueError("Exactly one of --model, --profile, or --model-factory must be provided.")
+    if not required and selected_count > 1:
+        raise ValueError("Exactly one of --model, --profile, or --model-factory may be provided.")
+    return normalized_model_factory, normalized_model_spec, normalized_model_profile
+
+
+def _merge_model_selection(
+    *,
+    snapshot: HarnessRunSnapshot,
+    override_model_factory: str | None,
+    override_model_spec: str | None,
+    override_model_profile: str | None,
+) -> tuple[str | None, str | None, str | None]:
+    model_factory, model_spec, model_profile = _collect_model_selection(
+        model_factory=override_model_factory,
+        model_spec=override_model_spec,
+        model_profile=override_model_profile,
+        required=False,
+    )
+    if any(value is not None for value in (model_factory, model_spec, model_profile)):
+        return model_factory, model_spec, model_profile
+    return snapshot.model_factory, snapshot.model_spec, snapshot.model_profile
+
+
+def _normalize_optional_string(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
 
 
 def _resolve_resume_agent_name(args: argparse.Namespace) -> str:

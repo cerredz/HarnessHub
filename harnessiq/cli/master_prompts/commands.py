@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import argparse
 
-from harnessiq.cli.common import emit_json
+from harnessiq.cli.common import emit_json, resolve_repo_root
 from harnessiq.master_prompts import get_prompt, get_prompt_text, list_prompt_keys, list_prompts
+from harnessiq.master_prompts.session_injection import (
+    activate_prompt_session,
+    clear_prompt_session,
+    get_active_prompt_session,
+)
 
 
 def register_master_prompt_commands(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -23,6 +28,40 @@ def register_master_prompt_commands(subparsers: argparse._SubParsersAction[argpa
     text_parser = prompts_subparsers.add_parser("text", help="Print the raw prompt text for one prompt")
     text_parser.add_argument("key", help="Prompt key, derived from the prompt filename.")
     text_parser.set_defaults(command_handler=_handle_text)
+
+    activate_parser = prompts_subparsers.add_parser(
+        "activate",
+        help="Activate one bundled prompt as always-on project session context for Claude Code and Codex",
+    )
+    activate_parser.add_argument("key", help="Prompt key, derived from the prompt filename.")
+    activate_parser.add_argument(
+        "--repo-root",
+        default=".",
+        help="Project path used to resolve the repo root for generated instruction files.",
+    )
+    activate_parser.set_defaults(command_handler=_handle_activate)
+
+    current_parser = prompts_subparsers.add_parser(
+        "current",
+        help="Show the currently active project-scoped master prompt, if any",
+    )
+    current_parser.add_argument(
+        "--repo-root",
+        default=".",
+        help="Project path used to resolve the repo root for generated instruction files.",
+    )
+    current_parser.set_defaults(command_handler=_handle_current)
+
+    clear_parser = prompts_subparsers.add_parser(
+        "clear",
+        help="Remove generated Claude Code and Codex prompt injection overlays",
+    )
+    clear_parser.add_argument(
+        "--repo-root",
+        default=".",
+        help="Project path used to resolve the repo root for generated instruction files.",
+    )
+    clear_parser.set_defaults(command_handler=_handle_clear)
 
 
 def _handle_list(args: argparse.Namespace) -> int:
@@ -62,6 +101,37 @@ def _handle_show(args: argparse.Namespace) -> int:
 
 def _handle_text(args: argparse.Namespace) -> int:
     print(get_prompt_text(args.key))
+    return 0
+
+
+def _handle_activate(args: argparse.Namespace) -> int:
+    activation = activate_prompt_session(args.key, repo_root=resolve_repo_root(args.repo_root))
+    emit_json(activation.to_payload())
+    return 0
+
+
+def _handle_current(args: argparse.Namespace) -> int:
+    repo_root = resolve_repo_root(args.repo_root)
+    activation = get_active_prompt_session(repo_root=repo_root)
+    if activation is None:
+        emit_json(
+            {
+                "active": False,
+                "prompt": None,
+                "files": {
+                    "claude": repo_root / ".claude" / "CLAUDE.md",
+                    "codex": repo_root / "AGENTS.override.md",
+                    "state": repo_root / ".harnessiq" / "master_prompt_session" / "active_prompt.json",
+                },
+            }
+        )
+        return 0
+    emit_json(activation.to_payload())
+    return 0
+
+
+def _handle_clear(args: argparse.Namespace) -> int:
+    emit_json(clear_prompt_session(repo_root=resolve_repo_root(args.repo_root)))
     return 0
 
 

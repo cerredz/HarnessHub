@@ -6,8 +6,8 @@ This artifact is generated from the live `harnessiq/cli/` source tree by `python
 
 | Metric | Count |
 | --- | --- |
-| Top-level commands | 17 |
-| Registered command paths | 125 |
+| Top-level commands | 18 |
+| Registered command paths | 131 |
 
 Alias paths are included in the registered command total. Canonical commands list aliases where they exist.
 
@@ -24,9 +24,10 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent | `harnessiq/cli/leads/commands.py` |
 | harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent | `harnessiq/cli/linkedin/commands.py` |
 | harnessiq logs | - | Inspect the local audit ledger | `harnessiq/cli/ledger/commands.py` |
+| harnessiq models | add, list | Manage reusable provider-backed model profiles | `harnessiq/cli/models/commands.py` |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent | `harnessiq/cli/exa_outreach/commands.py` |
 | harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
-| harnessiq prompts | list, show, text | Inspect bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
+| harnessiq prompts | activate, clear, current, list, show, text | Inspect bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent | `harnessiq/cli/prospecting/commands.py` |
 | harnessiq report | - | Build a cross-agent report from the local ledger | `harnessiq/cli/ledger/commands.py` |
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness | `harnessiq/cli/research_sweep/commands.py` |
@@ -124,6 +125,13 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq linkedin run | Run the LinkedIn SDK agent from persisted CLI state | `harnessiq/cli/linkedin/commands.py` |
 | harnessiq linkedin show | Render the current LinkedIn CLI-managed state as JSON | `harnessiq/cli/linkedin/commands.py` |
 
+## `harnessiq models`
+
+| Command | Description | Source |
+| --- | --- | --- |
+| harnessiq models add | Add or update a persisted model profile | `harnessiq/cli/models/commands.py` |
+| harnessiq models list | List persisted model profiles | `harnessiq/cli/models/commands.py` |
+
 ## `harnessiq outreach`
 
 | Command | Description | Source |
@@ -149,6 +157,9 @@ Alias paths are included in the registered command total. Canonical commands lis
 
 | Command | Description | Source |
 | --- | --- | --- |
+| harnessiq prompts activate | Activate one bundled prompt as always-on project session context for Claude Code and Codex | `harnessiq/cli/master_prompts/commands.py` |
+| harnessiq prompts clear | Remove generated Claude Code and Codex prompt injection overlays | `harnessiq/cli/master_prompts/commands.py` |
+| harnessiq prompts current | Show the currently active project-scoped master prompt, if any | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prompts list | List bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prompts show | Render one bundled master prompt as JSON | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prompts text | Print the raw prompt text for one prompt | `harnessiq/cli/master_prompts/commands.py` |

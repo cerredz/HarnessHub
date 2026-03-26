@@ -9,6 +9,7 @@ from typing import Any
 from harnessiq.cli.common import (
     add_agent_options,
     add_manifest_parameter_options,
+    add_model_selection_options,
     collect_manifest_parameter_values,
     emit_json,
     parse_generic_assignments,
@@ -74,10 +75,7 @@ def register_platform_commands(subparsers: argparse._SubParsersAction[argparse.A
         "--harness",
         help="Optional harness manifest id, runtime agent name, or CLI command used to narrow resume lookup.",
     )
-    resume_parser.add_argument(
-        "--model-factory",
-        help="Optional override for the persisted model factory import path.",
-    )
+    add_model_selection_options(resume_parser, required=False)
     resume_parser.add_argument(
         "--run",
         dest="resume_run_number",
@@ -169,10 +167,7 @@ def _register_manifest_subcommands(
                 type=int,
                 help="Specific persisted run number to reuse when --resume is set; defaults to the latest stored run.",
             )
-            parser.add_argument(
-                "--model-factory",
-                help="Import path in the form module:callable that returns an AgentModel instance.",
-            )
+            add_model_selection_options(parser, required=False)
             parser.add_argument(
                 "--sink",
                 action="append",
@@ -365,6 +360,8 @@ def _handle_resume(args: argparse.Namespace) -> int:
     run_request = _resolve_resume_request_from_snapshot(
         snapshot=selected_snapshot,
         model_factory=args.model_factory,
+        model_spec=args.model,
+        model_profile=args.model_profile,
         sink_specs=args.sink,
         max_cycles=args.max_cycles,
         run_argument_overrides=parse_generic_assignments(args.run_arg),
@@ -374,7 +371,9 @@ def _handle_resume(args: argparse.Namespace) -> int:
         agent=context.agent_name,
         harness=context.manifest.manifest_id,
         max_cycles=run_request.max_cycles,
+        model=run_request.model_spec,
         model_factory=run_request.model_factory,
+        model_profile=run_request.model_profile,
         sink=list(run_request.sink_specs),
         **dict(run_request.adapter_arguments),
     )

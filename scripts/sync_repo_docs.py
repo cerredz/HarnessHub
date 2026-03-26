@@ -3,9 +3,11 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+from collections.abc import Callable
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from types import MappingProxyType
+from typing import Any, NamedTuple
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,22 +21,60 @@ UTILS_DIR = HARNESSIQ_DIR / "utils"
 TESTS_DIR = ROOT / "tests"
 
 
-TOP_LEVEL_DIRECTORY_DESCRIPTIONS = {
-    ".harnessiq": (
+class DirectoryClassification(NamedTuple):
+    kind: str
+    description: str
+
+
+DirectoryClassifier = Callable[[Path], DirectoryClassification | None]
+
+
+WORKTREES_DIRECTORY_CLASSIFICATION = DirectoryClassification(
+    "local state",
+    "Git worktree checkouts used for isolated implementation branches; local-only and not part of the shipped package.",
+)
+
+LOCAL_DATA_DIRECTORY_CLASSIFICATION = DirectoryClassification(
+    "local state",
+    "Local datasets, exports, and scratch runtime artifacts; not part of the shipped package.",
+)
+
+EXACT_TOP_LEVEL_DIRECTORY_CLASSIFICATIONS = MappingProxyType({
+    ".harnessiq": DirectoryClassification(
         "generated/cache",
         "Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable.",
     ),
-    ".pytest_cache": ("generated/cache", "Test runner cache; generated, not part of the source of truth."),
-    "artifacts": ("repo docs", "Generated and curated repository reference artifacts."),
-    "build": ("generated/cache", "Setuptools build output; generated, not part of the live source tree."),
-    "docs": ("repo docs", "Focused usage and architecture notes for the package."),
-    "harnessiq": ("source", "Live SDK package source."),
-    "harnessiq.egg-info": ("generated/cache", "Packaging metadata emitted by local builds."),
-    "memory": ("local state", "Task artifacts plus durable agent runtime state; not part of the shipped package."),
-    "scripts": ("repo tooling", "Repository maintenance and generation scripts."),
-    "src": ("generated/cache", "Legacy or generated residue in this checkout; not the authoritative package source."),
-    "tests": ("source", "unittest coverage for runtime, CLI, providers, and tools."),
-}
+    ".pytest_cache": DirectoryClassification(
+        "generated/cache",
+        "Test runner cache; generated, not part of the source of truth.",
+    ),
+    "artifacts": DirectoryClassification("repo docs", "Generated and curated repository reference artifacts."),
+    "build": DirectoryClassification(
+        "generated/cache",
+        "Setuptools build output; generated, not part of the live source tree.",
+    ),
+    "docs": DirectoryClassification("repo docs", "Focused usage and architecture notes for the package."),
+    "harnessiq": DirectoryClassification("source", "Live SDK package source."),
+    "harnessiq.egg-info": DirectoryClassification(
+        "generated/cache",
+        "Packaging metadata emitted by local builds.",
+    ),
+    "memory": DirectoryClassification(
+        "local state",
+        "Task artifacts plus durable agent runtime state; not part of the shipped package.",
+    ),
+    "scripts": DirectoryClassification("repo tooling", "Repository maintenance and generation scripts."),
+    "src": DirectoryClassification(
+        "generated/cache",
+        "Legacy or generated residue in this checkout; not the authoritative package source.",
+    ),
+    "tests": DirectoryClassification("source", "unittest coverage for runtime, CLI, providers, and tools."),
+})
+
+DEFAULT_TOP_LEVEL_DIRECTORY_CLASSIFICATION = DirectoryClassification(
+    "other",
+    "Repository directory not yet classified in the generated file index.",
+)
 
 PACKAGE_LAYOUT = [
     (
@@ -157,6 +197,47 @@ README_DOC_LINKS = [
     ("artifacts/commands.md", "Generated CLI command catalog."),
     ("artifacts/live_inventory.json", "Machine-readable source of truth for generated repo docs."),
 ]
+
+
+def _classify_exact_top_level_directory(directory: Path) -> DirectoryClassification | None:
+    return EXACT_TOP_LEVEL_DIRECTORY_CLASSIFICATIONS.get(directory.name)
+
+
+def _classify_git_worktrees_directory(directory: Path) -> DirectoryClassification | None:
+    if directory.name != ".worktrees":
+        return None
+    return WORKTREES_DIRECTORY_CLASSIFICATION
+
+
+def _classify_local_data_directory(directory: Path) -> DirectoryClassification | None:
+    if directory.name != "data":
+        return None
+    return LOCAL_DATA_DIRECTORY_CLASSIFICATION
+
+
+TOP_LEVEL_DIRECTORY_CLASSIFIERS: tuple[DirectoryClassifier, ...] = (
+    _classify_exact_top_level_directory,
+    _classify_git_worktrees_directory,
+    _classify_local_data_directory,
+)
+
+
+def resolve_top_level_directory_classification(directory: Path) -> DirectoryClassification:
+    for classifier in TOP_LEVEL_DIRECTORY_CLASSIFIERS:
+        classification = classifier(directory)
+        if classification is not None:
+            return classification
+    return DEFAULT_TOP_LEVEL_DIRECTORY_CLASSIFICATION
+
+
+def classify_top_level_directory(directory: Path) -> dict[str, str]:
+    classification = resolve_top_level_directory_classification(directory)
+    return {
+        "name": directory.name,
+        "path": f"{directory.name}/",
+        "kind": classification.kind,
+        "description": classification.description,
+    }
 
 
 def parse_args() -> argparse.Namespace:
@@ -776,20 +857,10 @@ def build_inventory() -> dict[str, Any]:
     sink_types = parse_builtin_sink_types()
     tests = parse_tests()
 
-    top_level_dirs: list[dict[str, Any]] = []
-    for directory in sorted(path for path in ROOT.iterdir() if path.is_dir() and path.name != ".git"):
-        kind, description = TOP_LEVEL_DIRECTORY_DESCRIPTIONS.get(
-            directory.name,
-            ("other", "Repository directory not yet classified in the generated file index."),
-        )
-        top_level_dirs.append(
-            {
-                "name": directory.name,
-                "path": f"{directory.name}/",
-                "kind": kind,
-                "description": description,
-            }
-        )
+    top_level_dirs = [
+        classify_top_level_directory(directory)
+        for directory in sorted(path for path in ROOT.iterdir() if path.is_dir() and path.name != ".git")
+    ]
 
     package_layout_rows: list[dict[str, Any]] = []
     for package_path, description in PACKAGE_LAYOUT:

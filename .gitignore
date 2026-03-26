@@ -22,6 +22,7 @@ Scripts/
 .skill-staging/
 .harnessiq/
 .worktrees/
+AGENTS.override.md
 
 # Credentials
 harnessiq/agents/linkedin/credentials.py
