@@ -463,6 +463,5 @@ def _parse_bool(value: str | None, *, default: bool) -> bool:
 
 __all__ = [
     "PlaywrightGoogleMapsSession",
-    "_GOOGLE_MAPS_BOOTSTRAP_URL",
     "create_browser_tools",
 ]

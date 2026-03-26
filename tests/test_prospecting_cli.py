@@ -265,6 +265,8 @@ class ProspectingCliTests(unittest.TestCase):
         )
         session.start.assert_called_once_with()
         session.stop.assert_called_once_with()
+        self.assertIn("Open Google Maps", stdout.getvalue())
+        self.assertIn("Browser session saved to:", stdout.getvalue())
         payload = mock_emit_json.call_args.args[0]
         self.assertEqual(payload["browser_data_dir"], browser_data_dir)
         self.assertEqual(payload["status"], "session_saved")
