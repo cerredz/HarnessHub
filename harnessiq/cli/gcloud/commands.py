@@ -176,8 +176,9 @@ def register_gcloud_commands(subparsers: argparse._SubParsersAction[argparse.Arg
         help_text="Trigger an immediate Cloud Run job execution",
     )
     _add_agent_argument(execute_parser)
-    execute_parser.add_argument("--wait", action="store_true", help="Wait for the execution to complete.")
-    execute_parser.add_argument(
+    execute_mode_group = execute_parser.add_mutually_exclusive_group()
+    execute_mode_group.add_argument("--wait", action="store_true", help="Wait for the execution to complete.")
+    execute_mode_group.add_argument(
         "--async",
         dest="async_",
         action="store_true",

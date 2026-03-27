@@ -37,6 +37,13 @@ def test_gcloud_help_path_exits_cleanly() -> None:
     assert exc_info.value.code == 0
 
 
+def test_gcloud_execute_wait_and_async_are_mutually_exclusive() -> None:
+    parser = build_parser()
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args(["gcloud", "execute", "--agent", "candidate-a", "--wait", "--async"])
+    assert exc_info.value.code == 2
+
+
 def test_gcloud_root_command_prints_help() -> None:
     stdout = io.StringIO()
     with redirect_stdout(stdout):

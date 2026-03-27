@@ -25,7 +25,7 @@ pytest tests/test_gcloud_cli.py
 
 Result:
 
-- 14 tests passed
+- 15 tests passed
 
 Coverage exercised:
 
@@ -48,7 +48,7 @@ pytest tests/test_gcloud_cli.py tests/test_model_profiles.py tests/test_ledger_c
 
 Result:
 
-- 101 tests passed
+- 102 tests passed
 
 This wider slice confirmed the new deployment-side GCP CLI commands did not regress adjacent CLI families or the provider layer they delegate into.
 
