@@ -19,6 +19,7 @@ TOOLS_DIR = HARNESSIQ_DIR / "tools"
 UTILS_DIR = HARNESSIQ_DIR / "utils"
 TESTS_DIR = ROOT / "tests"
 LEGACY_OUTPUTS = (ARTIFACTS_DIR / "live_inventory.json",)
+IGNORED_TOP_LEVEL_DIRECTORIES = frozenset({".git", ".pytest_cache"})
 
 
 class DirectoryClassification(NamedTuple):
@@ -43,10 +44,6 @@ EXACT_TOP_LEVEL_DIRECTORY_CLASSIFICATIONS = MappingProxyType({
     ".harnessiq": DirectoryClassification(
         "generated/cache",
         "Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable.",
-    ),
-    ".pytest_cache": DirectoryClassification(
-        "generated/cache",
-        "Test runner cache; generated, not part of the source of truth.",
     ),
     "artifacts": DirectoryClassification("repo docs", "Generated and curated repository reference artifacts."),
     "build": DirectoryClassification(
@@ -871,7 +868,9 @@ def build_inventory() -> dict[str, Any]:
 
     top_level_dirs = [
         classify_top_level_directory(directory)
-        for directory in sorted(path for path in ROOT.iterdir() if path.is_dir() and path.name != ".git")
+        for directory in sorted(
+            path for path in ROOT.iterdir() if path.is_dir() and path.name not in IGNORED_TOP_LEVEL_DIRECTORIES
+        )
     ]
 
     package_layout_rows: list[dict[str, Any]] = []
