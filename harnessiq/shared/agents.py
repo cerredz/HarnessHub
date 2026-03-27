@@ -95,6 +95,7 @@ class AgentRuntimeConfig:
     langsmith_api_key: str | None = None
     langsmith_project: str | None = None
     langsmith_api_url: str | None = None
+    session_id: str | None = None
 
     def __post_init__(self) -> None:
         if self.max_tokens <= 0:
@@ -136,6 +137,9 @@ class AgentRuntimeConfig:
         if self.langsmith_api_url is not None:
             normalized_api_url = self.langsmith_api_url.strip()
             object.__setattr__(self, "langsmith_api_url", normalized_api_url or None)
+        if self.session_id is not None:
+            normalized_session_id = self.session_id.strip()
+            object.__setattr__(self, "session_id", normalized_session_id or None)
 
     @property
     def reset_token_limit(self) -> int:
@@ -190,6 +194,7 @@ def merge_agent_runtime_config(
         langsmith_api_key=runtime_config.langsmith_api_key,
         langsmith_project=runtime_config.langsmith_project,
         langsmith_api_url=runtime_config.langsmith_api_url,
+        session_id=runtime_config.session_id,
     )
 
 

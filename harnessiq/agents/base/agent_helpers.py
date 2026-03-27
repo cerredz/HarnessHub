@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 from collections.abc import Callable, Sequence
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -29,12 +30,14 @@ from harnessiq.shared.hooks import HookContext, HookPhase, RegisteredHook
 from harnessiq.shared.tools import CONTEXT_SELECT_CHECKPOINT, ToolCall, ToolDefinition, ToolResult
 from harnessiq.tools.context import BoundContextToolExecutor, create_context_tools
 from harnessiq.tools.hooks import create_default_hook_tools
-from harnessiq.utils.ledger import JSONLLedgerSink, LedgerEntry, new_run_id
+from harnessiq.utils.ledger import JSONLLedgerSink, LedgerEntry, load_ledger_entries, new_run_id
 
 logger = logging.getLogger("harnessiq.agents.base.agent")
 _CONTEXT_STATE_FILENAME = "context_runtime_state.json"
 _CONTEXT_MEMORY_SECTION_TITLE = "Context Memory"
 _DIRECTIVE_PRIORITY_ORDER = {"critical": 0, "standard": 1, "advisory": 2}
+_RESUMABLE_RUN_STATUSES = frozenset({"paused", "max_cycles_reached"})
+_SESSION_ID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 
 class BaseAgentHelpersMixin:
@@ -237,6 +240,14 @@ class BaseAgentHelpersMixin:
         )
         return result
 
+    def _initialize_terminal_run(self) -> datetime:
+        """Initialize per-run identifiers and counters before the loop begins."""
+        self._last_run_id = new_run_id()
+        self._session_id = self._resolve_session_id()
+        self._run_tool_calls = 0
+        self._run_tool_call_breakdown = {}
+        return _utcnow()
+
     def _emit_ledger_entry(
         self,
         *,
@@ -261,6 +272,9 @@ class BaseAgentHelpersMixin:
             metadata=self._build_ledger_metadata(
                 cycles_completed=cycles_completed,
                 total_estimated_request_tokens=total_estimated_request_tokens,
+                started_at=started_at,
+                finished_at=finished_at,
+                status=status,
                 pause_reason=pause_reason,
                 error=error,
             ),
@@ -276,6 +290,9 @@ class BaseAgentHelpersMixin:
         *,
         cycles_completed: int,
         total_estimated_request_tokens: int,
+        started_at: datetime,
+        finished_at: datetime,
+        status: str,
         pause_reason: str | None,
         error: Exception | None,
     ) -> dict[str, Any]:
@@ -286,9 +303,11 @@ class BaseAgentHelpersMixin:
             "cycles_completed": cycles_completed,
             "estimated_request_tokens": total_estimated_request_tokens,
             "hook_count": len(self.available_hooks()),
+            "instance_id": self.instance_id,
             "max_tokens": self._runtime_config.max_tokens,
             "memory_path": str(self._memory_path) if self._memory_path is not None else None,
             "reset_threshold": self._runtime_config.reset_threshold,
+            "session_id": self._session_id,
             "tool_count": len(self.available_tools()),
         }
         if pause_reason is not None:
@@ -300,7 +319,59 @@ class BaseAgentHelpersMixin:
             }
         metadata.update(extract_model_metadata(self._model))
         metadata.update(self.build_ledger_metadata())
+        metadata["stats"] = self._build_stats_metadata(
+            cycles_completed=cycles_completed,
+            total_estimated_request_tokens=total_estimated_request_tokens,
+            started_at=started_at,
+            finished_at=finished_at,
+            status=status,
+        )
         return metadata
+
+    def _build_stats_metadata(
+        self,
+        *,
+        cycles_completed: int,
+        total_estimated_request_tokens: int,
+        started_at: datetime,
+        finished_at: datetime,
+        status: str,
+    ) -> dict[str, Any]:
+        """Build the normalized immutable stats payload for one terminal run."""
+        model_metadata = extract_model_metadata(self._model)
+        duration_seconds = max(0.0, (finished_at - started_at).total_seconds())
+        return {
+            "version": 1,
+            "repo_id": self._repo_root.name or "workspace",
+            "instance_id": self.instance_id,
+            "session_id": self._session_id,
+            "model_provider": str(model_metadata.get("provider") or "custom"),
+            "model_name": str(
+                model_metadata.get("model_name")
+                or model_metadata.get("model_class")
+                or type(self._model).__name__
+            ),
+            "token_usage": {
+                "request_estimated": total_estimated_request_tokens,
+                "input_actual": None,
+                "output_actual": None,
+                "total_actual": None,
+                "source": "estimated",
+            },
+            "timing": {
+                "run_started_at": started_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "run_finished_at": finished_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "duration_seconds": duration_seconds,
+            },
+            "counters": {
+                "cycles_completed": cycles_completed,
+                "reset_count": self._reset_count,
+                "tool_calls": self._run_tool_calls,
+                "distinct_tools": len(self._run_tool_call_breakdown),
+                "tool_call_breakdown": dict(sorted(self._run_tool_call_breakdown.items())),
+            },
+            "run_status": status,
+        }
 
     def _resolved_output_sinks(self) -> tuple[Any, ...]:
         """Resolve the default and explicit sinks for the current run."""
@@ -366,6 +437,7 @@ class BaseAgentHelpersMixin:
         try:
             tool_definition = self._resolve_tool_definition(tool_call.tool_key)
             tool_name = tool_definition.name if tool_definition is not None else tool_call.tool_key
+            self._record_tool_execution(tool_call.tool_key)
             return trace_tool_call(
                 lambda: self._tool_executor.execute(tool_call.tool_key, tool_call.arguments),
                 tool_name=tool_name,
@@ -386,6 +458,11 @@ class BaseAgentHelpersMixin:
                 tool_key=tool_call.tool_key,
                 output={"error": str(exc)},
             )
+
+    def _record_tool_execution(self, tool_key: str) -> None:
+        """Accumulate per-run tool counters for stats projection."""
+        self._run_tool_calls += 1
+        self._run_tool_call_breakdown[tool_key] = self._run_tool_call_breakdown.get(tool_key, 0) + 1
 
     def _resolve_tool_definition(self, tool_key: str) -> ToolDefinition | None:
         """Look up the canonical tool definition for one tool key."""
@@ -515,6 +592,47 @@ class BaseAgentHelpersMixin:
         if raw_name is None:
             return None
         return str(raw_name)
+
+    def _resolve_session_id(self) -> str:
+        """Return the logical session identifier for the next terminal run."""
+        explicit_session_id = self._runtime_config.session_id
+        if explicit_session_id is not None:
+            return explicit_session_id
+        prior_session_id = self._lookup_resumable_session_id()
+        if prior_session_id is not None:
+            return prior_session_id
+        return _new_session_id()
+
+    def _lookup_resumable_session_id(self) -> str | None:
+        """Reuse the latest resumable session for this instance when present."""
+        ledger_path = self._resolved_jsonl_ledger_path()
+        if ledger_path is None or not ledger_path.exists():
+            return None
+        try:
+            entries = load_ledger_entries(ledger_path)
+        except Exception as exc:  # pragma: no cover - defensive against malformed ledgers
+            logger.warning("Unable to inspect ledger for resumable session lookup: %s", exc)
+            return None
+        for entry in reversed(entries):
+            stats = entry.metadata.get("stats")
+            if not isinstance(stats, dict):
+                continue
+            if str(stats.get("instance_id", "")).strip() != self.instance_id:
+                continue
+            if entry.status not in _RESUMABLE_RUN_STATUSES:
+                return None
+            session_id = stats.get("session_id")
+            if isinstance(session_id, str) and session_id.strip():
+                return session_id.strip()
+            return None
+        return None
+
+    def _resolved_jsonl_ledger_path(self) -> Path | None:
+        """Return the first resolved JSONL ledger path for this runtime."""
+        for sink in self._resolved_output_sinks():
+            if isinstance(sink, JSONLLedgerSink):
+                return Path(sink.path).expanduser()
+        return None
 
     def _record_assistant_response(self, response: AgentModelResponse) -> None:
         """Append one assistant turn and its requested tool calls to the transcript."""
@@ -732,3 +850,20 @@ def _resolve_repo_root(repo_root: str | Path | None, memory_path: Path | None) -
 def _utcnow() -> datetime:
     """Return the current UTC timestamp for runtime bookkeeping."""
     return datetime.now(timezone.utc)
+
+
+def _new_session_id() -> str:
+    """Return a ULID-like session id with a stable ``sess_`` prefix."""
+    timestamp_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    value = (timestamp_ms << 80) | secrets.randbits(80)
+    return "sess_" + _encode_crockford_base32(value, length=26)
+
+
+def _encode_crockford_base32(value: int, *, length: int) -> str:
+    """Encode an integer using the Crockford Base32 alphabet."""
+    encoded = ["0"] * length
+    current = value
+    for index in range(length - 1, -1, -1):
+        encoded[index] = _SESSION_ID_ALPHABET[current & 31]
+        current >>= 5
+    return "".join(encoded)
