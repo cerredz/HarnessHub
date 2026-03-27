@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from tempfile import TemporaryDirectory
 import unittest
 
@@ -52,6 +53,64 @@ class _TestExaAgent(BaseExaAgent):
 
 
 class BaseExaAgentTests(unittest.TestCase):
+    def test_exa_agent_accepts_protocol_compatible_client(self) -> None:
+        @dataclass
+        class _FakeExaClient:
+            credentials: ExaCredentials
+
+            def request_executor(self, method: str, url: str, **kwargs: object) -> dict[str, object]:
+                return {"results": [], "method": method, "url": url, "timeout_seconds": kwargs["timeout_seconds"]}
+
+            def prepare_request(
+                self,
+                operation_name: str,
+                *,
+                path_params=None,
+                query=None,
+                payload=None,
+            ):
+                del path_params, query
+                return type(
+                    "PreparedRequest",
+                    (),
+                    {
+                        "operation": type("Operation", (), {"name": operation_name})(),
+                        "method": "POST",
+                        "path": "/search",
+                        "url": "https://api.exa.ai/search",
+                        "headers": {"x-api-key": "exa-secret-key"},
+                        "json_body": payload,
+                    },
+                )()
+
+        with TemporaryDirectory() as temp_repo_root:
+            credentials = ExaCredentials(api_key="exa-secret-key")
+            model = _FakeModel(
+                [
+                    AgentModelResponse(
+                        assistant_message="Search Exa.",
+                        tool_calls=(
+                            ToolCall(
+                                tool_key=EXA_REQUEST,
+                                arguments={"operation": "search", "payload": {"query": "AI infrastructure"}},
+                            ),
+                        ),
+                        should_continue=False,
+                    )
+                ]
+            )
+            agent = _TestExaAgent(
+                model=model,
+                exa_credentials=credentials,
+                exa_client=_FakeExaClient(credentials=credentials),
+                repo_root=temp_repo_root,
+            )
+
+            result = agent.run(max_cycles=1)
+
+            self.assertEqual(result.status, "completed")
+            self.assertIn('"operation": "search"', agent.transcript[-1].content)
+
     def test_exa_agent_injects_masked_credentials_and_default_tooling(self) -> None:
         with TemporaryDirectory() as temp_repo_root:
             credentials = ExaCredentials(api_key="exa-secret-key")

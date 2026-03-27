@@ -8,6 +8,7 @@ from typing import Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig
 from harnessiq.agents.provider_base import BaseProviderToolAgent
+from harnessiq.interfaces import RequestPreparingClient
 from harnessiq.providers.apollo import ApolloClient
 from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.apollo_agent import (
@@ -30,7 +31,7 @@ class BaseApolloAgent(BaseProviderToolAgent, ABC):
         model: AgentModel,
         config: ApolloAgentConfig,
         tools: Sequence[RegisteredTool] | None = None,
-        apollo_client: ApolloClient | None = None,
+        apollo_client: RequestPreparingClient | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
         memory_path: str | Path | None = None,
         repo_root: str | Path | None = None,
@@ -65,7 +66,7 @@ class BaseApolloAgent(BaseProviderToolAgent, ABC):
         return self._config
 
     @property
-    def apollo_client(self) -> ApolloClient:
+    def apollo_client(self) -> RequestPreparingClient:
         return self._apollo_client
 
     def apollo_identity(self) -> str:

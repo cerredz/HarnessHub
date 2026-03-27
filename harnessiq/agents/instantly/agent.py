@@ -8,6 +8,7 @@ from typing import Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig
 from harnessiq.agents.provider_base import BaseProviderToolAgent
+from harnessiq.interfaces import RequestPreparingClient
 from harnessiq.providers.instantly import InstantlyClient
 from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.instantly_agent import (
@@ -30,7 +31,7 @@ class BaseInstantlyAgent(BaseProviderToolAgent, ABC):
         model: AgentModel,
         config: InstantlyAgentConfig,
         tools: Sequence[RegisteredTool] | None = None,
-        instantly_client: InstantlyClient | None = None,
+        instantly_client: RequestPreparingClient | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
         memory_path: str | Path | None = None,
         repo_root: str | Path | None = None,
@@ -65,7 +66,7 @@ class BaseInstantlyAgent(BaseProviderToolAgent, ABC):
         return self._config
 
     @property
-    def instantly_client(self) -> InstantlyClient:
+    def instantly_client(self) -> RequestPreparingClient:
         return self._instantly_client
 
     def instantly_identity(self) -> str:

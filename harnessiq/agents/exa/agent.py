@@ -8,6 +8,7 @@ from typing import Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig
 from harnessiq.agents.provider_base import BaseProviderToolAgent
+from harnessiq.interfaces import RequestPreparingClient
 from harnessiq.providers.exa import ExaClient
 from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.exa_agent import DEFAULT_EXA_AGENT_IDENTITY, ExaAgentConfig, resolve_exa_operation_names
@@ -26,7 +27,7 @@ class BaseExaAgent(BaseProviderToolAgent, ABC):
         model: AgentModel,
         config: ExaAgentConfig,
         tools: Sequence[RegisteredTool] | None = None,
-        exa_client: ExaClient | None = None,
+        exa_client: RequestPreparingClient | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
         memory_path: str | Path | None = None,
         repo_root: str | Path | None = None,
@@ -59,7 +60,7 @@ class BaseExaAgent(BaseProviderToolAgent, ABC):
         return self._config
 
     @property
-    def exa_client(self) -> ExaClient:
+    def exa_client(self) -> RequestPreparingClient:
         return self._exa_client
 
     def exa_identity(self) -> str:

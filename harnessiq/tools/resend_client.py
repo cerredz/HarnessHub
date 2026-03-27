@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 from urllib.parse import urlencode
 
+from harnessiq.interfaces import ResendRequestClient
 from harnessiq.providers.http import RequestExecutor, request_json
 from harnessiq.shared.resend import ResendCredentials, ResendOperation, ResendPreparedRequest
 from harnessiq.tools.resend_catalog import _BATCH_VALIDATION_MODES, get_resend_operation
@@ -93,8 +94,8 @@ class ResendClient:
 def coerce_resend_client(
     *,
     credentials: ResendCredentials | None,
-    client: ResendClient | None,
-) -> ResendClient:
+    client: ResendRequestClient | None,
+) -> ResendRequestClient:
     if client is not None:
         return client
     if credentials is None:
