@@ -109,14 +109,15 @@ class TestRunCommand:
 
         with (
             patch(
-                "harnessiq.cli.research_sweep.commands._load_factory",
-                side_effect=[
-                    lambda: MagicMock(),
-                    lambda: SerperCredentials(api_key="cli-serper-key"),
-                ],
+                "harnessiq.cli.common.load_factory",
+                return_value=lambda: MagicMock(),
             ),
             patch(
-                "harnessiq.cli.research_sweep.commands.ResearchSweepAgent.from_memory",
+                "harnessiq.cli.runners.research_sweep.load_factory",
+                return_value=lambda: SerperCredentials(api_key="cli-serper-key"),
+            ),
+            patch(
+                "harnessiq.cli.runners.research_sweep.ResearchSweepAgent.from_memory",
                 return_value=mock_agent,
             ) as patched_from_memory,
         ):
