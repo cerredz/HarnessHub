@@ -124,6 +124,7 @@ def create_context_tools(
     )
 
     from .definitions.injection import create_context_injection_tools
+    from .definitions.catalog import create_context_catalog_tools
     from .definitions.parameter import create_context_parameter_tools
     from .definitions.selective import create_context_selective_tools
     from .definitions.structural import create_context_structural_tools
@@ -131,6 +132,7 @@ def create_context_tools(
 
     return (
         *create_context_summarization_tools(runtime),
+        *create_context_catalog_tools(runtime),
         *create_context_structural_tools(runtime),
         *create_context_selective_tools(runtime),
         *create_context_parameter_tools(runtime),
