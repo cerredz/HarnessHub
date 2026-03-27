@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import unittest
 
 from harnessiq.providers.exa import (
@@ -125,6 +126,55 @@ class ExaClientTests(unittest.TestCase):
 
 
 class ExaToolsTests(unittest.TestCase):
+    def test_create_exa_tools_accepts_protocol_compatible_client(self) -> None:
+        @dataclass
+        class _FakeCredentials:
+            timeout_seconds: float = 42.0
+
+        @dataclass
+        class _FakePreparedRequest:
+            operation: object
+            method: str
+            path: str
+            url: str
+            headers: dict[str, str]
+            json_body: dict[str, object] | None
+
+        class _FakeClient:
+            def __init__(self) -> None:
+                self.credentials = _FakeCredentials()
+                self.calls: list[tuple[str, str, float]] = []
+
+            def request_executor(self, method: str, url: str, **kwargs: object) -> dict[str, object]:
+                self.calls.append((method, url, float(kwargs["timeout_seconds"])))
+                return {"results": []}
+
+            def prepare_request(
+                self,
+                operation_name: str,
+                *,
+                path_params=None,
+                query=None,
+                payload=None,
+            ) -> _FakePreparedRequest:
+                del path_params, query
+                return _FakePreparedRequest(
+                    operation=type("Operation", (), {"name": operation_name})(),
+                    method="POST",
+                    path="/search",
+                    url="https://example.test/search",
+                    headers={"Authorization": "Bearer fake"},
+                    json_body=payload,
+                )
+
+        client = _FakeClient()
+        registry = ToolRegistry(create_exa_tools(client=client))
+
+        result = registry.execute(EXA_REQUEST, {"operation": "search", "payload": {"query": "AI"}})
+
+        self.assertEqual(result.output["operation"], "search")
+        self.assertEqual(client.calls, [("POST", "https://example.test/search", 42.0)])
+
     def test_create_exa_tools_returns_registerable_tuple(self) -> None:
         creds = ExaCredentials(api_key="testkey")
         tools = create_exa_tools(credentials=creds)

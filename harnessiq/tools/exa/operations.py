@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
+from harnessiq.interfaces import RequestPreparingClient
+
 from harnessiq.providers.exa.operations import (
     ExaOperation,
     build_exa_operation_catalog,
@@ -68,7 +70,7 @@ def build_exa_request_tool_definition(
 def create_exa_tools(
     *,
     credentials: "ExaCredentials | None" = None,
-    client: "ExaClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Exa request tool backed by the provided client."""
@@ -146,7 +148,7 @@ def _select_operations(allowed: Sequence[str] | None) -> tuple[ExaOperation, ...
     return tuple(selected)
 
 
-def _coerce_client(*, credentials: Any, client: Any) -> Any:
+def _coerce_client(*, credentials: Any, client: RequestPreparingClient | None) -> RequestPreparingClient:
     if client is not None:
         return client
     if credentials is None:
@@ -178,3 +180,5 @@ __all__ = [
     "build_exa_request_tool_definition",
     "create_exa_tools",
 ]
+
+

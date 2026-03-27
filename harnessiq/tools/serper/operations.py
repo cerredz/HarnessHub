@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
+from harnessiq.interfaces import RequestPreparingClient
+
 from harnessiq.providers.serper.operations import (
     SerperOperation,
     build_serper_operation_catalog,
@@ -54,7 +56,7 @@ def build_serper_request_tool_definition(
 def create_serper_tools(
     *,
     credentials: "SerperCredentials | None" = None,
-    client: "SerperClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Serper request tool backed by the provided client."""
@@ -124,7 +126,7 @@ def _select_operations(allowed: Sequence[str] | None) -> tuple[SerperOperation, 
     return tuple(selected)
 
 
-def _coerce_client(*, credentials: Any, client: Any) -> Any:
+def _coerce_client(*, credentials: Any, client: RequestPreparingClient | None) -> RequestPreparingClient:
     if client is not None:
         return client
     if credentials is None:
@@ -147,3 +149,5 @@ __all__ = [
     "build_serper_request_tool_definition",
     "create_serper_tools",
 ]
+
+

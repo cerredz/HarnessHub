@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
+from harnessiq.interfaces import RequestPreparingClient
+
 from harnessiq.providers.inboxapp.operations import (
     InboxAppOperation,
     build_inboxapp_operation_catalog,
@@ -63,7 +65,7 @@ def build_inboxapp_request_tool_definition(
 def create_inboxapp_tools(
     *,
     credentials: "InboxAppCredentials | None" = None,
-    client: "InboxAppClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style InboxApp request tool backed by the provided client."""
@@ -135,7 +137,7 @@ def _select_operations(allowed: Sequence[str] | None) -> tuple[InboxAppOperation
     return tuple(selected)
 
 
-def _coerce_client(*, credentials: Any, client: Any) -> Any:
+def _coerce_client(*, credentials: Any, client: RequestPreparingClient | None) -> RequestPreparingClient:
     if client is not None:
         return client
     if credentials is None:
@@ -167,3 +169,5 @@ __all__ = [
     "build_inboxapp_request_tool_definition",
     "create_inboxapp_tools",
 ]
+
+

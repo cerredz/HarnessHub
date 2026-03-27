@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
+from harnessiq.interfaces import RequestPreparingClient
+
 from harnessiq.providers.expandi.operations import (
     ExpandiOperation,
     build_expandi_operation_catalog,
@@ -80,7 +82,7 @@ def build_expandi_request_tool_definition(
 def create_expandi_tools(
     *,
     credentials: "ExpandiCredentials | None" = None,
-    client: "ExpandiClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Expandi request tool backed by the provided client."""
@@ -159,7 +161,7 @@ def _select_operations(allowed: Sequence[str] | None) -> tuple[ExpandiOperation,
     return tuple(selected)
 
 
-def _coerce_client(*, credentials: Any, client: Any) -> Any:
+def _coerce_client(*, credentials: Any, client: RequestPreparingClient | None) -> RequestPreparingClient:
     if client is not None:
         return client
     if credentials is None:
@@ -193,3 +195,5 @@ __all__ = [
     "build_expandi_request_tool_definition",
     "create_expandi_tools",
 ]
+
+
