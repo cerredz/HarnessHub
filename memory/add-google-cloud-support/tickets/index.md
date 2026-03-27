@@ -68,6 +68,9 @@
    Dependency: Ticket 3
    Issue: #295
    URL: https://github.com/cerredz/HarnessHub/issues/295
+   PR: #313
+   PR URL: https://github.com/cerredz/HarnessHub/pull/313
+   Status: implemented, awaiting merge into `main`
 
 9. Ticket 9: Add `GcpContext` and package exports
    Description: Compose the full provider tree behind one shared context and clean package export surface.

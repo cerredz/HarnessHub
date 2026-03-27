@@ -1,5 +1,6 @@
 ﻿Title: Implement billing, logging, monitoring, and Cloud Storage providers
 Issue URL: https://github.com/cerredz/HarnessHub/issues/295
+PR URL: https://github.com/cerredz/HarnessHub/pull/313
 
 Intent:
 Complete the remaining operational provider surface needed for cost inspection, log access, failure alerting, and raw cloud storage operations.
