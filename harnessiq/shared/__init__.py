@@ -1,5 +1,6 @@
 """Shared constants, configs, and reusable data-model definitions for Harnessiq."""
 
+from . import dtos
 from .exceptions import (
     AppError,
     ConfigurationError,
@@ -37,6 +38,7 @@ from .harness_manifests import (
 __all__ = [
     "AppError",
     "ConfigurationError",
+    "dtos",
     "EXA_OUTREACH_HARNESS_MANIFEST",
     "ExternalServiceError",
     "HARNESS_MANIFESTS",

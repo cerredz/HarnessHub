@@ -22,6 +22,7 @@ from harnessiq.shared.agents import (
     json_parameter_section,
     render_json_parameter_content,
 )
+from harnessiq.shared.dtos import SerializableDTO
 from harnessiq.shared.hooks import HookDefinition
 from harnessiq.shared.tools import (
     CONTEXT_COMPACTION_TOOL_KEYS,
@@ -153,7 +154,7 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         return context_window
 
     @abstractmethod
-    def build_instance_payload(self) -> dict[str, Any]:
+    def build_instance_payload(self) -> SerializableDTO:
         """Build the agent instance payload persisted to the instance registry."""
 
     @abstractmethod

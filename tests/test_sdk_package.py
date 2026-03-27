@@ -69,9 +69,12 @@ class HarnessiqPackageTests(unittest.TestCase):
                     "-c",
                     (
                         f"import sys; sys.path.insert(0, r'{wheel_path}'); "
-                        "import harnessiq, harnessiq.agents, harnessiq.config, harnessiq.integrations, harnessiq.tools, harnessiq.utils; "
+                        "import harnessiq, harnessiq.agents, harnessiq.config, harnessiq.integrations, harnessiq.shared, harnessiq.tools, harnessiq.utils; "
+                        "from harnessiq.shared.dtos import AgentInstancePayload; "
                         "from harnessiq.cli.main import main as cli_main; "
                         "assert harnessiq.__version__ == '0.1.0'; "
+                        "assert hasattr(harnessiq.shared, 'dtos'); "
+                        "assert AgentInstancePayload.__module__ == 'harnessiq.shared.dtos.agents'; "
                         "assert hasattr(harnessiq.agents, 'BaseProviderToolAgent'); "
                         "assert hasattr(harnessiq.agents, 'BaseApolloAgent'); "
                         "assert hasattr(harnessiq.agents, 'BaseExaAgent'); "
@@ -130,8 +133,10 @@ class HarnessiqPackageTests(unittest.TestCase):
         from harnessiq.providers import ProviderFormatError, ProviderHTTPError
         from harnessiq.providers.arxiv import ArxivConfig
         from harnessiq.providers.arcads import ArcadsOperation
+        from harnessiq.shared.dtos import AgentInstancePayload
         from harnessiq.tools import ResendCredentials
 
+        self.assertEqual(AgentInstancePayload.__module__, "harnessiq.shared.dtos.agents")
         self.assertEqual(ApolloAgentConfig.__module__, "harnessiq.shared.apollo_agent")
         self.assertEqual(EmailAgentConfig.__module__, "harnessiq.shared.email")
         self.assertEqual(ExaAgentConfig.__module__, "harnessiq.shared.exa_agent")
