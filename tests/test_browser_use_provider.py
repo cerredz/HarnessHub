@@ -11,6 +11,7 @@ from harnessiq.providers.browser_use.operations import (
     build_browser_use_operation_catalog,
     get_browser_use_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO
 from harnessiq.shared.http import ProviderHTTPError
 from harnessiq.shared.tools import BROWSER_USE_REQUEST
 from harnessiq.tools.browser_use import create_browser_use_tools
@@ -115,6 +116,22 @@ class BrowserUseClientTests(unittest.TestCase):
         self.assertEqual(result, {"status": "ok"})
         self.assertEqual(attempts["count"], 2)
         sleep.assert_called_once()
+
+    def test_execute_operation_accepts_payload_request_dto(self) -> None:
+        client = BrowserUseClient(
+            api_key="bu_test_key",
+            request_executor=lambda method, url, **kwargs: {"method": method, "url": url, "kwargs": kwargs},
+        )
+
+        result = client.execute_operation(
+            ProviderPayloadRequestDTO(
+                operation="get_task_status",
+                payload={"task_id": "task_123"},
+            )
+        )
+
+        self.assertEqual(result.operation, "get_task_status")
+        self.assertIn("/tasks/task_123/status", result.result["url"])
 
 
 class BrowserUseToolsTests(unittest.TestCase):

@@ -27,6 +27,7 @@ from harnessiq.providers.arxiv.operations import (
     build_arxiv_operation_catalog,
     get_arxiv_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO
 
 # ---------------------------------------------------------------------------
 # Shared fixture data
@@ -470,6 +471,19 @@ class ArxivClientTests(unittest.TestCase):
         with patch("harnessiq.providers.arxiv.client.time.sleep") as mock_sleep:
             client.search(query="test")
             mock_sleep.assert_not_called()
+
+    def test_execute_operation_accepts_payload_request_dto(self) -> None:
+        client = self._client()
+
+        result = client.execute_operation(
+            ProviderPayloadRequestDTO(
+                operation="search",
+                payload={"query": "ti:attention"},
+            )
+        )
+
+        self.assertEqual(result.operation, "search")
+        self.assertEqual(result.result_fields["count"], 1)
 
 
 # ---------------------------------------------------------------------------

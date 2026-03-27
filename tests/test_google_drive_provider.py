@@ -13,6 +13,7 @@ from harnessiq.providers.google_drive import (
     build_google_drive_operation_catalog,
     get_google_drive_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
 from harnessiq.shared.tools import GOOGLE_DRIVE_REQUEST
 from harnessiq.tools.google_drive import create_google_drive_tools
 from harnessiq.tools.registry import ToolRegistry
@@ -283,6 +284,23 @@ class GoogleDriveClientTests(unittest.TestCase):
         self.assertEqual(calls[0]["json_body"]["emailAddress"], "a@example.com")
         self.assertIn("sendNotificationEmail=False", str(calls[0]["url"]))
 
+    def test_execute_operation_accepts_payload_request_dto(self) -> None:
+        client = self._make_client(
+            request_executor=lambda method, url, **kwargs: {
+                "files": [{"id": "folder-1", "name": "Applications", "mimeType": FOLDER_MIME_TYPE}]
+            }
+        )
+
+        result = client.execute_operation(
+            ProviderPayloadRequestDTO(
+                operation="ensure_folder",
+                payload={"name": "Applications"},
+            )
+        )
+
+        self.assertIsInstance(result, ProviderPayloadResultDTO)
+        self.assertFalse(result.result["created"])
+
 
 class GoogleDriveToolsTests(unittest.TestCase):
     def test_create_google_drive_tools_returns_registerable_tuple(self) -> None:
@@ -317,7 +335,10 @@ class GoogleDriveToolsTests(unittest.TestCase):
 
     def test_tool_handler_executes_copy_file(self) -> None:
         client = Mock()
-        client.copy_file.return_value = {"id": "copy-1"}
+        client.execute_operation.return_value = ProviderPayloadResultDTO(
+            operation="copy_file",
+            result={"id": "copy-1"},
+        )
         registry = ToolRegistry(create_google_drive_tools(client=client))
 
         result = registry.execute(
@@ -326,11 +347,18 @@ class GoogleDriveToolsTests(unittest.TestCase):
         )
 
         self.assertEqual(result.output["operation"], "copy_file")
-        client.copy_file.assert_called_once_with("file-1", name="job copy.json", parent_id=None)
+        request = client.execute_operation.call_args.args[0]
+        self.assertIsInstance(request, ProviderPayloadRequestDTO)
+        self.assertEqual(request.operation, "copy_file")
+        self.assertEqual(request.payload["file_id"], "file-1")
+        self.assertEqual(request.payload["name"], "job copy.json")
 
     def test_tool_handler_executes_create_permission(self) -> None:
         client = Mock()
-        client.create_permission.return_value = {"id": "perm-1"}
+        client.execute_operation.return_value = ProviderPayloadResultDTO(
+            operation="create_permission",
+            result={"id": "perm-1"},
+        )
         registry = ToolRegistry(create_google_drive_tools(client=client))
 
         result = registry.execute(
@@ -348,15 +376,11 @@ class GoogleDriveToolsTests(unittest.TestCase):
         )
 
         self.assertEqual(result.output["operation"], "create_permission")
-        client.create_permission.assert_called_once_with(
-            "file-1",
-            permission={
-                "type": "user",
-                "role": "writer",
-                "emailAddress": "a@example.com",
-            },
-            send_notification_email=False,
-        )
+        request = client.execute_operation.call_args.args[0]
+        self.assertIsInstance(request, ProviderPayloadRequestDTO)
+        self.assertEqual(request.operation, "create_permission")
+        self.assertEqual(request.payload["file_id"], "file-1")
+        self.assertEqual(request.payload["email_address"], "a@example.com")
 
     def _make_client_for_tools(self) -> GoogleDriveClient:
         credentials = GoogleDriveCredentials(client_id="cid", client_secret="secret", refresh_token="refresh")

@@ -11,7 +11,7 @@ import pytest
 from harnessiq.agents import ExaOutreachAgent, ExaOutreachMemoryStore
 from harnessiq.agents.exa_outreach.agent import ExaOutreachAgentConfig
 from harnessiq.shared.agents import AgentModelResponse
-from harnessiq.shared.dtos import ExaOutreachAgentInstancePayload
+from harnessiq.shared.dtos import ExaOutreachAgentInstancePayload, PreparedProviderOperationResultDTO
 from harnessiq.shared.exceptions import ConfigurationError, NotFoundError, ResourceNotFoundError, StateError
 from harnessiq.shared.exa_outreach import EmailTemplate, FileSystemStorageBackend
 from harnessiq.shared.tools import (
@@ -50,16 +50,12 @@ def _make_model(should_continue: bool = False) -> MagicMock:
 
 def _make_exa_client() -> MagicMock:
     mock_exa_client = MagicMock()
-    mock_exa_client.credentials.timeout_seconds = 30.0
-    mock_exa_client.prepare_request.return_value = MagicMock(
-        operation=MagicMock(name="search_and_contents"),
+    mock_exa_client.execute_operation.return_value = PreparedProviderOperationResultDTO(
+        operation="search_and_contents",
         method="POST",
-        url="https://api.exa.ai/searchAndContents",
-        headers={},
-        json_body={},
         path="/searchAndContents",
+        response={"results": []},
     )
-    mock_exa_client.request_executor = MagicMock(return_value={"results": []})
     return mock_exa_client
 
 

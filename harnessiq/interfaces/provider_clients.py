@@ -5,6 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, Mapping, Protocol, runtime_checkable
 
+from harnessiq.shared.dtos import (
+    PreparedProviderOperationResultDTO,
+    ProviderOperationRequestDTO,
+)
+
 
 @runtime_checkable
 class TimeoutConfig(Protocol):
@@ -49,13 +54,15 @@ class RequestPreparingClient(Protocol):
 
     def prepare_request(
         self,
-        operation_name: str,
-        *,
-        path_params: Mapping[str, object] | None = None,
-        query: Mapping[str, object] | None = None,
-        payload: Any | None = None,
+        request: ProviderOperationRequestDTO,
     ) -> PreparedRequest:
         """Build an executable request for one provider operation."""
+
+    def execute_operation(
+        self,
+        request: ProviderOperationRequestDTO,
+    ) -> PreparedProviderOperationResultDTO:
+        """Execute one provider operation and return a typed result envelope."""
 
 
 @runtime_checkable

@@ -43,10 +43,10 @@ Assumptions:
 - Final tool execution results can still be JSON-serializable after DTO conversion.
 
 Acceptance Criteria:
-- [ ] Request-style service provider families in scope no longer pass anonymous raw request/result envelopes across their public tool/client boundaries.
-- [ ] Shared provider DTOs exist in `harnessiq/shared/dtos/providers.py` and are reused across the request-style families.
-- [ ] The provider test suites in scope are updated to assert DTO-first boundaries.
-- [ ] Existing prepared-request behavior and external request execution semantics remain unchanged.
+- [x] Request-style service provider families in scope no longer pass anonymous raw request/result envelopes across their public tool/client boundaries.
+- [x] Shared provider DTOs exist in `harnessiq/shared/dtos/providers.py` and are reused across the request-style families.
+- [x] The provider test suites in scope are updated to assert DTO-first boundaries.
+- [x] Existing prepared-request behavior and external request execution semantics remain unchanged.
 
 Verification Steps:
 - Run the provider test modules listed above for the families changed by the ticket.

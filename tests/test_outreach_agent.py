@@ -9,7 +9,11 @@ import unittest
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection
 from harnessiq.agents.outreach import BaseOutreachAgent, OutreachAgentRequest
 from harnessiq.providers.outreach import OutreachClient, OutreachCredentials
-from harnessiq.shared.dtos import StatelessAgentInstancePayload
+from harnessiq.shared.dtos import (
+    PreparedProviderOperationResultDTO,
+    ProviderOperationRequestDTO,
+    StatelessAgentInstancePayload,
+)
 from harnessiq.shared.tools import OUTREACH_REQUEST, RegisteredTool, ToolCall, ToolDefinition
 
 
@@ -58,27 +62,35 @@ class BaseOutreachAgentTests(unittest.TestCase):
             def request_executor(self, method: str, url: str, **kwargs: object) -> dict[str, object]:
                 return {"prospects": [], "method": method, "url": url, "timeout_seconds": kwargs["timeout_seconds"]}
 
-            def prepare_request(
-                self,
-                operation_name: str,
-                *,
-                path_params=None,
-                query=None,
-                payload=None,
-            ):
-                del path_params, query
+            def prepare_request(self, request: ProviderOperationRequestDTO):
                 return type(
                     "PreparedRequest",
                     (),
                     {
-                        "operation": type("Operation", (), {"name": operation_name})(),
+                        "operation": type("Operation", (), {"name": request.operation})(),
                         "method": "GET",
                         "path": "/prospects",
                         "url": "https://api.outreach.io/api/v2/prospects",
                         "headers": {"Authorization": "Bearer outreach-secret-token"},
-                        "json_body": payload,
+                        "json_body": request.payload,
                     },
                 )()
+
+            def execute_operation(
+                self,
+                request: ProviderOperationRequestDTO,
+            ) -> PreparedProviderOperationResultDTO:
+                prepared = self.prepare_request(request)
+                return PreparedProviderOperationResultDTO.from_prepared_request(
+                    prepared=prepared,
+                    response=self.request_executor(
+                        prepared.method,
+                        prepared.url,
+                        headers=prepared.headers,
+                        json_body=prepared.json_body,
+                        timeout_seconds=self.credentials.timeout_seconds,
+                    ),
+                )
 
         with TemporaryDirectory() as temp_repo_root:
             credentials = OutreachCredentials(access_token="outreach-secret-token")

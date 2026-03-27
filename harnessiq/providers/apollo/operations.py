@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
 from harnessiq.interfaces import RequestPreparingClient
+from harnessiq.shared.dtos import ProviderOperationRequestDTO
 from urllib.parse import quote
 
 from harnessiq.providers.apollo.api import build_headers, url
@@ -91,26 +92,13 @@ def create_apollo_tools(
     )
 
     def handler(arguments: ToolArguments) -> dict[str, Any]:
-        operation_name = _require_operation_name(arguments, allowed_names)
-        prepared = apollo_client.prepare_request(
-            operation_name,
-            path_params=_optional_mapping(arguments, "path_params"),
-            query=_optional_mapping(arguments, "query"),
+        request = ProviderOperationRequestDTO(
+            operation=_require_operation_name(arguments, allowed_names),
+            path_params=_optional_mapping(arguments, "path_params") or {},
+            query=_optional_mapping(arguments, "query") or {},
             payload=arguments.get("payload"),
         )
-        response = apollo_client.request_executor(
-            prepared.method,
-            prepared.url,
-            headers=prepared.headers,
-            json_body=prepared.json_body,
-            timeout_seconds=apollo_client.credentials.timeout_seconds,
-        )
-        return {
-            "operation": prepared.operation.name,
-            "method": prepared.method,
-            "path": prepared.path,
-            "response": response,
-        }
+        return apollo_client.execute_operation(request).to_dict()
 
     return (RegisteredTool(definition=definition, handler=handler),)
 
@@ -256,6 +244,3 @@ __all__ = [
     "create_apollo_tools",
     "get_apollo_operation",
 ]
-
-
-

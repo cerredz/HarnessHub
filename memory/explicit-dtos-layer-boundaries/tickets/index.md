@@ -20,6 +20,7 @@
 
 5. Ticket 5: Introduce explicit DTOs for request-style service provider tool and client layers
    Issue: #330 - https://github.com/cerredz/HarnessHub/issues/330
+   PR: #383 - https://github.com/cerredz/HarnessHub/pull/383
    Converts the prepared-request style service provider families to shared provider DTO envelopes.
 
 6. Ticket 6: Convert legacy service provider families to explicit DTO request and result contracts

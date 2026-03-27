@@ -9,6 +9,7 @@ from urllib import parse
 
 from harnessiq.providers.http import RequestExecutor, request_json
 from harnessiq.shared.http import ProviderHTTPError
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
 
 from .api import (
     DEFAULT_BASE_URL,
@@ -313,6 +314,14 @@ class BrowserUseClient:
             marketplace_skill_execute_url(skill_id, self.base_url),
             json_body=build_execute_skill_request(parameters=parameters, session_id=session_id, **extra),
         )
+
+    def execute_operation(self, request: ProviderPayloadRequestDTO) -> ProviderPayloadResultDTO:
+        """Execute one Browser Use operation from a DTO envelope."""
+        handler = getattr(self, request.operation, None)
+        if handler is None or not callable(handler):
+            raise ValueError(f"Unsupported Browser Use operation '{request.operation}'.")
+        result = handler(**request.payload)
+        return ProviderPayloadResultDTO(operation=request.operation, result=result)
 
     def _request(
         self,

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Sequence
 
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO
 from harnessiq.providers.arxiv.operations import (
     ArxivOperation,
     build_arxiv_operation_catalog,
@@ -123,41 +124,16 @@ def create_arxiv_tools(
     )
 
     def handler(arguments: ToolArguments) -> dict[str, Any]:
-        operation_name = _require_operation_name(arguments, allowed_names)
-
-        if operation_name == "search":
-            results = arxiv_client.search(
-                query=_require_str(arguments, "query"),
-                max_results=int(arguments.get("max_results", 10)),
-                start=int(arguments.get("start", 0)),
-                sort_by=str(arguments.get("sort_by", "relevance")),
-                sort_order=str(arguments.get("sort_order", "descending")),
-            )
-            return {"operation": "search", "results": results, "count": len(results)}
-
-        if operation_name == "search_raw":
-            xml = arxiv_client.search_raw(
-                query=_require_str(arguments, "query"),
-                max_results=int(arguments.get("max_results", 10)),
-                start=int(arguments.get("start", 0)),
-                sort_by=str(arguments.get("sort_by", "relevance")),
-                sort_order=str(arguments.get("sort_order", "descending")),
-            )
-            return {"operation": "search_raw", "xml": xml}
-
-        if operation_name == "get_paper":
-            record = arxiv_client.get_paper(_require_str(arguments, "paper_id"))
-            return {"operation": "get_paper", "paper": record}
-
-        if operation_name == "download_paper":
-            path = arxiv_client.download_paper(
-                _require_str(arguments, "paper_id"),
-                _require_str(arguments, "save_path"),
-            )
-            return {"operation": "download_paper", "saved_to": path}
-
-        # Unreachable: _require_operation_name guards against unknown names.
-        raise ValueError(f"Unhandled arXiv operation '{operation_name}'.")  # pragma: no cover
+        payload = {
+            str(key): value
+            for key, value in arguments.items()
+            if key != "operation" and value is not None
+        }
+        request = ProviderPayloadRequestDTO(
+            operation=_require_operation_name(arguments, allowed_names),
+            payload=payload,
+        )
+        return arxiv_client.execute_operation(request).to_dict()
 
     return (RegisteredTool(definition=definition, handler=handler),)
 
