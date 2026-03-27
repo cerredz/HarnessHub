@@ -1,6 +1,7 @@
 from harnessiq.providers.gcloud import (
     ArtifactRegistryProvider,
     BillingProvider,
+    CostEstimate,
     CloudRunProvider,
     CloudStorageProvider,
     GcpAgentConfig,
@@ -75,6 +76,7 @@ def test_context_from_init_constructs_unsaved_config() -> None:
         project_id="proj-123",
         region="us-central1",
         schedule_cron="0 */4 * * *",
+        dry_run=True,
     )
 
     assert context.config.agent_name == "candidate-a"
@@ -82,3 +84,17 @@ def test_context_from_init_constructs_unsaved_config() -> None:
     assert context.config.region == "us-central1"
     assert context.config.schedule_cron == "0 */4 * * *"
     assert context.client.project_id == "proj-123"
+    assert context.client.dry_run is True
+
+
+def test_package_exports_include_billing_result_type() -> None:
+    estimate = BillingProvider(
+        MockClient(),
+        GcpAgentConfig(agent_name="candidate-a", gcp_project_id="proj-123", region="us-central1"),
+    ).estimate_monthly_cost()
+    assert isinstance(estimate, CostEstimate)
+
+
+class MockClient:
+    project_id = "proj-123"
+    region = "us-central1"

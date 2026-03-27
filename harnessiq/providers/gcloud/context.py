@@ -100,6 +100,7 @@ class GcpContext:
         agent_name: str,
         project_id: str,
         region: str,
+        dry_run: bool = False,
         **kwargs,
     ) -> "GcpContext":
         config = GcpAgentConfig(
@@ -108,5 +109,5 @@ class GcpContext:
             region=region,
             **kwargs,
         )
-        client = GcloudClient(project_id=project_id, region=region)
+        client = GcloudClient(project_id=project_id, region=region, dry_run=dry_run)
         return cls(client, config)
