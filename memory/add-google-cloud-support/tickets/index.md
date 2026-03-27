@@ -95,6 +95,9 @@
    Dependency: Ticket 9
    Issue: #298
    URL: https://github.com/cerredz/HarnessHub/issues/298
+   PR: #316
+   PR URL: https://github.com/cerredz/HarnessHub/pull/316
+   Status: implemented, awaiting merge into `main`
 
 12. Ticket 12: Add GCP health and credential CLI commands
    Description: Expose init-time validation and credential sync/status flows through the new CLI family.
