@@ -7,12 +7,12 @@ Stage 2 - Type Checking
 
 Stage 3 - Unit Tests
 - Command: `pytest tests/test_cli_common.py tests/test_platform_cli.py tests/test_linkedin_cli.py tests/test_instagram_cli.py tests/test_leads_cli.py tests/test_prospecting_cli.py tests/test_exa_outreach_cli.py tests/test_research_sweep_cli.py tests/test_cli_builders.py tests/test_cli_runners.py`
-- Result: `131 passed`
+- Result: `132 passed`
 
 Stage 4 - Integration & Contract Tests
 - The targeted CLI suite now covers the shared helper layer, the platform manifest path, and every migrated legacy CLI family. New coverage specifically locks the `outreach --search-only` contract and the Research Sweep missing-Serper error path.
 - Command: `pytest tests/test_cli_common.py tests/test_platform_cli.py tests/test_linkedin_cli.py tests/test_instagram_cli.py tests/test_leads_cli.py tests/test_prospecting_cli.py tests/test_exa_outreach_cli.py tests/test_research_sweep_cli.py tests/test_cli_builders.py tests/test_cli_runners.py`
-- Result: `131 passed`
+- Result: `132 passed`
 
 Stage 5 - Smoke & Manual Verification
 - Executed focused in-process smoke checks for the new regression targets:

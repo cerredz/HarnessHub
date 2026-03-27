@@ -78,6 +78,28 @@ class TestConfigureAndShow:
         assert shown["query"] == "mRNA vaccine efficacy"
         assert shown["additional_prompt"] == "Focus on clinically relevant papers."
 
+    def test_configure_custom_query_param_updates_query_and_resets_progress(self, tmp_path, capsys) -> None:
+        _run(["research-sweep", "prepare", "--agent", "sweep-b", "--memory-root", str(tmp_path)])
+        capsys.readouterr()
+
+        _run(
+            [
+                "research-sweep",
+                "configure",
+                "--agent",
+                "sweep-b",
+                "--memory-root",
+                str(tmp_path),
+                "--custom-param",
+                'query="graph neural networks for drug discovery"',
+            ]
+        )
+        configured = json.loads(capsys.readouterr().out)
+
+        assert configured["query"] == "graph neural networks for drug discovery"
+        assert configured["custom_parameters"]["query"] == "graph neural networks for drug discovery"
+        assert "progress_reset" in configured["updated"]
+
 
 class TestRunCommand:
     def test_run_uses_supplied_serper_credentials_factory(self, tmp_path, capsys) -> None:
