@@ -51,8 +51,6 @@ from harnessiq.shared.tools import INSTAGRAM_SEARCH_KEYWORD, RegisteredTool, Too
 from harnessiq.toolset import get_tool
 from harnessiq.tools.instagram import create_instagram_tools
 from harnessiq.tools.registry import create_tool_registry
-from harnessiq.utils.ledger import new_run_id
-
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
 _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
@@ -316,8 +314,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         self._cycle_index = 0
         self._transcript.clear()
         self.refresh_parameters()
-        self._last_run_id = new_run_id()
-        started_at = datetime.now(timezone.utc)
+        started_at = self._initialize_terminal_run()
         total_estimated_request_tokens = 0
 
         before_run_pause = self._apply_before_run_hooks()
