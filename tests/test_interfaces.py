@@ -205,9 +205,10 @@ class OutputSinkContractTests(unittest.TestCase):
 
 class CliContractTests(unittest.TestCase):
     def test_prepared_store_loader_protocol_matches_callable(self) -> None:
-        loader: PreparedStoreLoader[dict[str, str]] = lambda memory_path: {"memory_path": str(memory_path)}
+        loader: PreparedStoreLoader[dict[str, Path]] = lambda memory_path: {"memory_path": memory_path}
+        expected = Path("memory/example")
         self.assertIsInstance(loader, PreparedStoreLoader)
-        self.assertEqual(loader(Path("memory/example"))["memory_path"], "memory\\example")
+        self.assertEqual(loader(expected)["memory_path"], expected)
 
     def test_factory_loader_and_zero_argument_factory_protocols_match_fake(self) -> None:
         loader = _FakeFactoryLoader()
