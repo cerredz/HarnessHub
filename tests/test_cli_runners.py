@@ -442,3 +442,27 @@ def test_leads_runner_run_forwards_factories_and_overrides(
     assert captured_kwargs["tools"] == ("provider-tool",)
     assert captured_kwargs["provider_credentials"] == {"apollo": {"token": "abc"}}
     assert captured_kwargs["provider_clients"] == {"apollo": {"client": "apollo"}}
+
+
+def test_leads_runner_run_requires_existing_configuration(tmp_path: Path) -> None:
+    runner = LeadsCliRunner()
+
+    with pytest.raises(
+        ValueError,
+        match="Leads configuration not found\\. Run `harnessiq leads configure` before `harnessiq leads run`\\.",
+    ):
+        runner.run(
+            agent_name="campaign-a",
+            memory_root=str(tmp_path),
+            model_factory="tests.test_leads_cli:create_saving_model",
+            model=None,
+            model_profile=None,
+            provider_tools_factory=None,
+            provider_credentials_factories=[],
+            provider_client_factories=[],
+            storage_backend_factory=None,
+            runtime_assignments=[],
+            max_cycles=1,
+            approval_policy=None,
+            allowed_tools=(),
+        )

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +16,7 @@ from harnessiq.cli.common import (
     split_assignment,
 )
 from harnessiq.cli.runners.lifecycle import HarnessCliLifecycleRunner
-from harnessiq.shared.leads import LEADS_HARNESS_MANIFEST, LeadRunConfig, LeadsStorageBackend
+from harnessiq.shared.leads import LEADS_HARNESS_MANIFEST, LeadRunConfig, LeadsMemoryStore, LeadsStorageBackend
 
 _RUN_CONFIG_KEYS = frozenset({"search_summary_every", "search_tail_size", "max_leads_per_icp"})
 
@@ -46,6 +46,7 @@ class LeadsCliRunner:
         store.prepare()
         builder.ensure_runtime_parameters_file(store.memory_path)
         seed_cli_environment(Path(memory_root).expanduser())
+        self._ensure_configured(store)
 
         run_config = store.read_run_config()
         overrides = parse_manifest_parameter_assignments(
@@ -156,6 +157,11 @@ class LeadsCliRunner:
             if key in overrides:
                 payload[key] = overrides[key]
         return LeadRunConfig.from_dict(payload)
+
+    def _ensure_configured(self, store: LeadsMemoryStore) -> None:
+        if store.run_config_path.exists():
+            return
+        raise ValueError("Leads configuration not found. Run `harnessiq leads configure` before `harnessiq leads run`.")
 
 
 __all__ = ["LeadsCliRunner"]

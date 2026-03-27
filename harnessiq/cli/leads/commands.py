@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Sequence
+from typing import Any
 
 from harnessiq.cli.builders import LeadsCliBuilder
 from harnessiq.cli.common import (
