@@ -19,8 +19,10 @@ def build_parser() -> argparse.ArgumentParser:
     from harnessiq.cli.instagram import register_instagram_commands
     from harnessiq.cli.ledger import register_ledger_commands
     from harnessiq.cli.commands import register_platform_commands
+    from harnessiq.cli.gcloud import register_gcloud_commands
     from harnessiq.cli.prospecting import register_prospecting_commands
 
+    register_gcloud_commands(subparsers)
     register_platform_commands(subparsers)
     register_ledger_commands(subparsers)
     register_master_prompt_commands(subparsers)
