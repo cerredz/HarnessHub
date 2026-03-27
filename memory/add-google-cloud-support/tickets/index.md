@@ -41,6 +41,9 @@
    Dependency: Ticket 4
    Issue: #292
    URL: https://github.com/cerredz/HarnessHub/issues/292
+   PR: #310
+   PR URL: https://github.com/cerredz/HarnessHub/pull/310
+   Status: implemented, awaiting merge into `main`
 
 6. Ticket 6: Implement Scheduler and Secret Manager providers
    Description: Add the remaining deployment-time providers needed for scheduling and secret mutation.
