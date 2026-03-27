@@ -37,6 +37,7 @@ def test_billing_provider_returns_deterministic_cost_estimate() -> None:
         4,
     )
     assert any("Monthly runs: 180" in item for item in estimate.assumptions)
+    assert BillingProvider._estimate_monthly_runs("0 */0 * * *") == 30
 
 
 def test_logging_provider_reads_job_logs_via_command_builders() -> None:

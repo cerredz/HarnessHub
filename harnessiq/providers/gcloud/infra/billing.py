@@ -83,7 +83,12 @@ class BillingProvider(BaseGcpProvider):
             return 30
         _, hour, *_ = parts
         if hour.startswith("*/"):
-            interval = int(hour[2:])
+            try:
+                interval = int(hour[2:])
+            except ValueError:
+                return 30
+            if interval <= 0:
+                return 30
             return int((24 / interval) * 30)
         if hour == "*":
             return 24 * 30
