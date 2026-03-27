@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 from harnessiq.providers.gemini.api import (
     DEFAULT_API_VERSION,
@@ -20,7 +20,7 @@ from harnessiq.providers.gemini.content import (
     build_generate_content_request,
 )
 from harnessiq.providers.http import RequestExecutor, request_json
-from harnessiq.shared.tools import ToolDefinition
+from harnessiq.shared.dtos import GeminiCacheCreateRequestDTO, GeminiCountTokensRequestDTO, GeminiGenerateContentRequestDTO
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,71 +35,34 @@ class GeminiClient:
 
     def generate_content(
         self,
-        *,
-        model_name: str,
-        contents: Sequence[dict[str, Any]],
-        system_instruction: dict[str, Any] | None = None,
-        tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
-        tool_config: dict[str, Any] | None = None,
-        generation_config: dict[str, Any] | None = None,
-        cached_content: str | None = None,
+        request: GeminiGenerateContentRequestDTO,
     ) -> Any:
         """Create a Gemini generate-content request."""
-        payload = build_generate_content_request(
-            contents=contents,
-            system_instruction=system_instruction,
-            tools=tools,
-            tool_config=tool_config,
-            generation_config=generation_config,
-            cached_content=cached_content,
-        )
+        payload = build_generate_content_request(request)
         return self._request(
             "POST",
-            generate_content_url(model_name, self.api_key, base_url=self.base_url, api_version=self.api_version),
+            generate_content_url(request.model_name, self.api_key, base_url=self.base_url, api_version=self.api_version),
             json_body=payload,
         )
 
     def count_tokens(
         self,
-        *,
-        model_name: str,
-        contents: Sequence[dict[str, Any]],
-        system_instruction: dict[str, Any] | None = None,
-        tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
-        tool_config: dict[str, Any] | None = None,
+        request: GeminiCountTokensRequestDTO,
     ) -> Any:
         """Create a Gemini count-tokens request."""
-        payload = build_count_tokens_request(
-            contents=contents,
-            system_instruction=system_instruction,
-            tools=tools,
-            tool_config=tool_config,
-        )
+        payload = build_count_tokens_request(request)
         return self._request(
             "POST",
-            count_tokens_url(model_name, self.api_key, base_url=self.base_url, api_version=self.api_version),
+            count_tokens_url(request.model_name, self.api_key, base_url=self.base_url, api_version=self.api_version),
             json_body=payload,
         )
 
     def create_cache(
         self,
-        *,
-        model_name: str,
-        contents: Sequence[dict[str, Any]],
-        system_instruction: dict[str, Any] | None = None,
-        tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
-        ttl: str | None = None,
-        display_name: str | None = None,
+        request: GeminiCacheCreateRequestDTO,
     ) -> Any:
         """Create a Gemini cached-content request."""
-        payload = build_cached_content_request(
-            model_name=model_name,
-            contents=contents,
-            system_instruction=system_instruction,
-            tools=tools,
-            ttl=ttl,
-            display_name=display_name,
-        )
+        payload = build_cached_content_request(request)
         return self._request(
             "POST",
             cached_contents_url(self.api_key, base_url=self.base_url, api_version=self.api_version),

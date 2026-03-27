@@ -8,7 +8,6 @@ import unittest
 from urllib import error, request
 
 from harnessiq.providers import (
-    ProviderFormatError,
     ProviderHTTPError,
     SUPPORTED_PROVIDERS,
     create_provider_embedding_client,
@@ -38,13 +37,19 @@ class ProviderBaseTests(unittest.TestCase):
     def test_supported_providers_are_stable(self) -> None:
         self.assertEqual(SUPPORTED_PROVIDERS, ("anthropic", "openai", "grok", "gemini"))
 
-    def test_normalize_messages_rejects_unknown_roles(self) -> None:
-        with self.assertRaises(ProviderFormatError):
-            normalize_messages([{"role": "tool", "content": "nope"}])
+    def test_provider_message_dto_rejects_unknown_roles(self) -> None:
+        with self.assertRaises(ValueError):
+            ProviderMessageDTO(role="tool", content="nope")  # type: ignore[arg-type]
 
     def test_normalize_messages_rejects_inline_system_when_disallowed(self) -> None:
-        with self.assertRaises(ProviderFormatError):
-            normalize_messages([{"role": "system", "content": "dup"}], allow_system=False)
+        with self.assertRaises(Exception) as raised:
+            normalize_messages([ProviderMessageDTO(role="system", content="dup")], allow_system=False)
+        self.assertIn("Inline system messages are not allowed", str(raised.exception))
+
+    def test_normalize_messages_returns_detached_dto_values(self) -> None:
+        normalized = normalize_messages([ProviderMessageDTO(role="user", content="ping")])
+        self.assertEqual(normalized[0].role, "user")
+        self.assertEqual(normalized[0].content, "ping")
 
     def test_tool_definition_rejects_blank_description(self) -> None:
         with self.assertRaises(ValueError):

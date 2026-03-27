@@ -1,5 +1,7 @@
 """Anthropic request and client helpers."""
 
+from harnessiq.shared.dtos import AnthropicCountTokensRequestDTO, AnthropicMessageDTO, AnthropicMessageRequestDTO
+
 from .client import AnthropicClient
 from .helpers import build_request, format_tool_definition
 from .messages import (
@@ -25,6 +27,9 @@ from .tools import (
 
 __all__ = [
     "AnthropicClient",
+    "AnthropicCountTokensRequestDTO",
+    "AnthropicMessageDTO",
+    "AnthropicMessageRequestDTO",
     "build_bash_tool",
     "build_computer_tool",
     "build_count_tokens_request",

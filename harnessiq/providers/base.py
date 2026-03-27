@@ -3,28 +3,28 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
+from harnessiq.shared.dtos import GeminiContentDTO, ProviderMessageDTO
 from harnessiq.shared.providers import (
     ALLOWED_MESSAGE_ROLES,
     GEMINI_ROLE_MAP,
     ProviderFormatError,
-    ProviderMessage,
     RequestPayload,
 )
 from harnessiq.shared.tools import ToolDefinition
 
 
 def normalize_messages(
-    messages: list[ProviderMessage],
+    messages: Sequence[ProviderMessageDTO],
     *,
     allow_system: bool = True,
-) -> list[ProviderMessage]:
+) -> list[ProviderMessageDTO]:
     """Validate and copy provider-agnostic chat messages."""
-    normalized: list[ProviderMessage] = []
+    normalized: list[ProviderMessageDTO] = []
     for message in messages:
-        role = message.get("role")
-        content = message.get("content")
+        role = message.role
+        content = message.content
         if role not in ALLOWED_MESSAGE_ROLES:
             message_text = f"Unsupported message role '{role}'."
             raise ProviderFormatError(message_text)
@@ -34,7 +34,7 @@ def normalize_messages(
         if not isinstance(content, str):
             message_text = f"Message content for role '{role}' must be a string."
             raise ProviderFormatError(message_text)
-        normalized.append({"role": role, "content": content})
+        normalized.append(ProviderMessageDTO(role=role, content=content))
     return normalized
 
 
@@ -68,23 +68,23 @@ def build_gemini_tool_declaration(definition: ToolDefinition) -> RequestPayload:
     }
 
 
-def build_openai_style_messages(system_prompt: str, messages: list[ProviderMessage]) -> list[ProviderMessage]:
+def build_openai_style_messages(system_prompt: str, messages: Sequence[ProviderMessageDTO]) -> list[ProviderMessageDTO]:
     """Represent the system prompt as a leading chat message."""
     normalized = normalize_messages(messages, allow_system=False)
     if not system_prompt:
         return normalized
-    return [{"role": "system", "content": system_prompt}, *normalized]
+    return [ProviderMessageDTO(role="system", content=system_prompt), *normalized]
 
 
-def build_gemini_contents(messages: list[ProviderMessage]) -> list[RequestPayload]:
+def build_gemini_contents(messages: Sequence[ProviderMessageDTO]) -> list[GeminiContentDTO]:
     """Translate canonical messages into Gemini content parts."""
-    contents: list[RequestPayload] = []
+    contents: list[GeminiContentDTO] = []
     for message in normalize_messages(messages, allow_system=False):
         contents.append(
-            {
-                "role": GEMINI_ROLE_MAP[message["role"]],
-                "parts": [{"text": message["content"]}],
-            }
+            GeminiContentDTO(
+                role=GEMINI_ROLE_MAP[message.role],
+                parts=({"text": message.content},),
+            )
         )
     return contents
 

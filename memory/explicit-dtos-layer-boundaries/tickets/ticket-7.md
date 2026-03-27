@@ -24,9 +24,11 @@ Relevant Files:
 - `harnessiq/providers/gemini/content.py` - consume DTOs in request builders.
 - `harnessiq/providers/grok/client.py` - adopt DTO-first public request contracts.
 - `harnessiq/providers/grok/requests.py` - consume DTOs in request builders.
+- `harnessiq/interfaces/models.py` - align the model-client protocols with the DTO request contracts.
+- `harnessiq/integrations/agent_models.py` - keep the runtime adapter DTO-first instead of unpacking to raw dict provider messages.
 - `harnessiq/providers/__init__.py` - export the DTO-first provider surface appropriately.
 - `harnessiq/shared/__init__.py` - export provider DTOs from the shared surface where appropriate.
-- `tests/test_openai_provider.py`, `tests/test_anthropic_provider.py`, `tests/test_gemini_provider.py`, `tests/test_grok_provider.py`, `tests/test_provider_base.py`, `tests/test_sdk_package.py` - verify DTO-first public contracts and exports.
+- `tests/test_openai_provider.py`, `tests/test_anthropic_provider.py`, `tests/test_gemini_provider.py`, `tests/test_grok_provider.py`, `tests/test_provider_base.py`, `tests/test_agent_models.py`, `tests/test_interfaces.py`, `tests/test_sdk_package.py` - verify DTO-first public contracts and exports.
 
 Approach:
 Use the shared provider DTO module to model the public request boundaries for the model-provider SDK surfaces. These clients are currently thin wrappers over raw dict/list builders; this ticket makes those public contracts explicit and then updates the package exports and tests so the DTOs are first-class public API rather than internal implementation details. The final emitted HTTP payloads can remain dictionaries, but DTOs should own the boundary above that translation.
@@ -37,10 +39,10 @@ Assumptions:
 - The package tests should be updated to lock in the new DTO-based public surface.
 
 Acceptance Criteria:
-- [ ] OpenAI, Anthropic, Gemini, and Grok client/request-builder public APIs use explicit DTOs instead of raw dict/list payloads.
-- [ ] Shared provider DTOs cover the model-provider request boundaries.
-- [ ] Public exports and packaging tests reflect DTOs as first-class public SDK contract types.
-- [ ] Existing HTTP request payload behavior remains stable after DTO translation.
+- [x] OpenAI, Anthropic, Gemini, and Grok client/request-builder public APIs use explicit DTOs instead of raw dict/list payloads.
+- [x] Shared provider DTOs cover the model-provider request boundaries.
+- [x] Public exports and packaging tests reflect DTOs as first-class public SDK contract types.
+- [x] Existing HTTP request payload behavior remains stable after DTO translation.
 
 Verification Steps:
 - Run the model-provider test modules listed above.

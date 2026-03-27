@@ -16,6 +16,7 @@ from harnessiq.integrations import (
     parse_model_spec,
 )
 from harnessiq.shared.agents import AgentModelRequest, AgentTranscriptEntry, json_parameter_section
+from harnessiq.shared.dtos import AnthropicMessageRequestDTO, GeminiGenerateContentRequestDTO, OpenAIChatCompletionRequestDTO
 from harnessiq.shared.tools import ToolDefinition
 
 
@@ -26,26 +27,18 @@ class _FakeOpenAIStyleClient:
 
     def create_chat_completion(
         self,
-        *,
-        model_name: str,
-        system_prompt: str,
-        messages: list[dict[str, Any]],
-        tools=None,
-        max_tokens=None,
-        temperature=None,
-        parallel_tool_calls=None,
-        reasoning_effort=None,
+        request: OpenAIChatCompletionRequestDTO,
     ) -> dict[str, Any]:
         self.calls.append(
             {
-                "model_name": model_name,
-                "system_prompt": system_prompt,
-                "messages": messages,
-                "tools": tools,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-                "parallel_tool_calls": parallel_tool_calls,
-                "reasoning_effort": reasoning_effort,
+                "model_name": request.model_name,
+                "system_prompt": request.system_prompt,
+                "messages": [message.to_dict() for message in request.messages],
+                "tools": request.tools,
+                "max_tokens": request.max_tokens,
+                "temperature": request.temperature,
+                "parallel_tool_calls": getattr(request, "parallel_tool_calls", None),
+                "reasoning_effort": getattr(request, "reasoning_effort", None),
             }
         )
         return {
@@ -67,24 +60,17 @@ class _FakeAnthropicClient:
 
     def create_message(
         self,
-        *,
-        model_name: str,
-        messages: list[dict[str, Any]],
-        max_tokens: int,
-        system_prompt: str | None = None,
-        tools=None,
-        tool_choice=None,
-        temperature=None,
+        request: AnthropicMessageRequestDTO,
     ) -> dict[str, Any]:
         self.calls.append(
             {
-                "model_name": model_name,
-                "messages": messages,
-                "max_tokens": max_tokens,
-                "system_prompt": system_prompt,
-                "tools": tools,
-                "tool_choice": tool_choice,
-                "temperature": temperature,
+                "model_name": request.model_name,
+                "messages": [message.to_dict() for message in request.messages],
+                "max_tokens": request.max_tokens,
+                "system_prompt": request.system_prompt,
+                "tools": request.tools,
+                "tool_choice": request.tool_choice,
+                "temperature": request.temperature,
             }
         )
         return {
@@ -102,22 +88,16 @@ class _FakeGeminiClient:
 
     def generate_content(
         self,
-        *,
-        model_name: str,
-        contents: list[dict[str, Any]],
-        system_instruction: dict[str, Any] | None = None,
-        tools=None,
-        tool_config=None,
-        generation_config=None,
+        request: GeminiGenerateContentRequestDTO,
     ) -> dict[str, Any]:
         self.calls.append(
             {
-                "model_name": model_name,
-                "contents": contents,
-                "system_instruction": system_instruction,
-                "tools": tools,
-                "tool_config": tool_config,
-                "generation_config": generation_config,
+                "model_name": request.model_name,
+                "contents": [content.to_dict() for content in request.contents],
+                "system_instruction": request.system_instruction.to_dict() if request.system_instruction else None,
+                "tools": request.tools,
+                "tool_config": request.tool_config,
+                "generation_config": request.generation_config.to_dict() if request.generation_config else None,
             }
         )
         return {
@@ -178,14 +158,14 @@ def test_parse_model_spec_normalizes_provider() -> None:
 
 def test_build_provider_messages_serializes_transcript() -> None:
     messages = build_provider_messages(_build_request())
-    assert messages[0]["role"] == "user"
-    assert "## Goal" in messages[0]["content"]
-    assert messages[1]["role"] == "assistant"
-    assert "I will inspect the page." in messages[1]["content"]
-    assert '[TOOL CALL]\nbrowser.extract\n{"url":"https://example.com"}' in messages[1]["content"]
-    assert messages[1]["content"].startswith("I will inspect the page.")
-    assert messages[2]["role"] == "user"
-    assert '[TOOL RESULT]\nbrowser.extract\n{"title":"Example Domain"}' in messages[2]["content"]
+    assert messages[0].role == "user"
+    assert "## Goal" in messages[0].content
+    assert messages[1].role == "assistant"
+    assert "I will inspect the page." in messages[1].content
+    assert '[TOOL CALL]\nbrowser.extract\n{"url":"https://example.com"}' in messages[1].content
+    assert messages[1].content.startswith("I will inspect the page.")
+    assert messages[2].role == "user"
+    assert '[TOOL RESULT]\nbrowser.extract\n{"title":"Example Domain"}' in messages[2].content
 
 
 def test_anthropic_agent_model_parses_text_and_tool_use_blocks() -> None:

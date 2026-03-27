@@ -1,5 +1,7 @@
 """Grok request and client helpers."""
 
+from harnessiq.shared.dtos import GrokChatCompletionRequestDTO, GrokSearchParametersDTO
+
 from .client import GrokClient
 from .helpers import build_request, format_tool_definition
 from .requests import (
@@ -20,6 +22,8 @@ from .tools import (
 
 __all__ = [
     "GrokClient",
+    "GrokChatCompletionRequestDTO",
+    "GrokSearchParametersDTO",
     "build_chat_completion_request",
     "build_code_execution_tool",
     "build_collections_search_tool",

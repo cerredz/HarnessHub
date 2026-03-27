@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from harnessiq.providers.grok.requests import build_request as build_chat_request
 from harnessiq.providers.grok.tools import format_tool_definition as format_grok_tool_definition
-from harnessiq.shared.providers import ProviderMessage
+from harnessiq.shared.dtos import ProviderMessageDTO
 from harnessiq.shared.tools import ToolDefinition
 
 
@@ -16,7 +16,7 @@ def format_tool_definition(definition: ToolDefinition) -> dict[str, object]:
 def build_request(
     model_name: str,
     system_prompt: str,
-    messages: list[ProviderMessage],
+    messages: list[ProviderMessageDTO],
     tools: list[ToolDefinition],
 ) -> dict[str, object]:
     """Build a Grok-style request body from canonical primitives."""

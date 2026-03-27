@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import unittest
 
-from harnessiq.providers import ProviderFormatError
 from harnessiq.providers.anthropic import (
     AnthropicClient,
+    AnthropicCountTokensRequestDTO,
+    AnthropicMessageDTO,
+    AnthropicMessageRequestDTO,
     build_bash_tool,
     build_computer_tool,
     build_count_tokens_request,
@@ -33,8 +36,8 @@ class AnthropicProviderTests(unittest.TestCase):
         registry = create_builtin_registry()
         self.tools = registry.definitions([ECHO_TEXT])
         self.messages = [
-            {"role": "user", "content": "ping"},
-            {"role": "assistant", "content": "pong"},
+            AnthropicMessageDTO(role="user", content="ping"),
+            AnthropicMessageDTO(role="assistant", content="pong"),
         ]
 
     def test_format_tool_definition_uses_input_schema(self) -> None:
@@ -45,14 +48,16 @@ class AnthropicProviderTests(unittest.TestCase):
 
     def test_build_request_preserves_existing_anthropic_translation(self) -> None:
         request = build_request(
-            model_name="claude-sonnet",
-            system_prompt="Be precise.",
-            messages=self.messages,
-            tools=self.tools,
+            AnthropicCountTokensRequestDTO(
+                model_name="claude-sonnet",
+                system_prompt="Be precise.",
+                messages=tuple(self.messages),
+                tools=tuple(self.tools),
+            )
         )
 
         self.assertEqual(request["system"], "Be precise.")
-        self.assertEqual(request["messages"], self.messages)
+        self.assertEqual(request["messages"], [message.to_dict() for message in self.messages])
         self.assertEqual(request["tools"][0]["name"], "echo_text")
         self.assertIn("input_schema", request["tools"][0])
 
@@ -63,21 +68,23 @@ class AnthropicProviderTests(unittest.TestCase):
         tool_result = build_tool_result_block("toolu_123", "done", is_error=False)
         message = build_message("user", [text_block, image_block, document_block, tool_result])
         request = build_message_request(
-            model_name="claude-3-7-sonnet",
-            messages=[message],
-            max_tokens=1024,
-            system_prompt="Be precise.",
-            tools=[
-                *self.tools,
-                build_web_search_tool(max_uses=2),
-                build_text_editor_tool(),
-                build_bash_tool(),
-                build_computer_tool(display_width_px=1280, display_height_px=720),
-            ],
-            tool_choice=build_tool_choice(tool_name="echo_text", disable_parallel_tool_use=True),
-            thinking=build_thinking_config(2048),
-            mcp_servers=[build_mcp_server(name="docs", url="https://mcp.example.com")],
-            temperature=0.2,
+            AnthropicMessageRequestDTO(
+                model_name="claude-3-7-sonnet",
+                messages=(message,),
+                max_tokens=1024,
+                system_prompt="Be precise.",
+                tools=(
+                    *self.tools,
+                    build_web_search_tool(max_uses=2),
+                    build_text_editor_tool(),
+                    build_bash_tool(),
+                    build_computer_tool(display_width_px=1280, display_height_px=720),
+                ),
+                tool_choice=build_tool_choice(tool_name="echo_text", disable_parallel_tool_use=True),
+                thinking=build_thinking_config(2048),
+                mcp_servers=(build_mcp_server(name="docs", url="https://mcp.example.com"),),
+                temperature=0.2,
+            )
         )
 
         self.assertEqual(request["messages"][0]["content"][1]["type"], "image")
@@ -90,25 +97,42 @@ class AnthropicProviderTests(unittest.TestCase):
         self.assertEqual(request["thinking"]["budget_tokens"], 2048)
         self.assertEqual(request["mcp_servers"][0]["name"], "docs")
 
+    def test_build_message_request_serializes_dto_thinking_config(self) -> None:
+        @dataclass(frozen=True)
+        class _FakeDTO:
+            payload: dict[str, object]
+
+            def to_dict(self) -> dict[str, object]:
+                return dict(self.payload)
+
+        request = build_message_request(
+            AnthropicMessageRequestDTO(
+                model_name="claude-3-7-sonnet",
+                messages=(AnthropicMessageDTO(role="user", content="ping"),),
+                max_tokens=256,
+                thinking=_FakeDTO({"type": "enabled", "budget_tokens": 32}),
+            )
+        )
+
+        self.assertEqual(request["thinking"], {"type": "enabled", "budget_tokens": 32})
+
     def test_build_count_tokens_request_supports_tools(self) -> None:
         request = build_count_tokens_request(
-            model_name="claude-3-7-sonnet",
-            messages=self.messages,
-            system_prompt="Be precise.",
-            tools=self.tools,
+            AnthropicCountTokensRequestDTO(
+                model_name="claude-3-7-sonnet",
+                messages=tuple(self.messages),
+                system_prompt="Be precise.",
+                tools=tuple(self.tools),
+            )
         )
 
         self.assertEqual(request["model"], "claude-3-7-sonnet")
         self.assertEqual(request["system"], "Be precise.")
         self.assertEqual(request["tools"][0]["name"], "echo_text")
 
-    def test_build_message_request_rejects_unsupported_roles(self) -> None:
-        with self.assertRaises(ProviderFormatError):
-            build_message_request(
-                model_name="claude-3-7-sonnet",
-                messages=[{"role": "system", "content": "invalid"}],
-                max_tokens=256,
-            )
+    def test_anthropic_message_dto_rejects_unsupported_roles(self) -> None:
+        with self.assertRaises(ValueError):
+            AnthropicMessageDTO(role="system", content="invalid")  # type: ignore[arg-type]
 
     def test_anthropic_client_executes_message_and_count_token_requests(self) -> None:
         calls: list[tuple[str, str, dict[str, object]]] = []
@@ -125,17 +149,21 @@ class AnthropicProviderTests(unittest.TestCase):
         )
 
         message_response = client.create_message(
-            model_name="claude-3-7-sonnet",
-            messages=self.messages,
-            max_tokens=512,
-            system_prompt="Be precise.",
-            tools=self.tools,
+            AnthropicMessageRequestDTO(
+                model_name="claude-3-7-sonnet",
+                messages=tuple(self.messages),
+                max_tokens=512,
+                system_prompt="Be precise.",
+                tools=tuple(self.tools),
+            )
         )
         token_response = client.count_tokens(
-            model_name="claude-3-7-sonnet",
-            messages=self.messages,
-            system_prompt="Be precise.",
-            tools=self.tools,
+            AnthropicCountTokensRequestDTO(
+                model_name="claude-3-7-sonnet",
+                messages=tuple(self.messages),
+                system_prompt="Be precise.",
+                tools=tuple(self.tools),
+            )
         )
 
         self.assertEqual(message_response, {"ok": True})

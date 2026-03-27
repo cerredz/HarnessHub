@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
+
+from harnessiq.shared.dtos import (
+    AnthropicMessageRequestDTO,
+    GeminiGenerateContentRequestDTO,
+    OpenAIChatCompletionRequestDTO,
+)
 
 
 @runtime_checkable
@@ -11,15 +17,7 @@ class OpenAIStyleModelClient(Protocol):
 
     def create_chat_completion(
         self,
-        *,
-        model_name: str,
-        system_prompt: str,
-        messages: list[Mapping[str, Any]],
-        tools: Sequence[Any] | None = None,
-        max_tokens: int | None = None,
-        temperature: float | None = None,
-        parallel_tool_calls: bool | None = None,
-        reasoning_effort: str | None = None,
+        request: OpenAIChatCompletionRequestDTO,
     ) -> Any:
         """Create one chat completion response."""
 
@@ -30,14 +28,7 @@ class AnthropicModelClient(Protocol):
 
     def create_message(
         self,
-        *,
-        model_name: str,
-        messages: list[Mapping[str, Any]],
-        max_tokens: int,
-        system_prompt: str | None = None,
-        tools: Sequence[Any] | None = None,
-        tool_choice: Mapping[str, Any] | None = None,
-        temperature: float | None = None,
+        request: AnthropicMessageRequestDTO,
     ) -> Any:
         """Create one Anthropic message response."""
 
@@ -48,13 +39,7 @@ class GeminiModelClient(Protocol):
 
     def generate_content(
         self,
-        *,
-        model_name: str,
-        contents: list[Mapping[str, Any]],
-        system_instruction: Mapping[str, Any] | None = None,
-        tools: Sequence[Any] | None = None,
-        tool_config: Mapping[str, Any] | None = None,
-        generation_config: Mapping[str, Any] | None = None,
+        request: GeminiGenerateContentRequestDTO,
     ) -> Any:
         """Create one Gemini generateContent response."""
 
