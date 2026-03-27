@@ -32,6 +32,7 @@ from harnessiq.shared.agents import (
     merge_agent_runtime_config,
     json_parameter_section,
 )
+from harnessiq.shared.exceptions import StateError
 from harnessiq.shared.linkedin import (
     DEFAULT_AGENT_IDENTITY,
     DEFAULT_LINKEDIN_ACTION_LOG_WINDOW,
@@ -358,13 +359,13 @@ class LinkedInJobApplierAgent(BaseAgent):
     def _handle_save_screenshot_to_memory(self, arguments: dict[str, Any]) -> dict[str, Any]:
         if self._screenshot_persistor is None:
             message = "Screenshot persistence is not configured for this agent instance."
-            raise RuntimeError(message)
+            raise StateError(message)
         label = _sanitize_label(str(arguments["label"]))
         output_path = self._memory_store.screenshot_dir / f"{_timestamp_for_filename()}_{label}.png"
         self._screenshot_persistor(output_path, label)
         if not output_path.exists():
             message = f"Screenshot persistor did not create '{output_path}'."
-            raise RuntimeError(message)
+            raise StateError(message)
         return {"path": str(output_path)}
 
     def _handle_pause_and_notify(self, arguments: dict[str, Any]) -> AgentPauseSignal:

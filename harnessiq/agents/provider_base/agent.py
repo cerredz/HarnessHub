@@ -8,6 +8,7 @@ from typing import Any, Iterable, Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig, BaseAgent
 from harnessiq.shared.agents import merge_agent_runtime_config
+from harnessiq.shared.exceptions import ValidationError
 from harnessiq.shared.provider_agents import (
     DEFAULT_PROVIDER_AGENT_IDENTITY,
     build_provider_tool_system_prompt,
@@ -37,11 +38,11 @@ class BaseProviderToolAgent(BaseAgent, ABC):
     ) -> None:
         normalized_provider_name = provider_name.strip()
         if not normalized_provider_name:
-            raise ValueError("provider_name must not be blank.")
+            raise ValidationError("provider_name must not be blank.")
 
         merged_provider_tools = merge_registered_tools(tuple(provider_tools))
         if not merged_provider_tools:
-            raise ValueError("provider_tools must contain at least one registered tool.")
+            raise ValidationError("provider_tools must contain at least one registered tool.")
 
         self._provider_name = normalized_provider_name
         self._provider_tools = merged_provider_tools

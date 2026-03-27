@@ -25,6 +25,12 @@ from harnessiq.shared.agents import (
     merge_agent_runtime_config,
     json_parameter_section,
 )
+from harnessiq.shared.exceptions import (
+    ConfigurationError,
+    NotFoundError,
+    ResourceNotFoundError,
+    StateError,
+)
 from harnessiq.shared.exa_outreach import (
     DEFAULT_AGENT_IDENTITY,
     DEFAULT_SEARCH_QUERY,
@@ -79,7 +85,7 @@ class ExaOutreachAgent(BaseAgent):
         self._candidate_memory_path = Path(memory_path) if memory_path is not None else None
         resolved_templates = _coerce_email_data(email_data)
         if not search_only and not resolved_templates:
-            raise ValueError(
+            raise ConfigurationError(
                 "ExaOutreachAgent requires at least one email template unless search_only is True."
             )
         self._payload_email_data = resolved_templates
@@ -174,7 +180,7 @@ class ExaOutreachAgent(BaseAgent):
     def build_system_prompt(self) -> str:
         """Load and return the master prompt from the prompts directory."""
         if not _MASTER_PROMPT_PATH.exists():
-            raise FileNotFoundError(
+            raise ResourceNotFoundError(
                 f"ExaOutreach master prompt not found at '{_MASTER_PROMPT_PATH}'. "
                 "Ensure harnessiq/agents/exa_outreach/prompts/master_prompt.md exists."
             )
@@ -395,7 +401,7 @@ class ExaOutreachAgent(BaseAgent):
         template_index = {template.id: template for template in self._config.email_data}
         if template_id not in template_index:
             available = ", ".join(sorted(template_index))
-            raise ValueError(
+            raise NotFoundError(
                 f"Template '{template_id}' not found. Available templates: {available}."
             )
         return template_index[template_id].as_dict()
@@ -408,7 +414,7 @@ class ExaOutreachAgent(BaseAgent):
     def _handle_log_lead(self, arguments: dict[str, Any]) -> dict[str, Any]:
         run_id = self._current_run_id
         if run_id is None:
-            raise RuntimeError("Cannot log a lead before prepare() has been called.")
+            raise StateError("Cannot log a lead before prepare() has been called.")
         lead = LeadRecord(
             url=str(arguments["url"]),
             name=str(arguments["name"]),
@@ -422,7 +428,7 @@ class ExaOutreachAgent(BaseAgent):
     def _handle_log_email_sent(self, arguments: dict[str, Any]) -> dict[str, Any]:
         run_id = self._current_run_id
         if run_id is None:
-            raise RuntimeError("Cannot log an email before prepare() has been called.")
+            raise StateError("Cannot log an email before prepare() has been called.")
         record = EmailSentRecord(
             to_email=str(arguments["to_email"]),
             to_name=str(arguments["to_name"]),

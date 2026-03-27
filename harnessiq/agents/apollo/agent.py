@@ -9,6 +9,7 @@ from typing import Sequence
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig
 from harnessiq.agents.provider_base import BaseProviderToolAgent
 from harnessiq.providers.apollo import ApolloClient
+from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.apollo_agent import (
     ApolloAgentConfig,
     DEFAULT_APOLLO_AGENT_IDENTITY,
@@ -36,7 +37,9 @@ class BaseApolloAgent(BaseProviderToolAgent, ABC):
         instance_name: str | None = None,
     ) -> None:
         if apollo_client is not None and apollo_client.credentials != config.apollo_credentials:
-            raise ValueError("apollo_client credentials must match ApolloAgentConfig.apollo_credentials.")
+            raise ConfigurationError(
+                "apollo_client credentials must match ApolloAgentConfig.apollo_credentials."
+            )
 
         self._config = config
         self._apollo_client = apollo_client or ApolloClient(credentials=config.apollo_credentials)
