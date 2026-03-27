@@ -31,17 +31,13 @@ print(result.output)
 | Metric | Count |
 | --- | --- |
 | Concrete harness manifests | 9 |
-| Top-level CLI commands | 19 |
-| Registered CLI command paths | 153 |
+| Top-level CLI commands | 18 |
+| Registered CLI command paths | 146 |
 | Model providers | 4 |
 | Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-<<<<<<< HEAD
-| Test modules | 108 |
-=======
-| Test modules | 113 |
->>>>>>> f6aa78d (sync generated docs for evaluation layer)
+| Test modules | 116 |
 
 ## Agent Matrix
 
@@ -132,7 +128,6 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness |
 | harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI |
 | harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state |
-| harnessiq stats | agent, export, instance, rebuild, session, summary | Inspect local stats and analytics snapshots |
 
 ## Repo Docs
 

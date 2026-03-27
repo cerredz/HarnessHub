@@ -9,17 +9,13 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Metric | Count |
 | --- | --- |
 | Concrete harness manifests | 9 |
-| Top-level CLI commands | 19 |
-| Registered CLI command paths | 153 |
+| Top-level CLI commands | 18 |
+| Registered CLI command paths | 146 |
 | Model providers | 4 |
 | Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-<<<<<<< HEAD
-| Test modules | 108 |
-=======
-| Test modules | 113 |
->>>>>>> f6aa78d (sync generated docs for evaluation layer)
+| Test modules | 116 |
 
 ## Codebase Standards
 
@@ -36,33 +32,19 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Kind | Responsibility |
 | --- | --- | --- |
-<<<<<<< HEAD
-=======
-| `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
-| `.pytest_cache/` | generated/cache | Test runner cache; generated, not part of the source of truth. |
-| `.worktrees/` | local state | Git worktree checkouts used for isolated implementation branches; local-only and not part of the shipped package. |
->>>>>>> f6aa78d (sync generated docs for evaluation layer)
 | `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
-| `build/` | generated/cache | Setuptools build output; generated, not part of the live source tree. |
 | `docs/` | repo docs | Focused usage and architecture notes for the package. |
 | `harnessiq/` | source | Live SDK package source. |
-| `harnessiq.egg-info/` | generated/cache | Packaging metadata emitted by local builds. |
 | `memory/` | local state | Task artifacts plus durable agent runtime state; not part of the shipped package. |
 | `scripts/` | repo tooling | Repository maintenance and generation scripts. |
-| `src/` | generated/cache | Legacy or generated residue in this checkout; not the authoritative package source. |
 | `tests/` | source | unittest coverage for runtime, CLI, providers, and tools. |
 
 ## Package Layout
 
 | Path | Live Subpackages | Responsibility |
 | --- | --- | --- |
-<<<<<<< HEAD
-| `harnessiq/agents/` | apollo, base, email, exa, exa_outreach, instagram, instantly, knowt, leads, linkedin, outreach, prospecting, provider_base, research_sweep | Shared runtime bases plus the concrete harness packages exported by the SDK. |
-| `harnessiq/cli/` | adapters, builders, commands, exa_outreach, gcloud, instagram, leads, ledger, linkedin, master_prompts, models, prospecting, research_sweep, runners | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
-=======
 | `harnessiq/agents/` | apollo, base, email, exa, exa_outreach, instagram, instantly, knowt, leads, linkedin, mission_driven, outreach, prospecting, provider_base, research_sweep, spawn_specialized_subagents | Shared runtime bases plus the concrete harness packages exported by the SDK. |
-| `harnessiq/cli/` | adapters, commands, exa_outreach, gcloud, instagram, leads, ledger, linkedin, master_prompts, models, prospecting, research_sweep, stats | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
->>>>>>> f6aa78d (sync generated docs for evaluation layer)
+| `harnessiq/cli/` | adapters, builders, commands, exa_outreach, gcloud, instagram, leads, ledger, linkedin, master_prompts, models, prospecting, research_sweep, runners | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
 | `harnessiq/config/` | provider_credentials | Environment loading, credential binding, and provider-credential spec models. |
 | `harnessiq/evaluations/` | correctness, efficiency, output, tool_use | Behavior-oriented evaluation scaffolding, reusable check factories, and category-organized eval boilerplate. |
 | `harnessiq/integrations/` | - | Concrete external runtime adapters such as Playwright backends and model factories. |
@@ -137,7 +119,6 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness | `harnessiq/cli/research_sweep/commands.py` |
 | harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
 | harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
-| harnessiq stats | agent, export, instance, rebuild, session, summary | Inspect local stats and analytics snapshots | `harnessiq/cli/stats/commands.py` |
 
 ## Provider Surfaces
 
@@ -205,23 +186,13 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 ## Test Surface
 
-<<<<<<< HEAD
-`tests/` currently contains 108 test modules. The table below groups them by dominant responsibility.
-=======
-`tests/` currently contains 113 test modules. The table below groups them by dominant responsibility.
->>>>>>> f6aa78d (sync generated docs for evaluation layer)
+`tests/` currently contains 116 test modules. The table below groups them by dominant responsibility.
 
 | Area | Count | Examples |
 | --- | --- | --- |
 | agents | 20 | `tests/test_agent_instances.py`, `tests/test_agent_models.py`, `tests/test_agents_base.py` |
-| cli | 11 | `tests/test_exa_outreach_cli.py`, `tests/test_gcloud_cli.py`, `tests/test_instagram_cli.py` |
+| cli | 10 | `tests/test_exa_outreach_cli.py`, `tests/test_gcloud_cli.py`, `tests/test_instagram_cli.py` |
 | ledger | 1 | `tests/test_output_sinks.py` |
-<<<<<<< HEAD
-| providers | 31 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
-| support | 35 | `tests/test_cli_builders.py`, `tests/test_cli_common.py`, `tests/test_cli_environment.py` |
-| tools | 13 | `tests/test_context_compaction_tools.py`, `tests/test_context_window_tools.py`, `tests/test_general_tools.py` |
-=======
 | providers | 32 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
-| support | 35 | `tests/test_cli_common.py`, `tests/test_cli_environment.py`, `tests/test_cli_policy_options.py` |
+| support | 39 | `tests/test_cli_builders.py`, `tests/test_cli_common.py`, `tests/test_cli_environment.py` |
 | tools | 14 | `tests/test_context_compaction_tools.py`, `tests/test_context_window_tools.py`, `tests/test_general_tools.py` |
->>>>>>> f6aa78d (sync generated docs for evaluation layer)
