@@ -104,6 +104,9 @@
    Dependency: Ticket 10, Ticket 11
    Issue: #299
    URL: https://github.com/cerredz/HarnessHub/issues/299
+   PR: #324
+   PR URL: https://github.com/cerredz/HarnessHub/pull/324
+   Status: implemented, awaiting merge into `main`
 
 13. Ticket 13: Add GCP deployment and operations CLI commands
    Description: Expose build, deploy, schedule, execute, logs, and cost operations through the new CLI family.

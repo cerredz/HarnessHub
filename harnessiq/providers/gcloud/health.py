@@ -48,7 +48,7 @@ class HealthProvider(BaseGcpProvider):
     def check_gcloud_auth(self) -> HealthCheckResult:
         try:
             active_account = self.client.run(cmd.list_active_accounts()).strip()
-        except GcloudError as exc:
+        except (FileNotFoundError, GcloudError) as exc:
             return HealthCheckResult(
                 name="gcloud CLI auth (gcloud auth login)",
                 passed=False,
@@ -103,7 +103,7 @@ class HealthProvider(BaseGcpProvider):
                         else f"gcloud services enable {api} --project={self.config.gcp_project_id}",
                     )
                 )
-            except GcloudError as exc:
+            except (FileNotFoundError, GcloudError) as exc:
                 results.append(
                     HealthCheckResult(
                         name=f"API: {api}",
@@ -118,7 +118,7 @@ class HealthProvider(BaseGcpProvider):
         if not service_account:
             try:
                 project_number = self.client.run(cmd.get_project_number(self.config.gcp_project_id)).strip()
-            except GcloudError as exc:
+            except (FileNotFoundError, GcloudError) as exc:
                 return HealthCheckResult(
                     name="Service account Secret Manager access",
                     passed=False,
@@ -128,7 +128,7 @@ class HealthProvider(BaseGcpProvider):
 
         try:
             policy = self.client.run_json(cmd.get_iam_policy(self.config.gcp_project_id))
-        except GcloudError as exc:
+        except (FileNotFoundError, GcloudError) as exc:
             return HealthCheckResult(
                 name="Service account Secret Manager access",
                 passed=False,

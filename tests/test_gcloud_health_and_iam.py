@@ -54,6 +54,26 @@ def test_health_provider_distinguishes_missing_cli_auth_and_adc(monkeypatch: pyt
     assert provider.check_anthropic_key_local().passed is False
 
 
+def test_health_provider_handles_missing_gcloud_binary_without_crashing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = Mock()
+    provider = HealthProvider(client, _config())
+
+    monkeypatch.setattr("shutil.which", lambda _: None)
+    client.run.side_effect = FileNotFoundError("gcloud")
+    client.run_json.side_effect = FileNotFoundError("gcloud")
+
+    auth_result = provider.check_gcloud_auth()
+    api_results = provider.check_apis_enabled()
+    secret_result = provider.check_service_account_secret_access()
+
+    assert auth_result.passed is False
+    assert "gcloud" in auth_result.message
+    assert all(result.passed is False for result in api_results)
+    assert secret_result.passed is False
+
+
 def test_health_provider_checks_api_enablement_and_secret_access() -> None:
     client = Mock()
     provider = HealthProvider(client, _config())
