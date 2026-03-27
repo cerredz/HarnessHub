@@ -6,25 +6,31 @@ import argparse
 
 
 def register_gcloud_commands(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
-    parser = subparsers.add_parser(
+    parser = _add_help_parser(
+        subparsers,
         "gcloud",
-        help="Manage Google Cloud deployment configuration and operations",
+        help_text="Manage Google Cloud deployment configuration and operations",
         description="Manage Google Cloud deployment configuration and operations",
     )
-    parser.set_defaults(command_handler=lambda args: _print_help(parser))
     gcloud_subparsers = parser.add_subparsers(dest="gcloud_command")
 
-    init_parser = gcloud_subparsers.add_parser("init", help="Initialize or refresh one GCP deployment config")
-    init_parser.set_defaults(command_handler=lambda args: _print_help(init_parser))
-
-    health_parser = gcloud_subparsers.add_parser("health", help="Inspect GCP deployment prerequisites")
-    health_parser.set_defaults(command_handler=lambda args: _print_help(health_parser))
-
-    credentials_parser = gcloud_subparsers.add_parser(
-        "credentials",
-        help="Manage repo-local to GCP credential synchronization",
+    _add_help_parser(
+        gcloud_subparsers,
+        "init",
+        help_text="Initialize or refresh one GCP deployment config",
     )
-    credentials_parser.set_defaults(command_handler=lambda args: _print_help(credentials_parser))
+
+    _add_help_parser(
+        gcloud_subparsers,
+        "health",
+        help_text="Inspect GCP deployment prerequisites",
+    )
+
+    credentials_parser = _add_help_parser(
+        gcloud_subparsers,
+        "credentials",
+        help_text="Manage repo-local to GCP credential synchronization",
+    )
     credential_subparsers = credentials_parser.add_subparsers(dest="gcloud_credentials_command")
     for command_name, help_text in (
         ("status", "Show credential sync status for one GCP config"),
@@ -33,26 +39,59 @@ def register_gcloud_commands(subparsers: argparse._SubParsersAction[argparse.Arg
         ("remove", "Remove one registered credential from the GCP config"),
         ("check", "Check local GCP authentication prerequisites"),
     ):
-        subparser = credential_subparsers.add_parser(command_name, help=help_text)
-        subparser.set_defaults(command_handler=lambda args, parser=subparser: _print_help(parser))
+        _add_help_parser(credential_subparsers, command_name, help_text=help_text)
 
-    build_parser = gcloud_subparsers.add_parser("build", help="Build and publish the configured container image")
-    build_parser.set_defaults(command_handler=lambda args: _print_help(build_parser))
+    _add_help_parser(
+        gcloud_subparsers,
+        "build",
+        help_text="Build and publish the configured container image",
+    )
 
-    deploy_parser = gcloud_subparsers.add_parser("deploy", help="Deploy or update the configured Cloud Run job")
-    deploy_parser.set_defaults(command_handler=lambda args: _print_help(deploy_parser))
+    _add_help_parser(
+        gcloud_subparsers,
+        "deploy",
+        help_text="Deploy or update the configured Cloud Run job",
+    )
 
-    schedule_parser = gcloud_subparsers.add_parser("schedule", help="Create or update the configured scheduler job")
-    schedule_parser.set_defaults(command_handler=lambda args: _print_help(schedule_parser))
+    _add_help_parser(
+        gcloud_subparsers,
+        "schedule",
+        help_text="Create or update the configured scheduler job",
+    )
 
-    execute_parser = gcloud_subparsers.add_parser("execute", help="Trigger an immediate Cloud Run job execution")
-    execute_parser.set_defaults(command_handler=lambda args: _print_help(execute_parser))
+    _add_help_parser(
+        gcloud_subparsers,
+        "execute",
+        help_text="Trigger an immediate Cloud Run job execution",
+    )
 
-    logs_parser = gcloud_subparsers.add_parser("logs", help="Read Cloud Run execution logs")
-    logs_parser.set_defaults(command_handler=lambda args: _print_help(logs_parser))
+    _add_help_parser(
+        gcloud_subparsers,
+        "logs",
+        help_text="Read Cloud Run execution logs",
+    )
 
-    cost_parser = gcloud_subparsers.add_parser("cost", help="Estimate the configured monthly GCP deployment cost")
-    cost_parser.set_defaults(command_handler=lambda args: _print_help(cost_parser))
+    _add_help_parser(
+        gcloud_subparsers,
+        "cost",
+        help_text="Estimate the configured monthly GCP deployment cost",
+    )
+
+
+def _add_help_parser(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+    name: str,
+    *,
+    help_text: str,
+    description: str | None = None,
+) -> argparse.ArgumentParser:
+    parser = subparsers.add_parser(
+        name,
+        help=help_text,
+        description=description,
+    )
+    parser.set_defaults(command_handler=lambda args, parser=parser: _print_help(parser))
+    return parser
 
 
 def _print_help(parser: argparse.ArgumentParser) -> int:
