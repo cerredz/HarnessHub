@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from harnessiq.providers.coresignal.operations import get_coresignal_operation
 from harnessiq.providers.coresignal.api import (
     DEFAULT_BASE_URL,
     build_headers,
@@ -25,6 +26,8 @@ from harnessiq.providers.coresignal.requests import (
     build_job_filter_request,
 )
 from harnessiq.providers.http import RequestExecutor, request_json
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
+from harnessiq.shared.provider_payloads import execute_payload_operation
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,6 +158,12 @@ class CoreSignalClient:
         """Search job postings using an Elasticsearch DSL query."""
         payload = build_es_dsl_request(query, size=size, from_=from_)
         return self._post(job_es_dsl_url(self.base_url), payload)
+
+    def execute_operation(self, request: ProviderPayloadRequestDTO) -> ProviderPayloadResultDTO:
+        """Execute one Coresignal operation from a DTO envelope."""
+
+        get_coresignal_operation(request.operation)
+        return execute_payload_operation(self, request)
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 

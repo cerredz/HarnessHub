@@ -7,6 +7,7 @@ from typing import Any
 
 from harnessiq.providers.http import RequestExecutor, request_json
 from harnessiq.providers.leadiq.api import DEFAULT_BASE_URL, build_headers, graphql_url
+from harnessiq.providers.leadiq.operations import get_leadiq_operation
 from harnessiq.providers.leadiq.requests import (
     build_add_tag_to_contact_request,
     build_capture_leads_request,
@@ -21,6 +22,8 @@ from harnessiq.providers.leadiq.requests import (
     build_search_companies_request,
     build_search_contacts_request,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
+from harnessiq.shared.provider_payloads import execute_payload_operation
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,6 +141,12 @@ class LeadIQClient:
     def remove_tag_from_contact(self, contact_id: str, tag_id: str) -> Any:
         """Remove a tag from a contact."""
         return self._graphql(build_remove_tag_from_contact_request(contact_id, tag_id))
+
+    def execute_operation(self, request: ProviderPayloadRequestDTO) -> ProviderPayloadResultDTO:
+        """Execute one LeadIQ operation from a DTO envelope."""
+
+        get_leadiq_operation(request.operation)
+        return execute_payload_operation(self, request)
 
     def _graphql(self, payload: dict[str, object]) -> Any:
         return self.request_executor(

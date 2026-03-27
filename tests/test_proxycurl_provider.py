@@ -9,6 +9,7 @@ from harnessiq.providers.proxycurl.operations import (
     build_proxycurl_operation_catalog,
     get_proxycurl_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
 from harnessiq.shared.tools import PROXYCURL_REQUEST
 from harnessiq.tools.proxycurl import create_proxycurl_tools
 from harnessiq.tools.registry import ToolRegistry
@@ -39,6 +40,23 @@ class ProxycurlOperationCatalogTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             get_proxycurl_operation("nonexistent_op")
         self.assertIn("nonexistent_op", str(ctx.exception))
+
+
+class ProxycurlClientTests(unittest.TestCase):
+    def test_execute_operation_accepts_payload_request_dto(self) -> None:
+        from harnessiq.providers.proxycurl.client import ProxycurlClient
+
+        client = ProxycurlClient(
+            api_key="testkey",
+            request_executor=lambda m, u, **kw: {"results": []},
+        )
+
+        result = client.execute_operation(
+            ProviderPayloadRequestDTO(operation="search_jobs", payload={})
+        )
+
+        self.assertIsInstance(result, ProviderPayloadResultDTO)
+        self.assertEqual(result.operation, "search_jobs")
 
 
 class ProxycurlToolsTests(unittest.TestCase):

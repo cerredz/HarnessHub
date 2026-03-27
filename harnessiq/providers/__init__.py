@@ -3,6 +3,7 @@
 from harnessiq.shared.providers import ProviderMessage, ProviderName, RequestPayload, SUPPORTED_PROVIDERS
 
 from .base import ProviderFormatError, normalize_messages, omit_none_values
+from .embeddings import create_provider_embedding_client
 from .http import ProviderHTTPError, RequestExecutor, request_json
 from .langsmith import (
     build_langsmith_client,
@@ -46,6 +47,7 @@ __all__ = [
     "build_langsmith_client",
     "WebhookDeliveryClient",
     "ConfluenceClient",
+    "create_provider_embedding_client",
     "GoogleSheetsClient",
     "LinearClient",
     "MongoDBClient",

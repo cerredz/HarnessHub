@@ -18,7 +18,14 @@ from harnessiq.providers.google_drive.api import (
 )
 from harnessiq.providers.http import ProviderHTTPError, RequestExecutor, request_json
 from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
-from harnessiq.shared.google_drive import GoogleDriveCredentials
+from harnessiq.shared.google_drive import GoogleDriveCredentials, build_google_drive_permission_payload
+from harnessiq.shared.provider_payloads import (
+    optional_payload_bool,
+    optional_payload_int,
+    optional_payload_string,
+    optional_payload_string_list,
+    require_payload_string,
+)
 
 _DEFAULT_FILE_FIELDS = "id,name,mimeType,parents,shortcutDetails,targetId,trashed,webViewLink,webContentLink"
 _DEFAULT_PERMISSION_FIELDS = "permissions(id,type,role,emailAddress,domain,allowFileDiscovery)"
@@ -425,133 +432,67 @@ class GoogleDriveClient:
         payload = request.payload
         if request.operation == "ensure_folder":
             result = self.ensure_folder(
-                name=_require_payload_string(payload, "name"),
-                parent_id=_optional_payload_string(payload, "parent_id"),
+                name=require_payload_string(payload, "name"),
+                parent_id=optional_payload_string(payload, "parent_id"),
             )
         elif request.operation == "list_files":
             result = self.list_files(
-                name=_optional_payload_string(payload, "name"),
-                parent_id=_optional_payload_string(payload, "parent_id"),
-                mime_type=_optional_payload_string(payload, "mime_type"),
-                query=_optional_payload_string(payload, "query"),
-                page_size=_optional_payload_int(payload, "page_size") or 100,
-                include_trashed=_optional_payload_bool(payload, "include_trashed") or False,
+                name=optional_payload_string(payload, "name"),
+                parent_id=optional_payload_string(payload, "parent_id"),
+                mime_type=optional_payload_string(payload, "mime_type"),
+                query=optional_payload_string(payload, "query"),
+                page_size=optional_payload_int(payload, "page_size") or 100,
+                include_trashed=optional_payload_bool(payload, "include_trashed") or False,
             )
         elif request.operation == "find_file":
             result = self.find_file(
-                name=_require_payload_string(payload, "name"),
-                parent_id=_optional_payload_string(payload, "parent_id"),
-                mime_type=_optional_payload_string(payload, "mime_type"),
+                name=require_payload_string(payload, "name"),
+                parent_id=optional_payload_string(payload, "parent_id"),
+                mime_type=optional_payload_string(payload, "mime_type"),
             )
         elif request.operation == "get_file":
-            result = self.get_file(_require_payload_string(payload, "file_id"))
+            result = self.get_file(require_payload_string(payload, "file_id"))
         elif request.operation == "copy_file":
             result = self.copy_file(
-                _require_payload_string(payload, "file_id"),
-                name=_optional_payload_string(payload, "name"),
-                parent_id=_optional_payload_string(payload, "parent_id"),
+                require_payload_string(payload, "file_id"),
+                name=optional_payload_string(payload, "name"),
+                parent_id=optional_payload_string(payload, "parent_id"),
             )
         elif request.operation == "move_file":
-            clear_existing_parents = _optional_payload_bool(payload, "clear_existing_parents")
+            clear_existing_parents = optional_payload_bool(payload, "clear_existing_parents")
             result = self.move_file(
-                _require_payload_string(payload, "file_id"),
-                new_parent_id=_optional_payload_string(payload, "new_parent_id"),
-                remove_parent_ids=_optional_payload_string_list(payload, "remove_parent_ids"),
+                require_payload_string(payload, "file_id"),
+                new_parent_id=optional_payload_string(payload, "new_parent_id"),
+                remove_parent_ids=optional_payload_string_list(payload, "remove_parent_ids"),
                 clear_existing_parents=True if clear_existing_parents is None else clear_existing_parents,
-                name=_optional_payload_string(payload, "name"),
+                name=optional_payload_string(payload, "name"),
             )
         elif request.operation == "create_shortcut":
             result = self.create_shortcut(
-                target_file_id=_require_payload_string(payload, "target_file_id"),
-                name=_optional_payload_string(payload, "name"),
-                parent_id=_optional_payload_string(payload, "parent_id"),
+                target_file_id=require_payload_string(payload, "target_file_id"),
+                name=optional_payload_string(payload, "name"),
+                parent_id=optional_payload_string(payload, "parent_id"),
             )
         elif request.operation == "list_permissions":
-            result = self.list_permissions(_require_payload_string(payload, "file_id"))
+            result = self.list_permissions(require_payload_string(payload, "file_id"))
         elif request.operation == "create_permission":
             result = self.create_permission(
-                _require_payload_string(payload, "file_id"),
-                permission=_build_permission_payload_from_request(payload),
-                send_notification_email=_optional_payload_bool(payload, "send_notification_email"),
+                require_payload_string(payload, "file_id"),
+                permission=build_google_drive_permission_payload(payload),
+                send_notification_email=optional_payload_bool(payload, "send_notification_email"),
             )
         elif request.operation == "upsert_json_file":
             file_payload = payload.get("payload")
             if not isinstance(file_payload, Mapping):
                 raise ValueError("The 'payload.payload' field must be an object for upsert_json_file.")
             result = self.upsert_json_file(
-                name=_require_payload_string(payload, "name"),
-                parent_id=_optional_payload_string(payload, "parent_id"),
+                name=require_payload_string(payload, "name"),
+                parent_id=optional_payload_string(payload, "parent_id"),
                 payload={str(key): value for key, value in file_payload.items()},
             )
         else:
             raise ValueError(f"Unsupported Google Drive operation '{request.operation}'.")
         return ProviderPayloadResultDTO(operation=request.operation, result=result)
-
-
-def _require_payload_string(payload: Mapping[str, object], key: str) -> str:
-    value = payload.get(key)
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"The '{key}' field must be a non-empty string.")
-    return value
-
-
-def _optional_payload_string(payload: Mapping[str, object], key: str) -> str | None:
-    value = payload.get(key)
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise ValueError(f"The '{key}' field must be a string when provided.")
-    normalized = value.strip()
-    return normalized or None
-
-
-def _optional_payload_int(payload: Mapping[str, object], key: str) -> int | None:
-    value = payload.get(key)
-    if value is None:
-        return None
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise ValueError(f"The '{key}' field must be an integer when provided.")
-    return value
-
-
-def _optional_payload_bool(payload: Mapping[str, object], key: str) -> bool | None:
-    value = payload.get(key)
-    if value is None:
-        return None
-    if not isinstance(value, bool):
-        raise ValueError(f"The '{key}' field must be a boolean when provided.")
-    return value
-
-
-def _optional_payload_string_list(payload: Mapping[str, object], key: str) -> list[str] | None:
-    value = payload.get(key)
-    if value is None:
-        return None
-    if not isinstance(value, list):
-        raise ValueError(f"The '{key}' field must be a list of strings when provided.")
-    normalized: list[str] = []
-    for item in value:
-        if not isinstance(item, str) or not item.strip():
-            raise ValueError(f"The '{key}' field must contain only non-empty strings.")
-        normalized.append(item.strip())
-    return normalized
-
-
-def _build_permission_payload_from_request(payload: Mapping[str, object]) -> dict[str, object]:
-    permission = {
-        "type": _require_payload_string(payload, "type"),
-        "role": _require_payload_string(payload, "role"),
-    }
-    email_address = _optional_payload_string(payload, "email_address")
-    if email_address is not None:
-        permission["emailAddress"] = email_address
-    domain = _optional_payload_string(payload, "domain")
-    if domain is not None:
-        permission["domain"] = domain
-    allow_file_discovery = _optional_payload_bool(payload, "allow_file_discovery")
-    if allow_file_discovery is not None:
-        permission["allowFileDiscovery"] = allow_file_discovery
-    return permission
 
 
 def _build_drive_query(

@@ -10,6 +10,7 @@ from harnessiq.providers.coresignal.operations import (
     build_coresignal_operation_catalog,
     get_coresignal_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO
 from harnessiq.shared.tools import (
     CORESIGNAL_REQUEST,
     RegisteredTool,
@@ -83,10 +84,11 @@ def create_coresignal_tools(
     )
 
     def handler(arguments: ToolArguments) -> dict[str, Any]:
-        operation_name = _require_operation_name(arguments, allowed_names)
-        payload: dict[str, Any] = dict(_optional_mapping(arguments, "payload") or {})
-        result = getattr(coresignal_client, operation_name)(**payload)
-        return {"operation": operation_name, "result": result}
+        request = ProviderPayloadRequestDTO(
+            operation=_require_operation_name(arguments, allowed_names),
+            payload=dict(_optional_mapping(arguments, "payload") or {}),
+        )
+        return coresignal_client.execute_operation(request).to_dict()
 
     return (RegisteredTool(definition=definition, handler=handler),)
 

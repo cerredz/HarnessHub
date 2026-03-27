@@ -61,6 +61,13 @@ from __future__ import annotations
 from harnessiq.shared.tools import RegisteredTool
 
 from .catalog import ToolEntry
+from .dynamic_selector import (
+    DefaultDynamicToolSelector,
+    ToolProfileOverride,
+    build_tool_selection_query,
+    resolve_registry_tool_profiles,
+    resolve_tool_profiles,
+)
 from .factory import define_tool, tool
 from .registry import ToolsetRegistry
 
@@ -216,7 +223,10 @@ def register_tools(*tool_instances: RegisteredTool) -> None:
 
 
 __all__ = [
+    "DefaultDynamicToolSelector",
     "ToolEntry",
+    "ToolProfileOverride",
+    "build_tool_selection_query",
     "ToolsetRegistry",
     "define_tool",
     "get_family",
@@ -225,5 +235,7 @@ __all__ = [
     "list_tools",
     "register_tool",
     "register_tools",
+    "resolve_registry_tool_profiles",
+    "resolve_tool_profiles",
     "tool",
 ]

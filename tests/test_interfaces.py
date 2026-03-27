@@ -9,6 +9,9 @@ import unittest
 from harnessiq import interfaces
 from harnessiq.interfaces import (
     AnthropicModelClient,
+    DynamicToolSelector,
+    EmbeddingBackend,
+    EmbeddingModelClient,
     FactoryLoader,
     GoogleSheetsSinkClient,
     IterableFactoryLoader,
@@ -21,6 +24,7 @@ from harnessiq.interfaces import (
     WebhookSinkClient,
     ZeroArgumentFactory,
 )
+from harnessiq.shared.tool_selection import ToolSelectionConfig, ToolSelectionResult
 from harnessiq.shared.dtos import PreparedProviderOperationResultDTO, ProviderOperationRequestDTO
 
 
@@ -161,6 +165,44 @@ class _FakeAnthropicClient:
         }
 
 
+class _FakeEmbeddingClient:
+    def create_embedding(
+        self,
+        *,
+        model_name: str,
+        input_value,
+        dimensions: int | None = None,
+        encoding_format: str | None = None,
+        user: str | None = None,
+    ):
+        return {
+            "model_name": model_name,
+            "input_value": input_value,
+            "dimensions": dimensions,
+            "encoding_format": encoding_format,
+            "user": user,
+        }
+
+
+class _FakeEmbeddingBackend:
+    def embed_texts(self, texts):
+        return tuple((float(index),) for index, _ in enumerate(texts))
+
+
+class _FakeDynamicToolSelector:
+    @property
+    def config(self) -> ToolSelectionConfig:
+        return ToolSelectionConfig(enabled=True, top_k=2)
+
+    def index(self, profiles) -> None:
+        self._profiles = tuple(profiles)
+
+    def select(self, *, context_window, candidate_profiles, metadata=None) -> ToolSelectionResult:
+        del context_window, metadata
+        selected = tuple(profile.key for profile in candidate_profiles[:2])
+        return ToolSelectionResult(selected_keys=selected, retrieval_query="demo")
+
+
 def _fake_request_executor(
     method: str,
     url: str,
@@ -188,6 +230,8 @@ class InterfacesPackageTests(unittest.TestCase):
         self.assertIn("WebhookSinkClient", exported)
         self.assertIn("PreparedStoreLoader", exported)
         self.assertIn("OpenAIStyleModelClient", exported)
+        self.assertIn("DynamicToolSelector", exported)
+        self.assertIn("EmbeddingBackend", exported)
 
     def test_interfaces_package_contains_flat_contract_files(self) -> None:
         package_dir = Path(interfaces.__file__).resolve().parent
@@ -195,6 +239,7 @@ class InterfacesPackageTests(unittest.TestCase):
         self.assertTrue((package_dir / "output_sinks.py").exists())
         self.assertTrue((package_dir / "cli.py").exists())
         self.assertTrue((package_dir / "models.py").exists())
+        self.assertTrue((package_dir / "tool_selection.py").exists())
 
 
 class ProviderContractTests(unittest.TestCase):
@@ -245,6 +290,15 @@ class ModelContractTests(unittest.TestCase):
 
     def test_anthropic_model_client_protocol_matches_fake(self) -> None:
         self.assertIsInstance(_FakeAnthropicClient(), AnthropicModelClient)
+
+    def test_embedding_model_client_protocol_matches_fake(self) -> None:
+        self.assertIsInstance(_FakeEmbeddingClient(), EmbeddingModelClient)
+
+    def test_embedding_backend_protocol_matches_fake(self) -> None:
+        self.assertIsInstance(_FakeEmbeddingBackend(), EmbeddingBackend)
+
+    def test_dynamic_tool_selector_protocol_matches_fake(self) -> None:
+        self.assertIsInstance(_FakeDynamicToolSelector(), DynamicToolSelector)
 
 
 if __name__ == "__main__":

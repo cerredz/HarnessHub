@@ -9,6 +9,7 @@ from harnessiq.providers.phantombuster.operations import (
     build_phantombuster_operation_catalog,
     get_phantombuster_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
 from harnessiq.shared.tools import PHANTOMBUSTER_REQUEST
 from harnessiq.tools.phantombuster import create_phantombuster_tools
 from harnessiq.tools.registry import ToolRegistry
@@ -40,6 +41,23 @@ class PhantomBusterOperationCatalogTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             get_phantombuster_operation("nonexistent_op")
         self.assertIn("nonexistent_op", str(ctx.exception))
+
+
+class PhantomBusterClientTests(unittest.TestCase):
+    def test_execute_operation_accepts_payload_request_dto(self) -> None:
+        from harnessiq.providers.phantombuster.client import PhantomBusterClient
+
+        client = PhantomBusterClient(
+            api_key="testkey",
+            request_executor=lambda m, u, **kw: {"data": []},
+        )
+
+        result = client.execute_operation(
+            ProviderPayloadRequestDTO(operation="list_agents", payload={})
+        )
+
+        self.assertIsInstance(result, ProviderPayloadResultDTO)
+        self.assertEqual(result.operation, "list_agents")
 
 
 class PhantomBusterToolsTests(unittest.TestCase):

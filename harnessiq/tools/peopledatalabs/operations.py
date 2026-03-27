@@ -10,6 +10,7 @@ from harnessiq.providers.peopledatalabs.operations import (
     build_peopledatalabs_operation_catalog,
     get_peopledatalabs_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO
 from harnessiq.shared.tools import (
     PEOPLEDATALABS_REQUEST,
     RegisteredTool,
@@ -87,10 +88,11 @@ def create_peopledatalabs_tools(
     )
 
     def handler(arguments: ToolArguments) -> dict[str, Any]:
-        operation_name = _require_operation_name(arguments, allowed_names)
-        payload: dict[str, Any] = dict(_optional_mapping(arguments, "payload") or {})
-        result = getattr(pdl_client, operation_name)(**payload)
-        return {"operation": operation_name, "result": result}
+        request = ProviderPayloadRequestDTO(
+            operation=_require_operation_name(arguments, allowed_names),
+            payload=dict(_optional_mapping(arguments, "payload") or {}),
+        )
+        return pdl_client.execute_operation(request).to_dict()
 
     return (RegisteredTool(definition=definition, handler=handler),)
 

@@ -9,6 +9,7 @@ from harnessiq.providers.salesforge.operations import (
     build_salesforge_operation_catalog,
     get_salesforge_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
 from harnessiq.shared.tools import SALESFORGE_REQUEST
 from harnessiq.tools.salesforge import create_salesforge_tools
 from harnessiq.tools.registry import ToolRegistry
@@ -40,6 +41,23 @@ class SalesforgeOperationCatalogTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             get_salesforge_operation("nonexistent_op")
         self.assertIn("nonexistent_op", str(ctx.exception))
+
+
+class SalesforgeClientTests(unittest.TestCase):
+    def test_execute_operation_accepts_payload_request_dto(self) -> None:
+        from harnessiq.providers.salesforge.client import SalesforgeClient
+
+        client = SalesforgeClient(
+            api_key="testkey",
+            request_executor=lambda m, u, **kw: {"data": []},
+        )
+
+        result = client.execute_operation(
+            ProviderPayloadRequestDTO(operation="list_sequences", payload={})
+        )
+
+        self.assertIsInstance(result, ProviderPayloadResultDTO)
+        self.assertEqual(result.operation, "list_sequences")
 
 
 class SalesforgeToolsTests(unittest.TestCase):

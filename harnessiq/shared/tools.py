@@ -190,6 +190,14 @@ FILESYSTEM_SAFE_WRITE = "filesystem_safe.write"
 FILESYSTEM_SAFE_STAT = "filesystem_safe.stat"
 FILESYSTEM_SAFE_FIND = "filesystem_safe.find"
 FILESYSTEM_SAFE_DIFF = "filesystem_safe.diff"
+CONTEXT_SUMMARIZE_TRANSCRIPT = "context.summarize_transcript"
+CONTEXT_PRUNE_TOOL_RESULTS = "context.prune_tool_results"
+CONTEXT_ESTIMATE_WINDOW_PRESSURE = "context.estimate_window_pressure"
+CONTEXT_TRIM_OLDEST_ENTRIES = "context.trim_oldest_entries"
+CONTEXT_HANDOFF_BRIEF = "context.handoff_brief"
+CONTEXT_COLLAPSE_REPEATED_CALLS = "context.collapse_repeated_calls"
+CONTEXT_ANNOTATE_PHASE = "context.annotate_phase"
+CONTEXT_INJECT_REMINDER = "context.inject_reminder"
 ARTIFACT_WRITE_MARKDOWN = "artifact.write_markdown"
 ARTIFACT_WRITE_JSON = "artifact.write_json"
 ARTIFACT_WRITE_CSV = "artifact.write_csv"
@@ -327,12 +335,23 @@ LEADS_COMPACT_SEARCH_HISTORY = "leads.compact_search_history"
 LEADS_LOG_SEARCH = "leads.log_search"
 LEADS_SAVE_LEADS = "leads.save_leads"
 
+# Mission-driven agent internal tool key constants
+MISSION_INITIALIZE_ARTIFACT = "mission_driven.initialize_artifact"
+MISSION_RECORD_UPDATES = "mission_driven.record_updates"
+MISSION_CREATE_CHECKPOINT = "mission_driven.create_checkpoint"
+
+# Spawn-specialized-subagents internal tool key constants
+SPAWN_PLAN_ASSIGNMENTS = "spawn_specialized_subagents.plan_assignments"
+SPAWN_RUN_ASSIGNMENT = "spawn_specialized_subagents.run_assignment"
+SPAWN_INTEGRATE_RESULTS = "spawn_specialized_subagents.integrate_results"
+
 # Provider tool key constants
 ATTIO_REQUEST = "attio.request"
 ARCADS_REQUEST = "arcads.request"
 ARXIV_REQUEST = "arxiv.request"
 CREATIFY_REQUEST = "creatify.request"
 EXA_REQUEST = "exa.request"
+HUNTER_REQUEST = "hunter.request"
 INSTANTLY_REQUEST = "instantly.request"
 INBOXAPP_REQUEST = "inboxapp.request"
 LEMLIST_REQUEST = "lemlist.request"
@@ -567,6 +586,7 @@ __all__ = [
     "EXA_OUTREACH_LOG_EMAIL_SENT",
     "EXA_OUTREACH_LOG_LEAD",
     "EXA_REQUEST",
+    "HUNTER_REQUEST",
     "FILESYSTEM_APPEND_TEXT_FILE",
     "FILESYSTEM_COPY_PATH",
     "FILESYSTEM_GET_CURRENT_DIRECTORY",
@@ -640,6 +660,9 @@ __all__ = [
     "LEADS_COMPACT_SEARCH_HISTORY",
     "LEADS_LOG_SEARCH",
     "LEADS_SAVE_LEADS",
+    "MISSION_CREATE_CHECKPOINT",
+    "MISSION_INITIALIZE_ARTIFACT",
+    "MISSION_RECORD_UPDATES",
     "LUSHA_REQUEST",
     "LEMLIST_REQUEST",
     "LOG_COMPACTION",
@@ -721,6 +744,9 @@ __all__ = [
     "SALESFORGE_REQUEST",
     "SEARCH_OR_SUMMARIZE",
     "SERPER_REQUEST",
+    "SPAWN_INTEGRATE_RESULTS",
+    "SPAWN_PLAN_ASSIGNMENTS",
+    "SPAWN_RUN_ASSIGNMENT",
     "SMARTLEAD_REQUEST",
     "SNOVIO_REQUEST",
     "TEXT_NORMALIZE_WHITESPACE",

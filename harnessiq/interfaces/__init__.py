@@ -22,10 +22,14 @@ from .provider_clients import (
     ResendRequestClient,
     TimeoutConfig,
 )
+from .tool_selection import DynamicToolSelector, EmbeddingBackend, EmbeddingModelClient
 
 __all__ = [
     "AnthropicModelClient",
     "ConfluenceSinkClient",
+    "DynamicToolSelector",
+    "EmbeddingBackend",
+    "EmbeddingModelClient",
     "FactoryLoader",
     "GeminiModelClient",
     "GoogleSheetsSinkClient",
