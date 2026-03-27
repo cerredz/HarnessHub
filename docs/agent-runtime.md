@@ -65,12 +65,16 @@ harnessiq models list
 
 ```python
 from harnessiq.agents import AgentRuntimeConfig
+from harnessiq.shared.tool_selection import ToolSelectionConfig
 
 runtime = AgentRuntimeConfig(
     max_tokens=80_000,
     reset_threshold=0.9,
     prune_progress_interval=25,
     prune_token_limit=60_000,
+    tool_selection=ToolSelectionConfig(
+        enabled=False,
+    ),
 )
 ```
 
@@ -78,8 +82,13 @@ runtime = AgentRuntimeConfig(
 - `reset_threshold`: fraction of `max_tokens` that triggers a transcript reset.
 - `prune_progress_interval`: deterministic pruning cadence based on a durable progress counter exposed by the agent.
 - `prune_token_limit`: optional hard cap that triggers pruning even if the progress interval has not elapsed.
+- `tool_selection`: optional per-agent dynamic tool-selection config. Disabled by default.
 
 Concrete agents can override `pruning_progress_value()` to tie pruning to durable work instead of raw transcript size. The leads agent uses this to prune after a configurable number of persisted searches while preserving the durable search summaries in parameter sections.
+
+When `tool_selection.enabled=False`, `BaseAgent` keeps the existing static tool behavior. When it is enabled, `BaseAgent.build_model_request()` resolves the active turn-level subset before rendering prompt text and tool schemas, so prompts that enumerate tools stay aligned with the model-visible tool set.
+
+For the full dynamic-selection contract, including CLI flags and custom-tool behavior, see [docs/dynamic-tool-selection.md](./dynamic-tool-selection.md).
 
 For custom agents, `json_parameter_section()` is the SDK helper for durable JSON-backed memory blocks, and `build_context_window()` / `inspect_tools()` expose the assembled runtime state for debugging and orchestration.
 

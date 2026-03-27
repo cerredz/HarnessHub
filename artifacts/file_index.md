@@ -9,13 +9,13 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Metric | Count |
 | --- | --- |
 | Concrete harness manifests | 9 |
-| Top-level CLI commands | 18 |
-| Registered CLI command paths | 146 |
+| Top-level CLI commands | 19 |
+| Registered CLI command paths | 153 |
 | Model providers | 4 |
 | Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-| Test modules | 116 |
+| Test modules | 119 |
 
 ## Codebase Standards
 
@@ -31,12 +31,9 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Kind | Responsibility |
 | --- | --- | --- |
-| `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
 | `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
-| `build/` | generated/cache | Setuptools build output; generated, not part of the live source tree. |
 | `docs/` | repo docs | Focused usage and architecture notes for the package. |
 | `harnessiq/` | source | Live SDK package source. |
-| `harnessiq.egg-info/` | generated/cache | Packaging metadata emitted by local builds. |
 | `memory/` | local state | Task artifacts plus durable agent runtime state; not part of the shipped package. |
 | `scripts/` | repo tooling | Repository maintenance and generation scripts. |
 | `tests/` | source | unittest coverage for runtime, CLI, providers, and tools. |
@@ -46,7 +43,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Path | Live Subpackages | Responsibility |
 | --- | --- | --- |
 | `harnessiq/agents/` | apollo, base, email, exa, exa_outreach, instagram, instantly, knowt, leads, linkedin, mission_driven, outreach, prospecting, provider_base, research_sweep, spawn_specialized_subagents | Shared runtime bases plus the concrete harness packages exported by the SDK. |
-| `harnessiq/cli/` | adapters, builders, commands, exa_outreach, gcloud, instagram, leads, ledger, linkedin, master_prompts, models, prospecting, research_sweep, runners | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
+| `harnessiq/cli/` | adapters, builders, commands, exa_outreach, gcloud, instagram, leads, ledger, linkedin, master_prompts, models, prospecting, research_sweep, runners, stats | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
 | `harnessiq/config/` | provider_credentials | Environment loading, credential binding, and provider-credential spec models. |
 | `harnessiq/integrations/` | - | Concrete external runtime adapters such as Playwright backends and model factories. |
 | `harnessiq/master_prompts/` | prompts | Packaged prompt assets and prompt registry helpers. |
@@ -116,6 +113,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness | `harnessiq/cli/research_sweep/commands.py` |
 | harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
 | harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
+| harnessiq stats | agent, export, instance, rebuild, session, summary | Inspect local stats and analytics snapshots | `harnessiq/cli/stats/commands.py` |
 
 ## Provider Surfaces
 
@@ -183,13 +181,13 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 ## Test Surface
 
-`tests/` currently contains 116 test modules. The table below groups them by dominant responsibility.
+`tests/` currently contains 119 test modules. The table below groups them by dominant responsibility.
 
 | Area | Count | Examples |
 | --- | --- | --- |
 | agents | 20 | `tests/test_agent_instances.py`, `tests/test_agent_models.py`, `tests/test_agents_base.py` |
-| cli | 10 | `tests/test_exa_outreach_cli.py`, `tests/test_gcloud_cli.py`, `tests/test_instagram_cli.py` |
+| cli | 11 | `tests/test_exa_outreach_cli.py`, `tests/test_gcloud_cli.py`, `tests/test_instagram_cli.py` |
 | ledger | 1 | `tests/test_output_sinks.py` |
 | providers | 32 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
-| support | 38 | `tests/test_cli_builders.py`, `tests/test_cli_common.py`, `tests/test_cli_environment.py` |
-| tools | 15 | `tests/test_context_compaction_tools.py`, `tests/test_context_window_tools.py`, `tests/test_general_tools.py` |
+| support | 39 | `tests/test_cli_builders.py`, `tests/test_cli_common.py`, `tests/test_cli_environment.py` |
+| tools | 16 | `tests/test_context_compaction_tools.py`, `tests/test_context_window_tools.py`, `tests/test_general_tools.py` |
