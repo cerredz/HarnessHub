@@ -28,7 +28,7 @@ from harnessiq.shared.tools import ToolCall, ToolDefinition
 DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS = 4096
 DEFAULT_GROK_MODEL = "grok-4-1-fast-reasoning"
 _SUPPORTED_PROVIDER_NAMES = frozenset(SUPPORTED_PROVIDERS)
-ProviderModelClient = OpenAIStyleModelClient | AnthropicModelClient | GeminiModelClient
+_ProviderModelClient = OpenAIStyleModelClient | AnthropicModelClient | GeminiModelClient
 
 
 class ProviderAgentModel:
@@ -39,7 +39,7 @@ class ProviderAgentModel:
         *,
         provider: str,
         model_name: str,
-        client: ProviderModelClient,
+        client: _ProviderModelClient,
         temperature: float | None = None,
         max_output_tokens: int | None = None,
         reasoning_effort: str | None = None,
