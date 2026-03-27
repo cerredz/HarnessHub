@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import unittest
 
 from harnessiq.providers.anthropic import (
@@ -95,6 +96,25 @@ class AnthropicProviderTests(unittest.TestCase):
         self.assertTrue(request["tool_choice"]["disable_parallel_tool_use"])
         self.assertEqual(request["thinking"]["budget_tokens"], 2048)
         self.assertEqual(request["mcp_servers"][0]["name"], "docs")
+
+    def test_build_message_request_serializes_dto_thinking_config(self) -> None:
+        @dataclass(frozen=True)
+        class _FakeDTO:
+            payload: dict[str, object]
+
+            def to_dict(self) -> dict[str, object]:
+                return dict(self.payload)
+
+        request = build_message_request(
+            AnthropicMessageRequestDTO(
+                model_name="claude-3-7-sonnet",
+                messages=(AnthropicMessageDTO(role="user", content="ping"),),
+                max_tokens=256,
+                thinking=_FakeDTO({"type": "enabled", "budget_tokens": 32}),
+            )
+        )
+
+        self.assertEqual(request["thinking"], {"type": "enabled", "budget_tokens": 32})
 
     def test_build_count_tokens_request_supports_tools(self) -> None:
         request = build_count_tokens_request(

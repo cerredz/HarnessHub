@@ -33,7 +33,7 @@ def build_chat_completion_request(request: OpenAIChatCompletionRequestDTO) -> di
             "messages": [message.to_dict() for message in build_openai_style_messages(request.system_prompt, request.messages)],
             "tools": _coerce_tool_payloads(request.tools, default_strict=False),
             "tool_choice": deepcopy(request.tool_choice) if isinstance(request.tool_choice, dict) else request.tool_choice,
-            "response_format": deepcopy(request.response_format) if request.response_format is not None else None,
+            "response_format": _serialize_optional_payload(request.response_format),
             "max_tokens": request.max_tokens,
             "temperature": request.temperature,
             "parallel_tool_calls": request.parallel_tool_calls,
@@ -160,7 +160,7 @@ def build_response_request(request: OpenAIResponseRequestDTO) -> dict[str, objec
             "instructions": request.instructions,
             "tools": _coerce_tool_payloads(request.tools),
             "tool_choice": deepcopy(request.tool_choice) if isinstance(request.tool_choice, dict) else request.tool_choice,
-            "text": deepcopy(request.text) if request.text is not None else None,
+            "text": _serialize_optional_payload(request.text),
             "metadata": deepcopy(request.metadata) if request.metadata is not None else None,
             "temperature": request.temperature,
             "max_output_tokens": request.max_output_tokens,
@@ -190,6 +190,14 @@ def _serialize_input_item(item: Any) -> dict[str, Any]:
     if isinstance(item, OpenAIResponseInputMessageDTO):
         return item.to_dict()
     return deepcopy(item)
+
+
+def _serialize_optional_payload(payload: Any) -> Any:
+    if payload is None:
+        return None
+    if hasattr(payload, "to_dict"):
+        return payload.to_dict()
+    return deepcopy(payload)
 
 
 def _coerce_tool_payloads(

@@ -128,7 +128,7 @@ def build_message_request(request: AnthropicMessageRequestDTO) -> dict[str, obje
             "max_tokens": request.max_tokens,
             "tools": _coerce_tool_payloads(request.tools),
             "tool_choice": deepcopy(request.tool_choice) if request.tool_choice is not None else None,
-            "thinking": deepcopy(request.thinking) if request.thinking is not None else None,
+            "thinking": _serialize_optional_payload(request.thinking),
             "metadata": deepcopy(request.metadata) if request.metadata is not None else None,
             "stop_sequences": list(request.stop_sequences) if request.stop_sequences else None,
             "temperature": request.temperature,
@@ -172,3 +172,11 @@ def _coerce_tool_payloads(
 
 def _normalize_message_items(messages: Sequence[AnthropicMessageDTO]) -> list[dict[str, Any]]:
     return [message.to_dict() for message in messages]
+
+
+def _serialize_optional_payload(payload: Any) -> Any:
+    if payload is None:
+        return None
+    if hasattr(payload, "to_dict"):
+        return payload.to_dict()
+    return deepcopy(payload)

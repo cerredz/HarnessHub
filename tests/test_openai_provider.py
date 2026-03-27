@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import unittest
 
 from harnessiq.providers.openai import (
@@ -90,6 +91,25 @@ class OpenAIProviderTests(unittest.TestCase):
         self.assertEqual(request["tool_choice"]["function"]["name"], "echo_text")
         self.assertTrue(request["parallel_tool_calls"])
         self.assertEqual(request["response_format"]["json_schema"]["strict"], True)
+
+    def test_build_chat_completion_request_serializes_dto_response_format(self) -> None:
+        @dataclass(frozen=True)
+        class _FakeDTO:
+            payload: dict[str, object]
+
+            def to_dict(self) -> dict[str, object]:
+                return dict(self.payload)
+
+        request = build_chat_completion_request(
+            OpenAIChatCompletionRequestDTO(
+                model_name="gpt-4.1",
+                system_prompt="Be precise.",
+                messages=tuple(self.messages),
+                response_format=_FakeDTO({"type": "json_object"}),
+            )
+        )
+
+        self.assertEqual(request["response_format"], {"type": "json_object"})
 
     def test_build_response_request_supports_built_in_tools_and_text_config(self) -> None:
         input_items = [
