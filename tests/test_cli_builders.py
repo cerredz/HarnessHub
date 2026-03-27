@@ -11,6 +11,7 @@ from harnessiq.cli.builders import (
     LeadsCliBuilder,
     LinkedInCliBuilder,
     ProspectingCliBuilder,
+    ResearchSweepCliBuilder,
 )
 from harnessiq.config import HarnessProfile, HarnessProfileStore
 from harnessiq.shared.harness_manifest import HarnessManifest, HarnessParameterSpec
@@ -357,3 +358,29 @@ def test_exa_outreach_builder_configure_and_show_round_trip(tmp_path: Path) -> N
     assert configured_payload["query_config"]["search_query"] == "VPs of Engineering"
     assert configured_payload["query_config"]["max_tokens"] == 50000
     assert shown_payload["agent_identity"] == "I am a growth hacker."
+
+
+def test_research_sweep_builder_configure_and_show_round_trip(tmp_path: Path) -> None:
+    builder = ResearchSweepCliBuilder()
+
+    configured_payload = builder.configure(
+        agent_name="sweep-a",
+        memory_root=str(tmp_path),
+        query_text="mRNA vaccine efficacy",
+        query_file=None,
+        additional_prompt_text="Focus on clinically relevant papers.",
+        additional_prompt_file=None,
+        runtime_assignments=["max_tokens=64000"],
+        custom_assignments=["allowed_serper_operations=search,scholar"],
+    )
+    shown_payload = builder.show(
+        agent_name="sweep-a",
+        memory_root=str(tmp_path),
+    )
+
+    assert configured_payload["status"] == "configured"
+    assert configured_payload["query"] == "mRNA vaccine efficacy"
+    assert configured_payload["runtime_parameters"]["max_tokens"] == 64000
+    assert configured_payload["custom_parameters"]["allowed_serper_operations"] == "search,scholar"
+    assert "progress_reset" in configured_payload["updated"]
+    assert shown_payload["additional_prompt"] == "Focus on clinically relevant papers."

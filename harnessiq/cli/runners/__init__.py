@@ -6,6 +6,7 @@ from .leads import LeadsCliRunner
 from .linkedin import LinkedInCliRunner
 from .lifecycle import HarnessCliLifecycleRunner, ResolvedRunRequest
 from .prospecting import ProspectingCliRunner
+from .research_sweep import ResearchSweepCliRunner
 
 __all__ = [
     "ExaOutreachCliRunner",
@@ -14,5 +15,6 @@ __all__ = [
     "LeadsCliRunner",
     "LinkedInCliRunner",
     "ProspectingCliRunner",
+    "ResearchSweepCliRunner",
     "ResolvedRunRequest",
 ]
