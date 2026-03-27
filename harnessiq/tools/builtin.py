@@ -5,10 +5,18 @@ from __future__ import annotations
 from harnessiq.shared.tools import ADD_NUMBERS, ECHO_TEXT, RegisteredTool, ToolArguments, ToolDefinition
 
 from .context_compaction import create_context_compaction_tools
+from .context import create_context_tools
 from .filesystem import create_filesystem_tools
+from .filesystem_safe import create_filesystem_safe_tools
+from .artifact import create_artifact_tools
+from .control import create_control_tools
 from .general_purpose import create_general_purpose_tools
+from .memory import create_memory_tools
 from .prompting import create_prompt_tools
 from .reasoning import create_reasoning_tools
+from .records import create_records_tools
+from .text import create_text_tools
+from .validation import create_validation_tools
 
 
 def _echo_text(arguments: ToolArguments) -> dict[str, str]:
@@ -70,4 +78,12 @@ BUILTIN_TOOLS = (
     *create_prompt_tools(),
     *create_filesystem_tools(),
     *create_reasoning_tools(),
+    *create_context_tools(),
+    *create_text_tools(),
+    *create_records_tools(),
+    *create_control_tools(),
+    *create_filesystem_safe_tools(),
+    *create_validation_tools(),
+    *create_memory_tools(),
+    *create_artifact_tools(),
 )

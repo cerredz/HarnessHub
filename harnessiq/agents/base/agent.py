@@ -319,6 +319,16 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
                         break
 
                 if pause_signal is not None:
+                    if self._pause_signal_marks_completion(pause_signal):
+                        return self._complete_run(
+                            AgentRunResult(
+                                status="completed",
+                                cycles_completed=cycles_completed,
+                                resets=self._reset_count,
+                            ),
+                            started_at=started_at,
+                            total_estimated_request_tokens=total_estimated_request_tokens,
+                        )
                     return self._complete_run(
                         AgentRunResult(
                             status="paused",
@@ -390,3 +400,7 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
     def build_ledger_metadata(self) -> dict[str, Any]:
         """Return additional framework- or agent-specific metadata for the run."""
         return {}
+
+    def _pause_signal_marks_completion(self, pause_signal: AgentPauseSignal) -> bool:
+        details = pause_signal.details
+        return isinstance(details, dict) and details.get("status") == "completed"
