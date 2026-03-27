@@ -113,6 +113,9 @@
    Dependency: Ticket 11
    Issue: #300
    URL: https://github.com/cerredz/HarnessHub/issues/300
+   PR: #334
+   PR URL: https://github.com/cerredz/HarnessHub/pull/334
+   Status: implemented, awaiting merge into `main`
 
 14. Ticket 14: Add manifest-driven deployment specs for all harnesses
    Description: Make GCP deployment generic across all harness manifests by deriving deployable commands and metadata from existing manifest/profile state.

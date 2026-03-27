@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict
 from typing import Any
 
-from harnessiq.cli.common import emit_json
+from harnessiq.cli.common import emit_json, split_assignment
 from harnessiq.providers.gcloud import GcloudClient, GcpAgentConfig, GcpContext
 from harnessiq.providers.gcloud.health import HealthProvider
 
@@ -118,41 +119,118 @@ def register_gcloud_commands(subparsers: argparse._SubParsersAction[argparse.Arg
     )
     check_parser.set_defaults(command_handler=_handle_credentials_check)
 
-    _add_help_parser(
+    build_parser = _add_help_parser(
         gcloud_subparsers,
         "build",
         help_text="Build and publish the configured container image",
     )
+    _add_agent_argument(build_parser)
+    build_parser.add_argument("--source-dir", default=".", help="Build context directory passed to Cloud Build.")
+    build_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Render the build command without mutating GCP resources.",
+    )
+    build_parser.set_defaults(command_handler=_handle_build)
 
-    _add_help_parser(
+    deploy_parser = _add_help_parser(
         gcloud_subparsers,
         "deploy",
         help_text="Deploy or update the configured Cloud Run job",
     )
+    _add_agent_argument(deploy_parser)
+    deploy_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Render the deployment command without mutating GCP resources.",
+    )
+    deploy_parser.set_defaults(command_handler=_handle_deploy)
 
-    _add_help_parser(
+    schedule_parser = _add_help_parser(
         gcloud_subparsers,
         "schedule",
         help_text="Create or update the configured scheduler job",
     )
+    _add_agent_argument(schedule_parser)
+    schedule_parser.add_argument("--cron", help="Optional cron override for this deployment action.")
+    schedule_parser.add_argument("--timezone", help="Optional timezone override for this deployment action.")
+    schedule_parser.add_argument(
+        "--service-account-email",
+        help="Optional scheduler auth service account override for this deployment action.",
+    )
+    schedule_parser.add_argument(
+        "--description",
+        default="",
+        help="Optional scheduler description used when the job is created.",
+    )
+    schedule_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Render the scheduler command without mutating GCP resources.",
+    )
+    schedule_parser.set_defaults(command_handler=_handle_schedule)
 
-    _add_help_parser(
+    execute_parser = _add_help_parser(
         gcloud_subparsers,
         "execute",
         help_text="Trigger an immediate Cloud Run job execution",
     )
+    _add_agent_argument(execute_parser)
+    execute_mode_group = execute_parser.add_mutually_exclusive_group()
+    execute_mode_group.add_argument("--wait", action="store_true", help="Wait for the execution to complete.")
+    execute_mode_group.add_argument(
+        "--async",
+        dest="async_",
+        action="store_true",
+        help="Return immediately after the execution is started.",
+    )
+    execute_parser.add_argument("--task-count", type=int, help="Optional task count override for this execution.")
+    execute_parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        help="Optional task timeout override for this execution.",
+    )
+    execute_parser.add_argument(
+        "--env-override",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Override one execution environment variable. Repeat for multiple values.",
+    )
+    execute_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Render the execution command without mutating GCP resources.",
+    )
+    execute_parser.set_defaults(command_handler=_handle_execute)
 
-    _add_help_parser(
+    logs_parser = _add_help_parser(
         gcloud_subparsers,
         "logs",
         help_text="Read Cloud Run execution logs",
     )
+    _add_agent_argument(logs_parser)
+    logs_parser.add_argument("--execution-name", help="Optional Cloud Run execution name filter.")
+    logs_parser.add_argument("--limit", type=int, default=100, help="Maximum number of log entries to read.")
+    logs_parser.add_argument(
+        "--order",
+        choices=("asc", "desc"),
+        default="asc",
+        help="Log ordering passed through to Cloud Logging.",
+    )
+    logs_parser.add_argument(
+        "--freshness",
+        help="Optional Cloud Logging freshness window, for example 1d or 7d.",
+    )
+    logs_parser.set_defaults(command_handler=_handle_logs)
 
-    _add_help_parser(
+    cost_parser = _add_help_parser(
         gcloud_subparsers,
         "cost",
         help_text="Estimate the configured monthly GCP deployment cost",
     )
+    _add_agent_argument(cost_parser)
+    cost_parser.set_defaults(command_handler=_handle_cost)
 
 
 def _handle_init(args: argparse.Namespace) -> int:
@@ -307,6 +385,128 @@ def _handle_credentials_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_build(args: argparse.Namespace) -> int:
+    context = _load_context(args.agent, dry_run=args.dry_run)
+    result = context.deploy.artifact_registry.build_image(source_dir=args.source_dir)
+    payload = _context_payload(context)
+    payload.update(
+        {
+            "image_url": context.config.image_url,
+            "repository": context.deploy.artifact_registry.repository_path,
+            "response": result,
+            "source_dir": args.source_dir,
+            "status": _operation_status(args.dry_run, "built"),
+        }
+    )
+    emit_json(payload)
+    return 0
+
+
+def _handle_deploy(args: argparse.Namespace) -> int:
+    context = _load_context(args.agent, dry_run=args.dry_run)
+    result = context.deploy.cloud_run.deploy_job()
+    payload = _context_payload(context)
+    payload.update(
+        {
+            "image_url": context.config.image_url,
+            "job_name": context.config.job_name,
+            "response": result,
+            "status": _operation_status(args.dry_run, "deployed"),
+        }
+    )
+    emit_json(payload)
+    return 0
+
+
+def _handle_schedule(args: argparse.Namespace) -> int:
+    context = _load_context(args.agent, dry_run=args.dry_run)
+    result = context.deploy.scheduler.deploy_schedule(
+        service_account_email=args.service_account_email,
+        cron=args.cron,
+        timezone=args.timezone,
+        description=args.description,
+    )
+    payload = _context_payload(context)
+    payload.update(
+        {
+            "cron": args.cron or context.config.schedule_cron,
+            "description": args.description,
+            "response": result,
+            "scheduler_job_name": context.config.scheduler_job_name,
+            "service_account_email": args.service_account_email or context.config.service_account_email,
+            "status": _operation_status(args.dry_run, "scheduled"),
+            "timezone": args.timezone or context.config.timezone,
+        }
+    )
+    emit_json(payload)
+    return 0
+
+
+def _handle_execute(args: argparse.Namespace) -> int:
+    context = _load_context(args.agent, dry_run=args.dry_run)
+    env_overrides = _parse_env_overrides(args.env_override)
+    result = context.deploy.cloud_run.execute(
+        wait=args.wait,
+        async_=args.async_,
+        task_count=args.task_count,
+        timeout_override=args.timeout_seconds,
+        env_overrides=env_overrides,
+    )
+    payload = _context_payload(context)
+    payload.update(
+        {
+            "async": args.async_,
+            "env_overrides": env_overrides,
+            "job_name": context.config.job_name,
+            "response": result,
+            "status": _operation_status(args.dry_run, "executed"),
+            "task_count": args.task_count,
+            "timeout_seconds": args.timeout_seconds,
+            "wait": args.wait,
+        }
+    )
+    emit_json(payload)
+    return 0
+
+
+def _handle_logs(args: argparse.Namespace) -> int:
+    context = _load_context(args.agent)
+    log_text = context.observability.logging.get_job_logs(
+        execution_name=args.execution_name,
+        limit=args.limit,
+        order=args.order,
+        freshness=args.freshness,
+    )
+    payload = _context_payload(context)
+    payload.update(
+        {
+            "execution_name": args.execution_name,
+            "freshness": args.freshness,
+            "job_name": context.config.job_name,
+            "limit": args.limit,
+            "logs": log_text,
+            "order": args.order,
+            "status": "ok",
+        }
+    )
+    emit_json(payload)
+    return 0
+
+
+def _handle_cost(args: argparse.Namespace) -> int:
+    context = _load_context(args.agent)
+    estimate = context.infra.billing.estimate_monthly_cost()
+    payload = _context_payload(context)
+    payload.update(
+        {
+            "estimate": asdict(estimate),
+            "status": "estimated",
+        }
+    )
+    emit_json(payload)
+    return 0
+
+
 def _create_init_context(args: argparse.Namespace) -> GcpContext:
     kwargs = {
         "artifact_repository": args.artifact_repository,
@@ -353,6 +553,14 @@ def _config_path_for_agent(agent_name: str) -> str:
     return str(GcpAgentConfig.config_path_for(agent_name))
 
 
+def _parse_env_overrides(assignments: list[str]) -> dict[str, str]:
+    overrides: dict[str, str] = {}
+    for assignment in assignments:
+        key, value = split_assignment(assignment)
+        overrides[key] = value
+    return overrides
+
+
 def _serialize_health_results(results: list[Any]) -> list[dict[str, Any]]:
     return [
         {
@@ -375,6 +583,10 @@ def _context_payload(context: GcpContext) -> dict[str, Any]:
 
 def _health_status(results: list[dict[str, Any]]) -> str:
     return "healthy" if all(result["passed"] for result in results) else "unhealthy"
+
+
+def _operation_status(dry_run: bool, action: str) -> str:
+    return "dry_run" if dry_run else action
 
 
 def _init_status(args: argparse.Namespace, health_results: list[dict[str, Any]]) -> str:

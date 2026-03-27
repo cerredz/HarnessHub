@@ -10,6 +10,7 @@ from unittest.mock import Mock
 import pytest
 
 from harnessiq.cli.main import build_parser, main
+from harnessiq.providers.gcloud.infra.billing import CostEstimate
 
 
 def test_gcloud_top_level_command_is_registered() -> None:
@@ -34,6 +35,13 @@ def test_gcloud_help_path_exits_cleanly() -> None:
     with pytest.raises(SystemExit) as exc_info:
         parser.parse_args(["gcloud", "--help"])
     assert exc_info.value.code == 0
+
+
+def test_gcloud_execute_wait_and_async_are_mutually_exclusive() -> None:
+    parser = build_parser()
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args(["gcloud", "execute", "--agent", "candidate-a", "--wait", "--async"])
+    assert exc_info.value.code == 2
 
 
 def test_gcloud_root_command_prints_help() -> None:
@@ -257,6 +265,170 @@ def test_gcloud_init_runs_health_save_and_sync(monkeypatch: pytest.MonkeyPatch) 
     bridge.sync.assert_called_once_with(interactive=False, dry_run=False)
     assert payload["status"] == "initialized"
     assert payload["config_path"].endswith("candidate-a.json")
+
+
+def test_gcloud_build_deploy_and_schedule_commands_delegate_to_providers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    artifact_registry = SimpleNamespace(
+        build_image=Mock(return_value="build submitted"),
+        repository_path="us-central1-docker.pkg.dev/proj-123/harnessiq",
+    )
+    cloud_run = SimpleNamespace(deploy_job=Mock(return_value="job deployed"))
+    scheduler = SimpleNamespace(deploy_schedule=Mock(return_value="schedule deployed"))
+    fake_context = SimpleNamespace(
+        config=SimpleNamespace(
+            agent_name="candidate-a",
+            gcp_project_id="proj-123",
+            region="us-central1",
+            image_url="us-central1-docker.pkg.dev/proj-123/harnessiq/candidate-a:latest",
+            job_name="harnessiq-candidate-a",
+            schedule_cron="0 */4 * * *",
+            scheduler_job_name="harnessiq-candidate-a-schedule",
+            service_account_email="runner@proj-123.iam.gserviceaccount.com",
+            timezone="UTC",
+        ),
+        deploy=SimpleNamespace(
+            artifact_registry=artifact_registry,
+            cloud_run=cloud_run,
+            scheduler=scheduler,
+        ),
+    )
+    monkeypatch.setattr("harnessiq.cli.gcloud.commands._load_context", lambda agent_name, dry_run=False: fake_context)
+
+    build_payload = _run_json_command(
+        ["gcloud", "build", "--agent", "candidate-a", "--source-dir", "src", "--dry-run"]
+    )
+    deploy_payload = _run_json_command(["gcloud", "deploy", "--agent", "candidate-a"])
+    schedule_payload = _run_json_command(
+        [
+            "gcloud",
+            "schedule",
+            "--agent",
+            "candidate-a",
+            "--cron",
+            "0 0 * * *",
+            "--timezone",
+            "America/Indianapolis",
+            "--description",
+            "Nightly run",
+            "--dry-run",
+        ]
+    )
+
+    artifact_registry.build_image.assert_called_once_with(source_dir="src")
+    cloud_run.deploy_job.assert_called_once_with()
+    scheduler.deploy_schedule.assert_called_once_with(
+        service_account_email=None,
+        cron="0 0 * * *",
+        timezone="America/Indianapolis",
+        description="Nightly run",
+    )
+    assert build_payload["status"] == "dry_run"
+    assert deploy_payload["status"] == "deployed"
+    assert schedule_payload["status"] == "dry_run"
+
+
+def test_gcloud_execute_logs_and_cost_commands_emit_json(monkeypatch: pytest.MonkeyPatch) -> None:
+    cloud_run = SimpleNamespace(execute=Mock(return_value="execution-123"))
+    logging_provider = SimpleNamespace(get_job_logs=Mock(return_value="line-1\nline-2"))
+    billing_provider = SimpleNamespace(
+        estimate_monthly_cost=Mock(
+            return_value=CostEstimate(
+                cloud_run_per_run_usd=0.02,
+                cloud_run_monthly_usd=1.2,
+                scheduler_monthly_usd=0.1,
+                secret_manager_monthly_usd=0.06,
+                artifact_registry_monthly_usd=0.05,
+                total_monthly_usd=1.41,
+                assumptions=["Monthly runs: 30"],
+            )
+        )
+    )
+    fake_context = SimpleNamespace(
+        config=SimpleNamespace(
+            agent_name="candidate-a",
+            gcp_project_id="proj-123",
+            region="us-central1",
+            job_name="harnessiq-candidate-a",
+        ),
+        deploy=SimpleNamespace(cloud_run=cloud_run),
+        observability=SimpleNamespace(logging=logging_provider),
+        infra=SimpleNamespace(billing=billing_provider),
+    )
+    monkeypatch.setattr("harnessiq.cli.gcloud.commands._load_context", lambda agent_name, dry_run=False: fake_context)
+
+    execute_payload = _run_json_command(
+        [
+            "gcloud",
+            "execute",
+            "--agent",
+            "candidate-a",
+            "--wait",
+            "--task-count",
+            "3",
+            "--timeout-seconds",
+            "900",
+            "--env-override",
+            "FOO=bar",
+            "--env-override",
+            "BAZ=qux",
+        ]
+    )
+    logs_payload = _run_json_command(
+        [
+            "gcloud",
+            "logs",
+            "--agent",
+            "candidate-a",
+            "--execution-name",
+            "exec-1",
+            "--limit",
+            "5",
+            "--freshness",
+            "1d",
+        ]
+    )
+    cost_payload = _run_json_command(["gcloud", "cost", "--agent", "candidate-a"])
+
+    cloud_run.execute.assert_called_once_with(
+        wait=True,
+        async_=False,
+        task_count=3,
+        timeout_override=900,
+        env_overrides={"FOO": "bar", "BAZ": "qux"},
+    )
+    logging_provider.get_job_logs.assert_called_once_with(
+        execution_name="exec-1",
+        limit=5,
+        order="asc",
+        freshness="1d",
+    )
+    billing_provider.estimate_monthly_cost.assert_called_once_with()
+    assert execute_payload["status"] == "executed"
+    assert execute_payload["env_overrides"] == {"FOO": "bar", "BAZ": "qux"}
+    assert logs_payload["logs"] == "line-1\nline-2"
+    assert cost_payload["estimate"]["total_monthly_usd"] == 1.41
+
+
+def test_gcloud_schedule_propagates_provider_failures(monkeypatch: pytest.MonkeyPatch) -> None:
+    scheduler = SimpleNamespace(deploy_schedule=Mock(side_effect=ValueError("cron must be provided")))
+    fake_context = SimpleNamespace(
+        config=SimpleNamespace(
+            agent_name="candidate-a",
+            gcp_project_id="proj-123",
+            region="us-central1",
+            schedule_cron=None,
+            scheduler_job_name="harnessiq-candidate-a-schedule",
+            service_account_email="runner@proj-123.iam.gserviceaccount.com",
+            timezone="UTC",
+        ),
+        deploy=SimpleNamespace(scheduler=scheduler),
+    )
+    monkeypatch.setattr("harnessiq.cli.gcloud.commands._load_context", lambda agent_name, dry_run=False: fake_context)
+
+    with pytest.raises(ValueError, match="cron must be provided"):
+        main(["gcloud", "schedule", "--agent", "candidate-a"])
 
 
 def test_gcloud_credentials_sync_propagates_bridge_failures(monkeypatch: pytest.MonkeyPatch) -> None:
