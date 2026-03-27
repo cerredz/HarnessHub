@@ -11,12 +11,13 @@ from types import SimpleNamespace
 import pytest
 
 from harnessiq.cli.adapters.context import HarnessAdapterContext
-from harnessiq.cli.builders import LeadsCliBuilder
+from harnessiq.cli.builders import LeadsCliBuilder, ProspectingCliBuilder
 from harnessiq.cli.runners import (
     HarnessCliLifecycleRunner,
     InstagramCliRunner,
     LeadsCliRunner,
     LinkedInCliRunner,
+    ProspectingCliRunner,
     ResolvedRunRequest,
 )
 from harnessiq.config import HarnessProfile, HarnessRunSnapshot
@@ -466,3 +467,114 @@ def test_leads_runner_run_requires_existing_configuration(tmp_path: Path) -> Non
             approval_policy=None,
             allowed_tools=(),
         )
+
+
+def test_prospecting_runner_run_sets_session_env_and_forwards_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    class _StubAgent:
+        last_run_id = "run-123"
+
+        def run(self, *, max_cycles):
+            assert max_cycles == 2
+            return SimpleNamespace(cycles_completed=2, pause_reason=None, resets=1, status="completed")
+
+    def _from_memory(**kwargs):
+        captured_kwargs.update(kwargs)
+        return _StubAgent()
+
+    monkeypatch.setattr("harnessiq.cli.runners.prospecting.seed_cli_environment", lambda _: None)
+    monkeypatch.setattr("harnessiq.cli.runners.prospecting.resolve_agent_model", lambda **_: "resolved-model")
+    monkeypatch.setattr("harnessiq.cli.runners.prospecting.load_factory", lambda _: (lambda: ("browser-tool",)))
+    monkeypatch.setattr("harnessiq.cli.runners.prospecting.GoogleMapsProspectingAgent.from_memory", _from_memory)
+    monkeypatch.delenv("HARNESSIQ_PROSPECTING_SESSION_DIR", raising=False)
+
+    builder = ProspectingCliBuilder()
+    builder.configure(
+        agent_name="nj-dentists",
+        memory_root=str(tmp_path),
+        company_description_text="Owner-operated dental practices in New Jersey.",
+        company_description_file=None,
+        agent_identity_text=None,
+        agent_identity_file=None,
+        additional_prompt_text=None,
+        additional_prompt_file=None,
+        eval_system_prompt_file=None,
+        runtime_assignments=["max_tokens=4096"],
+        custom_assignments=["max_searches_per_run=12"],
+    )
+
+    runner = ProspectingCliRunner()
+    payload = runner.run(
+        agent_name="nj-dentists",
+        memory_root=str(tmp_path),
+        model_factory="tests.test_prospecting_cli:_recording_model_factory",
+        model=None,
+        model_profile=None,
+        browser_tools_factory="tests.test_prospecting_cli:create_browser_tools",
+        runtime_assignments=["max_tokens=2048"],
+        custom_assignments=["max_searches_per_run=3"],
+        sink_specs=["jsonl:out.jsonl"],
+        max_cycles=2,
+        approval_policy=None,
+        allowed_tools=(),
+    )
+
+    expected_session_dir = str((tmp_path / "nj-dentists" / "browser-data").resolve())
+    assert os.environ["HARNESSIQ_PROSPECTING_SESSION_DIR"] == expected_session_dir
+    assert payload["ledger_run_id"] == "run-123"
+    assert payload["result"]["status"] == "completed"
+    assert captured_kwargs["browser_tools"] == ("browser-tool",)
+    assert captured_kwargs["runtime_overrides"] == {"max_tokens": 2048}
+    assert captured_kwargs["custom_overrides"] == {"max_searches_per_run": 3}
+
+
+def test_prospecting_runner_init_browser_returns_session_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    events: list[tuple[str, Path, str, bool]] = []
+
+    class _FakeSession:
+        def __init__(self, *, session_dir, channel, headless):
+            self.session_dir = Path(session_dir)
+            self.channel = channel
+            self.headless = headless
+
+        def start(self):
+            events.append(("start", self.session_dir, self.channel, self.headless))
+
+        def stop(self):
+            events.append(("stop", self.session_dir, self.channel, self.headless))
+
+    monkeypatch.setitem(
+        sys.modules,
+        "harnessiq.integrations.google_maps_playwright",
+        SimpleNamespace(PlaywrightGoogleMapsSession=_FakeSession),
+    )
+
+    runner = ProspectingCliRunner()
+    stdout = io.StringIO()
+    with redirect_stdout(stdout):
+        payload = runner.init_browser(
+            agent_name="nj-dentists",
+            memory_root=str(tmp_path),
+            channel="chrome",
+            headless=False,
+            wait_for_exit=lambda: None,
+        )
+
+    expected_dir = tmp_path / "nj-dentists" / "browser-data"
+    assert payload == {
+        "agent": "nj-dentists",
+        "browser_data_dir": str(expected_dir.resolve()),
+        "status": "session_saved",
+    }
+    assert events == [
+        ("start", expected_dir, "chrome", False),
+        ("stop", expected_dir, "chrome", False),
+    ]
+    assert "Open Google Maps" in stdout.getvalue()

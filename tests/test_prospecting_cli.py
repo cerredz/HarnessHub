@@ -127,11 +127,11 @@ class ProspectingCliTests(unittest.TestCase):
                     return_value=lambda: MagicMock(),
                 ),
                 patch(
-                    "harnessiq.cli.prospecting.commands._load_factory",
+                    "harnessiq.cli.runners.prospecting.load_factory",
                     return_value=lambda: (),
                 ),
                 patch(
-                    "harnessiq.agents.GoogleMapsProspectingAgent.from_memory",
+                    "harnessiq.cli.runners.prospecting.GoogleMapsProspectingAgent.from_memory",
                     return_value=mock_agent,
                 ),
                 patch("sys.stdout.write") as mock_write,
@@ -206,11 +206,11 @@ class ProspectingCliTests(unittest.TestCase):
                     return_value=_recording_model_factory,
                 ),
                 patch(
-                    "harnessiq.cli.prospecting.commands._load_factory",
+                    "harnessiq.cli.runners.prospecting.load_factory",
                     return_value=lambda: (),
                 ),
                 patch(
-                    "harnessiq.agents.GoogleMapsProspectingAgent.from_memory",
+                    "harnessiq.cli.runners.prospecting.GoogleMapsProspectingAgent.from_memory",
                     return_value=mock_agent,
                 ),
                 patch("sys.stdout.write"),
