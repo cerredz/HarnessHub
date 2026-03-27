@@ -15,6 +15,7 @@ from harnessiq.providers import LinearClient as ProviderLinearClient
 from harnessiq.providers import MongoDBClient as ProviderMongoDBClient
 from harnessiq.providers import WebhookDeliveryClient as ProviderWebhookDeliveryClient
 from harnessiq.providers import extract_model_metadata as provider_extract_model_metadata
+from harnessiq.interfaces import GoogleSheetsSinkClient, MongoCollectionSinkClient, WebhookSinkClient
 from harnessiq.providers.output_sinks import (
     GoogleSheetsClient,
     LinearClient,
@@ -289,6 +290,9 @@ class OutputSinkTests(unittest.TestCase):
         mongo_client = _FakeMongoCollectionClient()
         google_sheets_client = _FakeGoogleSheetsClient()
 
+        self.assertIsInstance(mongo_client, MongoCollectionSinkClient)
+        self.assertIsInstance(google_sheets_client, GoogleSheetsSinkClient)
+
         NotionSink(api_token="token", database_id="db", client=notion_client).on_run_complete(_entry())
         ConfluenceSink(base_url="https://conf.example", api_token="token", space_key="ENG", client=confluence_client).on_run_complete(_entry())
         SupabaseSink(base_url="https://supabase.example", api_key="key", client=supabase_client).on_run_complete(_entry())
@@ -317,6 +321,7 @@ class OutputSinkTests(unittest.TestCase):
 
     def test_slack_and_discord_sinks_accept_protocol_compatible_webhook_clients(self) -> None:
         client = _FakeWebhookClient()
+        self.assertIsInstance(client, WebhookSinkClient)
 
         SlackSink(webhook_url="https://slack.example", client=client).on_run_complete(_entry())
         DiscordSink(webhook_url="https://discord.example", client=client).on_run_complete(_entry())
