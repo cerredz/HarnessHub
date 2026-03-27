@@ -26,6 +26,12 @@ result = registry.execute(ECHO_TEXT, {"text": "hello"})
 print(result.output)
 ```
 
+## Dynamic Tool Selection
+
+Harnessiq keeps the static tool path by default. When you need to narrow a large tool surface per turn, opt into dynamic tool selection through `AgentRuntimeConfig.tool_selection` or the `--dynamic-tools` CLI flags.
+
+See `docs/dynamic-tool-selection.md` for the runtime contract, CLI flags, embedding-model configuration, and the boundary between existing tool keys and Python-only custom callables.
+
 ## Live Snapshot
 
 | Metric | Count |
