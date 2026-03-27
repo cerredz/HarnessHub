@@ -78,14 +78,12 @@ class ToolProfileOverride:
 def resolve_tool_profiles(
     tools: Sequence[RegisteredTool],
     *,
-    catalog_entries: Mapping[str, ToolEntry] | None = None,
+    catalog_entries: Mapping[str, ToolEntry] | Sequence[ToolEntry] | None = None,
     profile_overrides: Mapping[str, ToolProfileOverride] | None = None,
     always_on_keys: Sequence[str] = (),
 ) -> tuple[ToolProfile, ...]:
     """Derive retrieval profiles for a concrete ordered tool set."""
-    entry_index = dict(PROVIDER_ENTRY_INDEX)
-    if catalog_entries is not None:
-        entry_index.update(dict(catalog_entries))
+    entry_index = _build_catalog_entry_index(catalog_entries)
     override_index = dict(profile_overrides or {})
     forced_always_on = {str(key).strip() for key in always_on_keys if str(key).strip()}
     profiles: list[ToolProfile] = []
@@ -317,6 +315,20 @@ def _build_tool_profile(
         always_on=always_on,
         retrievable=retrievable,
     )
+
+
+def _build_catalog_entry_index(
+    catalog_entries: Mapping[str, ToolEntry] | Sequence[ToolEntry] | None,
+) -> dict[str, ToolEntry]:
+    entry_index = dict(PROVIDER_ENTRY_INDEX)
+    if catalog_entries is None:
+        return entry_index
+    if isinstance(catalog_entries, Mapping):
+        entry_index.update({str(key): value for key, value in catalog_entries.items()})
+        return entry_index
+    for entry in catalog_entries:
+        entry_index[entry.key] = entry
+    return entry_index
 
 
 def _derive_semantic_description(

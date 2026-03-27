@@ -83,6 +83,25 @@ def test_resolve_tool_profiles_applies_retrieval_only_overrides() -> None:
     assert profiles[0].retrievable is False
 
 
+def test_resolve_tool_profiles_accepts_catalog_entry_sequences() -> None:
+    custom_tool = define_tool(
+        key="custom.lookup_note",
+        description="Look up a note by key.",
+        parameters={"note_key": {"type": "string"}},
+        required=["note_key"],
+        handler=lambda arguments: arguments["note_key"],
+    )
+
+    profiles = resolve_tool_profiles(
+        (custom_tool,),
+        catalog_entries=[],
+    )
+
+    assert profiles[0].key == "custom.lookup_note"
+    assert profiles[0].family == "custom"
+    assert profiles[0].requires_credentials is False
+
+
 def test_default_dynamic_tool_selector_ranks_within_candidate_ceiling_and_keeps_mandatory_tools() -> None:
     selector = DefaultDynamicToolSelector(
         config=ToolSelectionConfig(
