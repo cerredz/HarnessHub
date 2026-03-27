@@ -108,6 +108,37 @@ def test_lifecycle_runner_resolve_run_request_merges_resume_snapshot_overrides()
     }
 
 
+def test_lifecycle_runner_resolve_resume_request_from_snapshot() -> None:
+    runner = HarnessCliLifecycleRunner()
+    snapshot = HarnessRunSnapshot(
+        model="openai:gpt-5.4",
+        sink_specs=("jsonl:prior.jsonl",),
+        max_cycles=4,
+        adapter_arguments={"browser_tools_factory": "prior.factory"},
+        runtime_parameters={},
+        custom_parameters={},
+    )
+
+    run_request = runner.resolve_resume_request_from_snapshot(
+        snapshot=snapshot,
+        model_factory=None,
+        model=None,
+        model_profile=None,
+        sink_specs=[],
+        max_cycles=None,
+        run_argument_overrides={"browser_tools_factory": "updated.factory"},
+    )
+
+    assert run_request == ResolvedRunRequest(
+        model_factory=None,
+        model="openai:gpt-5.4",
+        model_profile=None,
+        sink_specs=("jsonl:prior.jsonl",),
+        max_cycles=4,
+        adapter_arguments={"browser_tools_factory": "updated.factory"},
+    )
+
+
 def test_lifecycle_runner_execute_run_emits_expected_payload(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     captured: list[dict[str, object]] = []
 

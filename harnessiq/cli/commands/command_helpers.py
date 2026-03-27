@@ -8,17 +8,12 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from harnessiq.agents import AgentRuntimeConfig
 from harnessiq.cli.builders import HarnessCliLifecycleBuilder
 from harnessiq.cli.runners import HarnessCliLifecycleRunner, ResolvedRunRequest
-from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.adapters import HarnessAdapterContext
 from harnessiq.cli.common import (
-    emit_json,
     load_factory,
-    parse_allowed_tool_values,
     parse_manifest_parameter_assignments,
-    resolve_agent_model,
     resolve_memory_path,
     resolve_repo_root,
 )
@@ -33,9 +28,7 @@ from harnessiq.config import (
     get_provider_credential_spec,
 )
 from harnessiq.shared.harness_manifest import HarnessManifest
-from harnessiq.shared.hooks import DEFAULT_APPROVAL_POLICY
 from harnessiq.shared.harness_manifests import get_harness_manifest, list_harness_manifests
-from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
 _ResolvedRunRequest = ResolvedRunRequest
 
