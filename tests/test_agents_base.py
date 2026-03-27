@@ -197,6 +197,7 @@ class BaseAgentTests(unittest.TestCase):
 
         self.assertEqual([tool.key for tool in request.tools], ["session.echo", "session.write"])
         self.assertEqual(selector.calls, [])
+        self.assertIsNone(agent.last_tool_selection_result)
 
     def test_build_model_request_uses_selected_dynamic_tool_subset_when_enabled(self) -> None:
         registry = ToolRegistry(
@@ -229,6 +230,9 @@ class BaseAgentTests(unittest.TestCase):
             selector.calls,
             [(("session.write", "filesystem.read"), "select")],
         )
+        self.assertIsNotNone(agent.last_tool_selection_result)
+        assert agent.last_tool_selection_result is not None
+        self.assertEqual(agent.last_tool_selection_result.selected_keys, ("session.write", "filesystem.read"))
 
     def test_run_records_tool_results_and_passes_transcript_to_next_turn(self) -> None:
         registry = ToolRegistry(

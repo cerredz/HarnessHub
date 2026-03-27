@@ -155,6 +155,10 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
     def session_id(self) -> str | None:
         return self._session_id
 
+    @property
+    def last_tool_selection_result(self) -> ToolSelectionResult | None:
+        return self._last_tool_selection_result
+
     def build_context_window(self) -> AgentContextWindow:
         """Return the current context window including parameters and transcript entries."""
         if not self._parameter_sections:
