@@ -86,6 +86,9 @@
    Dependency: Ticket 9
    Issue: #297
    URL: https://github.com/cerredz/HarnessHub/issues/297
+   PR: #315
+   PR URL: https://github.com/cerredz/HarnessHub/pull/315
+   Status: implemented, awaiting merge into `main`
 
 11. Ticket 11: Add the `harnessiq gcloud` CLI scaffold
    Description: Register the top-level argparse command family and shared parsing/orchestration helpers.

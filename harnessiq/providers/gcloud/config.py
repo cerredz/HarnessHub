@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
+from harnessiq.config import build_harness_credential_binding_name
 from harnessiq.utils.ledger_connections import harnessiq_home_dir
 
 DEFAULT_GCP_CONFIG_DIRNAME = "gcloud"
@@ -117,6 +118,16 @@ class GcpAgentConfig:
             f"{self.gcp_project_id}/"
             f"{self.artifact_repository}/"
             f"{self.image_name}:{self.image_tag}"
+        )
+
+    @property
+    def credential_binding_name(self) -> str:
+        """Return the repo-local harness credential-binding key for this config."""
+        if self.manifest_id is None:
+            raise ValueError("manifest_id must be set to resolve a harness credential binding.")
+        return build_harness_credential_binding_name(
+            manifest_id=self.manifest_id,
+            agent_name=self.agent_name,
         )
 
     def as_dict(self) -> dict[str, Any]:

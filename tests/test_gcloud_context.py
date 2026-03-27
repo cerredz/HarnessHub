@@ -4,6 +4,7 @@ from harnessiq.providers.gcloud import (
     CostEstimate,
     CloudRunProvider,
     CloudStorageProvider,
+    CredentialBridge,
     GcpAgentConfig,
     GcpContext,
     HealthProvider,
@@ -33,6 +34,7 @@ def test_context_composes_namespaces_with_shared_client_and_config() -> None:
     assert isinstance(context.deploy.artifact_registry, ArtifactRegistryProvider)
     assert isinstance(context.deploy.cloud_run, CloudRunProvider)
     assert isinstance(context.deploy.scheduler, SchedulerProvider)
+    assert isinstance(context.credentials.bridge, CredentialBridge)
     assert isinstance(context.credentials.secret_manager, SecretManagerProvider)
     assert isinstance(context.storage, CloudStorageProvider)
     assert isinstance(context.observability.logging, LoggingProvider)
@@ -45,6 +47,7 @@ def test_context_composes_namespaces_with_shared_client_and_config() -> None:
         context.deploy.artifact_registry,
         context.deploy.cloud_run,
         context.deploy.scheduler,
+        context.credentials.bridge,
         context.credentials.secret_manager,
         context.storage,
         context.observability.logging,
