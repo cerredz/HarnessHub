@@ -13,6 +13,8 @@ def test_config_round_trips_through_disk(tmp_path: Path) -> None:
         gcp_project_id="proj-123",
         region="us-central1",
         env_vars={"HARNESSIQ_AGENT": "candidate-a"},
+        max_cycles=9,
+        memory_path="memory/research_sweep/candidate-a",
         secrets=[{"env_var": "ANTHROPIC_API_KEY", "secret_name": "HARNESSIQ_ANTHROPIC_API_KEY"}],
     )
 
@@ -90,3 +92,13 @@ def test_config_normalizes_optional_fields_and_secret_entries() -> None:
             "secret_name": "HARNESSIQ_LINKEDIN_EMAIL",
         }
     ]
+
+
+def test_config_rejects_non_positive_max_cycles() -> None:
+    with pytest.raises(ValueError, match="max_cycles"):
+        GcpAgentConfig(
+            agent_name="candidate-a",
+            gcp_project_id="proj-123",
+            region="us-central1",
+            max_cycles=0,
+        )

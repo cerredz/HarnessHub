@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from harnessiq.providers.gcloud.client import GcloudClient
 from harnessiq.providers.gcloud.config import GcpAgentConfig
@@ -14,6 +15,7 @@ from harnessiq.providers.gcloud.deploy import (
 )
 from harnessiq.providers.gcloud.health import HealthProvider
 from harnessiq.providers.gcloud.infra import BillingProvider, IamProvider
+from harnessiq.providers.gcloud.manifest_support import GcpDeploySpec, derive_deploy_spec
 from harnessiq.providers.gcloud.observability import LoggingProvider, MonitoringProvider
 from harnessiq.providers.gcloud.storage import CloudStorageProvider
 
@@ -85,6 +87,9 @@ class GcpContext:
     @property
     def config(self) -> GcpAgentConfig:
         return self._config
+
+    def derive_deploy_spec(self, *, repo_root: Path | str = ".") -> GcpDeploySpec:
+        return derive_deploy_spec(self._config, repo_root=repo_root)
 
     @classmethod
     def from_config(cls, agent_name: str, dry_run: bool = False) -> "GcpContext":

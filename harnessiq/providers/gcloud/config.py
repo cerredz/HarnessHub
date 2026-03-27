@@ -49,6 +49,8 @@ class GcpAgentConfig:
     model: str | None = None
     model_profile: str | None = None
     model_factory: str | None = None
+    max_cycles: int | None = None
+    memory_path: str | None = None
     sink_specs: list[str] = field(default_factory=list)
     adapter_arguments: dict[str, Any] = field(default_factory=dict)
     runtime_parameters: dict[str, Any] = field(default_factory=dict)
@@ -72,6 +74,7 @@ class GcpAgentConfig:
         self.model = self._normalize_optional_string(self.model)
         self.model_profile = self._normalize_optional_string(self.model_profile)
         self.model_factory = self._normalize_optional_string(self.model_factory)
+        self.memory_path = self._normalize_optional_string(self.memory_path)
         self.env_vars = {str(key): str(value) for key, value in self.env_vars.items()}
         self.secrets = [self._normalize_secret_entry(item) for item in self.secrets]
         self.sink_specs = [str(item) for item in self.sink_specs]
@@ -109,6 +112,8 @@ class GcpAgentConfig:
             raise ValueError("parallelism must be greater than or equal to zero.")
         if self.task_count <= 0:
             raise ValueError("task_count must be greater than zero.")
+        if self.max_cycles is not None and self.max_cycles <= 0:
+            raise ValueError("max_cycles must be greater than zero when provided.")
 
     @property
     def image_url(self) -> str:
@@ -148,6 +153,8 @@ class GcpAgentConfig:
             "model": self.model,
             "model_factory": self.model_factory,
             "model_profile": self.model_profile,
+            "max_cycles": self.max_cycles,
+            "memory_path": self.memory_path,
             "parallelism": self.parallelism,
             "region": self.region,
             "runtime_parameters": dict(self.runtime_parameters),
@@ -180,6 +187,8 @@ class GcpAgentConfig:
             model=(str(payload["model"]) if payload.get("model") is not None else None),
             model_factory=(str(payload["model_factory"]) if payload.get("model_factory") is not None else None),
             model_profile=(str(payload["model_profile"]) if payload.get("model_profile") is not None else None),
+            max_cycles=(int(payload["max_cycles"]) if payload.get("max_cycles") is not None else None),
+            memory_path=(str(payload["memory_path"]) if payload.get("memory_path") is not None else None),
             parallelism=int(payload.get("parallelism", DEFAULT_PARALLELISM)),
             region=str(payload["region"]),
             runtime_parameters=dict(payload.get("runtime_parameters", {})),
