@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from harnessiq.providers.gcloud.client import GcloudClient
 from harnessiq.providers.gcloud.config import GcpAgentConfig
-from harnessiq.providers.gcloud.credentials import SecretManagerProvider
+from harnessiq.providers.gcloud.credentials import CredentialBridge, SecretManagerProvider
 from harnessiq.providers.gcloud.deploy import (
     ArtifactRegistryProvider,
     CloudRunProvider,
@@ -39,6 +39,7 @@ class InfraProviders:
 class CredentialProviders:
     """Credential-related providers grouped under one namespace."""
 
+    bridge: CredentialBridge
     secret_manager: SecretManagerProvider
 
 
@@ -68,6 +69,7 @@ class GcpContext:
             scheduler=SchedulerProvider(client, config),
         )
         self.credentials = CredentialProviders(
+            bridge=CredentialBridge(client, config),
             secret_manager=SecretManagerProvider(client, config),
         )
         self.storage = CloudStorageProvider(client, config)

@@ -7,7 +7,7 @@ from .context import (
     InfraProviders,
     ObservabilityProviders,
 )
-from .credentials import SecretManagerProvider
+from .credentials import CredentialBridge, SecretManagerProvider
 from .deploy import ArtifactRegistryProvider, CloudRunProvider, SchedulerProvider
 from .base import BaseGcpProvider
 from .client import GcloudClient, GcloudError
@@ -26,6 +26,7 @@ __all__ = [
     "CostEstimate",
     "CloudRunProvider",
     "CloudStorageProvider",
+    "CredentialBridge",
     "CredentialProviders",
     "DEFAULT_GCP_CONFIG_DIRNAME",
     "DeployProviders",
