@@ -25,6 +25,7 @@
 
 6. Ticket 6: Convert legacy service provider families to explicit DTO request and result contracts
    Issue: #331 - https://github.com/cerredz/HarnessHub/issues/331
+   PR: #386 - https://github.com/cerredz/HarnessHub/pull/386
    Applies the provider DTO pattern to the older reflective client families.
 
 7. Ticket 7: Convert model-provider SDK surfaces to DTO-first request contracts and export them publicly
