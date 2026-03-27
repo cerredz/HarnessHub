@@ -54,7 +54,7 @@ class InstagramCliBuilder:
         store.prepare()
         updated: list[str] = []
 
-        icp_profiles = self._resolve_icp_input(icp_values, icp_file)
+        icp_profiles = self.resolve_icp_profiles(icp_values=icp_values, icp_file=icp_file)
         if icp_profiles is not None:
             store.write_icp_profiles(icp_profiles)
             updated.append("icp_profiles")
@@ -137,7 +137,7 @@ class InstagramCliBuilder:
             "search_count": len(search_history),
         }
 
-    def resolve_run_icp_profiles(
+    def resolve_icp_profiles(
         self,
         *,
         icp_values: Sequence[str],

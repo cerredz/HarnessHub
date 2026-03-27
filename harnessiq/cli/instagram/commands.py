@@ -200,7 +200,7 @@ def _handle_run(args: argparse.Namespace) -> int:
     builder = InstagramCliBuilder()
     runner = InstagramCliRunner()
     custom_overrides = runner.parse_custom_assignments(args.custom_param)
-    icp_profiles = builder.resolve_run_icp_profiles(
+    icp_profiles = builder.resolve_icp_profiles(
         icp_values=args.icp,
         icp_file=args.icp_file,
     )
