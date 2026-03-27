@@ -8,6 +8,19 @@ import unittest
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection
 from harnessiq.agents.provider_base import BaseProviderToolAgent
+from harnessiq.providers.apollo import ApolloCredentials
+from harnessiq.providers.exa import ExaCredentials
+from harnessiq.providers.instantly import InstantlyCredentials
+from harnessiq.providers.outreach import OutreachCredentials
+from harnessiq.shared.dtos import (
+    ApolloAgentRequest,
+    EmailAgentRequest,
+    ExaAgentRequest,
+    InstantlyAgentRequest,
+    OutreachAgentRequest,
+    ProviderToolAgentRequest,
+    StatelessAgentInstancePayload,
+)
 from harnessiq.shared.exceptions import ValidationError
 from harnessiq.shared.provider_agents import (
     extract_operation_names,
@@ -15,6 +28,7 @@ from harnessiq.shared.provider_agents import (
     render_tool_operation_summary,
 )
 from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
+from harnessiq.tools.resend import ResendCredentials
 
 
 class _FakeModel:
@@ -45,11 +59,13 @@ class _TestProviderAgent(BaseProviderToolAgent):
         super().__init__(
             name="test_provider_agent",
             model=model,
-            provider_name=provider_name,
-            provider_tools=provider_tools,
+            request=ProviderToolAgentRequest(
+                provider_name=provider_name,
+                provider_tools=provider_tools,
+                max_tokens=2_000,
+                reset_threshold=0.5,
+            ),
             tools=tools,
-            max_tokens=2_000,
-            reset_threshold=0.5,
             repo_root=repo_root,
         )
 
@@ -103,6 +119,49 @@ class ProviderAgentHelperTests(unittest.TestCase):
         )
 
 
+class AgentRequestDTOTests(unittest.TestCase):
+    def test_provider_agent_request_normalizes_registered_tool_iterables(self) -> None:
+        request = ProviderToolAgentRequest(
+            provider_name=" Example Provider ",
+            provider_tools=[_make_provider_tool()],
+            max_tokens=1234,
+            reset_threshold=0.25,
+        )
+
+        self.assertEqual(request.provider_name, "Example Provider")
+        self.assertEqual(len(request.provider_tools), 1)
+        self.assertIsInstance(request.provider_tools, tuple)
+
+    def test_provider_family_requests_reject_empty_allowed_operations(self) -> None:
+        request_factories = (
+            lambda: ApolloAgentRequest(
+                apollo_credentials=ApolloCredentials(api_key="apollo-secret-key"),
+                allowed_apollo_operations=(),
+            ),
+            lambda: ExaAgentRequest(
+                exa_credentials=ExaCredentials(api_key="exa-secret-key"),
+                allowed_exa_operations=(),
+            ),
+            lambda: EmailAgentRequest(
+                resend_credentials=ResendCredentials(api_key="re_test_1234567890"),
+                allowed_resend_operations=(),
+            ),
+            lambda: InstantlyAgentRequest(
+                instantly_credentials=InstantlyCredentials(api_key="instantly-secret-key"),
+                allowed_instantly_operations=(),
+            ),
+            lambda: OutreachAgentRequest(
+                outreach_credentials=OutreachCredentials(access_token="outreach-secret-token"),
+                allowed_outreach_operations=(),
+            ),
+        )
+
+        for build_request in request_factories:
+            with self.subTest(factory=build_request):
+                with self.assertRaisesRegex(ValueError, "must not be empty"):
+                    build_request()
+
+
 class BaseProviderToolAgentTests(unittest.TestCase):
     def test_agent_builds_prompt_and_parameter_sections_from_hooks(self) -> None:
         with TemporaryDirectory() as temp_repo_root:
@@ -128,6 +187,9 @@ class BaseProviderToolAgentTests(unittest.TestCase):
             self.assertEqual(request.parameter_sections[0].title, "Example Provider Credentials")
             self.assertEqual(request.parameter_sections[1].title, "Working Set")
             self.assertEqual([tool.key for tool in request.tools], ["example.request", "custom.helper"])
+            self.assertIsInstance(agent.request, ProviderToolAgentRequest)
+            self.assertIsInstance(agent.build_instance_payload(), StatelessAgentInstancePayload)
+            self.assertEqual(agent.build_instance_payload().to_dict(), {})
 
     def test_agent_preserves_default_provider_tool_surface_when_custom_tools_conflict(self) -> None:
         with TemporaryDirectory() as temp_repo_root:

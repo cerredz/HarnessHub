@@ -7,8 +7,9 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection
-from harnessiq.agents.outreach import BaseOutreachAgent, OutreachAgentConfig
+from harnessiq.agents.outreach import BaseOutreachAgent, OutreachAgentRequest
 from harnessiq.providers.outreach import OutreachClient, OutreachCredentials
+from harnessiq.shared.dtos import StatelessAgentInstancePayload
 from harnessiq.shared.tools import OUTREACH_REQUEST, RegisteredTool, ToolCall, ToolDefinition
 
 
@@ -27,8 +28,7 @@ class _TestOutreachAgent(BaseOutreachAgent):
         self,
         *,
         model: _FakeModel,
-        outreach_credentials: OutreachCredentials,
-        allowed_outreach_operations: tuple[str, ...] | None = None,
+        request: OutreachAgentRequest,
         outreach_client: OutreachClient | None = None,
         tools: tuple[RegisteredTool, ...] = (),
         repo_root: str | None = None,
@@ -36,10 +36,7 @@ class _TestOutreachAgent(BaseOutreachAgent):
         super().__init__(
             name="test_outreach_agent",
             model=model,
-            config=OutreachAgentConfig(
-                outreach_credentials=outreach_credentials,
-                allowed_outreach_operations=allowed_outreach_operations,
-            ),
+            request=request,
             outreach_client=outreach_client,
             tools=tools,
             repo_root=repo_root,
@@ -101,7 +98,7 @@ class BaseOutreachAgentTests(unittest.TestCase):
             )
             agent = _TestOutreachAgent(
                 model=model,
-                outreach_credentials=credentials,
+                request=OutreachAgentRequest(outreach_credentials=credentials),
                 outreach_client=_FakeOutreachClient(credentials=credentials),
                 repo_root=temp_repo_root,
             )
@@ -118,7 +115,7 @@ class BaseOutreachAgentTests(unittest.TestCase):
             model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
             agent = _TestOutreachAgent(
                 model=model,
-                outreach_credentials=credentials,
+                request=OutreachAgentRequest(outreach_credentials=credentials),
                 tools=(custom_tool,),
                 repo_root=temp_repo_root,
             )
@@ -133,6 +130,8 @@ class BaseOutreachAgentTests(unittest.TestCase):
             self.assertNotIn(credentials.access_token, model.requests[0].parameter_sections[0].content)
             self.assertEqual(model.requests[0].tools[0].name, "outreach_request")
             self.assertIn("custom.outreach_helper", {tool.key for tool in model.requests[0].tools})
+            self.assertEqual(agent.request, OutreachAgentRequest(outreach_credentials=credentials))
+            self.assertIsInstance(agent.build_instance_payload(), StatelessAgentInstancePayload)
 
     def test_outreach_agent_executes_list_prospects_through_provider_tooling(self) -> None:
         with TemporaryDirectory() as temp_repo_root:
@@ -161,7 +160,7 @@ class BaseOutreachAgentTests(unittest.TestCase):
             )
             agent = _TestOutreachAgent(
                 model=model,
-                outreach_credentials=credentials,
+                request=OutreachAgentRequest(outreach_credentials=credentials),
                 outreach_client=OutreachClient(
                     credentials=credentials,
                     request_executor=fake_request_executor,
@@ -182,8 +181,10 @@ class BaseOutreachAgentTests(unittest.TestCase):
             model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
             agent = _TestOutreachAgent(
                 model=model,
-                outreach_credentials=credentials,
-                allowed_outreach_operations=("list_prospects", "get_prospect"),
+                request=OutreachAgentRequest(
+                    outreach_credentials=credentials,
+                    allowed_outreach_operations=("list_prospects", "get_prospect"),
+                ),
                 repo_root=temp_repo_root,
             )
 
@@ -208,7 +209,7 @@ class BaseOutreachAgentTests(unittest.TestCase):
             ):
                 _TestOutreachAgent(
                     model=model,
-                    outreach_credentials=config_credentials,
+                    request=OutreachAgentRequest(outreach_credentials=config_credentials),
                     outreach_client=mismatched_client,
                     repo_root=temp_repo_root,
                 )

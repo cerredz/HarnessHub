@@ -10,6 +10,7 @@ from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntim
 from harnessiq.agents.provider_base import BaseProviderToolAgent
 from harnessiq.interfaces import RequestPreparingClient
 from harnessiq.providers.exa import ExaClient
+from harnessiq.shared.dtos import ExaAgentRequest, ProviderToolAgentRequest
 from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.exa_agent import DEFAULT_EXA_AGENT_IDENTITY, ExaAgentConfig, resolve_exa_operation_names
 from harnessiq.shared.provider_agents import render_redacted_provider_credentials
@@ -25,7 +26,7 @@ class BaseExaAgent(BaseProviderToolAgent, ABC):
         *,
         name: str,
         model: AgentModel,
-        config: ExaAgentConfig,
+        request: ExaAgentRequest,
         tools: Sequence[RegisteredTool] | None = None,
         exa_client: RequestPreparingClient | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
@@ -33,22 +34,26 @@ class BaseExaAgent(BaseProviderToolAgent, ABC):
         repo_root: str | Path | None = None,
         instance_name: str | None = None,
     ) -> None:
+        config = request.to_config()
         if exa_client is not None and exa_client.credentials != config.exa_credentials:
             raise ConfigurationError("exa_client credentials must match ExaAgentConfig.exa_credentials.")
 
+        self._request = request
         self._config = config
         self._exa_client = exa_client or ExaClient(credentials=config.exa_credentials)
         super().__init__(
             name=name,
             model=model,
-            provider_name="Exa",
-            provider_tools=create_exa_tools(
-                client=self._exa_client,
-                allowed_operations=self._config.allowed_exa_operations,
+            request=ProviderToolAgentRequest(
+                provider_name="Exa",
+                provider_tools=create_exa_tools(
+                    client=self._exa_client,
+                    allowed_operations=self._config.allowed_exa_operations,
+                ),
+                max_tokens=self._config.max_tokens,
+                reset_threshold=self._config.reset_threshold,
             ),
             tools=tools,
-            max_tokens=self._config.max_tokens,
-            reset_threshold=self._config.reset_threshold,
             runtime_config=runtime_config,
             memory_path=memory_path,
             repo_root=repo_root,
@@ -58,6 +63,10 @@ class BaseExaAgent(BaseProviderToolAgent, ABC):
     @property
     def config(self) -> ExaAgentConfig:
         return self._config
+
+    @property
+    def request(self) -> ExaAgentRequest:
+        return self._request
 
     @property
     def exa_client(self) -> RequestPreparingClient:
@@ -126,5 +135,6 @@ class BaseExaAgent(BaseProviderToolAgent, ABC):
 __all__ = [
     "BaseExaAgent",
     "DEFAULT_EXA_AGENT_IDENTITY",
+    "ExaAgentRequest",
     "ExaAgentConfig",
 ]

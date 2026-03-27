@@ -7,8 +7,9 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection
-from harnessiq.agents.instantly import BaseInstantlyAgent, InstantlyAgentConfig
+from harnessiq.agents.instantly import BaseInstantlyAgent, InstantlyAgentRequest
 from harnessiq.providers.instantly import InstantlyClient, InstantlyCredentials
+from harnessiq.shared.dtos import StatelessAgentInstancePayload
 from harnessiq.shared.tools import INSTANTLY_REQUEST, RegisteredTool, ToolCall, ToolDefinition
 
 
@@ -27,8 +28,7 @@ class _TestInstantlyAgent(BaseInstantlyAgent):
         self,
         *,
         model: _FakeModel,
-        instantly_credentials: InstantlyCredentials,
-        allowed_instantly_operations: tuple[str, ...] | None = None,
+        request: InstantlyAgentRequest,
         instantly_client: InstantlyClient | None = None,
         tools: tuple[RegisteredTool, ...] = (),
         repo_root: str | None = None,
@@ -36,10 +36,7 @@ class _TestInstantlyAgent(BaseInstantlyAgent):
         super().__init__(
             name="test_instantly_agent",
             model=model,
-            config=InstantlyAgentConfig(
-                instantly_credentials=instantly_credentials,
-                allowed_instantly_operations=allowed_instantly_operations,
-            ),
+            request=request,
             instantly_client=instantly_client,
             tools=tools,
             repo_root=repo_root,
@@ -101,7 +98,7 @@ class BaseInstantlyAgentTests(unittest.TestCase):
             )
             agent = _TestInstantlyAgent(
                 model=model,
-                instantly_credentials=credentials,
+                request=InstantlyAgentRequest(instantly_credentials=credentials),
                 instantly_client=_FakeInstantlyClient(credentials=credentials),
                 repo_root=temp_repo_root,
             )
@@ -118,7 +115,7 @@ class BaseInstantlyAgentTests(unittest.TestCase):
             model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
             agent = _TestInstantlyAgent(
                 model=model,
-                instantly_credentials=credentials,
+                request=InstantlyAgentRequest(instantly_credentials=credentials),
                 tools=(custom_tool,),
                 repo_root=temp_repo_root,
             )
@@ -133,6 +130,8 @@ class BaseInstantlyAgentTests(unittest.TestCase):
             self.assertNotIn(credentials.api_key, model.requests[0].parameter_sections[0].content)
             self.assertEqual(model.requests[0].tools[0].name, "instantly_request")
             self.assertIn("custom.instantly_helper", {tool.key for tool in model.requests[0].tools})
+            self.assertEqual(agent.request, InstantlyAgentRequest(instantly_credentials=credentials))
+            self.assertIsInstance(agent.build_instance_payload(), StatelessAgentInstancePayload)
 
     def test_instantly_agent_executes_list_campaigns_through_provider_tooling(self) -> None:
         with TemporaryDirectory() as temp_repo_root:
@@ -161,7 +160,7 @@ class BaseInstantlyAgentTests(unittest.TestCase):
             )
             agent = _TestInstantlyAgent(
                 model=model,
-                instantly_credentials=credentials,
+                request=InstantlyAgentRequest(instantly_credentials=credentials),
                 instantly_client=InstantlyClient(credentials=credentials, request_executor=fake_request_executor),
                 repo_root=temp_repo_root,
             )
@@ -179,8 +178,10 @@ class BaseInstantlyAgentTests(unittest.TestCase):
             model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
             agent = _TestInstantlyAgent(
                 model=model,
-                instantly_credentials=credentials,
-                allowed_instantly_operations=("list_campaigns", "get_campaign"),
+                request=InstantlyAgentRequest(
+                    instantly_credentials=credentials,
+                    allowed_instantly_operations=("list_campaigns", "get_campaign"),
+                ),
                 repo_root=temp_repo_root,
             )
 
@@ -205,7 +206,7 @@ class BaseInstantlyAgentTests(unittest.TestCase):
             ):
                 _TestInstantlyAgent(
                     model=model,
-                    instantly_credentials=config_credentials,
+                    request=InstantlyAgentRequest(instantly_credentials=config_credentials),
                     instantly_client=mismatched_client,
                     repo_root=temp_repo_root,
                 )

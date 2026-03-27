@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import unittest
 
-from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection, BaseEmailAgent, EmailAgentConfig
+from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection, BaseEmailAgent, EmailAgentRequest
+from harnessiq.shared.dtos import StatelessAgentInstancePayload
 from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
 from harnessiq.tools import RESEND_REQUEST, ResendClient, ResendCredentials
 
@@ -25,18 +26,14 @@ class _TestEmailAgent(BaseEmailAgent):
         self,
         *,
         model: _FakeModel,
-        resend_credentials: ResendCredentials,
-        allowed_resend_operations: tuple[str, ...] | None = None,
+        request: EmailAgentRequest,
         resend_client: ResendClient | None = None,
         tools: tuple[RegisteredTool, ...] = (),
     ) -> None:
         super().__init__(
             name="test_email_agent",
             model=model,
-            config=EmailAgentConfig(
-                resend_credentials=resend_credentials,
-                allowed_resend_operations=allowed_resend_operations,
-            ),
+            request=request,
             resend_client=resend_client,
             tools=tools,
         )
@@ -106,7 +103,7 @@ class BaseEmailAgentTests(unittest.TestCase):
         )
         agent = _TestEmailAgent(
             model=model,
-            resend_credentials=credentials,
+            request=EmailAgentRequest(resend_credentials=credentials),
             resend_client=_FakeResendClient(credentials=credentials),
         )
 
@@ -118,7 +115,7 @@ class BaseEmailAgentTests(unittest.TestCase):
     def test_email_agent_injects_masked_credentials_and_resend_tool(self) -> None:
         credentials = ResendCredentials(api_key="re_test_1234567890")
         model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
-        agent = _TestEmailAgent(model=model, resend_credentials=credentials)
+        agent = _TestEmailAgent(model=model, request=EmailAgentRequest(resend_credentials=credentials))
 
         result = agent.run(max_cycles=1)
 
@@ -129,6 +126,8 @@ class BaseEmailAgentTests(unittest.TestCase):
         self.assertIn(credentials.masked_api_key(), model.requests[0].parameter_sections[0].content)
         self.assertNotIn(credentials.api_key, model.requests[0].parameter_sections[0].content)
         self.assertEqual(model.requests[0].tools[0].name, "resend_request")
+        self.assertEqual(agent.request, EmailAgentRequest(resend_credentials=credentials))
+        self.assertIsInstance(agent.build_instance_payload(), StatelessAgentInstancePayload)
 
     def test_email_agent_executes_send_email_through_resend_tooling(self) -> None:
         captured: dict[str, object] = {}
@@ -164,7 +163,7 @@ class BaseEmailAgentTests(unittest.TestCase):
         )
         agent = _TestEmailAgent(
             model=model,
-            resend_credentials=credentials,
+            request=EmailAgentRequest(resend_credentials=credentials),
             resend_client=ResendClient(credentials=credentials, request_executor=fake_request_executor),
         )
 
@@ -180,8 +179,10 @@ class BaseEmailAgentTests(unittest.TestCase):
         model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
         agent = _TestEmailAgent(
             model=model,
-            resend_credentials=credentials,
-            allowed_resend_operations=("send_email", "list_domains"),
+            request=EmailAgentRequest(
+                resend_credentials=credentials,
+                allowed_resend_operations=("send_email", "list_domains"),
+            ),
         )
 
         agent.run(max_cycles=1)
@@ -204,7 +205,7 @@ class BaseEmailAgentTests(unittest.TestCase):
         )
         agent = _TestEmailAgent(
             model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
-            resend_credentials=credentials,
+            request=EmailAgentRequest(resend_credentials=credentials),
             tools=(custom_tool,),
         )
 

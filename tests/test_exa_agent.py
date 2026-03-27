@@ -7,8 +7,9 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection
-from harnessiq.agents.exa import BaseExaAgent, ExaAgentConfig
+from harnessiq.agents.exa import BaseExaAgent, ExaAgentRequest
 from harnessiq.providers.exa import ExaClient, ExaCredentials
+from harnessiq.shared.dtos import StatelessAgentInstancePayload
 from harnessiq.shared.tools import EXA_REQUEST, RegisteredTool, ToolCall, ToolDefinition
 
 
@@ -27,8 +28,7 @@ class _TestExaAgent(BaseExaAgent):
         self,
         *,
         model: _FakeModel,
-        exa_credentials: ExaCredentials,
-        allowed_exa_operations: tuple[str, ...] | None = None,
+        request: ExaAgentRequest,
         exa_client: ExaClient | None = None,
         tools: tuple[RegisteredTool, ...] = (),
         repo_root: str | None = None,
@@ -36,10 +36,7 @@ class _TestExaAgent(BaseExaAgent):
         super().__init__(
             name="test_exa_agent",
             model=model,
-            config=ExaAgentConfig(
-                exa_credentials=exa_credentials,
-                allowed_exa_operations=allowed_exa_operations,
-            ),
+            request=request,
             exa_client=exa_client,
             tools=tools,
             repo_root=repo_root,
@@ -101,7 +98,7 @@ class BaseExaAgentTests(unittest.TestCase):
             )
             agent = _TestExaAgent(
                 model=model,
-                exa_credentials=credentials,
+                request=ExaAgentRequest(exa_credentials=credentials),
                 exa_client=_FakeExaClient(credentials=credentials),
                 repo_root=temp_repo_root,
             )
@@ -118,7 +115,7 @@ class BaseExaAgentTests(unittest.TestCase):
             model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
             agent = _TestExaAgent(
                 model=model,
-                exa_credentials=credentials,
+                request=ExaAgentRequest(exa_credentials=credentials),
                 tools=(custom_tool,),
                 repo_root=temp_repo_root,
             )
@@ -133,6 +130,8 @@ class BaseExaAgentTests(unittest.TestCase):
             self.assertNotIn(credentials.api_key, model.requests[0].parameter_sections[0].content)
             self.assertEqual(model.requests[0].tools[0].name, "exa_request")
             self.assertIn("custom.exa_helper", {tool.key for tool in model.requests[0].tools})
+            self.assertEqual(agent.request, ExaAgentRequest(exa_credentials=credentials))
+            self.assertIsInstance(agent.build_instance_payload(), StatelessAgentInstancePayload)
 
     def test_exa_agent_executes_search_through_provider_tooling(self) -> None:
         with TemporaryDirectory() as temp_repo_root:
@@ -161,7 +160,7 @@ class BaseExaAgentTests(unittest.TestCase):
             )
             agent = _TestExaAgent(
                 model=model,
-                exa_credentials=credentials,
+                request=ExaAgentRequest(exa_credentials=credentials),
                 exa_client=ExaClient(credentials=credentials, request_executor=fake_request_executor),
                 repo_root=temp_repo_root,
             )
@@ -179,8 +178,10 @@ class BaseExaAgentTests(unittest.TestCase):
             model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
             agent = _TestExaAgent(
                 model=model,
-                exa_credentials=credentials,
-                allowed_exa_operations=("search", "get_contents"),
+                request=ExaAgentRequest(
+                    exa_credentials=credentials,
+                    allowed_exa_operations=("search", "get_contents"),
+                ),
                 repo_root=temp_repo_root,
             )
 

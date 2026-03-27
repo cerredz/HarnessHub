@@ -10,6 +10,7 @@ from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntim
 from harnessiq.agents.provider_base import BaseProviderToolAgent
 from harnessiq.interfaces import RequestPreparingClient
 from harnessiq.providers.instantly import InstantlyClient
+from harnessiq.shared.dtos import InstantlyAgentRequest, ProviderToolAgentRequest
 from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.instantly_agent import (
     DEFAULT_INSTANTLY_AGENT_IDENTITY,
@@ -29,7 +30,7 @@ class BaseInstantlyAgent(BaseProviderToolAgent, ABC):
         *,
         name: str,
         model: AgentModel,
-        config: InstantlyAgentConfig,
+        request: InstantlyAgentRequest,
         tools: Sequence[RegisteredTool] | None = None,
         instantly_client: RequestPreparingClient | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
@@ -37,24 +38,28 @@ class BaseInstantlyAgent(BaseProviderToolAgent, ABC):
         repo_root: str | Path | None = None,
         instance_name: str | None = None,
     ) -> None:
+        config = request.to_config()
         if instantly_client is not None and instantly_client.credentials != config.instantly_credentials:
             raise ConfigurationError(
                 "instantly_client credentials must match InstantlyAgentConfig.instantly_credentials."
             )
 
+        self._request = request
         self._config = config
         self._instantly_client = instantly_client or InstantlyClient(credentials=config.instantly_credentials)
         super().__init__(
             name=name,
             model=model,
-            provider_name="Instantly",
-            provider_tools=create_instantly_tools(
-                client=self._instantly_client,
-                allowed_operations=self._config.allowed_instantly_operations,
+            request=ProviderToolAgentRequest(
+                provider_name="Instantly",
+                provider_tools=create_instantly_tools(
+                    client=self._instantly_client,
+                    allowed_operations=self._config.allowed_instantly_operations,
+                ),
+                max_tokens=self._config.max_tokens,
+                reset_threshold=self._config.reset_threshold,
             ),
             tools=tools,
-            max_tokens=self._config.max_tokens,
-            reset_threshold=self._config.reset_threshold,
             runtime_config=runtime_config,
             memory_path=memory_path,
             repo_root=repo_root,
@@ -64,6 +69,10 @@ class BaseInstantlyAgent(BaseProviderToolAgent, ABC):
     @property
     def config(self) -> InstantlyAgentConfig:
         return self._config
+
+    @property
+    def request(self) -> InstantlyAgentRequest:
+        return self._request
 
     @property
     def instantly_client(self) -> RequestPreparingClient:
@@ -132,5 +141,6 @@ class BaseInstantlyAgent(BaseProviderToolAgent, ABC):
 __all__ = [
     "BaseInstantlyAgent",
     "DEFAULT_INSTANTLY_AGENT_IDENTITY",
+    "InstantlyAgentRequest",
     "InstantlyAgentConfig",
 ]

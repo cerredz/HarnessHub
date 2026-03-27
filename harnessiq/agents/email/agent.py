@@ -12,6 +12,7 @@ from harnessiq.agents.email.helpers import (
 )
 from harnessiq.interfaces import ResendRequestClient
 from harnessiq.shared.agents import merge_agent_runtime_config
+from harnessiq.shared.dtos import EmailAgentRequest, StatelessAgentInstancePayload
 from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.email import DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
@@ -27,17 +28,19 @@ class BaseEmailAgent(BaseAgent, ABC):
         *,
         name: str,
         model: AgentModel,
-        config: EmailAgentConfig,
+        request: EmailAgentRequest,
         email_tools: Iterable[RegisteredTool] = (),
         tools: Sequence[RegisteredTool] | None = None,
         resend_client: ResendRequestClient | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
+        config = request.to_config()
         if resend_client is not None and resend_client.credentials != config.resend_credentials:
             raise ConfigurationError(
                 "resend_client credentials must match EmailAgentConfig.resend_credentials."
             )
 
+        self._request = request
         self._config = config
         self._resend_client = resend_client or ResendClient(credentials=config.resend_credentials)
 
@@ -60,8 +63,12 @@ class BaseEmailAgent(BaseAgent, ABC):
             ),
         )
 
-    def build_instance_payload(self) -> dict:
-        return {}
+    @property
+    def request(self) -> EmailAgentRequest:
+        return self._request
+
+    def build_instance_payload(self) -> StatelessAgentInstancePayload:
+        return StatelessAgentInstancePayload()
 
     @property
     def config(self) -> EmailAgentConfig:
@@ -137,5 +144,6 @@ class BaseEmailAgent(BaseAgent, ABC):
 __all__ = [
     "BaseEmailAgent",
     "DEFAULT_EMAIL_AGENT_IDENTITY",
+    "EmailAgentRequest",
     "EmailAgentConfig",
 ]

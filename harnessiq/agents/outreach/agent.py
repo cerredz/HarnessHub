@@ -10,6 +10,7 @@ from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntim
 from harnessiq.agents.provider_base import BaseProviderToolAgent
 from harnessiq.interfaces import RequestPreparingClient
 from harnessiq.providers.outreach import OutreachClient
+from harnessiq.shared.dtos import OutreachAgentRequest, ProviderToolAgentRequest
 from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.outreach_agent import (
     DEFAULT_OUTREACH_AGENT_IDENTITY,
@@ -29,7 +30,7 @@ class BaseOutreachAgent(BaseProviderToolAgent, ABC):
         *,
         name: str,
         model: AgentModel,
-        config: OutreachAgentConfig,
+        request: OutreachAgentRequest,
         tools: Sequence[RegisteredTool] | None = None,
         outreach_client: RequestPreparingClient | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
@@ -37,24 +38,28 @@ class BaseOutreachAgent(BaseProviderToolAgent, ABC):
         repo_root: str | Path | None = None,
         instance_name: str | None = None,
     ) -> None:
+        config = request.to_config()
         if outreach_client is not None and outreach_client.credentials != config.outreach_credentials:
             raise ConfigurationError(
                 "outreach_client credentials must match OutreachAgentConfig.outreach_credentials."
             )
 
+        self._request = request
         self._config = config
         self._outreach_client = outreach_client or OutreachClient(credentials=config.outreach_credentials)
         super().__init__(
             name=name,
             model=model,
-            provider_name="Outreach",
-            provider_tools=create_outreach_tools(
-                client=self._outreach_client,
-                allowed_operations=self._config.allowed_outreach_operations,
+            request=ProviderToolAgentRequest(
+                provider_name="Outreach",
+                provider_tools=create_outreach_tools(
+                    client=self._outreach_client,
+                    allowed_operations=self._config.allowed_outreach_operations,
+                ),
+                max_tokens=self._config.max_tokens,
+                reset_threshold=self._config.reset_threshold,
             ),
             tools=tools,
-            max_tokens=self._config.max_tokens,
-            reset_threshold=self._config.reset_threshold,
             runtime_config=runtime_config,
             memory_path=memory_path,
             repo_root=repo_root,
@@ -64,6 +69,10 @@ class BaseOutreachAgent(BaseProviderToolAgent, ABC):
     @property
     def config(self) -> OutreachAgentConfig:
         return self._config
+
+    @property
+    def request(self) -> OutreachAgentRequest:
+        return self._request
 
     @property
     def outreach_client(self) -> RequestPreparingClient:
@@ -132,5 +141,6 @@ class BaseOutreachAgent(BaseProviderToolAgent, ABC):
 __all__ = [
     "BaseOutreachAgent",
     "DEFAULT_OUTREACH_AGENT_IDENTITY",
+    "OutreachAgentRequest",
     "OutreachAgentConfig",
 ]
