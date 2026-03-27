@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from harnessiq.cli.common import load_factory, split_assignment
@@ -25,7 +26,7 @@ def load_optional_iterable_factory(
 
 
 def load_factory_assignment_map(
-    assignments: list[str],
+    assignments: Sequence[str],
     *,
     factory_loader: FactoryLoader = load_factory,
 ) -> dict[str, Any]:

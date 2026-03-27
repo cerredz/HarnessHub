@@ -133,7 +133,7 @@ def test_load_factory_assignment_map_accepts_injected_loader_contract() -> None:
     loader = _FakeAssignmentFactoryLoader()
 
     created = load_factory_assignment_map(
-        ["search=tests.test_cli_common:create_search", "crm=tests.test_cli_common:create_crm"],
+        ("search=tests.test_cli_common:create_search", "crm=tests.test_cli_common:create_crm"),
         factory_loader=loader,
     )
 
