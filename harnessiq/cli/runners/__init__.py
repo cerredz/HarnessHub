@@ -1,7 +1,8 @@
 """Shared lifecycle runners for CLI command modules."""
 
 from .instagram import InstagramCliRunner
+from .leads import LeadsCliRunner
 from .linkedin import LinkedInCliRunner
 from .lifecycle import HarnessCliLifecycleRunner, ResolvedRunRequest
 
-__all__ = ["HarnessCliLifecycleRunner", "InstagramCliRunner", "LinkedInCliRunner", "ResolvedRunRequest"]
+__all__ = ["HarnessCliLifecycleRunner", "InstagramCliRunner", "LeadsCliRunner", "LinkedInCliRunner", "ResolvedRunRequest"]

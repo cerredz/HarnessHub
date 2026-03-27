@@ -11,9 +11,11 @@ from types import SimpleNamespace
 import pytest
 
 from harnessiq.cli.adapters.context import HarnessAdapterContext
+from harnessiq.cli.builders import LeadsCliBuilder
 from harnessiq.cli.runners import (
     HarnessCliLifecycleRunner,
     InstagramCliRunner,
+    LeadsCliRunner,
     LinkedInCliRunner,
     ResolvedRunRequest,
 )
@@ -350,3 +352,93 @@ def test_instagram_runner_run_sets_session_env_and_forwards_overrides(
     assert captured_kwargs["search_backend"] == "search-backend"
     assert captured_kwargs["runtime_overrides"] == {"search_result_limit": 3}
     assert captured_kwargs["custom_overrides"] == {"icp_profiles": ["fitness creators"]}
+
+
+def test_leads_runner_run_forwards_factories_and_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    class _StubStorageBackend:
+        def start_run(self, run_id: str, metadata: dict[str, object]) -> None:
+            del run_id, metadata
+
+        def finish_run(self, run_id: str, completed_at: str) -> None:
+            del run_id, completed_at
+
+        def save_leads(self, run_id: str, icp_key: str, leads, metadata=None):
+            del run_id, icp_key, leads, metadata
+            return ()
+
+        def has_seen_lead(self, dedupe_key: str) -> bool:
+            del dedupe_key
+            return False
+
+        def list_leads(self, *, icp_key: str | None = None):
+            del icp_key
+            return []
+
+        def current_run_id(self) -> str | None:
+            return None
+
+    class _StubAgent:
+        def run(self, *, max_cycles):
+            assert max_cycles == 1
+            return SimpleNamespace(cycles_completed=1, pause_reason=None, resets=0, status="completed")
+
+    def _fake_load_factory(spec: str):
+        if spec == "tools:factory":
+            return lambda: ("provider-tool",)
+        if spec == "creds:factory":
+            return lambda: {"token": "abc"}
+        if spec == "client:factory":
+            return lambda: {"client": "apollo"}
+        if spec == "storage:factory":
+            return lambda: _StubStorageBackend()
+        raise AssertionError(f"Unexpected factory spec: {spec}")
+
+    def _fake_leads_agent(**kwargs):
+        captured_kwargs.update(kwargs)
+        return _StubAgent()
+
+    monkeypatch.setattr("harnessiq.cli.runners.leads.seed_cli_environment", lambda _: None)
+    monkeypatch.setattr("harnessiq.cli.runners.leads.resolve_agent_model", lambda **_: "resolved-model")
+    monkeypatch.setattr("harnessiq.cli.runners.leads.load_factory", _fake_load_factory)
+    monkeypatch.setattr("harnessiq.cli.runners.leads.LeadsAgent", _fake_leads_agent)
+
+    builder = LeadsCliBuilder()
+    builder.configure(
+        agent_name="campaign-a",
+        memory_root=str(tmp_path),
+        company_background_text="We sell outbound infrastructure to B2B SaaS revenue teams.",
+        company_background_file=None,
+        icp_texts=["VP Sales at Series A SaaS companies"],
+        icp_files=[],
+        platforms=["apollo"],
+        runtime_assignments=["search_summary_every=25"],
+    )
+
+    runner = LeadsCliRunner()
+    payload = runner.run(
+        agent_name="campaign-a",
+        memory_root=str(tmp_path),
+        model_factory="tests.test_leads_cli:create_saving_model",
+        model=None,
+        model_profile=None,
+        provider_tools_factory="tools:factory",
+        provider_credentials_factories=["apollo=creds:factory"],
+        provider_client_factories=["apollo=client:factory"],
+        storage_backend_factory="storage:factory",
+        runtime_assignments=["search_summary_every=7", "max_tokens=1024"],
+        max_cycles=1,
+        approval_policy=None,
+        allowed_tools=(),
+    )
+
+    assert payload["result"]["status"] == "completed"
+    assert captured_kwargs["search_summary_every"] == 7
+    assert captured_kwargs["max_tokens"] == 1024
+    assert captured_kwargs["tools"] == ("provider-tool",)
+    assert captured_kwargs["provider_credentials"] == {"apollo": {"token": "abc"}}
+    assert captured_kwargs["provider_clients"] == {"apollo": {"client": "apollo"}}
