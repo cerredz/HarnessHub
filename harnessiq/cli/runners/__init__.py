@@ -4,5 +4,13 @@ from .instagram import InstagramCliRunner
 from .leads import LeadsCliRunner
 from .linkedin import LinkedInCliRunner
 from .lifecycle import HarnessCliLifecycleRunner, ResolvedRunRequest
+from .prospecting import ProspectingCliRunner
 
-__all__ = ["HarnessCliLifecycleRunner", "InstagramCliRunner", "LeadsCliRunner", "LinkedInCliRunner", "ResolvedRunRequest"]
+__all__ = [
+    "HarnessCliLifecycleRunner",
+    "InstagramCliRunner",
+    "LeadsCliRunner",
+    "LinkedInCliRunner",
+    "ProspectingCliRunner",
+    "ResolvedRunRequest",
+]

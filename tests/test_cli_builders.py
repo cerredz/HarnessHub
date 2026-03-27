@@ -4,7 +4,13 @@ import pytest
 from pathlib import Path
 
 from harnessiq.cli.adapters.context import HarnessAdapterContext
-from harnessiq.cli.builders import HarnessCliLifecycleBuilder, InstagramCliBuilder, LeadsCliBuilder, LinkedInCliBuilder
+from harnessiq.cli.builders import (
+    HarnessCliLifecycleBuilder,
+    InstagramCliBuilder,
+    LeadsCliBuilder,
+    LinkedInCliBuilder,
+    ProspectingCliBuilder,
+)
 from harnessiq.config import HarnessProfile, HarnessProfileStore
 from harnessiq.shared.harness_manifest import HarnessManifest, HarnessParameterSpec
 from harnessiq.shared.harness_manifests import get_harness_manifest
@@ -294,3 +300,34 @@ def test_leads_builder_configure_and_show_round_trip(tmp_path: Path) -> None:
     assert configured_payload["runtime_parameters"]["max_tokens"] == 4096
     assert configured_payload["run_config"]["platforms"] == ["apollo"]
     assert shown_payload["run_config"]["company_background"].startswith("We sell outbound")
+
+
+def test_prospecting_builder_configure_and_show_round_trip(tmp_path: Path) -> None:
+    builder = ProspectingCliBuilder()
+    eval_prompt_path = tmp_path / "eval_prompt.txt"
+    eval_prompt_path.write_text("Return strict JSON.", encoding="utf-8")
+
+    configured_payload = builder.configure(
+        agent_name="nj-dentists",
+        memory_root=str(tmp_path),
+        company_description_text="Owner-operated dental practices in New Jersey.",
+        company_description_file=None,
+        agent_identity_text="Prospecting closer.",
+        agent_identity_file=None,
+        additional_prompt_text="Prioritize outdated sites.",
+        additional_prompt_file=None,
+        eval_system_prompt_file=str(eval_prompt_path),
+        runtime_assignments=["max_tokens=4096"],
+        custom_assignments=["max_searches_per_run=12", "website_inspect_enabled=false"],
+    )
+    shown_payload = builder.show(
+        agent_name="nj-dentists",
+        memory_root=str(tmp_path),
+    )
+
+    assert configured_payload["status"] == "configured"
+    assert configured_payload["runtime_parameters"]["max_tokens"] == 4096
+    assert configured_payload["custom_parameters"]["max_searches_per_run"] == 12
+    assert configured_payload["custom_parameters"]["website_inspect_enabled"] is False
+    assert configured_payload["custom_parameters"]["eval_system_prompt"] == "Return strict JSON."
+    assert shown_payload["company_description"] == "Owner-operated dental practices in New Jersey."
