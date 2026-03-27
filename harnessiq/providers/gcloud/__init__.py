@@ -17,6 +17,13 @@ from .config import (
 )
 from .health import HealthCheckResult, HealthProvider
 from .infra import BillingProvider, CostEstimate, IamProvider, REQUIRED_ROLES
+from .manifest_support import (
+    GcpDeploySpec,
+    GcpMemoryEntry,
+    GcpModelSelection,
+    GcpSecretReference,
+    derive_deploy_spec,
+)
 from .observability import LoggingProvider, MonitoringProvider
 from .storage import CloudStorageProvider
 
@@ -28,12 +35,17 @@ __all__ = [
     "CloudStorageProvider",
     "CredentialBridge",
     "CredentialProviders",
+    "derive_deploy_spec",
     "DEFAULT_GCP_CONFIG_DIRNAME",
     "DeployProviders",
     "GcloudClient",
+    "GcpDeploySpec",
     "GcpContext",
     "GcloudError",
     "GcpAgentConfig",
+    "GcpMemoryEntry",
+    "GcpModelSelection",
+    "GcpSecretReference",
     "HealthCheckResult",
     "HealthProvider",
     "IamProvider",
