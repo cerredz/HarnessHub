@@ -387,3 +387,28 @@ def test_runtime_main_emits_success_json(monkeypatch: pytest.MonkeyPatch) -> Non
     payload = json.loads(stdout.getvalue())
     assert payload["status"] == "completed"
     assert payload["manifest_id"] == "research_sweep"
+
+
+def test_runtime_main_emits_error_json(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "harnessiq.providers.gcloud.runtime.run_runtime",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("runtime failed")),
+    )
+
+    stdout = io.StringIO()
+    with redirect_stdout(stdout):
+        exit_code = main(
+            [
+                "--agent",
+                "candidate-a",
+                "--manifest-id",
+                "research_sweep",
+                "--memory-path",
+                "memory/research_sweep/candidate-a",
+            ]
+        )
+
+    assert exit_code == 1
+    payload = json.loads(stdout.getvalue())
+    assert payload["status"] == "error"
+    assert payload["error"] == "runtime failed"
