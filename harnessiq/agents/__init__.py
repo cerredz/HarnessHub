@@ -83,7 +83,9 @@ from .instagram import InstagramKeywordDiscoveryAgent
 from harnessiq.shared.instagram import InstagramMemoryStore
 from .knowt import KnowtAgent
 from .leads import LeadsAgent
+from .mission_driven import MissionDrivenAgent
 from .research_sweep import ResearchSweepAgent
+from .spawn_specialized_subagents import SpawnSpecializedSubagentsAgent
 from .linkedin import (
     LinkedInJobApplierAgent,
     build_linkedin_browser_tool_definitions,
@@ -140,6 +142,7 @@ __all__ = [
     "KnowtAgent",
     "KnowtMemoryStore",
     "LeadsAgent",
+    "MissionDrivenAgent",
     "ResearchSweepAgent",
     "EmailAgentConfig",
     "EmailAgentRequest",
@@ -178,6 +181,7 @@ __all__ = [
     "RegisteredHook",
     "OutreachAgentConfig",
     "OutreachAgentRequest",
+    "SpawnSpecializedSubagentsAgent",
     "SUPPORTED_PROSPECTING_CUSTOM_PARAMETERS",
     "SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS",
     "normalize_prospecting_custom_parameters",

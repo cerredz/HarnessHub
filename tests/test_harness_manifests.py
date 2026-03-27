@@ -10,20 +10,37 @@ from harnessiq.shared.exa_outreach import EXA_OUTREACH_HARNESS_MANIFEST
 from harnessiq.shared.instagram import INSTAGRAM_HARNESS_MANIFEST
 from harnessiq.shared.leads import LEADS_HARNESS_MANIFEST
 from harnessiq.shared.linkedin import LINKEDIN_HARNESS_MANIFEST
+from harnessiq.shared.mission_driven import MISSION_DRIVEN_HARNESS_MANIFEST
 from harnessiq.shared.research_sweep import RESEARCH_SWEEP_HARNESS_MANIFEST
+from harnessiq.shared.spawn_specialized_subagents import SPAWN_SPECIALIZED_SUBAGENTS_HARNESS_MANIFEST
 
 
 class HarnessManifestRegistryTests(unittest.TestCase):
     def test_registry_resolves_by_manifest_id_agent_name_and_cli_command(self) -> None:
         self.assertIs(get_harness_manifest("linkedin"), LINKEDIN_HARNESS_MANIFEST)
         self.assertIs(get_harness_manifest("linkedin_job_applier"), LINKEDIN_HARNESS_MANIFEST)
+        self.assertIs(get_harness_manifest("mission_driven"), MISSION_DRIVEN_HARNESS_MANIFEST)
         self.assertIs(get_harness_manifest("outreach"), EXA_OUTREACH_HARNESS_MANIFEST)
         self.assertIs(get_harness_manifest("research-sweep"), RESEARCH_SWEEP_HARNESS_MANIFEST)
+        self.assertIs(
+            get_harness_manifest("spawn_specialized_subagents"),
+            SPAWN_SPECIALIZED_SUBAGENTS_HARNESS_MANIFEST,
+        )
 
     def test_registry_contains_all_built_in_manifests(self) -> None:
         self.assertEqual(
             set(HARNESS_MANIFESTS),
-            {"exa_outreach", "instagram", "knowt", "leads", "linkedin", "prospecting", "research_sweep"},
+            {
+                "exa_outreach",
+                "instagram",
+                "knowt",
+                "leads",
+                "linkedin",
+                "mission_driven",
+                "prospecting",
+                "research_sweep",
+                "spawn_specialized_subagents",
+            },
         )
         for manifest in HARNESS_MANIFESTS.values():
             self.assertTrue(manifest.memory_files)
