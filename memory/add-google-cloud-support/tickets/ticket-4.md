@@ -1,5 +1,6 @@
 ﻿Title: Add Cloud Run, Scheduler, Artifact Registry, and Secret Manager command builders
 Issue URL: https://github.com/cerredz/HarnessHub/issues/291
+PR URL: https://github.com/cerredz/HarnessHub/pull/309
 
 Intent:
 Finish the pure command-builder layer for the deployment-time and secret-management surfaces so the executable provider tickets can stay focused on orchestration instead of list construction.
