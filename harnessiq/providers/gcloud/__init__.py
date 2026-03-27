@@ -16,13 +16,14 @@ from .config import (
     GcpAgentConfig,
 )
 from .health import HealthCheckResult, HealthProvider
-from .infra import BillingProvider, IamProvider, REQUIRED_ROLES
+from .infra import BillingProvider, CostEstimate, IamProvider, REQUIRED_ROLES
 from .observability import LoggingProvider, MonitoringProvider
 from .storage import CloudStorageProvider
 
 __all__ = [
     "BaseGcpProvider",
     "BillingProvider",
+    "CostEstimate",
     "CloudRunProvider",
     "CloudStorageProvider",
     "CredentialProviders",

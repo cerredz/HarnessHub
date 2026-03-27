@@ -1,5 +1,6 @@
 ﻿Title: Add `GcpContext` and package exports
 Issue URL: https://github.com/cerredz/HarnessHub/issues/296
+PR URL: https://github.com/cerredz/HarnessHub/pull/314
 
 Intent:
 Compose the growing GCP provider tree behind one shared context so later CLI and integration code can use a single entry point instead of instantiating providers individually.
