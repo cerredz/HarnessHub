@@ -66,6 +66,7 @@ from harnessiq.shared.tools import (
     RegisteredTool,
     ToolDefinition,
 )
+from harnessiq.shared.validated import NonEmptyString, NonNegativeInt, PositiveInt
 from .binding import BoundContextToolExecutor
 
 _ALLOWED_CONTEXT_KINDS = frozenset(
@@ -277,6 +278,16 @@ def coerce_int(arguments: dict[str, Any], key: str, *, default: int | None = Non
     return value
 
 
+def coerce_non_negative_int(arguments: dict[str, Any], key: str, *, default: int | None = None) -> int:
+    value = coerce_int(arguments, key, default=default)
+    return int(NonNegativeInt(value, field_name=key))
+
+
+def coerce_positive_int(arguments: dict[str, Any], key: str, *, default: int | None = None) -> int:
+    value = coerce_int(arguments, key, default=default)
+    return int(PositiveInt(value, field_name=key))
+
+
 def coerce_bool(arguments: dict[str, Any], key: str, *, default: bool) -> bool:
     value = arguments.get(key, default)
     if not isinstance(value, bool):
@@ -286,9 +297,7 @@ def coerce_bool(arguments: dict[str, Any], key: str, *, default: bool) -> bool:
 
 def coerce_string(arguments: dict[str, Any], key: str) -> str:
     value = arguments.get(key)
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"The '{key}' argument must be a non-empty string.")
-    return value
+    return str(NonEmptyString(value, field_name=key))
 
 
 def coerce_optional_string(arguments: dict[str, Any], key: str) -> str | None:
@@ -390,7 +399,9 @@ __all__ = [
     "build_tool_definition",
     "coerce_bool",
     "coerce_int",
+    "coerce_non_negative_int",
     "coerce_optional_string",
+    "coerce_positive_int",
     "coerce_string",
     "coerce_string_list",
     "context_entry_tool_key",

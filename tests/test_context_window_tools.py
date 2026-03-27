@@ -12,6 +12,7 @@ from harnessiq.shared.tools import (
     CONTEXT_PARAM_INJECT_SECTION,
     CONTEXT_SELECT_CHECKPOINT,
     CONTEXT_SELECT_PROMOTE_AND_STRIP,
+    CONTEXT_STRUCT_REORDER,
     CONTEXT_STRUCT_TRUNCATE,
     CONTEXT_SUMMARIZE_HEADLINE,
 )
@@ -111,6 +112,10 @@ class ContextWindowToolsTests(unittest.TestCase):
         self.assertIn("entries dropped by truncate", transcript[0]["content"])
         self.assertEqual(len(transcript), 3)
 
+    def test_truncate_rejects_zero_keep_last(self) -> None:
+        with self.assertRaisesRegex(ValueError, "keep_last must be greater than zero"):
+            self.registry.execute(CONTEXT_STRUCT_TRUNCATE, {"keep_last": 0})
+
     def test_promote_and_strip_writes_memory_field_and_removes_transcript_entry(self) -> None:
         result = self.registry.execute(
             CONTEXT_SELECT_PROMOTE_AND_STRIP,
@@ -126,6 +131,10 @@ class ContextWindowToolsTests(unittest.TestCase):
         self.assertEqual(len(transcript_entries), 3)
         self.assertEqual(self.runtime.save_calls, 1)
         self.assertEqual(self.runtime.refresh_calls, 1)
+
+    def test_reorder_rejects_negative_entry_index(self) -> None:
+        with self.assertRaisesRegex(ValueError, "entry_index must be greater than or equal to zero"):
+            self.registry.execute(CONTEXT_STRUCT_REORDER, {"entry_index": -1})
 
     def test_inject_section_persists_and_refreshes_parameters(self) -> None:
         result = self.registry.execute(

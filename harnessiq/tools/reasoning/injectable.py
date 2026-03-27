@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from harnessiq.shared.validated import NonEmptyString, parse_bounded_int
 from harnessiq.shared.tools import (
     REASON_BRAINSTORM,
     REASON_BRAINSTORM_COUNT_DEFAULT,
@@ -28,11 +29,6 @@ def brainstorm(arguments: ToolArguments) -> dict[str, str]:
     """Inject a brainstorm reasoning instruction into the agent's context window."""
     topic = _require_string(arguments, "topic")
     count = _optional_brainstorm_count(arguments, "count", REASON_BRAINSTORM_COUNT_DEFAULT)
-    if not (REASON_BRAINSTORM_COUNT_MIN <= count <= REASON_BRAINSTORM_COUNT_MAX):
-        raise ValueError(
-            f"'count' must be between {REASON_BRAINSTORM_COUNT_MIN} and "
-            f"{REASON_BRAINSTORM_COUNT_MAX}, got {count}."
-        )
     context = _optional_string(arguments, "context")
     constraints = _optional_string(arguments, "constraints")
 
@@ -63,11 +59,6 @@ def chain_of_thought(arguments: ToolArguments) -> dict[str, str]:
     """Inject a chain-of-thought reasoning instruction into the agent's context window."""
     task = _require_string(arguments, "task")
     steps = _optional_int(arguments, "steps", REASON_COT_STEPS_DEFAULT)
-    if not (REASON_COT_STEPS_MIN <= steps <= REASON_COT_STEPS_MAX):
-        raise ValueError(
-            f"'steps' must be between {REASON_COT_STEPS_MIN} and "
-            f"{REASON_COT_STEPS_MAX}, got {steps}."
-        )
     context = _optional_string(arguments, "context")
 
     lines = [
@@ -269,9 +260,7 @@ def create_injectable_reasoning_tools() -> tuple[RegisteredTool, ...]:
 
 def _require_string(arguments: ToolArguments, key: str) -> str:
     value = arguments.get(key)
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"'{key}' must be a non-empty string.")
-    return value.strip()
+    return str(NonEmptyString(value, field_name=key))
 
 
 def _optional_string(arguments: ToolArguments, key: str) -> str:
@@ -290,6 +279,13 @@ def _optional_int(arguments: ToolArguments, key: str, default: int) -> int:
     if isinstance(value, bool):
         raise ValueError(f"'{key}' must be an integer, not a boolean.")
     if isinstance(value, int):
+        if key == "steps":
+            return parse_bounded_int(
+                value,
+                field_name=key,
+                minimum=REASON_COT_STEPS_MIN,
+                maximum=REASON_COT_STEPS_MAX,
+            )
         return value
     raise ValueError(f"'{key}' must be an integer when provided.")
 
@@ -301,7 +297,12 @@ def _optional_brainstorm_count(arguments: ToolArguments, key: str, default: int)
     if isinstance(value, bool):
         raise ValueError(f"'{key}' must be an integer or supported preset, not a boolean.")
     if isinstance(value, int):
-        return value
+        return parse_bounded_int(
+            value,
+            field_name=key,
+            minimum=REASON_BRAINSTORM_COUNT_MIN,
+            maximum=REASON_BRAINSTORM_COUNT_MAX,
+        )
     if isinstance(value, str):
         normalized = value.strip().lower()
         if normalized in REASON_BRAINSTORM_COUNT_PRESETS:

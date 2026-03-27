@@ -61,7 +61,7 @@ def create_context_structural_tools(runtime: ContextToolRuntime) -> tuple[Regist
                 properties={
                     "tool_keys": {"type": "array", "items": {"type": "string"}},
                     "similarity_threshold": {"type": "number", "minimum": 0, "maximum": 1},
-                    "max_gap": {"type": "integer"},
+                    "max_gap": {"type": "integer", "minimum": 0},
                 },
             ),
             handler=lambda arguments: deduplicate(runtime, arguments),
