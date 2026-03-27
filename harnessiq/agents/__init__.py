@@ -41,6 +41,13 @@ from harnessiq.shared.linkedin import (
     LinkedInMemoryStore,
     ScreenshotPersistor,
 )
+from harnessiq.shared.dtos import (
+    ApolloAgentRequest,
+    EmailAgentRequest,
+    ExaAgentRequest,
+    InstantlyAgentRequest,
+    OutreachAgentRequest,
+)
 from harnessiq.utils import (
     AgentInstanceCatalog,
     AgentInstanceRecord,
@@ -118,6 +125,7 @@ __all__ = [
     "BaseOutreachAgent",
     "BaseProviderToolAgent",
     "ApolloAgentConfig",
+    "ApolloAgentRequest",
     "DEFAULT_APOLLO_AGENT_IDENTITY",
     "DEFAULT_APPROVAL_POLICY",
     "ExaOutreachAgent",
@@ -134,8 +142,11 @@ __all__ = [
     "LeadsAgent",
     "ResearchSweepAgent",
     "EmailAgentConfig",
+    "EmailAgentRequest",
     "ExaAgentConfig",
+    "ExaAgentRequest",
     "InstantlyAgentConfig",
+    "InstantlyAgentRequest",
     "JobApplicationRecord",
     "LinkedInAgentConfig",
     "LinkedInJobApplierAgent",
@@ -166,6 +177,7 @@ __all__ = [
     "QualifiedLeadRecord",
     "RegisteredHook",
     "OutreachAgentConfig",
+    "OutreachAgentRequest",
     "SUPPORTED_PROSPECTING_CUSTOM_PARAMETERS",
     "SUPPORTED_PROSPECTING_RUNTIME_PARAMETERS",
     "normalize_prospecting_custom_parameters",

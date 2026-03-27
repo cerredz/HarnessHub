@@ -10,6 +10,7 @@ from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntim
 from harnessiq.agents.provider_base import BaseProviderToolAgent
 from harnessiq.interfaces import RequestPreparingClient
 from harnessiq.providers.apollo import ApolloClient
+from harnessiq.shared.dtos import ApolloAgentRequest, ProviderToolAgentRequest
 from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.apollo_agent import (
     ApolloAgentConfig,
@@ -29,7 +30,7 @@ class BaseApolloAgent(BaseProviderToolAgent, ABC):
         *,
         name: str,
         model: AgentModel,
-        config: ApolloAgentConfig,
+        request: ApolloAgentRequest,
         tools: Sequence[RegisteredTool] | None = None,
         apollo_client: RequestPreparingClient | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
@@ -37,24 +38,28 @@ class BaseApolloAgent(BaseProviderToolAgent, ABC):
         repo_root: str | Path | None = None,
         instance_name: str | None = None,
     ) -> None:
+        config = request.to_config()
         if apollo_client is not None and apollo_client.credentials != config.apollo_credentials:
             raise ConfigurationError(
                 "apollo_client credentials must match ApolloAgentConfig.apollo_credentials."
             )
 
+        self._request = request
         self._config = config
         self._apollo_client = apollo_client or ApolloClient(credentials=config.apollo_credentials)
         super().__init__(
             name=name,
             model=model,
-            provider_name="Apollo",
-            provider_tools=create_apollo_tools(
-                client=self._apollo_client,
-                allowed_operations=self._config.allowed_apollo_operations,
+            request=ProviderToolAgentRequest(
+                provider_name="Apollo",
+                provider_tools=create_apollo_tools(
+                    client=self._apollo_client,
+                    allowed_operations=self._config.allowed_apollo_operations,
+                ),
+                max_tokens=self._config.max_tokens,
+                reset_threshold=self._config.reset_threshold,
             ),
             tools=tools,
-            max_tokens=self._config.max_tokens,
-            reset_threshold=self._config.reset_threshold,
             runtime_config=runtime_config,
             memory_path=memory_path,
             repo_root=repo_root,
@@ -64,6 +69,10 @@ class BaseApolloAgent(BaseProviderToolAgent, ABC):
     @property
     def config(self) -> ApolloAgentConfig:
         return self._config
+
+    @property
+    def request(self) -> ApolloAgentRequest:
+        return self._request
 
     @property
     def apollo_client(self) -> RequestPreparingClient:
@@ -130,6 +139,7 @@ class BaseApolloAgent(BaseProviderToolAgent, ABC):
 
 
 __all__ = [
+    "ApolloAgentRequest",
     "BaseApolloAgent",
     "DEFAULT_APOLLO_AGENT_IDENTITY",
     "ApolloAgentConfig",

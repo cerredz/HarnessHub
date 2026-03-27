@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig, BaseAgent
 from harnessiq.shared.agents import merge_agent_runtime_config
+from harnessiq.shared.dtos import ProviderToolAgentRequest, StatelessAgentInstancePayload
 from harnessiq.shared.exceptions import ValidationError
 from harnessiq.shared.provider_agents import (
     DEFAULT_PROVIDER_AGENT_IDENTITY,
@@ -26,21 +27,19 @@ class BaseProviderToolAgent(BaseAgent, ABC):
         *,
         name: str,
         model: AgentModel,
-        provider_name: str,
-        provider_tools: Iterable[RegisteredTool],
+        request: ProviderToolAgentRequest,
         tools: Sequence[RegisteredTool] | None = None,
-        max_tokens: int,
-        reset_threshold: float,
         runtime_config: AgentRuntimeConfig | None = None,
         memory_path: str | Path | None = None,
         repo_root: str | Path | None = None,
         instance_name: str | None = None,
     ) -> None:
-        normalized_provider_name = provider_name.strip()
+        self._provider_request = request
+        normalized_provider_name = request.provider_name.strip()
         if not normalized_provider_name:
             raise ValidationError("provider_name must not be blank.")
 
-        merged_provider_tools = merge_registered_tools(tuple(provider_tools))
+        merged_provider_tools = merge_registered_tools(request.provider_tools)
         if not merged_provider_tools:
             raise ValidationError("provider_tools must contain at least one registered tool.")
 
@@ -58,16 +57,24 @@ class BaseProviderToolAgent(BaseAgent, ABC):
             tool_executor=tool_registry,
             runtime_config=merge_agent_runtime_config(
                 runtime_config,
-                max_tokens=max_tokens,
-                reset_threshold=reset_threshold,
+                max_tokens=request.max_tokens,
+                reset_threshold=request.reset_threshold,
             ),
             memory_path=memory_path,
             repo_root=repo_root,
             instance_name=instance_name,
         )
 
-    def build_instance_payload(self) -> dict[str, Any]:
-        return {}
+    @property
+    def request(self) -> ProviderToolAgentRequest:
+        return self._provider_request
+
+    @property
+    def provider_request(self) -> ProviderToolAgentRequest:
+        return self._provider_request
+
+    def build_instance_payload(self) -> StatelessAgentInstancePayload:
+        return StatelessAgentInstancePayload()
 
     @property
     def provider_name(self) -> str:

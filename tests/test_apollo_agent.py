@@ -7,8 +7,9 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection
-from harnessiq.agents.apollo import ApolloAgentConfig, BaseApolloAgent
+from harnessiq.agents.apollo import ApolloAgentRequest, BaseApolloAgent
 from harnessiq.providers.apollo import ApolloClient, ApolloCredentials
+from harnessiq.shared.dtos import StatelessAgentInstancePayload
 from harnessiq.shared.tools import APOLLO_REQUEST, RegisteredTool, ToolCall, ToolDefinition
 
 
@@ -27,8 +28,7 @@ class _TestApolloAgent(BaseApolloAgent):
         self,
         *,
         model: _FakeModel,
-        apollo_credentials: ApolloCredentials,
-        allowed_apollo_operations: tuple[str, ...] | None = None,
+        request: ApolloAgentRequest,
         apollo_client: ApolloClient | None = None,
         tools: tuple[RegisteredTool, ...] = (),
         repo_root: str | None = None,
@@ -36,10 +36,7 @@ class _TestApolloAgent(BaseApolloAgent):
         super().__init__(
             name="test_apollo_agent",
             model=model,
-            config=ApolloAgentConfig(
-                apollo_credentials=apollo_credentials,
-                allowed_apollo_operations=allowed_apollo_operations,
-            ),
+            request=request,
             apollo_client=apollo_client,
             tools=tools,
             repo_root=repo_root,
@@ -101,7 +98,7 @@ class BaseApolloAgentTests(unittest.TestCase):
             )
             agent = _TestApolloAgent(
                 model=model,
-                apollo_credentials=credentials,
+                request=ApolloAgentRequest(apollo_credentials=credentials),
                 apollo_client=_FakeApolloClient(credentials=credentials),
                 repo_root=temp_repo_root,
             )
@@ -118,7 +115,7 @@ class BaseApolloAgentTests(unittest.TestCase):
             model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
             agent = _TestApolloAgent(
                 model=model,
-                apollo_credentials=credentials,
+                request=ApolloAgentRequest(apollo_credentials=credentials),
                 tools=(custom_tool,),
                 repo_root=temp_repo_root,
             )
@@ -133,6 +130,8 @@ class BaseApolloAgentTests(unittest.TestCase):
             self.assertNotIn(credentials.api_key, model.requests[0].parameter_sections[0].content)
             self.assertEqual(model.requests[0].tools[0].name, "apollo_request")
             self.assertIn("custom.apollo_helper", {tool.key for tool in model.requests[0].tools})
+            self.assertEqual(agent.request, ApolloAgentRequest(apollo_credentials=credentials))
+            self.assertIsInstance(agent.build_instance_payload(), StatelessAgentInstancePayload)
 
     def test_apollo_agent_executes_search_people_through_provider_tooling(self) -> None:
         with TemporaryDirectory() as temp_repo_root:
@@ -161,7 +160,7 @@ class BaseApolloAgentTests(unittest.TestCase):
             )
             agent = _TestApolloAgent(
                 model=model,
-                apollo_credentials=credentials,
+                request=ApolloAgentRequest(apollo_credentials=credentials),
                 apollo_client=ApolloClient(credentials=credentials, request_executor=fake_request_executor),
                 repo_root=temp_repo_root,
             )
@@ -179,8 +178,10 @@ class BaseApolloAgentTests(unittest.TestCase):
             model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
             agent = _TestApolloAgent(
                 model=model,
-                apollo_credentials=credentials,
-                allowed_apollo_operations=("search_people", "view_usage_stats"),
+                request=ApolloAgentRequest(
+                    apollo_credentials=credentials,
+                    allowed_apollo_operations=("search_people", "view_usage_stats"),
+                ),
                 repo_root=temp_repo_root,
             )
 
