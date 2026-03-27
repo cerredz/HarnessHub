@@ -14,6 +14,9 @@
    Dependency: Ticket 1
    Issue: #289
    URL: https://github.com/cerredz/HarnessHub/issues/289
+   PR: #306
+   PR URL: https://github.com/cerredz/HarnessHub/pull/306
+   Status: implemented, awaiting merge into `main`
 
 3. Ticket 3: Add auth, IAM, storage, logging, and monitoring command builders
    Description: Implement pure builders for the non-deployment control-plane command surface.
