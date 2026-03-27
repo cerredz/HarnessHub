@@ -11,7 +11,12 @@ from types import SimpleNamespace
 import pytest
 
 from harnessiq.cli.adapters.context import HarnessAdapterContext
-from harnessiq.cli.runners import HarnessCliLifecycleRunner, LinkedInCliRunner, ResolvedRunRequest
+from harnessiq.cli.runners import (
+    HarnessCliLifecycleRunner,
+    InstagramCliRunner,
+    LinkedInCliRunner,
+    ResolvedRunRequest,
+)
 from harnessiq.config import HarnessProfile, HarnessRunSnapshot
 from harnessiq.shared.harness_manifest import HarnessManifest
 
@@ -297,3 +302,51 @@ def test_linkedin_runner_init_browser_returns_session_payload(
     }
     assert events == [("start", expected_dir), ("stop", expected_dir)]
     assert "Browser session saved to:" in stdout.getvalue()
+
+
+def test_instagram_runner_run_sets_session_env_and_forwards_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    class _StubAgent:
+        def run(self, *, max_cycles):
+            assert max_cycles == 1
+            return SimpleNamespace(cycles_completed=1, pause_reason=None, resets=0, status="completed")
+
+        def get_emails(self):
+            return ("creator@example.com",)
+
+    def _from_memory(**kwargs):
+        captured_kwargs.update(kwargs)
+        return _StubAgent()
+
+    monkeypatch.setattr("harnessiq.cli.runners.instagram.seed_cli_environment", lambda _: None)
+    monkeypatch.setattr("harnessiq.cli.runners.instagram.resolve_agent_model", lambda **_: "resolved-model")
+    monkeypatch.setattr("harnessiq.cli.runners.instagram.load_factory", lambda _: (lambda: "search-backend"))
+    monkeypatch.setattr("harnessiq.agents.instagram.InstagramKeywordDiscoveryAgent.from_memory", _from_memory)
+    monkeypatch.delenv("HARNESSIQ_INSTAGRAM_SESSION_DIR", raising=False)
+
+    runner = InstagramCliRunner()
+    payload = runner.run(
+        agent_name="creator-a",
+        memory_root=str(tmp_path),
+        model_factory="tests.test_instagram_cli:_recording_model_factory",
+        model=None,
+        model_profile=None,
+        search_backend_factory="tests.test_instagram_cli:create_search_backend",
+        runtime_overrides={"search_result_limit": 3},
+        custom_overrides={"icp_profiles": ["fitness creators"]},
+        max_cycles=1,
+        approval_policy=None,
+        allowed_tools=(),
+    )
+
+    expected_session_dir = str((tmp_path / "creator-a" / "browser-data").resolve())
+    assert os.environ["HARNESSIQ_INSTAGRAM_SESSION_DIR"] == expected_session_dir
+    assert payload["email_count"] == 1
+    assert payload["result"]["status"] == "completed"
+    assert captured_kwargs["search_backend"] == "search-backend"
+    assert captured_kwargs["runtime_overrides"] == {"search_result_limit": 3}
+    assert captured_kwargs["custom_overrides"] == {"icp_profiles": ["fitness creators"]}

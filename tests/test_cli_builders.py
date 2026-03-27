@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 
 from harnessiq.cli.adapters.context import HarnessAdapterContext
-from harnessiq.cli.builders import HarnessCliLifecycleBuilder, LinkedInCliBuilder
+from harnessiq.cli.builders import HarnessCliLifecycleBuilder, InstagramCliBuilder, LinkedInCliBuilder
 from harnessiq.config import HarnessProfile, HarnessProfileStore
 from harnessiq.shared.harness_manifest import HarnessManifest, HarnessParameterSpec
 from harnessiq.shared.harness_manifests import get_harness_manifest
@@ -237,3 +237,35 @@ def test_linkedin_builder_configure_and_show_round_trip(tmp_path: Path) -> None:
     assert len(configured_payload["managed_files"]) == 2
     assert shown_payload["job_preferences"] == "Staff platform roles in New York."
     assert "cover-letter.txt" in str(shown_payload["managed_files"])
+
+
+def test_instagram_builder_configure_show_and_get_emails_round_trip(tmp_path: Path) -> None:
+    builder = InstagramCliBuilder()
+
+    configured_payload = builder.configure(
+        agent_name="creator-a",
+        memory_root=str(tmp_path),
+        icp_values=["fitness creators", "ugc skincare creators"],
+        icp_file=None,
+        agent_identity_text="Creator scout",
+        agent_identity_file=None,
+        additional_prompt_text="Focus on newsletter-friendly creators.",
+        additional_prompt_file=None,
+        runtime_assignments=["search_result_limit=3"],
+        custom_assignments=['target_segment="micro-creators"'],
+    )
+    shown_payload = builder.show(
+        agent_name="creator-a",
+        memory_root=str(tmp_path),
+    )
+    emails_payload = builder.get_emails(
+        agent_name="creator-a",
+        memory_root=str(tmp_path),
+    )
+
+    assert configured_payload["status"] == "configured"
+    assert configured_payload["icp_profiles"] == ["fitness creators", "ugc skincare creators"]
+    assert configured_payload["runtime_parameters"]["search_result_limit"] == 3
+    assert configured_payload["custom_parameters"]["target_segment"] == "micro-creators"
+    assert shown_payload["agent_identity"] == "Creator scout"
+    assert emails_payload["count"] == 0
