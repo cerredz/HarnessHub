@@ -208,7 +208,12 @@ class GcpAgentConfig:
         payload = json.loads(raw)
         if not isinstance(payload, dict):
             raise ValueError("GCP config file must contain a JSON object.")
-        return cls.from_dict(payload)
+        config = cls.from_dict(payload)
+        if config.agent_name != agent_name.strip():
+            raise ValueError(
+                f"GCP config '{path}' belongs to agent '{config.agent_name}', not '{agent_name.strip()}'."
+            )
+        return config
 
     def save(self, home_dir: Path | str | None = None) -> Path:
         path = self.config_path_for(self.agent_name, home_dir)

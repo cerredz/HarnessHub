@@ -41,6 +41,22 @@ def test_load_raises_when_config_is_missing(tmp_path: Path) -> None:
         GcpAgentConfig.load("candidate-a", home_dir=tmp_path)
 
 
+def test_load_rejects_mismatched_agent_name_in_file(tmp_path: Path) -> None:
+    config = GcpAgentConfig(
+        agent_name="candidate-a",
+        gcp_project_id="proj-123",
+        region="us-central1",
+    )
+    path = config.save(home_dir=tmp_path)
+    path.write_text(
+        path.read_text(encoding="utf-8").replace('"agent_name": "candidate-a"', '"agent_name": "candidate-b"'),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="candidate-b"):
+        GcpAgentConfig.load("candidate-a", home_dir=tmp_path)
+
+
 def test_config_path_for_rejects_blank_agent_name(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="agent_name"):
         GcpAgentConfig.config_path_for("   ", home_dir=tmp_path)
