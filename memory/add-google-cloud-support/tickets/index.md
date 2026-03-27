@@ -32,6 +32,9 @@
    Dependency: Ticket 2
    Issue: #291
    URL: https://github.com/cerredz/HarnessHub/issues/291
+   PR: #309
+   PR URL: https://github.com/cerredz/HarnessHub/pull/309
+   Status: implemented, awaiting merge into `main`
 
 5. Ticket 5: Implement Artifact Registry and Cloud Run providers
    Description: Add the first executable deployment providers on top of the command-builder layer.
