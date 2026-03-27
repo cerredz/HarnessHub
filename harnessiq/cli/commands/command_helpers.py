@@ -10,6 +10,7 @@ from typing import Any
 
 from harnessiq.agents import AgentRuntimeConfig
 from harnessiq.cli.builders import HarnessCliLifecycleBuilder
+from harnessiq.cli.runners import HarnessCliLifecycleRunner, ResolvedRunRequest
 from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.adapters import HarnessAdapterContext
 from harnessiq.cli.common import (
@@ -36,17 +37,7 @@ from harnessiq.shared.hooks import DEFAULT_APPROVAL_POLICY
 from harnessiq.shared.harness_manifests import get_harness_manifest, list_harness_manifests
 from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
-_UNSET = object()
-
-
-@dataclass(frozen=True, slots=True)
-class _ResolvedRunRequest:
-    model_factory: str | None
-    model: str | None
-    model_profile: str | None
-    sink_specs: tuple[str, ...]
-    max_cycles: int | None
-    adapter_arguments: dict[str, Any]
+_ResolvedRunRequest = ResolvedRunRequest
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,42 +65,14 @@ def _execute_run(
     run_request: _ResolvedRunRequest,
     source_snapshot: HarnessRunSnapshot | None = None,
 ) -> int:
-    seed_cli_environment(context.repo_root)
-    model = resolve_agent_model(
-        model_factory=run_request.model_factory,
-        model_spec=run_request.model,
-        profile_name=run_request.model_profile,
+    return HarnessCliLifecycleRunner().execute_run(
+        adapter=adapter,
+        args=args,
+        context=context,
+        run_request=run_request,
+        base_payload=_base_payload(context),
+        source_snapshot=source_snapshot,
     )
-    runtime_config = _build_runtime_config(
-        run_request.sink_specs,
-        approval_policy=getattr(args, "approval_policy", None),
-        allowed_tools=getattr(args, "allowed_tools", ()),
-    )
-    payload = _base_payload(context)
-    payload["resume"] = {
-        "adapter_arguments": dict(run_request.adapter_arguments),
-        "max_cycles": run_request.max_cycles,
-        "sink_specs": list(run_request.sink_specs),
-    }
-    if run_request.model_factory is not None:
-        payload["resume"]["model_factory"] = run_request.model_factory
-    if run_request.model is not None:
-        payload["resume"]["model"] = run_request.model
-    if run_request.model_profile is not None:
-        payload["resume"]["profile"] = run_request.model_profile
-    if source_snapshot is not None:
-        payload["resume"]["source_recorded_at"] = source_snapshot.recorded_at
-        payload["resume"]["source_run_number"] = source_snapshot.run_number
-    payload.update(
-        adapter.run(
-            args=args,
-            context=context,
-            model=model,
-            runtime_config=runtime_config,
-        )
-    )
-    emit_json(payload)
-    return 0
 
 
 def _build_context(
@@ -190,54 +153,15 @@ def _resolve_run_request(
     adapter_argument_names: tuple[str, ...],
     run_argument_overrides: dict[str, Any],
 ) -> _ResolvedRunRequest:
-    normalized_run_number = _normalize_resume_run_number(requested_run_number)
-    if normalized_run_number is not None and not resume_requested:
-        raise ValueError("--run requires --resume when used with 'run <harness>'.")
-    snapshot = resume_snapshot if resume_snapshot is not None else profile.last_run
-    if resume_requested and snapshot is None:
-        raise ValueError(
-            f"Harness profile '{profile.agent_name}' does not have a previously persisted run payload to resume."
-        )
-
-    if resume_requested:
-        model_factory, model, model_profile = _merge_model_selection(
-            snapshot=snapshot,
-            override_model_factory=getattr(args, "model_factory", None),
-            override_model=getattr(args, "model", None),
-            override_model_profile=getattr(args, "model_profile", None),
-        )
-        sink_specs = tuple(args.sink) if args.sink else snapshot.sink_specs
-        max_cycles = args.max_cycles if args.max_cycles is not None else snapshot.max_cycles
-        adapter_arguments = dict(snapshot.adapter_arguments)
-        for argument_name in adapter_argument_names:
-            explicit_value = _explicit_run_argument_value(args, argument_name, run_argument_defaults)
-            if explicit_value is not _UNSET:
-                adapter_arguments[argument_name] = explicit_value
-        adapter_arguments.update(run_argument_overrides)
-        return _ResolvedRunRequest(
-            model_factory=model_factory,
-            model=model,
-            model_profile=model_profile,
-            sink_specs=tuple(sink_specs),
-            max_cycles=max_cycles,
-            adapter_arguments=adapter_arguments,
-        )
-
-    model_factory, model, model_profile = _collect_model_selection(
-        model_factory=getattr(args, "model_factory", None),
-        model=getattr(args, "model", None),
-        model_profile=getattr(args, "model_profile", None),
-        required=True,
-    )
-    adapter_arguments = {argument_name: getattr(args, argument_name) for argument_name in adapter_argument_names}
-    adapter_arguments.update(run_argument_overrides)
-    return _ResolvedRunRequest(
-        model_factory=model_factory,
-        model=model,
-        model_profile=model_profile,
-        sink_specs=tuple(args.sink),
-        max_cycles=args.max_cycles,
-        adapter_arguments=adapter_arguments,
+    return HarnessCliLifecycleRunner().resolve_run_request(
+        args=args,
+        profile=profile,
+        resume_requested=resume_requested,
+        resume_snapshot=resume_snapshot,
+        requested_run_number=requested_run_number,
+        run_argument_defaults=run_argument_defaults,
+        adapter_argument_names=adapter_argument_names,
+        run_argument_overrides=run_argument_overrides,
     )
 
 
@@ -251,25 +175,14 @@ def _resolve_resume_request_from_snapshot(
     max_cycles: int | None,
     run_argument_overrides: dict[str, Any],
 ) -> _ResolvedRunRequest:
-    if snapshot is None:
-        raise ValueError("The selected profile has no persisted run payload to resume.")
-    resolved_model_factory, resolved_model, resolved_model_profile = _merge_model_selection(
+    return HarnessCliLifecycleRunner().resolve_resume_request_from_snapshot(
         snapshot=snapshot,
-        override_model_factory=model_factory,
-        override_model=model,
-        override_model_profile=model_profile,
-    )
-    resolved_sink_specs = tuple(sink_specs) if sink_specs else snapshot.sink_specs
-    resolved_max_cycles = max_cycles if max_cycles is not None else snapshot.max_cycles
-    adapter_arguments = dict(snapshot.adapter_arguments)
-    adapter_arguments.update(run_argument_overrides)
-    return _ResolvedRunRequest(
-        model_factory=resolved_model_factory,
-        model=resolved_model,
-        model_profile=resolved_model_profile,
-        sink_specs=tuple(resolved_sink_specs),
-        max_cycles=resolved_max_cycles,
-        adapter_arguments=adapter_arguments,
+        model_factory=model_factory,
+        model=model,
+        model_profile=model_profile,
+        sink_specs=sink_specs,
+        max_cycles=max_cycles,
+        run_argument_overrides=run_argument_overrides,
     )
 
 
@@ -301,20 +214,6 @@ def _normalize_resume_run_number(run_number: int | None) -> int | None:
     return run_number
 
 
-def _explicit_run_argument_value(
-    args: argparse.Namespace,
-    name: str,
-    run_argument_defaults: dict[str, Any],
-) -> Any:
-    if not hasattr(args, name):
-        return _UNSET
-    value = getattr(args, name)
-    default = run_argument_defaults.get(name)
-    if value == default:
-        return _UNSET
-    return value
-
-
 def _clone_args_with_run_request(
     args: argparse.Namespace,
     run_request: _ResolvedRunRequest,
@@ -327,57 +226,6 @@ def _clone_args_with_run_request(
     payload["max_cycles"] = run_request.max_cycles
     payload.update(run_request.adapter_arguments)
     return argparse.Namespace(**payload)
-
-
-def _collect_model_selection(
-    *,
-    model_factory: str | None,
-    model: str | None,
-    model_profile: str | None,
-    required: bool,
-) -> tuple[str | None, str | None, str | None]:
-    normalized_model_factory = _normalize_optional_string(model_factory)
-    normalized_model = _normalize_optional_string(model)
-    normalized_model_profile = _normalize_optional_string(model_profile)
-    selected_count = sum(
-        1
-        for value in (
-            normalized_model_factory,
-            normalized_model,
-            normalized_model_profile,
-        )
-        if value is not None
-    )
-    if required and selected_count != 1:
-        raise ValueError("Exactly one of --model, --profile, or --model-factory must be provided.")
-    if not required and selected_count > 1:
-        raise ValueError("Exactly one of --model, --profile, or --model-factory may be provided.")
-    return normalized_model_factory, normalized_model, normalized_model_profile
-
-
-def _merge_model_selection(
-    *,
-    snapshot: HarnessRunSnapshot,
-    override_model_factory: str | None,
-    override_model: str | None,
-    override_model_profile: str | None,
-) -> tuple[str | None, str | None, str | None]:
-    model_factory, model, model_profile = _collect_model_selection(
-        model_factory=override_model_factory,
-        model=override_model,
-        model_profile=override_model_profile,
-        required=False,
-    )
-    if any(value is not None for value in (model_factory, model, model_profile)):
-        return model_factory, model, model_profile
-    return snapshot.model_factory, snapshot.model, snapshot.model_profile
-
-
-def _normalize_optional_string(value: str | None) -> str | None:
-    if value is None:
-        return None
-    normalized = value.strip()
-    return normalized or None
 
 
 def _resolve_resume_agent_name(args: argparse.Namespace) -> str:
@@ -577,20 +425,6 @@ def _binding_name(manifest: HarnessManifest, agent_name: str) -> str:
         manifest_id=manifest.manifest_id,
         agent_name=agent_name,
     ).credential_binding_name
-
-
-def _build_runtime_config(
-    sink_specs: tuple[str, ...] | list[str],
-    *,
-    approval_policy: str | None = None,
-    allowed_tools: tuple[str, ...] | list[str] = (),
-) -> AgentRuntimeConfig:
-    connections = ConnectionsConfigStore().load().enabled_connections()
-    return AgentRuntimeConfig(
-        approval_policy=approval_policy or DEFAULT_APPROVAL_POLICY,
-        allowed_tools=parse_allowed_tool_values(allowed_tools),
-        output_sinks=build_output_sinks(connections=connections, sink_specs=list(sink_specs)),
-    )
 
 
 def _build_adapter(manifest: HarnessManifest):
