@@ -1,8 +1,9 @@
-﻿Title: Add GCP deployment and operations CLI commands
+Title: Add GCP deployment and operations CLI commands
 Issue URL: https://github.com/cerredz/HarnessHub/issues/300
+PR URL: https://github.com/cerredz/HarnessHub/pull/334
 
 Intent:
-Expose the provider layerâ€™s deployment, scheduling, execution, logging, and cost operations through the new CLI family so the provider/CLI service is fully usable before deeper runtime integration lands.
+Expose the provider layer's deployment, scheduling, execution, logging, and cost operations through the new CLI family so the provider/CLI service is fully usable before deeper runtime integration lands.
 
 Scope:
 Add CLI handlers for build, deploy, schedule, execute, logs, and cost inspection. This ticket does not add manifest-driven deploy-spec derivation or the cloud runtime wrapper yet.
@@ -12,7 +13,7 @@ Relevant Files:
 - `tests/test_gcloud_cli.py`: Extend CLI tests for build/deploy/schedule/execute/logs/cost flows.
 
 Approach:
-Keep handlers thin and context-driven: load or construct `GcpContext`, delegate to the appropriate provider, and emit structured JSON. Preserve the repositoryâ€™s JSON-first CLI conventions while keeping command names close to the design doc.
+Keep handlers thin and context-driven: load or construct `GcpContext`, delegate to the appropriate provider, and emit structured JSON. Preserve the repository's JSON-first CLI conventions while keeping command names close to the design doc.
 
 Assumptions:
 - The provider/CLI service is considered delivered once operators can initialize config, sync credentials, build, deploy, schedule, execute, inspect logs, and inspect cost through the CLI.
@@ -36,4 +37,3 @@ Ticket 11.
 
 Drift Guard:
 Do not add manifest-driven deployment spec derivation or the cloud runtime wrapper in this ticket. The goal is only the provider-backed CLI operations surface.
-
