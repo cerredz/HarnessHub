@@ -65,6 +65,7 @@ from .dynamic_selector import (
     DefaultDynamicToolSelector,
     ToolProfileOverride,
     build_tool_selection_query,
+    resolve_tool_definition_profiles,
     resolve_registry_tool_profiles,
     resolve_tool_profiles,
 )
@@ -227,6 +228,7 @@ __all__ = [
     "ToolEntry",
     "ToolProfileOverride",
     "build_tool_selection_query",
+    "resolve_tool_definition_profiles",
     "ToolsetRegistry",
     "define_tool",
     "get_family",

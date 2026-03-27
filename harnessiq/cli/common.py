@@ -16,6 +16,7 @@ from harnessiq.config import ModelProfileStore
 from harnessiq.integrations import create_model_from_profile, create_model_from_spec
 from harnessiq.shared.harness_manifest import HarnessManifest
 from harnessiq.shared.hooks import DEFAULT_APPROVAL_POLICY, SUPPORTED_APPROVAL_POLICIES
+from harnessiq.shared.tool_selection import ToolSelectionConfig
 from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
 
@@ -169,6 +170,31 @@ def add_policy_options(parser: argparse.ArgumentParser) -> None:
             "Allow only matching tool keys or families. Repeat the flag or provide comma-delimited values. "
             "Examples: filesystem, filesystem.*, context.select.checkpoint."
         ),
+    )
+    parser.add_argument(
+        "--dynamic-tools",
+        action="store_true",
+        help="Enable dynamic tool selection for this run. Disabled by default.",
+    )
+    parser.add_argument(
+        "--dynamic-tool-candidates",
+        action="append",
+        default=[],
+        metavar="PATTERN[,PATTERN...]",
+        help=(
+            "Restrict dynamic selection to matching tool keys or families. "
+            "Repeat the flag or provide comma-delimited values."
+        ),
+    )
+    parser.add_argument(
+        "--dynamic-tool-top-k",
+        type=int,
+        default=5,
+        help="Number of retrieved tools to expose each turn when dynamic selection is enabled.",
+    )
+    parser.add_argument(
+        "--dynamic-tool-embedding-model",
+        help="Optional embedding model spec in provider:model form for dynamic tool selection.",
     )
 
 
@@ -334,15 +360,26 @@ def build_runtime_config(
     sink_specs: Sequence[str] = (),
     approval_policy: str | None = None,
     allowed_tools: Sequence[str] = (),
+    dynamic_tools_enabled: bool = False,
+    dynamic_tool_candidates: Sequence[str] = (),
+    dynamic_tool_top_k: int = 5,
+    dynamic_tool_embedding_model: str | None = None,
 ) -> AgentRuntimeConfig:
     """Build one runtime config from shared CLI surfaces."""
     output_sinks = ()
     if sink_specs:
         connections = ConnectionsConfigStore().load().enabled_connections()
         output_sinks = build_output_sinks(connections=connections, sink_specs=sink_specs)
+    tool_selection = ToolSelectionConfig(
+        enabled=dynamic_tools_enabled,
+        embedding_model=dynamic_tool_embedding_model,
+        top_k=dynamic_tool_top_k,
+        candidate_tool_keys=parse_allowed_tool_values(dynamic_tool_candidates),
+    )
     return AgentRuntimeConfig(
         approval_policy=approval_policy or DEFAULT_APPROVAL_POLICY,
         allowed_tools=parse_allowed_tool_values(allowed_tools),
+        tool_selection=tool_selection,
         output_sinks=output_sinks,
     )
 

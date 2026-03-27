@@ -9,11 +9,9 @@ from typing import Any
 from harnessiq.agents import AgentRuntimeConfig
 from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.adapters.context import HarnessAdapterContext
-from harnessiq.cli.common import emit_json, parse_allowed_tool_values, resolve_agent_model
+from harnessiq.cli.common import build_runtime_config as build_common_runtime_config, emit_json, resolve_agent_model
 from harnessiq.config import HarnessProfile, HarnessRunSnapshot
 from harnessiq.shared.dtos import HarnessAdapterResponseDTO, HarnessCommandPayloadDTO, HarnessResumePayloadDTO
-from harnessiq.shared.hooks import DEFAULT_APPROVAL_POLICY
-from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
 _UNSET = object()
 
@@ -189,6 +187,10 @@ class HarnessCliLifecycleRunner:
             run_request.sink_specs,
             approval_policy=getattr(args, "approval_policy", None),
             allowed_tools=getattr(args, "allowed_tools", ()),
+            dynamic_tools_enabled=getattr(args, "dynamic_tools", False),
+            dynamic_tool_candidates=getattr(args, "dynamic_tool_candidates", ()),
+            dynamic_tool_top_k=getattr(args, "dynamic_tool_top_k", 5),
+            dynamic_tool_embedding_model=getattr(args, "dynamic_tool_embedding_model", None),
         )
         payload = base_payload.with_resume(
             self._resume_payload(run_request=run_request, source_snapshot=source_snapshot)
@@ -209,12 +211,19 @@ class HarnessCliLifecycleRunner:
         *,
         approval_policy: str | None = None,
         allowed_tools: tuple[str, ...] | list[str] = (),
+        dynamic_tools_enabled: bool = False,
+        dynamic_tool_candidates: tuple[str, ...] | list[str] = (),
+        dynamic_tool_top_k: int = 5,
+        dynamic_tool_embedding_model: str | None = None,
     ) -> AgentRuntimeConfig:
-        connections = ConnectionsConfigStore().load().enabled_connections()
-        return AgentRuntimeConfig(
-            approval_policy=approval_policy or DEFAULT_APPROVAL_POLICY,
-            allowed_tools=parse_allowed_tool_values(allowed_tools),
-            output_sinks=build_output_sinks(connections=connections, sink_specs=list(sink_specs)),
+        return build_common_runtime_config(
+            sink_specs=list(sink_specs),
+            approval_policy=approval_policy,
+            allowed_tools=allowed_tools,
+            dynamic_tools_enabled=dynamic_tools_enabled,
+            dynamic_tool_candidates=dynamic_tool_candidates,
+            dynamic_tool_top_k=dynamic_tool_top_k,
+            dynamic_tool_embedding_model=dynamic_tool_embedding_model,
         )
 
     def _resume_payload(

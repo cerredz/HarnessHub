@@ -6,13 +6,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from harnessiq.agents import AgentModelRequest, AgentModelResponse, LeadsAgent
+from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentRuntimeConfig, LeadsAgent
 from harnessiq.agents.leads.agent import (
     LEADS_CHECK_SEEN,
     LEADS_LOG_SEARCH,
     LEADS_SAVE_LEADS,
 )
 from harnessiq.shared.dtos import LeadsAgentInstancePayload
+from harnessiq.shared.tool_selection import ToolSelectionConfig, ToolSelectionResult
 from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
 
 
@@ -43,6 +44,28 @@ def _dummy_provider_tool() -> RegisteredTool:
     )
 
 
+class _FakeDynamicToolSelector:
+    def __init__(self, *, selected_keys: tuple[str, ...]) -> None:
+        self._selected_keys = selected_keys
+
+    @property
+    def config(self) -> ToolSelectionConfig:
+        return ToolSelectionConfig(enabled=True, top_k=max(1, len(self._selected_keys)))
+
+    def index(self, profiles) -> None:
+        self._indexed = tuple(profile.key for profile in profiles)
+
+    def select(self, *, context_window, candidate_profiles, metadata=None) -> ToolSelectionResult:
+        del context_window, metadata
+        candidate_keys = tuple(profile.key for profile in candidate_profiles)
+        selected_keys = tuple(key for key in self._selected_keys if key in candidate_keys)
+        return ToolSelectionResult(
+            selected_keys=selected_keys,
+            retrieval_query="leads-query",
+            rejected_keys=tuple(key for key in candidate_keys if key not in selected_keys),
+        )
+
+
 class LeadsAgentTests(unittest.TestCase):
     def _make_agent(
         self,
@@ -53,6 +76,8 @@ class LeadsAgentTests(unittest.TestCase):
         search_summary_every: int = 500,
         search_tail_size: int = 20,
         prune_search_interval: int | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
+        dynamic_tool_selector=None,
     ) -> tuple[LeadsAgent, _FakeModel]:
         model = _FakeModel(responses)
         agent = LeadsAgent(
@@ -67,6 +92,8 @@ class LeadsAgentTests(unittest.TestCase):
             prune_search_interval=prune_search_interval,
             max_tokens=10_000,
             reset_threshold=0.99,
+            runtime_config=runtime_config,
+            dynamic_tool_selector=dynamic_tool_selector,
         )
         return agent, model
 
@@ -148,6 +175,30 @@ class LeadsAgentTests(unittest.TestCase):
             self.assertEqual(sales_state.status, "completed")
             self.assertEqual(marketing_state.status, "completed")
             self.assertEqual(agent.memory_store.read_run_state().status, "completed")
+
+    def test_dynamic_selection_keeps_leads_prompt_and_schema_surface_aligned(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            selector = _FakeDynamicToolSelector(selected_keys=("apollo.request", LEADS_LOG_SEARCH))
+            agent, model = self._make_agent(
+                temp_dir=temp_dir,
+                responses=[AgentModelResponse(assistant_message="done", should_continue=False)],
+                runtime_config=AgentRuntimeConfig(
+                    tool_selection=ToolSelectionConfig(
+                        enabled=True,
+                        top_k=2,
+                        candidate_tool_keys=("apollo.request", LEADS_LOG_SEARCH, LEADS_SAVE_LEADS),
+                    )
+                ),
+                dynamic_tool_selector=selector,
+            )
+
+            agent.run(max_cycles=1)
+
+            request = model.requests[0]
+            self.assertEqual([tool.key for tool in request.tools], ["apollo.request", "leads.log_search"])
+            self.assertIn("apollo_request", request.system_prompt)
+            self.assertIn("log_search", request.system_prompt)
+            self.assertNotIn("- save_leads:", request.system_prompt)
 
     def test_log_search_persists_and_auto_compacts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
