@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .cli import FactoryLoader, IterableFactory, PreparedStoreLoader, ZeroArgumentFactory
+from .cli import FactoryLoader, IterableFactory, IterableFactoryLoader, PreparedStoreLoader, ZeroArgumentFactory
 from .models import AnthropicModelClient, GeminiModelClient, OpenAIStyleModelClient
 from .output_sinks import (
     ConfluenceSinkClient,
@@ -30,6 +30,7 @@ __all__ = [
     "GeminiModelClient",
     "GoogleSheetsSinkClient",
     "IterableFactory",
+    "IterableFactoryLoader",
     "LinearSinkClient",
     "MongoClientFactory",
     "MongoCollectionSinkClient",

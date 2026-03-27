@@ -7,6 +7,10 @@ from unittest.mock import patch
 
 import pytest
 
+from harnessiq.cli.adapters.utils.factories import (
+    load_factory_assignment_map,
+    load_optional_iterable_factory,
+)
 from harnessiq.cli.common import (
     add_agent_options,
     add_model_selection_options,
@@ -27,6 +31,32 @@ class _Model:
     def generate_turn(self, request):  # pragma: no cover - behavior is irrelevant here
         del request
         return None
+
+
+class _FakeIterableFactoryLoader:
+    def __init__(self) -> None:
+        self.loaded_specs: list[str] = []
+
+    def __call__(self, spec: str):
+        self.loaded_specs.append(spec)
+
+        def factory() -> tuple[str, str]:
+            return (spec, spec.upper())
+
+        return factory
+
+
+class _FakeAssignmentFactoryLoader:
+    def __init__(self) -> None:
+        self.loaded_specs: list[str] = []
+
+    def __call__(self, spec: str):
+        self.loaded_specs.append(spec)
+
+        def factory() -> dict[str, str]:
+            return {"spec": spec}
+
+        return factory
 
 
 def test_slugify_agent_name_normalizes_whitespace_and_symbols() -> None:
@@ -82,6 +112,39 @@ def test_parse_scalar_decodes_json_scalars() -> None:
 def test_parse_generic_assignments_decodes_multiple_values() -> None:
     parsed = parse_generic_assignments(("count=3", 'name="alpha"', "enabled=true"))
     assert parsed == {"count": 3, "name": "alpha", "enabled": True}
+
+
+def test_load_optional_iterable_factory_accepts_injected_loader_contract() -> None:
+    loader = _FakeIterableFactoryLoader()
+
+    created = load_optional_iterable_factory(
+        "tests.test_cli_common:create_tools",
+        factory_loader=loader,
+    )
+
+    assert created == (
+        "tests.test_cli_common:create_tools",
+        "TESTS.TEST_CLI_COMMON:CREATE_TOOLS",
+    )
+    assert loader.loaded_specs == ["tests.test_cli_common:create_tools"]
+
+
+def test_load_factory_assignment_map_accepts_injected_loader_contract() -> None:
+    loader = _FakeAssignmentFactoryLoader()
+
+    created = load_factory_assignment_map(
+        ("search=tests.test_cli_common:create_search", "crm=tests.test_cli_common:create_crm"),
+        factory_loader=loader,
+    )
+
+    assert created == {
+        "search": {"spec": "tests.test_cli_common:create_search"},
+        "crm": {"spec": "tests.test_cli_common:create_crm"},
+    }
+    assert loader.loaded_specs == [
+        "tests.test_cli_common:create_search",
+        "tests.test_cli_common:create_crm",
+    ]
 
 
 def test_emit_json_serializes_paths(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:

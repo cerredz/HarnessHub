@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import argparse
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Any, Callable, Generic, Protocol, TypeVar
+from typing import Any, Generic, Protocol, TypeVar
 
 from harnessiq.agents import AgentModel, AgentRuntimeConfig
+from harnessiq.interfaces import PreparedStoreLoader
 
 from .context import HarnessAdapterContext
 
@@ -89,7 +89,7 @@ class BaseHarnessCliAdapter(ABC):
 class StoreBackedHarnessCliAdapter(BaseHarnessCliAdapter, Generic[StoreT], ABC):
     """Factor common prepare/load/sync logic for adapters backed by memory-store objects."""
 
-    store_loader: Callable[[Path], StoreT]
+    store_loader: PreparedStoreLoader[StoreT]
 
     def load_store(self, context: HarnessAdapterContext) -> StoreT:
         """Build and prepare the harness-native memory store for one adapter action."""
