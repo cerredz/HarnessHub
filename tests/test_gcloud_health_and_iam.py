@@ -94,11 +94,11 @@ def test_health_provider_validate_all_fail_fast(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr("shutil.which", lambda _: None)
     monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    client.run.side_effect = _gcloud_error("gcloud", "auth", stderr="not logged in")
-    client.run_json.return_value = {"bindings": []}
 
     with pytest.raises(RuntimeError, match="Health check failed"):
         provider.validate_all(fail_fast=True)
+    client.run.assert_not_called()
+    client.run_json.assert_not_called()
 
 
 def test_iam_provider_create_describe_and_missing_roles(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -157,19 +157,21 @@ class HealthProvider(BaseGcpProvider):
         )
 
     def validate_all(self, fail_fast: bool = False) -> list[HealthCheckResult]:
-        results = [
-            self.check_gcloud_installed(),
-            self.check_gcloud_auth(),
-            self.check_adc(),
-            self.check_anthropic_key_local(),
-            self.check_service_account_secret_access(),
-            *self.check_apis_enabled(),
-        ]
-        if fail_fast:
-            for result in results:
-                if not result.passed:
-                    message = f"Health check failed: {result.name}\n{result.message}"
-                    if result.fix:
-                        message += f"\nFix: {result.fix}"
-                    raise RuntimeError(message)
+        results: list[HealthCheckResult] = []
+
+        def _record(result: HealthCheckResult) -> None:
+            results.append(result)
+            if fail_fast and not result.passed:
+                message = f"Health check failed: {result.name}\n{result.message}"
+                if result.fix:
+                    message += f"\nFix: {result.fix}"
+                raise RuntimeError(message)
+
+        _record(self.check_gcloud_installed())
+        _record(self.check_gcloud_auth())
+        _record(self.check_adc())
+        _record(self.check_anthropic_key_local())
+        _record(self.check_service_account_secret_access())
+        for result in self.check_apis_enabled():
+            _record(result)
         return results
