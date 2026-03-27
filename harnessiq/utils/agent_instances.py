@@ -8,13 +8,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
+from harnessiq.shared.dtos import AgentInstancePayload
 from harnessiq.utils.agent_ids import (
     build_agent_instance_dirname,
     build_agent_instance_id,
     build_default_instance_name,
     fingerprint_agent_payload,
     normalize_agent_name,
-    normalize_agent_payload,
 )
 from harnessiq.utils.path_serialization import deserialize_repo_path, serialize_repo_path
 
@@ -31,7 +31,7 @@ class AgentInstanceRecord:
     instance_id: str
     instance_name: str
     payload_fingerprint: str
-    payload: dict[str, Any]
+    payload: AgentInstancePayload
     memory_path: Path
     created_at: str
     updated_at: str
@@ -45,7 +45,7 @@ class AgentInstanceRecord:
         object.__setattr__(self, "agent_name", normalized_agent_name)
         object.__setattr__(self, "instance_id", self.instance_id.strip())
         object.__setattr__(self, "instance_name", self.instance_name.strip())
-        object.__setattr__(self, "payload", normalize_agent_payload(self.payload))
+        object.__setattr__(self, "payload", AgentInstancePayload.from_dict(self.payload))
         object.__setattr__(self, "memory_path", Path(self.memory_path))
 
     def to_dict(self, *, repo_root: Path) -> dict[str, Any]:
@@ -55,7 +55,7 @@ class AgentInstanceRecord:
             "instance_id": self.instance_id,
             "instance_name": self.instance_name,
             "memory_path": serialize_repo_path(self.memory_path, repo_root=repo_root),
-            "payload": self.payload,
+            "payload": self.payload.to_dict(),
             "payload_fingerprint": self.payload_fingerprint,
             "updated_at": self.updated_at,
         }
@@ -67,7 +67,7 @@ class AgentInstanceRecord:
             instance_id=str(payload["instance_id"]),
             instance_name=str(payload["instance_name"]),
             payload_fingerprint=str(payload["payload_fingerprint"]),
-            payload=dict(payload.get("payload", {})),
+            payload=AgentInstancePayload.from_dict(payload.get("payload", {})),
             memory_path=deserialize_repo_path(str(payload["memory_path"]), repo_root=repo_root),
             created_at=str(payload["created_at"]),
             updated_at=str(payload["updated_at"]),
@@ -193,14 +193,17 @@ class AgentInstanceStore:
         self,
         *,
         agent_name: str,
-        payload: Mapping[str, Any] | None,
+        payload: AgentInstancePayload | Mapping[str, Any] | None,
         instance_name: str | None = None,
         memory_path: str | Path | None = None,
     ) -> AgentInstanceRecord:
         normalized_agent_name = normalize_agent_name(agent_name)
-        normalized_payload = normalize_agent_payload(payload)
-        fingerprint = fingerprint_agent_payload(normalized_payload)
-        instance_id = build_agent_instance_id(normalized_agent_name, normalized_payload)
+        normalized_payload = AgentInstancePayload.from_dict(payload)
+        fingerprint = fingerprint_agent_payload(normalized_payload.to_dict())
+        instance_id = build_agent_instance_id(
+            normalized_agent_name,
+            normalized_payload.to_dict(),
+        )
         catalog = self.load()
         existing = catalog.maybe_get(instance_id)
         timestamp = _utcnow()
@@ -244,8 +247,14 @@ class AgentInstanceStore:
         self.save(catalog.upsert(record))
         return record
 
-    def get_for_payload(self, *, agent_name: str, payload: Mapping[str, Any] | None) -> AgentInstanceRecord:
-        instance_id = build_agent_instance_id(agent_name, payload)
+    def get_for_payload(
+        self,
+        *,
+        agent_name: str,
+        payload: AgentInstancePayload | Mapping[str, Any] | None,
+    ) -> AgentInstanceRecord:
+        normalized_payload = AgentInstancePayload.from_dict(payload)
+        instance_id = build_agent_instance_id(agent_name, normalized_payload.to_dict())
         return self.get(instance_id)
 
     def _resolve_memory_path(

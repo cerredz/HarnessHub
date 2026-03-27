@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from harnessiq.shared.dtos import AgentInstancePayload
 from harnessiq.utils import (
     AgentInstanceStore,
     build_agent_instance_dirname,
@@ -18,11 +19,12 @@ from harnessiq.utils import (
 class AgentInstanceStoreTests(unittest.TestCase):
     def test_helpers_are_stable_for_equal_payloads(self) -> None:
         payload = {"config": {"max_tokens": 1000}, "tags": ["a", "b"]}
+        dto_payload = AgentInstancePayload.from_dict(payload)
 
         first_fingerprint = fingerprint_agent_payload(payload)
         second_fingerprint = fingerprint_agent_payload({"tags": ["a", "b"], "config": {"max_tokens": 1000}})
         first_id = build_agent_instance_id("linkedin_job_applier", payload)
-        second_id = build_agent_instance_id("linkedin_job_applier", {"tags": ["a", "b"], "config": {"max_tokens": 1000}})
+        second_id = build_agent_instance_id("linkedin_job_applier", dto_payload)
 
         self.assertEqual(first_fingerprint, second_fingerprint)
         self.assertEqual(first_id, second_id)
@@ -41,6 +43,8 @@ class AgentInstanceStoreTests(unittest.TestCase):
 
             self.assertEqual(first.instance_id, second.instance_id)
             self.assertEqual(first.memory_path, second.memory_path)
+            self.assertIsInstance(first.payload, AgentInstancePayload)
+            self.assertEqual(first.payload.to_dict(), payload)
             self.assertEqual(
                 first.memory_path,
                 Path(temp_dir)
@@ -78,6 +82,8 @@ class AgentInstanceStoreTests(unittest.TestCase):
             self.assertEqual(record.memory_path, explicit_memory_path)
             reloaded = store.get(record.instance_id)
             self.assertEqual(reloaded.memory_path, explicit_memory_path)
+            self.assertIsInstance(reloaded.payload, AgentInstancePayload)
+            self.assertEqual(reloaded.payload.to_dict(), {"query": "staff platform"})
 
     def test_store_migrates_legacy_default_memory_path_to_filesystem_safe_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -97,6 +103,21 @@ class AgentInstanceStoreTests(unittest.TestCase):
                 / "agents"
                 / "linkedin_job_applier"
                 / build_agent_instance_dirname(record.instance_id),
+            )
+
+    def test_store_loads_legacy_json_payloads_as_dto_instances(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = AgentInstanceStore(repo_root=temp_dir)
+            record = store.resolve(
+                agent_name="linkedin_job_applier",
+                payload={"query": "staff platform", "notify_on_pause": False},
+            )
+            reloaded = store.load().get(record.instance_id)
+
+            self.assertIsInstance(reloaded.payload, AgentInstancePayload)
+            self.assertEqual(
+                reloaded.payload.to_dict(),
+                {"notify_on_pause": False, "query": "staff platform"},
             )
 
 
