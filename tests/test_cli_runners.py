@@ -11,8 +11,9 @@ from types import SimpleNamespace
 import pytest
 
 from harnessiq.cli.adapters.context import HarnessAdapterContext
-from harnessiq.cli.builders import LeadsCliBuilder, ProspectingCliBuilder
+from harnessiq.cli.builders import ExaOutreachCliBuilder, LeadsCliBuilder, ProspectingCliBuilder
 from harnessiq.cli.runners import (
+    ExaOutreachCliRunner,
     HarnessCliLifecycleRunner,
     InstagramCliRunner,
     LeadsCliRunner,
@@ -604,3 +605,110 @@ def test_prospecting_runner_init_browser_returns_session_payload(
         ("stop", expected_dir, "chrome", False),
     ]
     assert "Open Google Maps" in stdout.getvalue()
+
+
+def test_exa_outreach_runner_run_forwards_factories_and_search_only_flag(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    class _StubAgent:
+        instance_id = "exa_outreach::abc123"
+        instance_name = "outreach-a"
+        last_run_id = "run-ledger-1"
+        _current_run_id = "run_1"
+
+        def run(self, *, max_cycles):
+            assert max_cycles == 1
+            return SimpleNamespace(cycles_completed=1, pause_reason=None, resets=0, status="completed")
+
+    def _fake_load_factory(spec: str):
+        if spec == "exa:factory":
+            return lambda: {"api_key": "exa"}
+        if spec == "resend:factory":
+            return lambda: {"api_key": "resend"}
+        if spec == "emails:factory":
+            return lambda: [
+                {
+                    "id": "t1",
+                    "title": "T",
+                    "subject": "S",
+                    "description": "D",
+                    "actual_email": "Body",
+                }
+            ]
+        raise AssertionError(f"Unexpected factory spec: {spec}")
+
+    def _fake_agent(**kwargs):
+        captured_kwargs.update(kwargs)
+        return _StubAgent()
+
+    builder = ExaOutreachCliBuilder()
+    builder.configure(
+        agent_name="outreach-a",
+        memory_root=str(tmp_path),
+        query_text="VPs of Engineering",
+        query_file=None,
+        agent_identity_text=None,
+        agent_identity_file=None,
+        additional_prompt_text=None,
+        additional_prompt_file=None,
+        runtime_assignments=["max_tokens=50000"],
+    )
+
+    monkeypatch.setattr("harnessiq.cli.runners.exa_outreach.seed_cli_environment", lambda _: None)
+    monkeypatch.setattr("harnessiq.cli.runners.exa_outreach.resolve_agent_model", lambda **_: "resolved-model")
+    monkeypatch.setattr("harnessiq.cli.runners.exa_outreach.load_factory", _fake_load_factory)
+    monkeypatch.setattr("harnessiq.cli.runners.exa_outreach.ExaOutreachAgent", _fake_agent)
+
+    runner = ExaOutreachCliRunner()
+    stdout = io.StringIO()
+    with redirect_stdout(stdout):
+        payload = runner.run(
+            agent_name="outreach-a",
+            memory_root=str(tmp_path),
+            model_factory="tests.test_exa_outreach_cli:mock_model",
+            model=None,
+            model_profile=None,
+            exa_credentials_factory="exa:factory",
+            resend_credentials_factory="resend:factory",
+            email_data_factory="emails:factory",
+            search_only=False,
+            runtime_assignments=["reset_threshold=0.75"],
+            sink_specs=[],
+            max_cycles=1,
+            approval_policy=None,
+            allowed_tools=(),
+        )
+
+    assert payload["run_id"] == "run_1"
+    assert payload["ledger_run_id"] == "run-ledger-1"
+    assert payload["result"]["status"] == "completed"
+    assert captured_kwargs["search_query"] == "VPs of Engineering"
+    assert captured_kwargs["max_tokens"] == 50000
+    assert captured_kwargs["reset_threshold"] == 0.75
+    assert len(captured_kwargs["email_data"]) == 1
+    assert "No run file found for run_1." in stdout.getvalue()
+
+
+def test_exa_outreach_runner_run_requires_delivery_factories(tmp_path: Path) -> None:
+    runner = ExaOutreachCliRunner()
+
+    with pytest.raises(ValueError, match="--resend-credentials-factory is required unless --search-only is set\\."):
+        runner.run(
+            agent_name="outreach-a",
+            memory_root=str(tmp_path),
+            model_factory="tests.test_exa_outreach_cli:mock_model",
+            model=None,
+            model_profile=None,
+            exa_credentials_factory="exa:factory",
+            resend_credentials_factory=None,
+            email_data_factory=None,
+            search_only=False,
+            runtime_assignments=[],
+            sink_specs=[],
+            max_cycles=1,
+            approval_policy=None,
+            allowed_tools=(),
+        )
