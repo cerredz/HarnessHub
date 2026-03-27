@@ -7,12 +7,12 @@ Stage 2 - Type Checking
 
 Stage 3 - Unit Tests
 - Command: `pytest tests/test_cli_builders.py tests/test_cli_runners.py tests/test_research_sweep_cli.py`
-- Result: `31 passed`
+- Result: `32 passed`
 
 Stage 4 - Integration & Contract Tests
 - The Research Sweep CLI suite exercises the public `prepare`, `configure`, `show`, and `run` flows end to end, while the direct builder/runner tests cover the extracted query reset semantics and the Serper credential resolution path.
 - Command: `pytest tests/test_cli_builders.py tests/test_cli_runners.py tests/test_research_sweep_cli.py`
-- Result: `31 passed`
+- Result: `32 passed`
 
 Stage 5 - Smoke & Manual Verification
 - Executed in-process smoke checks against the live Research Sweep CLI handlers:

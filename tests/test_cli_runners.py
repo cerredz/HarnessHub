@@ -772,3 +772,79 @@ def test_research_sweep_runner_run_uses_supplied_serper_credentials_factory(
     assert payload["instance_name"] == "sweep-a"
     assert captured_kwargs["serper_credentials"].api_key == "cli-serper-key"
     assert captured_kwargs["custom_overrides"]["query"] == "few-shot learning for protein folding"
+
+
+def test_research_sweep_runner_run_uses_bound_serper_credentials_when_factory_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    class _ResolvedBinding:
+        def as_dict(self) -> dict[str, str]:
+            return {"serper.api_key": "resolved-serper-key"}
+
+    class _CredentialStore:
+        def __init__(self, *, repo_root):
+            self.repo_root = repo_root
+
+        def load(self):
+            return self
+
+        def binding_for(self, binding_name: str):
+            assert "research_sweep" in binding_name
+            return "binding"
+
+        def resolve_binding(self, binding):
+            assert binding == "binding"
+            return _ResolvedBinding()
+
+    class _Spec:
+        def build_credentials(self, family_values: dict[str, str]):
+            return SimpleNamespace(api_key=family_values["api_key"])
+
+    class _StubAgent:
+        instance_id = "instance-2"
+        instance_name = "sweep-b"
+        last_run_id = "ledger-2"
+
+        def run(self, *, max_cycles):
+            assert max_cycles == 1
+            return SimpleNamespace(cycles_completed=1, pause_reason=None, resets=0, status="completed")
+
+    def _from_memory(**kwargs):
+        captured_kwargs.update(kwargs)
+        return _StubAgent()
+
+    builder = ResearchSweepCliBuilder()
+    builder.configure(
+        agent_name="sweep-b",
+        memory_root=str(tmp_path),
+        query_text="structure-based drug design",
+        query_file=None,
+        additional_prompt_text=None,
+        additional_prompt_file=None,
+        runtime_assignments=[],
+        custom_assignments=[],
+    )
+
+    monkeypatch.setattr("harnessiq.cli.runners.research_sweep.seed_cli_environment", lambda _: None)
+    monkeypatch.setattr("harnessiq.cli.runners.research_sweep.resolve_agent_model", lambda **_: "resolved-model")
+    monkeypatch.setattr("harnessiq.cli.runners.research_sweep.CredentialsConfigStore", _CredentialStore)
+    monkeypatch.setattr("harnessiq.cli.runners.research_sweep.get_provider_credential_spec", lambda _: _Spec())
+    monkeypatch.setattr("harnessiq.cli.runners.research_sweep.ResearchSweepAgent.from_memory", _from_memory)
+
+    runner = ResearchSweepCliRunner()
+    payload = runner.run(
+        agent_name="sweep-b",
+        memory_root=str(tmp_path),
+        model_factory="mod:model",
+        serper_credentials_factory=None,
+        runtime_assignments=[],
+        custom_assignments=[],
+        sink_specs=[],
+        max_cycles=1,
+    )
+
+    assert payload["result"]["status"] == "completed"
+    assert captured_kwargs["serper_credentials"].api_key == "resolved-serper-key"
