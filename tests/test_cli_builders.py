@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 
 from harnessiq.cli.adapters.context import HarnessAdapterContext
-from harnessiq.cli.builders import HarnessCliLifecycleBuilder
+from harnessiq.cli.builders import HarnessCliLifecycleBuilder, LinkedInCliBuilder
 from harnessiq.config import HarnessProfile, HarnessProfileStore
 from harnessiq.shared.harness_manifest import HarnessManifest, HarnessParameterSpec
 from harnessiq.shared.harness_manifests import get_harness_manifest
@@ -202,3 +202,38 @@ def test_lifecycle_builder_bind_credentials_rejects_unknown_provider_family(tmp_
             assignments=["exa.api_key=EXA_API_KEY"],
             description=None,
         )
+
+
+def test_linkedin_builder_configure_and_show_round_trip(tmp_path: Path) -> None:
+    source_file = tmp_path / "resume.txt"
+    source_file.write_text("Resume content", encoding="utf-8")
+    builder = LinkedInCliBuilder()
+
+    configured_payload = builder.configure(
+        agent_name="candidate-a",
+        memory_root=str(tmp_path),
+        job_preferences_text="Staff platform roles in New York.",
+        job_preferences_file=None,
+        user_profile_text="Python and distributed systems.",
+        user_profile_file=None,
+        agent_identity_text=None,
+        agent_identity_file=None,
+        additional_prompt_text="Prioritize remote-friendly companies.",
+        additional_prompt_file=None,
+        runtime_assignments=["max_tokens=2048", "notify_on_pause=false"],
+        custom_assignments=["team=platform"],
+        import_files=[str(source_file)],
+        inline_files=["cover-letter.txt=Hello from the CLI."],
+    )
+    shown_payload = builder.show(
+        agent_name="candidate-a",
+        memory_root=str(tmp_path),
+    )
+
+    assert configured_payload["status"] == "configured"
+    assert configured_payload["runtime_parameters"]["max_tokens"] == 2048
+    assert configured_payload["runtime_parameters"]["notify_on_pause"] is False
+    assert configured_payload["custom_parameters"]["team"] == "platform"
+    assert len(configured_payload["managed_files"]) == 2
+    assert shown_payload["job_preferences"] == "Staff platform roles in New York."
+    assert "cover-letter.txt" in str(shown_payload["managed_files"])

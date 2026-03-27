@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import io
+import os
+import sys
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from harnessiq.cli.adapters.context import HarnessAdapterContext
-from harnessiq.cli.runners import HarnessCliLifecycleRunner, ResolvedRunRequest
+from harnessiq.cli.runners import HarnessCliLifecycleRunner, LinkedInCliRunner, ResolvedRunRequest
 from harnessiq.config import HarnessProfile, HarnessRunSnapshot
 from harnessiq.shared.harness_manifest import HarnessManifest
 
@@ -199,3 +204,96 @@ def test_lifecycle_runner_execute_run_emits_expected_payload(monkeypatch: pytest
             "result": {"status": "completed"},
         }
     ]
+
+
+def test_linkedin_runner_run_uses_saved_browser_session_dir(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    store_path = tmp_path / "candidate-a"
+    browser_data_dir = store_path / "browser-data"
+    browser_data_dir.mkdir(parents=True)
+    captured_kwargs: dict[str, object] = {}
+
+    class _StubAgent:
+        instance_id = "linkedin_job_applier::abc123"
+        instance_name = "candidate-a"
+        last_run_id = "run-123"
+
+        def run(self, *, max_cycles):
+            assert max_cycles == 1
+            return SimpleNamespace(cycles_completed=1, pause_reason=None, resets=0, status="completed")
+
+    def _from_memory(**kwargs):
+        captured_kwargs.update(kwargs)
+        return _StubAgent()
+
+    monkeypatch.setattr("harnessiq.cli.runners.linkedin.seed_cli_environment", lambda _: None)
+    monkeypatch.setattr("harnessiq.cli.runners.linkedin.resolve_agent_model", lambda **_: "resolved-model")
+    monkeypatch.setattr("harnessiq.cli.runners.linkedin.LinkedInJobApplierAgent.from_memory", _from_memory)
+    monkeypatch.delenv("HARNESSIQ_BROWSER_SESSION_DIR", raising=False)
+
+    runner = LinkedInCliRunner()
+    stderr = io.StringIO()
+    with redirect_stderr(stderr):
+        payload = runner.run(
+            agent_name="candidate-a",
+            memory_root=str(tmp_path),
+            model_factory="tests.test_linkedin_cli:create_static_model",
+            model=None,
+            model_profile=None,
+            browser_tools_factory=None,
+            runtime_assignments=[],
+            sink_specs=[],
+            max_cycles=1,
+            approval_policy=None,
+            allowed_tools=(),
+        )
+
+    assert payload["result"]["status"] == "completed"
+    assert os.environ["HARNESSIQ_BROWSER_SESSION_DIR"] == str(browser_data_dir.resolve())
+    assert captured_kwargs["memory_path"] == store_path
+    assert captured_kwargs["browser_tools"] == ()
+    assert captured_kwargs["model"] == "resolved-model"
+    assert "NO DURABLE LINKEDIN APPLICATION RECORDS FOUND" in stderr.getvalue()
+
+
+def test_linkedin_runner_init_browser_returns_session_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    events: list[tuple[str, Path]] = []
+
+    class _FakeSession:
+        def __init__(self, *, session_dir):
+            self.session_dir = Path(session_dir)
+
+        def start(self):
+            events.append(("start", self.session_dir))
+
+        def stop(self):
+            events.append(("stop", self.session_dir))
+
+    monkeypatch.setitem(
+        sys.modules,
+        "harnessiq.integrations.linkedin_playwright",
+        SimpleNamespace(PlaywrightLinkedInSession=_FakeSession),
+    )
+
+    runner = LinkedInCliRunner()
+    stdout = io.StringIO()
+    with redirect_stdout(stdout):
+        payload = runner.init_browser(
+            agent_name="candidate-b",
+            memory_root=str(tmp_path),
+            wait_for_exit=lambda: None,
+        )
+
+    expected_dir = tmp_path / "candidate-b" / "browser-data"
+    assert payload == {
+        "agent": "candidate-b",
+        "browser_data_dir": str(expected_dir.resolve()),
+        "status": "session_saved",
+    }
+    assert events == [("start", expected_dir), ("stop", expected_dir)]
+    assert "Browser session saved to:" in stdout.getvalue()
