@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from tempfile import TemporaryDirectory
 import unittest
 
@@ -52,6 +53,64 @@ class _TestInstantlyAgent(BaseInstantlyAgent):
 
 
 class BaseInstantlyAgentTests(unittest.TestCase):
+    def test_instantly_agent_accepts_protocol_compatible_client(self) -> None:
+        @dataclass
+        class _FakeInstantlyClient:
+            credentials: InstantlyCredentials
+
+            def request_executor(self, method: str, url: str, **kwargs: object) -> dict[str, object]:
+                return {"campaigns": [], "method": method, "url": url, "timeout_seconds": kwargs["timeout_seconds"]}
+
+            def prepare_request(
+                self,
+                operation_name: str,
+                *,
+                path_params=None,
+                query=None,
+                payload=None,
+            ):
+                del path_params, query
+                return type(
+                    "PreparedRequest",
+                    (),
+                    {
+                        "operation": type("Operation", (), {"name": operation_name})(),
+                        "method": "GET",
+                        "path": "/campaigns",
+                        "url": "https://api.instantly.ai/api/v2/campaigns",
+                        "headers": {"Authorization": "Bearer instantly-secret-key"},
+                        "json_body": payload,
+                    },
+                )()
+
+        with TemporaryDirectory() as temp_repo_root:
+            credentials = InstantlyCredentials(api_key="instantly-secret-key")
+            model = _FakeModel(
+                [
+                    AgentModelResponse(
+                        assistant_message="List the campaigns.",
+                        tool_calls=(
+                            ToolCall(
+                                tool_key=INSTANTLY_REQUEST,
+                                arguments={"operation": "list_campaigns"},
+                            ),
+                        ),
+                        should_continue=False,
+                    )
+                ]
+            )
+            agent = _TestInstantlyAgent(
+                model=model,
+                instantly_credentials=credentials,
+                instantly_client=_FakeInstantlyClient(credentials=credentials),
+                repo_root=temp_repo_root,
+            )
+
+            result = agent.run(max_cycles=1)
+
+            self.assertEqual(result.status, "completed")
+            self.assertIn('"operation": "list_campaigns"', agent.transcript[-1].content)
+
     def test_instantly_agent_injects_masked_credentials_and_default_tooling(self) -> None:
         with TemporaryDirectory() as temp_repo_root:
             credentials = InstantlyCredentials(api_key="instantly-secret-key")
