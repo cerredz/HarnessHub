@@ -131,6 +131,9 @@
    Dependency: Ticket 14
    Issue: #302
    URL: https://github.com/cerredz/HarnessHub/issues/302
+   PR: #347
+   PR URL: https://github.com/cerredz/HarnessHub/pull/347
+   Status: implemented, awaiting merge into `main`
 
 16. Ticket 16: Document and verify the end-to-end GCP workflow
    Description: Add user-facing documentation and end-to-end test coverage for the new GCP deployment surface.
