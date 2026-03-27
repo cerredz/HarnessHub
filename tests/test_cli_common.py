@@ -16,6 +16,8 @@ from harnessiq.cli.common import (
     add_model_selection_options,
     add_text_or_file_options,
     emit_json,
+    load_factory,
+    parse_allowed_tool_values,
     parse_generic_assignments,
     parse_scalar,
     resolve_agent_model,
@@ -112,6 +114,14 @@ def test_parse_scalar_decodes_json_scalars() -> None:
 def test_parse_generic_assignments_decodes_multiple_values() -> None:
     parsed = parse_generic_assignments(("count=3", 'name="alpha"', "enabled=true"))
     assert parsed == {"count": 3, "name": "alpha", "enabled": True}
+
+
+def test_parse_allowed_tool_values_splits_deduplicates_and_preserves_order() -> None:
+    assert parse_allowed_tool_values(("filesystem,filesystem.read", "filesystem.read", "search")) == (
+        "filesystem",
+        "filesystem.read",
+        "search",
+    )
 
 
 def test_load_optional_iterable_factory_accepts_injected_loader_contract() -> None:
@@ -229,3 +239,8 @@ def test_resolve_agent_model_rejects_non_agent_model() -> None:
     with patch("harnessiq.cli.common.create_model_from_spec", return_value=object()):
         with pytest.raises(TypeError, match="generate_turn"):
             resolve_agent_model(model_spec="openai:gpt-5.4")
+
+
+def test_load_factory_rejects_invalid_spec() -> None:
+    with pytest.raises(ValueError, match="module:callable"):
+        load_factory("not-a-factory")

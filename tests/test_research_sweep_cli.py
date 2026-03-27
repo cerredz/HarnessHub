@@ -143,6 +143,40 @@ class TestRunCommand:
         kwargs = patched_from_memory.call_args.kwargs
         assert kwargs["serper_credentials"].api_key == "cli-serper-key"
 
+    def test_run_requires_serper_factory_or_bound_credentials(self, tmp_path, capsys) -> None:
+        _run(["research-sweep", "prepare", "--agent", "sweep-a", "--memory-root", str(tmp_path)])
+        _run(
+            [
+                "research-sweep",
+                "configure",
+                "--agent",
+                "sweep-a",
+                "--memory-root",
+                str(tmp_path),
+                "--query-text",
+                "few-shot learning for protein folding",
+            ]
+        )
+        capsys.readouterr()
+
+        with patch("harnessiq.cli.runners.research_sweep.resolve_agent_model", return_value=MagicMock()):
+            with pytest.raises(
+                ValueError,
+                match="--serper-credentials-factory is required unless you have already bound Serper credentials",
+            ):
+                _run(
+                    [
+                        "research-sweep",
+                        "run",
+                        "--agent",
+                        "sweep-a",
+                        "--memory-root",
+                        str(tmp_path),
+                        "--model-factory",
+                        "mod:model",
+                    ]
+                )
+
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__]))

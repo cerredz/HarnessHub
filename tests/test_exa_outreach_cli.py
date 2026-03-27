@@ -325,6 +325,58 @@ class TestSupportedParameters:
 
 
 class TestRunCommand:
+    def test_run_search_only_skips_delivery_factories(self, tmp_path, capsys):
+        _run(["outreach", "prepare", "--agent", "a", "--memory-root", str(tmp_path)])
+        _run(
+            [
+                "outreach",
+                "configure",
+                "--agent",
+                "a",
+                "--memory-root",
+                str(tmp_path),
+                "--query-text",
+                "VPs of Engineering",
+            ]
+        )
+        capsys.readouterr()
+
+        mock_agent = MagicMock()
+        mock_result = MagicMock()
+        mock_result.cycles_completed = 1
+        mock_result.pause_reason = None
+        mock_result.resets = 0
+        mock_result.status = "completed"
+        mock_agent.run.return_value = mock_result
+        mock_agent._current_run_id = "run_1"
+
+        with (
+            patch("harnessiq.cli.common.load_factory", return_value=lambda: MagicMock()),
+            patch("harnessiq.cli.runners.exa_outreach.load_factory", side_effect=[lambda: MagicMock()]),
+            patch("harnessiq.cli.runners.exa_outreach.ExaOutreachAgent", return_value=mock_agent) as patched_agent,
+        ):
+            result = _run(
+                [
+                    "outreach",
+                    "run",
+                    "--agent",
+                    "a",
+                    "--memory-root",
+                    str(tmp_path),
+                    "--model-factory",
+                    "mod:model",
+                    "--exa-credentials-factory",
+                    "mod:exa",
+                    "--search-only",
+                ]
+            )
+
+        assert result == 0
+        kwargs = patched_agent.call_args.kwargs
+        assert kwargs["search_only"] is True
+        assert kwargs["resend_credentials"] is None
+        assert kwargs["email_data"] == []
+
     def test_run_invokes_agent(self, tmp_path, capsys):
         from harnessiq.shared.exa_outreach import ExaOutreachMemoryStore
 
