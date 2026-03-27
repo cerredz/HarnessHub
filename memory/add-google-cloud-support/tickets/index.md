@@ -5,6 +5,9 @@
    Dependency: none
    Issue: #288
    URL: https://github.com/cerredz/HarnessHub/issues/288
+   PR: #304
+   PR URL: https://github.com/cerredz/HarnessHub/pull/304
+   Status: implemented, awaiting merge into `main`
 
 2. Ticket 2: Add core GCP command parameters and flag fragments
    Description: Implement the typed command parameter objects and reusable flag builders used by every later command module.

@@ -1,5 +1,6 @@
 ﻿Title: Introduce foundational GCP client and config primitives
 Issue URL: https://github.com/cerredz/HarnessHub/issues/288
+PR URL: https://github.com/cerredz/HarnessHub/pull/304
 
 Intent:
 Establish the shared execution and persistence base for every later GCP feature. This ticket creates the package-level primitives that make the rest of the provider layer testable, deterministic, and consistent with the repositoryâ€™s file-backed configuration style.
