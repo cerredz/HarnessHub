@@ -58,7 +58,16 @@ CONTEXT_INJECT_TASK_REMINDER = "context.inject.task_reminder"
 CONTEXT_INJECT_REPLAY_MEMORY = "context.inject.replay_memory"
 CONTEXT_INJECT_HANDOFF_BRIEF = "context.inject.handoff_brief"
 CONTEXT_INJECT_PROGRESS_MARKER = "context.inject.progress_marker"
+CONTEXT_SUMMARIZE_TRANSCRIPT = "context.summarize_transcript"
+CONTEXT_PRUNE_TOOL_RESULTS = "context.prune_tool_results"
+CONTEXT_ESTIMATE_WINDOW_PRESSURE = "context.estimate_window_pressure"
+CONTEXT_TRIM_OLDEST_ENTRIES = "context.trim_oldest_entries"
+CONTEXT_HANDOFF_BRIEF = "context.handoff_brief"
+CONTEXT_COLLAPSE_REPEATED_CALLS = "context.collapse_repeated_calls"
+CONTEXT_ANNOTATE_PHASE = "context.annotate_phase"
+CONTEXT_INJECT_REMINDER = "context.inject_reminder"
 CONTEXT_SUMMARIZATION_TOOL_KEYS = (
+    CONTEXT_SUMMARIZE_TRANSCRIPT,
     CONTEXT_SUMMARIZE_HEADLINE,
     CONTEXT_SUMMARIZE_CHRONOLOGICAL,
     CONTEXT_SUMMARIZE_STATE_SNAPSHOT,
@@ -70,6 +79,9 @@ CONTEXT_SUMMARIZATION_TOOL_KEYS = (
     CONTEXT_SUMMARIZE_OPEN_QUESTIONS,
 )
 CONTEXT_STRUCTURAL_TOOL_KEYS = (
+    CONTEXT_PRUNE_TOOL_RESULTS,
+    CONTEXT_TRIM_OLDEST_ENTRIES,
+    CONTEXT_COLLAPSE_REPEATED_CALLS,
     CONTEXT_STRUCT_TRUNCATE,
     CONTEXT_STRUCT_STRIP_OUTPUTS,
     CONTEXT_STRUCT_DEDUPLICATE,
@@ -100,6 +112,8 @@ CONTEXT_PARAMETER_TOOL_KEYS = (
     CONTEXT_PARAM_BULK_WRITE_MEMORY,
 )
 CONTEXT_TRANSCRIPT_INJECTION_TOOL_KEYS = (
+    CONTEXT_ANNOTATE_PHASE,
+    CONTEXT_INJECT_REMINDER,
     CONTEXT_INJECT_SYNTHETIC_TOOL_RESULT,
     CONTEXT_INJECT_ASSISTANT_NOTE,
     CONTEXT_INJECT_TOOL_CALL_PAIR,
@@ -117,11 +131,33 @@ CONTEXT_COMPACTION_TOOL_KEYS = (
 )
 CONTEXT_TOOL_KEYS = (
     *CONTEXT_COMPACTION_TOOL_KEYS,
+    CONTEXT_ESTIMATE_WINDOW_PRESSURE,
+    CONTEXT_HANDOFF_BRIEF,
     *CONTEXT_PARAMETER_TOOL_KEYS,
 )
 TEXT_NORMALIZE_WHITESPACE = "text.normalize_whitespace"
+TEXT_NORMALIZE = "text.normalize"
+TEXT_TRUNCATE = "text.truncate"
 TEXT_REGEX_EXTRACT = "text.regex_extract"
 TEXT_TRUNCATE_TEXT = "text.truncate_text"
+TEXT_CHUNK = "text.chunk"
+TEXT_EXTRACT_LINKS = "text.extract_links"
+TEXT_EXTRACT_EMAILS = "text.extract_emails"
+TEXT_STRIP_MARKDOWN = "text.strip_markdown"
+TEXT_ESTIMATE_TOKENS = "text.estimate_tokens"
+TEXT_EXTRACT_CODE_BLOCKS = "text.extract_code_blocks"
+TEXT_TEMPLATE_FILL = "text.template_fill"
+RECORDS_FILTER = "records.filter"
+RECORDS_SORT = "records.sort"
+RECORDS_SELECT = "records.select"
+RECORDS_LIMIT = "records.limit"
+RECORDS_UNIQUE = "records.unique"
+RECORDS_COUNT = "records.count"
+RECORDS_GROUP_BY = "records.group_by"
+RECORDS_AGGREGATE = "records.aggregate"
+RECORDS_JOIN = "records.join"
+RECORDS_RENAME_FIELDS = "records.rename_fields"
+RECORDS_FLATTEN = "records.flatten"
 RECORDS_SELECT_FIELDS = "records.select_fields"
 RECORDS_FILTER_RECORDS = "records.filter_records"
 RECORDS_SORT_RECORDS = "records.sort_records"
@@ -129,6 +165,13 @@ RECORDS_LIMIT_RECORDS = "records.limit_records"
 RECORDS_UNIQUE_RECORDS = "records.unique_records"
 RECORDS_COUNT_BY_FIELD = "records.count_by_field"
 CONTROL_PAUSE_FOR_HUMAN = "control.pause_for_human"
+CONTROL_EMIT_DECISION = "control.emit_decision"
+CONTROL_RECORD_ASSUMPTION = "control.record_assumption"
+CONTROL_MARK_BLOCKED = "control.mark_blocked"
+CONTROL_MARK_COMPLETE = "control.mark_complete"
+CONTROL_SET_FLAG = "control.set_flag"
+CONTROL_GET_FLAG = "control.get_flag"
+CONTROL_REQUEST_CLARIFICATION = "control.request_clarification"
 PROMPT_CREATE_SYSTEM_PROMPT = "prompt.create_system_prompt"
 FILESYSTEM_GET_CURRENT_DIRECTORY = "filesystem.get_current_directory"
 FILESYSTEM_PATH_EXISTS = "filesystem.path_exists"
@@ -138,6 +181,52 @@ FILESYSTEM_WRITE_TEXT_FILE = "filesystem.write_text_file"
 FILESYSTEM_APPEND_TEXT_FILE = "filesystem.append_text_file"
 FILESYSTEM_MAKE_DIRECTORY = "filesystem.make_directory"
 FILESYSTEM_COPY_PATH = "filesystem.copy_path"
+FILESYSTEM_SAFE_READ = "filesystem_safe.read"
+FILESYSTEM_SAFE_LIST = "filesystem_safe.list"
+FILESYSTEM_SAFE_EXISTS = "filesystem_safe.exists"
+FILESYSTEM_SAFE_COPY = "filesystem_safe.copy"
+FILESYSTEM_SAFE_APPEND = "filesystem_safe.append"
+FILESYSTEM_SAFE_WRITE = "filesystem_safe.write"
+FILESYSTEM_SAFE_STAT = "filesystem_safe.stat"
+FILESYSTEM_SAFE_FIND = "filesystem_safe.find"
+FILESYSTEM_SAFE_DIFF = "filesystem_safe.diff"
+CONTEXT_SUMMARIZE_TRANSCRIPT = "context.summarize_transcript"
+CONTEXT_PRUNE_TOOL_RESULTS = "context.prune_tool_results"
+CONTEXT_ESTIMATE_WINDOW_PRESSURE = "context.estimate_window_pressure"
+CONTEXT_TRIM_OLDEST_ENTRIES = "context.trim_oldest_entries"
+CONTEXT_HANDOFF_BRIEF = "context.handoff_brief"
+CONTEXT_COLLAPSE_REPEATED_CALLS = "context.collapse_repeated_calls"
+CONTEXT_ANNOTATE_PHASE = "context.annotate_phase"
+CONTEXT_INJECT_REMINDER = "context.inject_reminder"
+ARTIFACT_WRITE_MARKDOWN = "artifact.write_markdown"
+ARTIFACT_WRITE_JSON = "artifact.write_json"
+ARTIFACT_WRITE_CSV = "artifact.write_csv"
+ARTIFACT_APPEND_RUN_LOG = "artifact.append_run_log"
+ARTIFACT_SNAPSHOT_OUTPUT = "artifact.snapshot_output"
+ARTIFACT_RENDER_TABLE = "artifact.render_table"
+ARTIFACT_LIST_ARTIFACTS = "artifact.list_artifacts"
+ARTIFACT_READ_ARTIFACT = "artifact.read_artifact"
+ARTIFACT_FINALIZE_REPORT = "artifact.finalize_report"
+MEMORY_LOAD = "memory.load"
+MEMORY_SAVE = "memory.save"
+MEMORY_APPEND_JOURNAL = "memory.append_journal"
+MEMORY_CHECKPOINT = "memory.checkpoint"
+MEMORY_UPSERT_JSON = "memory.upsert_json"
+MEMORY_LIST_KEYS = "memory.list_keys"
+MEMORY_LOAD_CHECKPOINT = "memory.load_checkpoint"
+MEMORY_INCREMENT_COUNTER = "memory.increment_counter"
+MEMORY_DELETE = "memory.delete"
+MEMORY_COMPARE_CHECKPOINTS = "memory.compare_checkpoints"
+VALIDATION_SCHEMA_VALIDATE = "validation.schema_validate"
+VALIDATION_REQUIRE_FIELDS = "validation.require_fields"
+VALIDATION_DETECT_MISSING = "validation.detect_missing"
+VALIDATION_DETECT_DUPLICATES = "validation.detect_duplicates"
+VALIDATION_DETECT_CONFLICTS = "validation.detect_conflicts"
+VALIDATION_DIFF_EXPECTED_ACTUAL = "validation.diff_expected_actual"
+VALIDATION_ASSERT_NOT_EMPTY = "validation.assert_not_empty"
+VALIDATION_CHECK_TYPE = "validation.check_type"
+VALIDATION_SUMMARIZE_QUALITY = "validation.summarize_quality"
+VALIDATION_GATE = "validation.gate"
 BROWSER_NAVIGATE = "browser.navigate"
 BROWSER_CLICK = "browser.click"
 BROWSER_TYPE = "browser.type"
@@ -246,12 +335,23 @@ LEADS_COMPACT_SEARCH_HISTORY = "leads.compact_search_history"
 LEADS_LOG_SEARCH = "leads.log_search"
 LEADS_SAVE_LEADS = "leads.save_leads"
 
+# Mission-driven agent internal tool key constants
+MISSION_INITIALIZE_ARTIFACT = "mission_driven.initialize_artifact"
+MISSION_RECORD_UPDATES = "mission_driven.record_updates"
+MISSION_CREATE_CHECKPOINT = "mission_driven.create_checkpoint"
+
+# Spawn-specialized-subagents internal tool key constants
+SPAWN_PLAN_ASSIGNMENTS = "spawn_specialized_subagents.plan_assignments"
+SPAWN_RUN_ASSIGNMENT = "spawn_specialized_subagents.run_assignment"
+SPAWN_INTEGRATE_RESULTS = "spawn_specialized_subagents.integrate_results"
+
 # Provider tool key constants
 ATTIO_REQUEST = "attio.request"
 ARCADS_REQUEST = "arcads.request"
 ARXIV_REQUEST = "arxiv.request"
 CREATIFY_REQUEST = "creatify.request"
 EXA_REQUEST = "exa.request"
+HUNTER_REQUEST = "hunter.request"
 INSTANTLY_REQUEST = "instantly.request"
 INBOXAPP_REQUEST = "inboxapp.request"
 LEMLIST_REQUEST = "lemlist.request"
@@ -486,6 +586,7 @@ __all__ = [
     "EXA_OUTREACH_LOG_EMAIL_SENT",
     "EXA_OUTREACH_LOG_LEAD",
     "EXA_REQUEST",
+    "HUNTER_REQUEST",
     "FILESYSTEM_APPEND_TEXT_FILE",
     "FILESYSTEM_COPY_PATH",
     "FILESYSTEM_GET_CURRENT_DIRECTORY",
@@ -559,6 +660,9 @@ __all__ = [
     "LEADS_COMPACT_SEARCH_HISTORY",
     "LEADS_LOG_SEARCH",
     "LEADS_SAVE_LEADS",
+    "MISSION_CREATE_CHECKPOINT",
+    "MISSION_INITIALIZE_ARTIFACT",
+    "MISSION_RECORD_UPDATES",
     "LUSHA_REQUEST",
     "LEMLIST_REQUEST",
     "LOG_COMPACTION",
@@ -640,6 +744,9 @@ __all__ = [
     "SALESFORGE_REQUEST",
     "SEARCH_OR_SUMMARIZE",
     "SERPER_REQUEST",
+    "SPAWN_INTEGRATE_RESULTS",
+    "SPAWN_PLAN_ASSIGNMENTS",
+    "SPAWN_RUN_ASSIGNMENT",
     "SMARTLEAD_REQUEST",
     "SNOVIO_REQUEST",
     "TEXT_NORMALIZE_WHITESPACE",

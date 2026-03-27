@@ -11,6 +11,7 @@ from harnessiq.shared.hooks import (
     SUPPORTED_APPROVAL_POLICIES,
     ApprovalPolicy,
 )
+from harnessiq.shared.tool_selection import ToolSelectionConfig
 from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
 
 if TYPE_CHECKING:
@@ -87,6 +88,7 @@ class AgentRuntimeConfig:
     include_default_hooks: bool = True
     approval_policy: ApprovalPolicy = DEFAULT_APPROVAL_POLICY
     allowed_tools: tuple[str, ...] = ()
+    tool_selection: ToolSelectionConfig = field(default_factory=ToolSelectionConfig)
     output_sinks: tuple["OutputSink", ...] = ()
     include_default_output_sink: bool = True
     prune_progress_interval: int | None = DEFAULT_AGENT_PRUNE_PROGRESS_INTERVAL
@@ -95,6 +97,7 @@ class AgentRuntimeConfig:
     langsmith_api_key: str | None = None
     langsmith_project: str | None = None
     langsmith_api_url: str | None = None
+    session_id: str | None = None
 
     def __post_init__(self) -> None:
         if self.max_tokens <= 0:
@@ -120,6 +123,8 @@ class AgentRuntimeConfig:
             seen_allowed_tools.add(candidate)
             normalized_allowed_tools.append(candidate)
         object.__setattr__(self, "allowed_tools", tuple(normalized_allowed_tools))
+        if not isinstance(self.tool_selection, ToolSelectionConfig):
+            raise ValueError("tool_selection must be a ToolSelectionConfig instance.")
         object.__setattr__(self, "output_sinks", tuple(self.output_sinks))
         if self.prune_progress_interval is not None and self.prune_progress_interval <= 0:
             message = "prune_progress_interval must be greater than zero when provided."
@@ -136,6 +141,9 @@ class AgentRuntimeConfig:
         if self.langsmith_api_url is not None:
             normalized_api_url = self.langsmith_api_url.strip()
             object.__setattr__(self, "langsmith_api_url", normalized_api_url or None)
+        if self.session_id is not None:
+            normalized_session_id = self.session_id.strip()
+            object.__setattr__(self, "session_id", normalized_session_id or None)
 
     @property
     def reset_token_limit(self) -> int:
@@ -174,6 +182,7 @@ def merge_agent_runtime_config(
         include_default_hooks=runtime_config.include_default_hooks,
         approval_policy=runtime_config.approval_policy,
         allowed_tools=runtime_config.allowed_tools,
+        tool_selection=runtime_config.tool_selection,
         output_sinks=runtime_config.output_sinks,
         include_default_output_sink=runtime_config.include_default_output_sink,
         prune_progress_interval=(
@@ -190,6 +199,7 @@ def merge_agent_runtime_config(
         langsmith_api_key=runtime_config.langsmith_api_key,
         langsmith_project=runtime_config.langsmith_project,
         langsmith_api_url=runtime_config.langsmith_api_url,
+        session_id=runtime_config.session_id,
     )
 
 

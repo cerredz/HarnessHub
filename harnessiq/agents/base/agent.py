@@ -34,8 +34,6 @@ from harnessiq.shared.tools import (
     ToolResult,
 )
 from harnessiq.utils.agent_instances import AgentInstanceRecord, AgentInstanceStore
-from harnessiq.utils.ledger import new_run_id
-
 from .helpers import BaseAgentHelpersMixin, _resolve_repo_root, _utcnow
 
 
@@ -81,6 +79,9 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         self._cycle_index = 0
         self._last_run_id: str | None = None
         self._last_prune_progress = 0
+        self._session_id: str | None = self._runtime_config.session_id
+        self._run_tool_calls = 0
+        self._run_tool_call_breakdown: dict[str, int] = {}
         self._context_runtime_state = self._load_context_runtime_state()
         self._tool_executor = tool_executor
         self._hook_tools = self._build_hook_tools()
@@ -140,6 +141,10 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
     @property
     def last_run_id(self) -> str | None:
         return self._last_run_id
+
+    @property
+    def session_id(self) -> str | None:
+        return self._session_id
 
     def build_context_window(self) -> AgentContextWindow:
         """Return the current context window including parameters and transcript entries."""
@@ -241,8 +246,7 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         self._cycle_index = 0
         self._transcript.clear()
         self.refresh_parameters()
-        self._last_run_id = new_run_id()
-        started_at = _utcnow()
+        started_at = self._initialize_terminal_run()
         total_estimated_request_tokens = 0
         self._last_prune_progress = self.pruning_progress_value()
 
@@ -319,6 +323,16 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
                         break
 
                 if pause_signal is not None:
+                    if self._pause_signal_marks_completion(pause_signal):
+                        return self._complete_run(
+                            AgentRunResult(
+                                status="completed",
+                                cycles_completed=cycles_completed,
+                                resets=self._reset_count,
+                            ),
+                            started_at=started_at,
+                            total_estimated_request_tokens=total_estimated_request_tokens,
+                        )
                     return self._complete_run(
                         AgentRunResult(
                             status="paused",
@@ -390,3 +404,7 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
     def build_ledger_metadata(self) -> dict[str, Any]:
         """Return additional framework- or agent-specific metadata for the run."""
         return {}
+
+    def _pause_signal_marks_completion(self, pause_signal: AgentPauseSignal) -> bool:
+        details = pause_signal.details
+        return isinstance(details, dict) and details.get("status") == "completed"

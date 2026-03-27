@@ -13,6 +13,7 @@ from harnessiq.shared.credentials import (
     CreatifyCredentials,
     ExaCredentials,
     ExpandiCredentials,
+    HunterCredentials,
     InboxAppCredentials,
     InstantlyCredentials,
     LeadIQCredentials,
@@ -95,6 +96,12 @@ PROVIDER_CREDENTIAL_SPECS = MappingProxyType(
                 ProviderCredentialFieldSpec("api_secret", "Expandi API secret."),
             ),
             builder=build_dataclass_credential_builder(ExpandiCredentials),
+        ),
+        "hunter": ProviderCredentialSpec(
+            family="hunter",
+            description="Hunter.io API credentials.",
+            fields=(ProviderCredentialFieldSpec("api_key", "Hunter API key."),),
+            builder=build_dataclass_credential_builder(HunterCredentials),
         ),
         "google_drive": ProviderCredentialSpec(
             family="google_drive",

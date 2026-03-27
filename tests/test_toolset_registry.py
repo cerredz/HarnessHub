@@ -299,7 +299,7 @@ class TestListTools:
 
     def test_catalog_facade_preserves_public_symbols(self):
         assert ToolEntry.__module__ == "harnessiq.toolset.catalog"
-        assert len(BUILTIN_FAMILY_FACTORIES) == 8
+        assert len(BUILTIN_FAMILY_FACTORIES) == 16
         assert len(PROVIDER_ENTRIES) == len(PROVIDER_ENTRY_INDEX)
         assert PROVIDER_ENTRY_INDEX["arxiv.request"].family == "arxiv"
 

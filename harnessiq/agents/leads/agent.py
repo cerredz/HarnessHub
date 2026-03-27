@@ -46,8 +46,6 @@ from harnessiq.shared.tools import (
 )
 from harnessiq.tools.leads import create_leads_tools
 from harnessiq.tools.registry import create_tool_registry
-from harnessiq.utils.ledger import new_run_id
-
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
 _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
@@ -235,8 +233,7 @@ class LeadsAgent(BaseAgent):
         self._cycle_index = 0
         self._transcript.clear()
         self.refresh_parameters()
-        self._last_run_id = new_run_id()
-        started_at = datetime.now(timezone.utc)
+        started_at = self._initialize_terminal_run()
         total_estimated_request_tokens = 0
         self._last_prune_progress = self.pruning_progress_value()
         before_run_pause = self._apply_before_run_hooks()

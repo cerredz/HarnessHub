@@ -10,11 +10,12 @@ from urllib import error, request
 from harnessiq.providers import (
     ProviderHTTPError,
     SUPPORTED_PROVIDERS,
+    create_provider_embedding_client,
     normalize_messages,
     omit_none_values,
     request_json,
 )
-from harnessiq.shared.dtos import ProviderMessageDTO
+from harnessiq.providers.openai import OpenAIClient
 from harnessiq.shared.tools import ToolDefinition
 
 
@@ -168,6 +169,14 @@ class ProviderBaseTests(unittest.TestCase):
             self.assertEqual(exc.provider, "grok")
             self.assertEqual(exc.status_code, 403)
             self.assertEqual(str(exc), "grok request failed (403): Forbidden")
+
+    def test_create_provider_embedding_client_is_exported_from_providers_package(self) -> None:
+        from unittest import mock
+
+        with mock.patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}, clear=False):
+            client = create_provider_embedding_client("openai")
+
+        self.assertIsInstance(client, OpenAIClient)
 
 
 if __name__ == "__main__":

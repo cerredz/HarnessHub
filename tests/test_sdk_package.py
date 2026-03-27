@@ -106,6 +106,8 @@ class HarnessiqPackageTests(unittest.TestCase):
                         "assert hasattr(harnessiq.agents, 'InstagramKeywordDiscoveryAgent'); "
                         "assert hasattr(harnessiq.agents, 'GoogleMapsProspectingAgent'); "
                         "assert hasattr(harnessiq.integrations, 'create_model_from_spec'); "
+                        "assert hasattr(harnessiq.toolset, 'DefaultDynamicToolSelector'); "
+                        "assert hasattr(harnessiq.toolset, 'resolve_tool_profiles'); "
                         "assert callable(cli_main); "
                         "assert hasattr(harnessiq.config, 'CredentialsConfigStore'); "
                         "assert hasattr(harnessiq.tools, 'create_builtin_registry'); "

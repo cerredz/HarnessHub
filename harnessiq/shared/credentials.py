@@ -13,6 +13,7 @@ from harnessiq.shared.providers import (
     CREATIFY_DEFAULT_BASE_URL,
     EXA_DEFAULT_BASE_URL,
     EXPANDI_DEFAULT_BASE_URL,
+    HUNTER_DEFAULT_BASE_URL,
     INBOXAPP_DEFAULT_BASE_URL,
     INSTANTLY_DEFAULT_BASE_URL,
     LEMLIST_DEFAULT_BASE_URL,
@@ -336,6 +337,33 @@ class ExpandiCredentials:
 
 
 @dataclass(frozen=True, slots=True)
+class HunterCredentials:
+    """Runtime credentials for the Hunter.io API."""
+
+    api_key: str
+    base_url: str = HUNTER_DEFAULT_BASE_URL
+    timeout_seconds: float = 60.0
+
+    def __post_init__(self) -> None:
+        _validate_text_fields(self, "api_key")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
+
+    def masked_api_key(self) -> str:
+        key = self.api_key
+        if len(key) <= 4:
+            return "*" * len(key)
+        return f"{key[:3]}{'*' * max(1, len(key) - 7)}{key[-4:]}"
+
+    def as_redacted_dict(self) -> dict[str, object]:
+        return {
+            "api_key_masked": self.masked_api_key(),
+            "base_url": self.base_url,
+            "timeout_seconds": self.timeout_seconds,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class InboxAppCredentials:
     """Runtime credentials for the InboxApp API."""
 
@@ -589,6 +617,7 @@ __all__ = [
     "CreatifyCredentials",
     "ExaCredentials",
     "ExpandiCredentials",
+    "HunterCredentials",
     "InboxAppCredentials",
     "InstantlyCredentials",
     "LeadIQCredentials",
