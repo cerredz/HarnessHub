@@ -15,6 +15,7 @@ from harnessiq.providers import (
     omit_none_values,
     request_json,
 )
+from harnessiq.shared.tools import ToolDefinition
 
 
 class _FakeResponse:
@@ -42,6 +43,15 @@ class ProviderBaseTests(unittest.TestCase):
     def test_normalize_messages_rejects_inline_system_when_disallowed(self) -> None:
         with self.assertRaises(ProviderFormatError):
             normalize_messages([{"role": "system", "content": "dup"}], allow_system=False)
+
+    def test_tool_definition_rejects_blank_description(self) -> None:
+        with self.assertRaises(ValueError):
+            ToolDefinition(
+                key="core.echo_text",
+                name="echo_text",
+                description="   ",
+                input_schema={"type": "object", "properties": {}, "additionalProperties": False},
+            )
 
     def test_omit_none_values_drops_none_entries(self) -> None:
         payload = omit_none_values({"model": "gpt-4.1", "temperature": None, "nested": {"value": 1}})

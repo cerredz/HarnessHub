@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
-from collections import OrderedDict
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
 from harnessiq.interfaces import RequestPreparingClient
 
 from harnessiq.providers.http import join_url
-from harnessiq.shared.tools import RegisteredTool, SERPER_REQUEST, ToolArguments, ToolDefinition
+from harnessiq.shared.tools import (
+    RegisteredTool,
+    SERPER_REQUEST,
+    ToolArguments,
+    ToolDefinition,
+    build_grouped_operation_description,
+)
 
 if TYPE_CHECKING:
     from harnessiq.providers.serper.client import SerperCredentials
@@ -152,26 +157,19 @@ def _require_operation_name(arguments: Mapping[str, object], allowed: frozenset[
 
 
 def _build_tool_description(operations: Sequence[SerperOperation]) -> str:
-    grouped: OrderedDict[str, list[str]] = OrderedDict()
-    for op in operations:
-        grouped.setdefault(op.category, []).append(op.summary())
-
-    lines = [
-        "Execute authenticated Serper Google search API operations.",
-        "",
-        "Serper exposes multiple Google result modes through a single API product. "
-        "This tool keeps the initial surface conservative around core search, maps, "
-        "autocomplete, and research-oriented modes visible in the public product surface.",
-        "",
-        "Available operations by category:",
-    ]
-    for category, summaries in grouped.items():
-        lines.append(f"  {category}: {', '.join(summaries)}")
-    lines.append(
-        "\nParameter guidance: all Serper requests send a JSON 'payload', typically with "
-        "'q' plus optional localization and mode-specific fields."
+    return build_grouped_operation_description(
+        operations,
+        lead="Execute authenticated Serper Google search API operations.",
+        usage=(
+            "Serper exposes multiple Google result modes through a single API product. "
+            "This tool keeps the initial surface conservative around core search, maps, "
+            "autocomplete, and research-oriented modes visible in the public product surface."
+        ),
+        closing=(
+            "Parameter guidance: all Serper requests send a JSON 'payload', typically with "
+            "'q' plus optional localization and mode-specific fields."
+        ),
     )
-    return "\n".join(lines)
 
 
 __all__ = [

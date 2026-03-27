@@ -41,6 +41,7 @@ from .validated import (
     NonNegativeInt,
     PositiveInt,
     ProviderFamilyName,
+    ToolDescription,
     parse_bounded_int,
     parse_positive_number,
 )
@@ -75,6 +76,7 @@ __all__ = [
     "RESEARCH_SWEEP_HARNESS_MANIFEST",
     "ResourceNotFoundError",
     "StateError",
+    "ToolDescription",
     "ValidationError",
     "get_harness_manifest",
     "list_harness_manifests",

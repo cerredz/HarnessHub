@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import OrderedDict
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
@@ -24,7 +23,13 @@ from harnessiq.providers.apollo.requests import (
     build_update_contact_request,
     build_usage_stats_request,
 )
-from harnessiq.shared.tools import APOLLO_REQUEST, RegisteredTool, ToolArguments, ToolDefinition
+from harnessiq.shared.tools import (
+    APOLLO_REQUEST,
+    RegisteredTool,
+    ToolArguments,
+    ToolDefinition,
+    build_grouped_operation_description,
+)
 
 if TYPE_CHECKING:
     from harnessiq.providers.apollo.credentials import ApolloCredentials
@@ -191,18 +196,19 @@ def _optional_mapping(arguments: Mapping[str, object], key: str) -> Mapping[str,
 
 
 def _build_tool_description(operations: Sequence[ApolloOperation]) -> str:
-    grouped: OrderedDict[str, list[str]] = OrderedDict()
-    for operation in operations:
-        grouped.setdefault(operation.category, []).append(operation.summary())
-    lines = [
-        "Execute authenticated Apollo sales intelligence and engagement API operations.",
-        "",
-        "Use people and organization search for prospect discovery, enrichment operations for shortlist enrichment, contact operations for Apollo-native persistence, sequence operations for campaign handoff, and usage stats for budget introspection.",
-    ]
-    for category, summaries in grouped.items():
-        lines.append(f"{category}: {', '.join(summaries)}")
-    lines.append("Use 'path_params' for resource ids, 'query' for GET enrichment and dedupe toggles, and 'payload' for JSON request bodies.")
-    return "\n".join(lines)
+    return build_grouped_operation_description(
+        operations,
+        lead="Execute authenticated Apollo sales intelligence and engagement API operations.",
+        usage=(
+            "Use people and organization search for prospect discovery, enrichment operations "
+            "for shortlist enrichment, contact operations for Apollo-native persistence, "
+            "sequence operations for campaign handoff, and usage stats for budget introspection."
+        ),
+        closing=(
+            "Use 'path_params' for resource ids, 'query' for GET enrichment and dedupe toggles, "
+            "and 'payload' for JSON request bodies."
+        ),
+    )
 
 
 def _normalize_payload(operation_name: str, payload: Any | None) -> Any | None:

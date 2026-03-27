@@ -60,6 +60,10 @@ class HttpUrl(NonEmptyString):
         return str.__new__(cls, normalized)
 
 
+class ToolDescription(NonEmptyString):
+    """A non-empty description string used in tool metadata."""
+
+
 class NonNegativeInt(int):
     """An integer greater than or equal to zero."""
 
@@ -129,6 +133,7 @@ __all__ = [
     "NonNegativeInt",
     "PositiveInt",
     "ProviderFamilyName",
+    "ToolDescription",
     "parse_bounded_int",
     "parse_positive_number",
 ]
