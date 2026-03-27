@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import pytest
 from pathlib import Path
 
 from harnessiq.cli.adapters.context import HarnessAdapterContext
 from harnessiq.cli.builders import HarnessCliLifecycleBuilder
 from harnessiq.config import HarnessProfile, HarnessProfileStore
 from harnessiq.shared.harness_manifest import HarnessManifest, HarnessParameterSpec
+from harnessiq.shared.harness_manifests import get_harness_manifest
 
 
 class _StubAdapter:
@@ -136,3 +138,67 @@ def test_lifecycle_builder_persists_profile_when_requested(tmp_path: Path) -> No
     assert profile_store.profile_path.exists()
     assert saved_profile.runtime_parameters == {"max_tokens": 1024}
     assert (tmp_path / "memory" / "harness_profiles.json").exists()
+
+
+def test_lifecycle_builder_build_inspection_payload_reports_manifest_metadata() -> None:
+    builder = HarnessCliLifecycleBuilder()
+
+    payload = builder.build_inspection_payload(manifest=get_harness_manifest("research_sweep"))
+
+    runtime_index = {entry["key"]: entry for entry in payload["runtime_parameters"]}
+    assert payload["harness"] == "research_sweep"
+    assert payload["default_memory_root"] == "memory/research_sweep"
+    assert runtime_index["max_tokens"]["default"] == 80000
+    assert payload["provider_credential_fields"]["serper"][0]["name"] == "api_key"
+
+
+def test_lifecycle_builder_bind_show_and_test_credentials_round_trip(tmp_path: Path) -> None:
+    builder = HarnessCliLifecycleBuilder(cwd=tmp_path)
+    manifest = get_harness_manifest("knowt")
+    (tmp_path / ".env").write_text(
+        "CREATIFY_API_ID=cid_123\nCREATIFY_API_KEY=key_456\n",
+        encoding="utf-8",
+    )
+
+    bound_payload = builder.bind_credentials(
+        manifest=manifest,
+        agent_name="channel-a",
+        memory_root=tmp_path,
+        assignments=[
+            "creatify.api_id=CREATIFY_API_ID",
+            "creatify.api_key=CREATIFY_API_KEY",
+        ],
+        description="Channel binding",
+    )
+    shown_payload = builder.show_credentials(
+        manifest=manifest,
+        agent_name="channel-a",
+        memory_root=tmp_path,
+    )
+    tested_payload = builder.test_credentials(
+        manifest=manifest,
+        agent_name="channel-a",
+        memory_root=tmp_path,
+    )
+
+    assert bound_payload["status"] == "bound"
+    assert bound_payload["families"]["creatify"]["api_id"] == "CREATIFY_API_ID"
+    assert shown_payload["bound"] is True
+    assert shown_payload["description"] == "Channel binding"
+    assert shown_payload["families"]["creatify"]["api_key"] == "CREATIFY_API_KEY"
+    assert tested_payload["status"] == "resolved"
+    assert tested_payload["families"]["creatify"]["api_id"] == "cid_123"
+    assert tested_payload["families"]["creatify"]["api_key_masked"].startswith("key")
+
+
+def test_lifecycle_builder_bind_credentials_rejects_unknown_provider_family(tmp_path: Path) -> None:
+    builder = HarnessCliLifecycleBuilder(cwd=tmp_path)
+
+    with pytest.raises(ValueError, match="does not declare provider family 'exa'"):
+        builder.bind_credentials(
+            manifest=get_harness_manifest("knowt"),
+            agent_name="channel-a",
+            memory_root=tmp_path,
+            assignments=["exa.api_key=EXA_API_KEY"],
+            description=None,
+        )

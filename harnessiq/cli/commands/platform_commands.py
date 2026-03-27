@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
+from harnessiq.cli.builders import HarnessCliLifecycleBuilder
 from harnessiq.cli.common import (
     add_agent_options,
     add_manifest_parameter_options,
@@ -16,36 +17,19 @@ from harnessiq.cli.common import (
     parse_generic_assignments,
     resolve_repo_root,
 )
+from harnessiq.cli.runners import HarnessCliLifecycleRunner
 from harnessiq.cli.commands.command_helpers import (
     _base_payload,
-    _binding_name,
     _build_adapter,
-    _build_context,
     _clone_args_with_run_request,
     _discover_resume_candidates,
-    _execute_run,
-    _group_reference_mapping,
-    _group_resolved_values,
-    _load_existing_binding_references,
-    _parse_reference_assignment,
     _parse_resume_manifest_parameters,
-    _persist_run_snapshot,
-    _render_parameter_spec,
-    _resolve_profile_resume_snapshot,
     _resolve_resume_agent_name,
     _resolve_resume_manifest,
-    _resolve_resume_request_from_snapshot,
-    _resolve_run_request,
     _select_resume_candidate,
-    _validate_binding_references,
 )
 from harnessiq.config import (
-    AgentCredentialBinding,
-    AgentCredentialsNotConfiguredError,
-    CredentialEnvReference,
-    CredentialsConfigStore,
     HarnessRunSnapshot,
-    get_provider_credential_spec,
 )
 from harnessiq.shared.harness_manifests import get_harness_manifest, list_harness_manifests
 
@@ -235,7 +219,8 @@ def _register_manifest_subcommands(
 def _handle_prepare(args: argparse.Namespace) -> int:
     manifest = get_harness_manifest(args.manifest_id)
     adapter = _build_adapter(manifest)
-    context = _build_context(
+    builder = HarnessCliLifecycleBuilder()
+    context = builder.build_context(
         manifest=manifest,
         adapter=adapter,
         agent_name=args.agent,
@@ -254,7 +239,8 @@ def _handle_prepare(args: argparse.Namespace) -> int:
 def _handle_show(args: argparse.Namespace) -> int:
     manifest = get_harness_manifest(args.manifest_id)
     adapter = _build_adapter(manifest)
-    context = _build_context(
+    builder = HarnessCliLifecycleBuilder()
+    context = builder.build_context(
         manifest=manifest,
         adapter=adapter,
         agent_name=args.agent,
@@ -272,11 +258,13 @@ def _handle_show(args: argparse.Namespace) -> int:
 def _handle_run(args: argparse.Namespace) -> int:
     manifest = get_harness_manifest(args.manifest_id)
     adapter = _build_adapter(manifest)
+    builder = HarnessCliLifecycleBuilder()
+    runner = HarnessCliLifecycleRunner()
     incoming_runtime = collect_manifest_parameter_values(args, manifest=manifest, scope="runtime")
     incoming_custom = collect_manifest_parameter_values(args, manifest=manifest, scope="custom")
     selected_snapshot: HarnessRunSnapshot | None = None
     if args.resume:
-        selection_context = _build_context(
+        selection_context = builder.build_context(
             manifest=manifest,
             adapter=adapter,
             agent_name=args.agent,
@@ -285,11 +273,11 @@ def _handle_run(args: argparse.Namespace) -> int:
             incoming_custom={},
             persist_profile=False,
         )
-        selected_snapshot = _resolve_profile_resume_snapshot(
+        selected_snapshot = runner.resolve_profile_resume_snapshot(
             profile=selection_context.profile,
             run_number=args.resume_run_number,
         )
-        context = _build_context(
+        context = builder.build_context(
             manifest=manifest,
             adapter=adapter,
             agent_name=args.agent,
@@ -301,7 +289,7 @@ def _handle_run(args: argparse.Namespace) -> int:
             persist_profile=True,
         )
     else:
-        context = _build_context(
+        context = builder.build_context(
             manifest=manifest,
             adapter=adapter,
             agent_name=args.agent,
@@ -310,7 +298,7 @@ def _handle_run(args: argparse.Namespace) -> int:
             incoming_custom=incoming_custom,
             persist_profile=True,
         )
-    run_request = _resolve_run_request(
+    run_request = runner.resolve_run_request(
         args=args,
         profile=context.profile,
         resume_requested=bool(args.resume),
@@ -320,13 +308,18 @@ def _handle_run(args: argparse.Namespace) -> int:
         adapter_argument_names=getattr(args, _RUN_ADAPTER_ARGUMENT_NAMES_DEST, ()),
         run_argument_overrides=parse_generic_assignments(args.run_arg),
     )
-    context = _persist_run_snapshot(context, run_request)
+    context = runner.persist_run_snapshot(
+        context=context,
+        run_request=run_request,
+        persist_profile=builder.persist_profile,
+    )
     effective_args = _clone_args_with_run_request(args, run_request)
-    return _execute_run(
+    return runner.execute_run(
         adapter=adapter,
         args=effective_args,
         context=context,
         run_request=run_request,
+        base_payload=_base_payload(context),
         source_snapshot=selected_snapshot,
     )
 
@@ -335,6 +328,8 @@ def _handle_resume(args: argparse.Namespace) -> int:
     agent_name = _resolve_resume_agent_name(args)
     repo_root = resolve_repo_root(Path.cwd())
     manifest = _resolve_resume_manifest(args.harness)
+    builder = HarnessCliLifecycleBuilder()
+    runner = HarnessCliLifecycleRunner()
     candidates = _discover_resume_candidates(repo_root=repo_root, agent_name=agent_name, manifest=manifest)
     if not candidates:
         if manifest is not None:
@@ -344,11 +339,11 @@ def _handle_resume(args: argparse.Namespace) -> int:
         raise ValueError(f"No resumable profile named '{agent_name}' was found.")
     candidate = _select_resume_candidate(agent_name=agent_name, candidates=candidates)
     adapter = _build_adapter(candidate.manifest)
-    selected_snapshot = _resolve_profile_resume_snapshot(
+    selected_snapshot = runner.resolve_profile_resume_snapshot(
         profile=candidate.profile,
         run_number=args.resume_run_number,
     )
-    context = _build_context(
+    context = builder.build_context(
         manifest=candidate.manifest,
         adapter=adapter,
         agent_name=candidate.agent_name,
@@ -359,7 +354,7 @@ def _handle_resume(args: argparse.Namespace) -> int:
         base_custom_parameters=selected_snapshot.custom_parameters,
         persist_profile=True,
     )
-    run_request = _resolve_resume_request_from_snapshot(
+    run_request = runner.resolve_resume_request_from_snapshot(
         snapshot=selected_snapshot,
         model_factory=args.model_factory,
         model=args.model,
@@ -368,7 +363,11 @@ def _handle_resume(args: argparse.Namespace) -> int:
         max_cycles=args.max_cycles,
         run_argument_overrides=parse_generic_assignments(args.run_arg),
     )
-    context = _persist_run_snapshot(context, run_request)
+    context = runner.persist_run_snapshot(
+        context=context,
+        run_request=run_request,
+        persist_profile=builder.persist_profile,
+    )
     effective_args = argparse.Namespace(
         agent=context.agent_name,
         harness=context.manifest.manifest_id,
@@ -379,149 +378,56 @@ def _handle_resume(args: argparse.Namespace) -> int:
         sink=list(run_request.sink_specs),
         **dict(run_request.adapter_arguments),
     )
-    return _execute_run(
+    return runner.execute_run(
         adapter=adapter,
         args=effective_args,
         context=context,
         run_request=run_request,
+        base_payload=_base_payload(context),
         source_snapshot=selected_snapshot,
     )
 
 
 def _handle_inspect(args: argparse.Namespace) -> int:
     manifest = get_harness_manifest(args.manifest_id)
-    credential_fields: dict[str, list[dict[str, str]]] = {}
-    for family in manifest.provider_families:
-        try:
-            spec = get_provider_credential_spec(family)
-        except KeyError:
-            credential_fields[family] = []
-            continue
-        credential_fields[family] = [
-            {"name": field.name, "description": field.description}
-            for field in spec.fields
-        ]
-    emit_json(
-        {
-            "harness": manifest.manifest_id,
-            "display_name": manifest.display_name,
-            "import_path": manifest.import_path,
-            "cli_command": manifest.cli_command,
-            "cli_adapter_path": manifest.cli_adapter_path,
-            "default_memory_root": manifest.resolved_default_memory_root,
-            "runtime_parameters": [_render_parameter_spec(spec) for spec in manifest.runtime_parameters],
-            "custom_parameters": [_render_parameter_spec(spec) for spec in manifest.custom_parameters],
-            "runtime_parameters_open_ended": manifest.runtime_parameters_open_ended,
-            "custom_parameters_open_ended": manifest.custom_parameters_open_ended,
-            "memory_files": [
-                {
-                    "key": entry.key,
-                    "relative_path": entry.relative_path,
-                    "description": entry.description,
-                    "kind": entry.kind,
-                    "format": entry.format,
-                }
-                for entry in manifest.memory_files
-            ],
-            "provider_families": list(manifest.provider_families),
-            "provider_credential_fields": credential_fields,
-            "output_schema": manifest.output_schema,
-        }
-    )
+    emit_json(HarnessCliLifecycleBuilder().build_inspection_payload(manifest=manifest))
     return 0
 
 
 def _handle_credentials_bind(args: argparse.Namespace) -> int:
     manifest = get_harness_manifest(args.manifest_id)
-    repo_root = resolve_repo_root(args.memory_root)
-    store = CredentialsConfigStore(repo_root=repo_root)
-    binding_name = _binding_name(manifest, args.agent)
-    existing_references = _load_existing_binding_references(store, binding_name)
-    updated_references = dict(existing_references)
-    for assignment in args.env:
-        field_name, env_var = _parse_reference_assignment(assignment)
-        updated_references[field_name] = env_var
-    _validate_binding_references(manifest, updated_references)
-    binding = AgentCredentialBinding(
-        agent_name=binding_name,
-        references=tuple(
-            CredentialEnvReference(field_name=field_name, env_var=env_var)
-            for field_name, env_var in sorted(updated_references.items())
-        ),
-        description=args.description,
-    )
-    config_path = store.upsert(binding)
     emit_json(
-        {
-            "agent": args.agent,
-            "binding_name": binding_name,
-            "config_path": str(config_path),
-            "families": _group_reference_mapping(updated_references),
-            "harness": manifest.manifest_id,
-            "status": "bound",
-        }
+        HarnessCliLifecycleBuilder().bind_credentials(
+            manifest=manifest,
+            agent_name=args.agent,
+            memory_root=args.memory_root,
+            assignments=list(args.env),
+            description=args.description,
+        )
     )
     return 0
 
 
 def _handle_credentials_show(args: argparse.Namespace) -> int:
     manifest = get_harness_manifest(args.manifest_id)
-    repo_root = resolve_repo_root(args.memory_root)
-    store = CredentialsConfigStore(repo_root=repo_root)
-    binding_name = _binding_name(manifest, args.agent)
-    try:
-        binding = store.load().binding_for(binding_name)
-    except AgentCredentialsNotConfiguredError:
-        emit_json(
-            {
-                "agent": args.agent,
-                "binding_name": binding_name,
-                "bound": False,
-                "harness": manifest.manifest_id,
-                "provider_families": list(manifest.provider_families),
-            }
-        )
-        return 0
-    mapping = {reference.field_name: reference.env_var for reference in binding.references}
     emit_json(
-        {
-            "agent": args.agent,
-            "binding_name": binding_name,
-            "bound": True,
-            "config_path": str(store.config_path),
-            "description": binding.description,
-            "families": _group_reference_mapping(mapping),
-            "harness": manifest.manifest_id,
-        }
+        HarnessCliLifecycleBuilder().show_credentials(
+            manifest=manifest,
+            agent_name=args.agent,
+            memory_root=args.memory_root,
+        )
     )
     return 0
 
 
 def _handle_credentials_test(args: argparse.Namespace) -> int:
     manifest = get_harness_manifest(args.manifest_id)
-    repo_root = resolve_repo_root(args.memory_root)
-    store = CredentialsConfigStore(repo_root=repo_root)
-    binding_name = _binding_name(manifest, args.agent)
-    binding = store.load().binding_for(binding_name)
-    resolved = store.resolve_binding(binding)
-    resolved_by_family = _group_resolved_values(resolved.as_dict())
-    payload_by_family: dict[str, Any] = {}
-    for family, values in resolved_by_family.items():
-        spec = get_provider_credential_spec(family)
-        credential_object = spec.build_credentials(values)
-        if hasattr(credential_object, "as_redacted_dict"):
-            payload_by_family[family] = credential_object.as_redacted_dict()  # type: ignore[assignment]
-        else:
-            payload_by_family[family] = spec.redact_values(values)
     emit_json(
-        {
-            "agent": args.agent,
-            "binding_name": binding_name,
-            "env_path": str(resolved.env_path),
-            "families": payload_by_family,
-            "harness": manifest.manifest_id,
-            "status": "resolved",
-        }
+        HarnessCliLifecycleBuilder().test_credentials(
+            manifest=manifest,
+            agent_name=args.agent,
+            memory_root=args.memory_root,
+        )
     )
     return 0
 

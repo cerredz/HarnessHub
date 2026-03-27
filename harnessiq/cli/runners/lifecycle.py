@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from harnessiq.agents import AgentRuntimeConfig
@@ -125,6 +125,48 @@ class HarnessCliLifecycleRunner:
             max_cycles=resolved_max_cycles,
             adapter_arguments=adapter_arguments,
         )
+
+    def resolve_profile_resume_snapshot(
+        self,
+        *,
+        profile: HarnessProfile,
+        run_number: int | None,
+    ) -> HarnessRunSnapshot:
+        normalized_run_number = self._normalize_resume_run_number(run_number)
+        snapshot = profile.snapshot_for_run_number(normalized_run_number)
+        if snapshot is not None:
+            return snapshot
+        if normalized_run_number is None:
+            raise ValueError(
+                f"Harness profile '{profile.agent_name}' does not have a previously persisted run payload to resume."
+            )
+        available_runs = ", ".join(str(item.run_number) for item in profile.run_history)
+        raise ValueError(
+            f"Harness profile '{profile.agent_name}' does not have persisted run #{normalized_run_number}. "
+            f"Available runs: {available_runs or 'none'}."
+        )
+
+    def persist_run_snapshot(
+        self,
+        *,
+        context: HarnessAdapterContext,
+        run_request: ResolvedRunRequest,
+        persist_profile,
+    ) -> HarnessAdapterContext:
+        profile = context.profile.append_run_snapshot(
+            HarnessRunSnapshot(
+                model_factory=run_request.model_factory,
+                model=run_request.model,
+                model_profile=run_request.model_profile,
+                sink_specs=run_request.sink_specs,
+                max_cycles=run_request.max_cycles,
+                adapter_arguments=run_request.adapter_arguments,
+                runtime_parameters=context.profile.runtime_parameters,
+                custom_parameters=context.profile.custom_parameters,
+            )
+        )
+        persist_profile(profile=profile, memory_path=context.memory_path, repo_root=context.repo_root)
+        return replace(context, profile=profile)
 
     def execute_run(
         self,

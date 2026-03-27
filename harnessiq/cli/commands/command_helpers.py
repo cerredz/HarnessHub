@@ -107,20 +107,11 @@ def _persist_run_snapshot(
     context: HarnessAdapterContext,
     run_request: _ResolvedRunRequest,
 ) -> HarnessAdapterContext:
-    profile = context.profile.append_run_snapshot(
-        HarnessRunSnapshot(
-            model_factory=run_request.model_factory,
-            model=run_request.model,
-            model_profile=run_request.model_profile,
-            sink_specs=run_request.sink_specs,
-            max_cycles=run_request.max_cycles,
-            adapter_arguments=run_request.adapter_arguments,
-            runtime_parameters=context.profile.runtime_parameters,
-            custom_parameters=context.profile.custom_parameters,
-        )
+    return HarnessCliLifecycleRunner().persist_run_snapshot(
+        context=context,
+        run_request=run_request,
+        persist_profile=_persist_profile,
     )
-    _persist_profile(profile=profile, memory_path=context.memory_path, repo_root=context.repo_root)
-    return replace(context, profile=profile)
 
 
 def _resolve_bound_credentials(
@@ -184,27 +175,10 @@ def _resolve_profile_resume_snapshot(
     profile: HarnessProfile,
     run_number: int | None,
 ) -> HarnessRunSnapshot:
-    normalized_run_number = _normalize_resume_run_number(run_number)
-    snapshot = profile.snapshot_for_run_number(normalized_run_number)
-    if snapshot is not None:
-        return snapshot
-    if normalized_run_number is None:
-        raise ValueError(
-            f"Harness profile '{profile.agent_name}' does not have a previously persisted run payload to resume."
-        )
-    available_runs = ", ".join(str(item.run_number) for item in profile.run_history)
-    raise ValueError(
-        f"Harness profile '{profile.agent_name}' does not have persisted run #{normalized_run_number}. "
-        f"Available runs: {available_runs or 'none'}."
+    return HarnessCliLifecycleRunner().resolve_profile_resume_snapshot(
+        profile=profile,
+        run_number=run_number,
     )
-
-
-def _normalize_resume_run_number(run_number: int | None) -> int | None:
-    if run_number is None:
-        return None
-    if run_number < 1:
-        raise ValueError("--run must be greater than or equal to 1.")
-    return run_number
 
 
 def _clone_args_with_run_request(

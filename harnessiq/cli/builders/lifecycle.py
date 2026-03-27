@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -9,7 +10,9 @@ from harnessiq.cli.adapters.base import HarnessCliAdapter
 from harnessiq.cli.adapters.context import HarnessAdapterContext
 from harnessiq.cli.common import resolve_memory_path, resolve_repo_root
 from harnessiq.config import (
+    AgentCredentialBinding,
     AgentCredentialsNotConfiguredError,
+    CredentialEnvReference,
     CredentialsConfigStore,
     HarnessProfile,
     HarnessProfileIndexStore,
@@ -123,6 +126,140 @@ class HarnessCliLifecycleBuilder:
             credential_objects[family] = get_provider_credential_spec(family).build_credentials(values)
         return credential_objects
 
+    def build_inspection_payload(
+        self,
+        *,
+        manifest: HarnessManifest,
+    ) -> dict[str, Any]:
+        return {
+            "harness": manifest.manifest_id,
+            "display_name": manifest.display_name,
+            "import_path": manifest.import_path,
+            "cli_command": manifest.cli_command,
+            "cli_adapter_path": manifest.cli_adapter_path,
+            "default_memory_root": manifest.resolved_default_memory_root,
+            "runtime_parameters": [self._render_parameter_spec(spec) for spec in manifest.runtime_parameters],
+            "custom_parameters": [self._render_parameter_spec(spec) for spec in manifest.custom_parameters],
+            "runtime_parameters_open_ended": manifest.runtime_parameters_open_ended,
+            "custom_parameters_open_ended": manifest.custom_parameters_open_ended,
+            "memory_files": [
+                {
+                    "key": entry.key,
+                    "relative_path": entry.relative_path,
+                    "description": entry.description,
+                    "kind": entry.kind,
+                    "format": entry.format,
+                }
+                for entry in manifest.memory_files
+            ],
+            "provider_families": list(manifest.provider_families),
+            "provider_credential_fields": self._build_provider_credential_fields(manifest),
+            "output_schema": manifest.output_schema,
+        }
+
+    def bind_credentials(
+        self,
+        *,
+        manifest: HarnessManifest,
+        agent_name: str,
+        memory_root: str | Path,
+        assignments: list[str],
+        description: str | None,
+    ) -> dict[str, Any]:
+        store, binding_name = self._resolve_credentials_store(
+            manifest=manifest,
+            agent_name=agent_name,
+            memory_root=memory_root,
+        )
+        existing_references = self._load_existing_binding_references(store, binding_name)
+        updated_references = dict(existing_references)
+        for assignment in assignments:
+            field_name, env_var = self._parse_reference_assignment(assignment)
+            updated_references[field_name] = env_var
+        self._validate_binding_references(manifest, updated_references)
+        binding = AgentCredentialBinding(
+            agent_name=binding_name,
+            references=tuple(
+                CredentialEnvReference(field_name=field_name, env_var=env_var)
+                for field_name, env_var in sorted(updated_references.items())
+            ),
+            description=description,
+        )
+        config_path = store.upsert(binding)
+        return {
+            "agent": agent_name,
+            "binding_name": binding_name,
+            "config_path": str(config_path),
+            "families": self._group_reference_mapping(updated_references),
+            "harness": manifest.manifest_id,
+            "status": "bound",
+        }
+
+    def show_credentials(
+        self,
+        *,
+        manifest: HarnessManifest,
+        agent_name: str,
+        memory_root: str | Path,
+    ) -> dict[str, Any]:
+        store, binding_name = self._resolve_credentials_store(
+            manifest=manifest,
+            agent_name=agent_name,
+            memory_root=memory_root,
+        )
+        try:
+            binding = store.load().binding_for(binding_name)
+        except AgentCredentialsNotConfiguredError:
+            return {
+                "agent": agent_name,
+                "binding_name": binding_name,
+                "bound": False,
+                "harness": manifest.manifest_id,
+                "provider_families": list(manifest.provider_families),
+            }
+        mapping = {reference.field_name: reference.env_var for reference in binding.references}
+        return {
+            "agent": agent_name,
+            "binding_name": binding_name,
+            "bound": True,
+            "config_path": str(store.config_path),
+            "description": binding.description,
+            "families": self._group_reference_mapping(mapping),
+            "harness": manifest.manifest_id,
+        }
+
+    def test_credentials(
+        self,
+        *,
+        manifest: HarnessManifest,
+        agent_name: str,
+        memory_root: str | Path,
+    ) -> dict[str, Any]:
+        store, binding_name = self._resolve_credentials_store(
+            manifest=manifest,
+            agent_name=agent_name,
+            memory_root=memory_root,
+        )
+        binding = store.load().binding_for(binding_name)
+        resolved = store.resolve_binding(binding)
+        resolved_by_family = self._group_resolved_values(resolved.as_dict())
+        payload_by_family: dict[str, Any] = {}
+        for family, values in resolved_by_family.items():
+            spec = get_provider_credential_spec(family)
+            credential_object = spec.build_credentials(values)
+            if hasattr(credential_object, "as_redacted_dict"):
+                payload_by_family[family] = credential_object.as_redacted_dict()  # type: ignore[assignment]
+            else:
+                payload_by_family[family] = spec.redact_values(values)
+        return {
+            "agent": agent_name,
+            "binding_name": binding_name,
+            "env_path": str(resolved.env_path),
+            "families": payload_by_family,
+            "harness": manifest.manifest_id,
+            "status": "resolved",
+        }
+
     def _resolve_memory_context(
         self,
         *,
@@ -211,6 +348,85 @@ class HarnessCliLifecycleBuilder:
             agent_name=agent_name,
         ).credential_binding_name
 
+    def _resolve_credentials_store(
+        self,
+        *,
+        manifest: HarnessManifest,
+        agent_name: str,
+        memory_root: str | Path,
+    ) -> tuple[CredentialsConfigStore, str]:
+        repo_root = resolve_repo_root(Path(memory_root).expanduser())
+        return (
+            CredentialsConfigStore(repo_root=repo_root),
+            self._binding_name(manifest=manifest, agent_name=agent_name),
+        )
+
+    def _build_provider_credential_fields(
+        self,
+        manifest: HarnessManifest,
+    ) -> dict[str, list[dict[str, str]]]:
+        credential_fields: dict[str, list[dict[str, str]]] = {}
+        for family in manifest.provider_families:
+            try:
+                spec = get_provider_credential_spec(family)
+            except KeyError:
+                credential_fields[family] = []
+                continue
+            credential_fields[family] = [
+                {"name": field.name, "description": field.description}
+                for field in spec.fields
+            ]
+        return credential_fields
+
+    def _validate_binding_references(
+        self,
+        manifest: HarnessManifest,
+        references: dict[str, str],
+    ) -> None:
+        grouped: dict[str, dict[str, str]] = defaultdict(dict)
+        for field_name, env_var in references.items():
+            family, separator, credential_field = field_name.partition(".")
+            if not separator:
+                raise ValueError(
+                    f"Credential field '{field_name}' must use FAMILY.FIELD notation, for example exa.api_key."
+                )
+            normalized_family = family.strip().lower()
+            if normalized_family not in set(manifest.provider_families):
+                raise ValueError(
+                    f"Harness '{manifest.manifest_id}' does not declare provider family '{normalized_family}'."
+                )
+            grouped[normalized_family][credential_field] = env_var
+        for family, values in grouped.items():
+            get_provider_credential_spec(family).validate_fields(values)
+
+    def _load_existing_binding_references(
+        self,
+        store: CredentialsConfigStore,
+        binding_name: str,
+    ) -> dict[str, str]:
+        try:
+            binding = store.load().binding_for(binding_name)
+        except AgentCredentialsNotConfiguredError:
+            return {}
+        return {reference.field_name: reference.env_var for reference in binding.references}
+
+    def _parse_reference_assignment(self, assignment: str) -> tuple[str, str]:
+        field_name, env_var = assignment.split("=", 1) if "=" in assignment else (assignment, "")
+        normalized_field_name = field_name.strip()
+        normalized_env_var = env_var.strip()
+        if not normalized_field_name or not normalized_env_var:
+            raise ValueError(
+                f"Credential bindings must use FAMILY.FIELD=ENV_VAR syntax. Received '{assignment}'."
+            )
+        return normalized_field_name, normalized_env_var
+
+    def _group_reference_mapping(self, mapping: dict[str, str]) -> dict[str, dict[str, str]]:
+        grouped: dict[str, dict[str, str]] = defaultdict(dict)
+        for field_name, env_var in mapping.items():
+            family, _, credential_field = field_name.partition(".")
+            grouped[family][credential_field] = env_var
+        return {family: dict(values) for family, values in sorted(grouped.items())}
+
     def _group_resolved_values(self, mapping: dict[str, str]) -> dict[str, dict[str, str]]:
         grouped: dict[str, dict[str, str]] = {}
         for field_name, value in mapping.items():
@@ -220,6 +436,16 @@ class HarnessCliLifecycleBuilder:
             family_values = grouped.setdefault(family, {})
             family_values[credential_field] = value
         return {family: dict(values) for family, values in grouped.items()}
+
+    def _render_parameter_spec(self, spec) -> dict[str, Any]:
+        return {
+            "key": spec.key,
+            "type": spec.value_type,
+            "description": spec.description,
+            "nullable": spec.nullable,
+            "default": spec.default,
+            "choices": list(spec.choices),
+        }
 
 
 __all__ = ["HarnessCliLifecycleBuilder"]
