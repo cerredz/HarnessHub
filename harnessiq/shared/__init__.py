@@ -42,6 +42,7 @@ from .validated import (
     PositiveInt,
     ProviderFamilyName,
     parse_bounded_int,
+    parse_positive_number,
 )
 
 __all__ = [
@@ -78,6 +79,7 @@ __all__ = [
     "get_harness_manifest",
     "list_harness_manifests",
     "parse_bounded_int",
+    "parse_positive_number",
     "register_harness_manifest",
     "register_harness_manifests",
 ]

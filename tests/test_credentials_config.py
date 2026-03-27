@@ -80,6 +80,23 @@ class CredentialsConfigTests(unittest.TestCase):
             self.assertIn("LANGSMITH_API_KEY", str(context.exception))
             self.assertIn("email_agent", str(context.exception))
 
+    def test_resolve_agent_rejects_blank_env_values(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir)
+            store = CredentialsConfigStore(repo_root=repo_root)
+            store.upsert(
+                AgentCredentialBinding(
+                    agent_name="email_agent",
+                    references=(CredentialEnvReference(field_name="resend_api_key", env_var="RESEND_API_KEY"),),
+                )
+            )
+            repo_root.joinpath(".env").write_text("RESEND_API_KEY=   \n", encoding="utf-8")
+
+            with self.assertRaises(MissingEnvironmentVariableError) as context:
+                store.resolve_agent("email_agent")
+
+            self.assertIn("non-empty value", str(context.exception))
+
     def test_load_returns_empty_config_and_unknown_agent_raises_clear_error(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             store = CredentialsConfigStore(repo_root=temp_dir)
@@ -97,6 +114,14 @@ class CredentialsConfigTests(unittest.TestCase):
 
             self.assertEqual(parsed["SINGLE"], "value one")
             self.assertEqual(parsed["DOUBLE"], "line\nvalue")
+
+    def test_parse_dotenv_file_rejects_invalid_env_key_names(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            env_path = Path(temp_dir, ".env")
+            env_path.write_text("BAD-KEY=value\n", encoding="utf-8")
+
+            with self.assertRaises(ValueError):
+                parse_dotenv_file(env_path)
 
     def test_config_models_accept_list_inputs_and_normalize_storage(self) -> None:
         binding = AgentCredentialBinding(

@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
+from harnessiq.shared.validated import EnvVarName, NonEmptyString
+
 DEFAULT_CONFIG_DIRNAME = ".harnessiq"
 DEFAULT_CREDENTIALS_CONFIG_FILENAME = "credentials.json"
 DEFAULT_ENV_FILENAME = ".env"
@@ -36,10 +38,8 @@ class CredentialEnvReference:
     env_var: str
 
     def __post_init__(self) -> None:
-        if not self.field_name.strip():
-            raise ValueError("field_name must not be blank.")
-        if not self.env_var.strip():
-            raise ValueError("env_var must not be blank.")
+        object.__setattr__(self, "field_name", NonEmptyString(self.field_name, field_name="field_name"))
+        object.__setattr__(self, "env_var", EnvVarName(self.env_var, field_name="env_var"))
 
     def as_dict(self) -> dict[str, str]:
         return {
@@ -64,10 +64,7 @@ class AgentCredentialBinding:
     description: str | None = None
 
     def __post_init__(self) -> None:
-        normalized_name = self.agent_name.strip()
-        if not normalized_name:
-            raise ValueError("agent_name must not be blank.")
-        object.__setattr__(self, "agent_name", normalized_name)
+        object.__setattr__(self, "agent_name", NonEmptyString(self.agent_name, field_name="agent_name"))
         references = tuple(self.references)
         if not references:
             raise ValueError("references must contain at least one credential binding.")
@@ -84,8 +81,11 @@ class AgentCredentialBinding:
         object.__setattr__(self, "references", tuple(normalized_references))
 
         if self.description is not None:
-            normalized_description = self.description.strip()
-            object.__setattr__(self, "description", normalized_description or None)
+            object.__setattr__(
+                self,
+                "description",
+                NonEmptyString(self.description, field_name="description"),
+            )
 
     def required_env_vars(self) -> tuple[str, ...]:
         return tuple(reference.env_var for reference in self.references)
@@ -131,7 +131,7 @@ class CredentialsConfig:
         object.__setattr__(self, "bindings", tuple(normalized_bindings))
 
     def binding_for(self, agent_name: str) -> AgentCredentialBinding:
-        normalized_name = agent_name.strip()
+        normalized_name = str(NonEmptyString(agent_name, field_name="agent_name"))
         for binding in self.bindings:
             if binding.agent_name == normalized_name:
                 return binding
@@ -163,8 +163,18 @@ class ResolvedAgentCredentials:
     env_path: Path
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "agent_name", NonEmptyString(self.agent_name, field_name="agent_name"))
         object.__setattr__(self, "env_path", Path(self.env_path))
-        object.__setattr__(self, "values", dict(self.values))
+        object.__setattr__(
+            self,
+            "values",
+            {
+                str(NonEmptyString(key, field_name="credential field_name")): str(
+                    NonEmptyString(value, field_name=f"credential value for {key}")
+                )
+                for key, value in dict(self.values).items()
+            },
+        )
 
     def require(self, field_name: str) -> str:
         if field_name not in self.values:
@@ -226,9 +236,9 @@ class CredentialsConfigStore:
         resolved: dict[str, str] = {}
         for reference in binding.references:
             value = env_values.get(reference.env_var)
-            if value is None:
+            if value is None or not value.strip():
                 raise MissingEnvironmentVariableError(
-                    f"Agent '{binding.agent_name}' requires env var '{reference.env_var}' for field '{reference.field_name}'."
+                    f"Agent '{binding.agent_name}' requires env var '{reference.env_var}' for field '{reference.field_name}' to be set to a non-empty value."
                 )
             resolved[reference.field_name] = value
         return ResolvedAgentCredentials(
@@ -255,9 +265,7 @@ def parse_dotenv_file(path: Path | str) -> dict[str, str]:
         key, separator, value = line.partition("=")
         if not separator:
             raise ValueError(f"Invalid .env assignment on line {line_number}: '{raw_line}'.")
-        normalized_key = key.strip()
-        if not normalized_key:
-            raise ValueError(f"Invalid blank env key on line {line_number}.")
+        normalized_key = str(EnvVarName(key.strip(), field_name=f"env key on line {line_number}"))
         parsed[normalized_key] = _normalize_env_value(value.strip())
     return parsed
 

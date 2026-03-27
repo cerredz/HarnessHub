@@ -12,6 +12,7 @@ from harnessiq.shared import (
     PositiveInt,
     ProviderFamilyName,
     parse_bounded_int,
+    parse_positive_number,
 )
 
 
@@ -61,6 +62,11 @@ class ValidatedSharedTests(unittest.TestCase):
     def test_integer_validators_reject_booleans(self) -> None:
         with self.assertRaisesRegex(ValueError, "count must be an integer"):
             PositiveInt(True, field_name="count")
+
+    def test_parse_positive_number_accepts_float_and_rejects_zero(self) -> None:
+        self.assertEqual(parse_positive_number(1.5, field_name="timeout_seconds"), 1.5)
+        with self.assertRaisesRegex(ValueError, "greater than zero"):
+            parse_positive_number(0, field_name="timeout_seconds")
 
 
 if __name__ == "__main__":

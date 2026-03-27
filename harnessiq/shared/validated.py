@@ -105,6 +105,17 @@ def parse_bounded_int(
     return normalized
 
 
+def parse_positive_number(value: object, *, field_name: str = "value") -> float:
+    """Validate one positive integer or float and return it as a float."""
+
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field_name} must be a number.")
+    normalized = float(value)
+    if normalized <= 0:
+        raise ValueError(f"{field_name} must be greater than zero.")
+    return normalized
+
+
 def _require_int(value: object, *, field_name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise ValueError(f"{field_name} must be an integer.")
@@ -119,4 +130,5 @@ __all__ = [
     "PositiveInt",
     "ProviderFamilyName",
     "parse_bounded_int",
+    "parse_positive_number",
 ]
