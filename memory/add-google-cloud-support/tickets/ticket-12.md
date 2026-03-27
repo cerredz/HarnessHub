@@ -1,5 +1,6 @@
-﻿Title: Add GCP health and credential CLI commands
+Title: Add GCP health and credential CLI commands
 Issue URL: https://github.com/cerredz/HarnessHub/issues/299
+PR URL: https://github.com/cerredz/HarnessHub/pull/324
 
 Intent:
 Expose init-time validation and credential synchronization through the new `harnessiq gcloud` family so operators can prepare a project and sync secrets without importing provider classes.
@@ -12,7 +13,7 @@ Relevant Files:
 - `tests/test_gcloud_cli.py`: Extend CLI tests for health and credential flows.
 
 Approach:
-Keep handlers thin: construct `GcpContext` or `GcpAgentConfig`, delegate to `HealthProvider` and `CredentialBridge`, and emit structured JSON. Adapt the design docâ€™s human-readable examples into repository-native JSON output while preserving the underlying command names and behaviors.
+Keep handlers thin: construct `GcpContext` or `GcpAgentConfig`, delegate to `HealthProvider` and `CredentialBridge`, and emit structured JSON. Adapt the design doc's human-readable examples into repository-native JSON output while preserving the underlying command names and behaviors.
 
 Assumptions:
 - JSON responses are the default output contract even for health/status operations.
@@ -37,4 +38,3 @@ Ticket 10, Ticket 11.
 
 Drift Guard:
 Do not add build/deploy/schedule/execute/logs/cost command handlers in this ticket. Keep the scope to prerequisite validation and credential management only.
-
