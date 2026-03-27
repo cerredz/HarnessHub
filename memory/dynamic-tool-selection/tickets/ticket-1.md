@@ -1,6 +1,7 @@
 Title: Add tool-selection interfaces and provider-backed embedding support
 
 Issue URL: https://github.com/cerredz/HarnessHub/issues/387
+PR URL: https://github.com/cerredz/HarnessHub/pull/391
 
 Intent:
 Establish the public contracts and provider-layer primitives required for dynamic tool selection without changing existing agent behavior. This ticket creates the abstraction seams that later tickets depend on.
