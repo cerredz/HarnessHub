@@ -7,7 +7,18 @@ from typing import Any
 
 __version__ = "0.1.0"
 _EXPORTED_MODULES = frozenset(
-    {"agents", "cli", "config", "integrations", "interfaces", "master_prompts", "providers", "tools", "utils"}
+    {
+        "agents",
+        "cli",
+        "config",
+        "evaluations",
+        "integrations",
+        "interfaces",
+        "master_prompts",
+        "providers",
+        "tools",
+        "utils",
+    }
 )
 
 

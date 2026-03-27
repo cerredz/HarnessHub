@@ -87,6 +87,10 @@ PACKAGE_LAYOUT = [
         "Environment loading, credential binding, and provider-credential spec models.",
     ),
     (
+        "harnessiq/evaluations/",
+        "Behavior-oriented evaluation scaffolding, reusable check factories, and category-organized eval boilerplate.",
+    ),
+    (
         "harnessiq/integrations/",
         "Concrete external runtime adapters such as Playwright backends and model factories.",
     ),
@@ -130,6 +134,10 @@ FOCUSED_SUBPACKAGE_DESCRIPTIONS = [
         "Focused provider-credential spec package split into catalog, models, builders, and masking helpers.",
     ),
     (
+        "harnessiq/evaluations/",
+        "Evaluation case models, registry helpers, metrics, and behavior-grouped subpackages for correctness, tool use, efficiency, and output checks.",
+    ),
+    (
         "harnessiq/utils/harness_manifest/",
         "Manifest coercion, validation, and registry helpers extracted from the public shared manifest modules.",
     ),
@@ -161,6 +169,18 @@ KEY_FILE_DESCRIPTIONS = [
         "Abstract adapter hooks and shared store-backed adapter behavior for the platform-first CLI.",
     ),
     (
+        "harnessiq/evaluations/models.py",
+        "Normalized evaluation context and check-result models shared across repo-side evals.",
+    ),
+    (
+        "harnessiq/evaluations/assertions.py",
+        "Reusable baseline evaluation helpers for output, tool-use, metadata, and efficiency checks.",
+    ),
+    (
+        "harnessiq/evaluations/registry.py",
+        "Evaluation case registration and execution helpers for grouped, behavior-focused eval suites.",
+    ),
+    (
         "harnessiq/toolset/catalog_provider.py",
         "Provider-tool catalog metadata used by the toolset lookup layer.",
     ),
@@ -182,6 +202,7 @@ FILE_INDEX_STANDARDS = [
     "Treat `harnessiq/` as the only authoritative runtime source tree. `build/`, `src/`, caches, and packaging metadata are generated or residue directories.",
     "Concrete harness metadata belongs in the shared manifest layer under `harnessiq/shared/`, and CLI behavior should consume that metadata instead of duplicating typed parameter rules.",
     "Agents orchestrate. Tools execute deterministic operations. Providers wrap external systems. Utilities own cross-cutting runtime infrastructure like the ledger and output sinks.",
+    "Evaluation infrastructure belongs under `harnessiq/evaluations/` and should be grouped by the behavior being measured rather than by the source of the dataset or trace.",
     "Durable memory is a first-class design constraint: harnesses are expected to persist state that survives resets and restarts.",
     "Provider-backed integrations should flow through `harnessiq/providers/` and `harnessiq/tools/`, not through ad hoc HTTP logic embedded in harness modules.",
     "Output sinks are post-run exports only. They do not participate in the model loop or mutate the transcript.",

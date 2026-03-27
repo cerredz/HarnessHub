@@ -45,6 +45,7 @@ class HarnessiqPackageTests(unittest.TestCase):
         self.assertTrue(hasattr(harnessiq, "agents"))
         self.assertTrue(hasattr(harnessiq, "cli"))
         self.assertTrue(hasattr(harnessiq, "config"))
+        self.assertTrue(hasattr(harnessiq, "evaluations"))
         self.assertTrue(hasattr(harnessiq, "integrations"))
         self.assertTrue(hasattr(harnessiq, "tools"))
         self.assertTrue(hasattr(harnessiq, "providers"))
@@ -72,10 +73,12 @@ class HarnessiqPackageTests(unittest.TestCase):
                     "-c",
                     (
                         f"import sys; sys.path.insert(0, r'{wheel_path}'); "
-                        "import harnessiq, harnessiq.agents, harnessiq.config, harnessiq.integrations, harnessiq.shared, harnessiq.tools, harnessiq.utils; "
+                        "import harnessiq, harnessiq.agents, harnessiq.config, harnessiq.evaluations, harnessiq.integrations, harnessiq.shared, harnessiq.tools, harnessiq.utils; "
                         "from harnessiq.shared.dtos import AgentInstancePayload; "
                         "from harnessiq.cli.main import main as cli_main; "
                         "assert harnessiq.__version__ == '0.1.0'; "
+                        "assert hasattr(harnessiq, 'evaluations'); "
+                        "assert hasattr(harnessiq.evaluations, 'EvaluationContext'); "
                         "assert hasattr(harnessiq.shared, 'dtos'); "
                         "assert AgentInstancePayload.__module__ == 'harnessiq.shared.dtos.agents'; "
                         "assert hasattr(harnessiq.agents, 'BaseProviderToolAgent'); "
