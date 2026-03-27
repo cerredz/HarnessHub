@@ -15,6 +15,7 @@ from harnessiq.agents import (
     InstagramMemoryStore,
 )
 from harnessiq.shared.agents import AgentRuntimeConfig
+from harnessiq.shared.dtos import InstagramAgentInstancePayload
 from harnessiq.shared.instagram import (
     DEFAULT_AGENT_IDENTITY,
     InstagramLeadRecord,
@@ -405,6 +406,21 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
         from harnessiq.agents import InstagramKeywordDiscoveryAgent as Imported
 
         self.assertIs(Imported, InstagramKeywordDiscoveryAgent)
+
+    def test_build_instance_payload_returns_explicit_dto(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = InstagramKeywordDiscoveryAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                search_backend=_FakeSearchBackend(_build_execution()),
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators",),
+            )
+
+            payload = agent.build_instance_payload()
+
+            self.assertIsInstance(payload, InstagramAgentInstancePayload)
+            self.assertEqual(payload.to_dict()["runtime"]["search_result_limit"], 5)
+            self.assertEqual(payload.to_dict()["memory_path"], Path(temp_dir).as_posix())
 
     def test_run_closes_backend_after_completion(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from harnessiq.shared.agents import render_json_parameter_content
+from harnessiq.shared.dtos import LeadsAgentInstancePayload
 from harnessiq.shared.leads import LeadICPState, LeadsAgentConfig, LeadSearchRecord, LeadSearchSummary, LeadsMemoryStore
 
 
@@ -22,39 +23,48 @@ def render_search_history(
     return render_json_parameter_content(payload)
 
 
-def build_leads_instance_payload(*, config: LeadsAgentConfig) -> dict[str, object]:
+def build_leads_instance_payload(*, config: LeadsAgentConfig) -> LeadsAgentInstancePayload:
     """Build the Leads agent instance payload from config and persisted state."""
-    payload: dict[str, object] = {
-        "memory_path": str(config.memory_path),
-        "run_config": config.run_config.as_dict(),
-        "runtime": {
+    payload = LeadsAgentInstancePayload(
+        memory_path=config.memory_path,
+        run_config=config.run_config.as_dict(),
+        runtime={
             "max_tokens": config.max_tokens,
             "reset_threshold": config.reset_threshold,
             "prune_search_interval": config.prune_search_interval,
             "prune_token_limit": config.prune_token_limit,
         },
-    }
+    )
     if not config.memory_path.exists():
         return payload
 
     store = LeadsMemoryStore(memory_path=config.memory_path)
-    if store.run_state_path.exists():
-        payload["run_state"] = store.read_run_state().as_dict()
-
     icp_states = store.list_icp_states()
-    if icp_states:
-        payload["icp_progress"] = [
-            {
-                "icp": state.icp.as_dict(),
-                "status": state.status,
-                "search_count": len(state.searches),
-                "summary_count": len(state.summaries),
-                "saved_lead_count": len(state.saved_lead_keys),
-                "completed_at": state.completed_at,
-            }
-            for state in icp_states
-        ]
-    return payload
+    return LeadsAgentInstancePayload(
+        memory_path=config.memory_path,
+        run_config=config.run_config.as_dict(),
+        runtime={
+            "max_tokens": config.max_tokens,
+            "reset_threshold": config.reset_threshold,
+            "prune_search_interval": config.prune_search_interval,
+            "prune_token_limit": config.prune_token_limit,
+        },
+        run_state=store.read_run_state().as_dict() if store.run_state_path.exists() else None,
+        icp_progress=(
+            tuple(
+                {
+                    "icp": state.icp.as_dict(),
+                    "status": state.status,
+                    "search_count": len(state.searches),
+                    "summary_count": len(state.summaries),
+                    "saved_lead_count": len(state.saved_lead_keys),
+                    "completed_at": state.completed_at,
+                }
+                for state in icp_states
+            )
+            or None
+        ),
+    )
 
 
 def total_searches_for_state(state: LeadICPState) -> int:

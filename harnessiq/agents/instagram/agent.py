@@ -32,6 +32,7 @@ from harnessiq.shared.agents import (
     json_parameter_section,
     merge_agent_runtime_config,
 )
+from harnessiq.shared.dtos import InstagramAgentInstancePayload
 from harnessiq.shared.exceptions import ConfigurationError, ResourceNotFoundError
 from harnessiq.shared.instagram import (
     DEFAULT_AGENT_IDENTITY,
@@ -276,7 +277,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             sections.append(json_parameter_section("Custom Parameters", prompt_custom_parameters))
         return tuple(sections)
 
-    def build_instance_payload(self) -> dict[str, Any]:
+    def build_instance_payload(self) -> InstagramAgentInstancePayload:
         return _build_instagram_instance_payload(
             memory_path=self._candidate_memory_path,
             icp_descriptions=self._initial_icp_descriptions,

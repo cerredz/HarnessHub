@@ -11,6 +11,7 @@ import pytest
 from harnessiq.agents import ExaOutreachAgent, ExaOutreachMemoryStore
 from harnessiq.agents.exa_outreach.agent import ExaOutreachAgentConfig
 from harnessiq.shared.agents import AgentModelResponse
+from harnessiq.shared.dtos import ExaOutreachAgentInstancePayload
 from harnessiq.shared.exceptions import ConfigurationError, NotFoundError, ResourceNotFoundError, StateError
 from harnessiq.shared.exa_outreach import EmailTemplate, FileSystemStorageBackend
 from harnessiq.shared.tools import (
@@ -138,6 +139,14 @@ class TestExaOutreachAgentConstruction:
         custom_backend.current_run_id = MagicMock(return_value=None)
         agent = _make_agent(tmp_path, storage_backend=custom_backend)
         assert agent.config.storage_backend is custom_backend
+
+    def test_build_instance_payload_returns_explicit_dto(self, tmp_path):
+        agent = _make_agent(tmp_path)
+
+        payload = agent.build_instance_payload()
+
+        assert isinstance(payload, ExaOutreachAgentInstancePayload)
+        assert payload.to_dict()["search_query"] == "VPs of Engineering at Series B startups"
 
     def test_config_dataclass_allows_empty_templates_in_search_only_mode(self, tmp_path):
         config = ExaOutreachAgentConfig(

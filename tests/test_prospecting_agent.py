@@ -8,6 +8,7 @@ from pathlib import Path
 
 from harnessiq.agents.prospecting.agent import GoogleMapsProspectingAgent
 from harnessiq.shared.agents import AgentModelRequest, AgentModelResponse, AgentRuntimeConfig
+from harnessiq.shared.dtos import ProspectingAgentInstancePayload
 from harnessiq.shared.prospecting import DEFAULT_QUALIFICATION_THRESHOLD, ProspectingMemoryStore
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
 
@@ -99,6 +100,21 @@ class GoogleMapsProspectingAgentTests(unittest.TestCase):
             self.assertIn("AI discoverability services", prompt)
             self.assertIn("PHASE 2 - PROSPECTING WORKFLOW", prompt)
             self.assertIn("Run State.searches_completed_count", prompt)
+
+    def test_build_instance_payload_returns_explicit_dto(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = GoogleMapsProspectingAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                memory_path=temp_dir,
+                company_description="Owner-operated dental practices in New Jersey",
+                json_subcall_runner=_runner,
+            )
+
+            payload = agent.build_instance_payload()
+
+            self.assertIsInstance(payload, ProspectingAgentInstancePayload)
+            self.assertEqual(payload.to_dict()["custom"]["qualification_threshold"], DEFAULT_QUALIFICATION_THRESHOLD)
+            self.assertEqual(payload.to_dict()["memory_path"], Path(temp_dir).as_posix())
 
     def test_shared_and_internal_tools_persist_state(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

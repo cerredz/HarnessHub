@@ -9,6 +9,7 @@ from pathlib import Path
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, ResearchSweepAgent
 from harnessiq.providers.serper import SerperClient, SerperCredentials
 from harnessiq.shared.agents import AgentContextRuntimeState, DEFAULT_AGENT_CONTEXT_MEMORY_FIELD_RULES
+from harnessiq.shared.dtos import ResearchSweepAgentInstancePayload
 from harnessiq.shared.research_sweep import (
     CANONICAL_RESEARCH_SWEEP_SITES,
     RESEARCH_SWEEP_MEMORY_FIELD_RULES,
@@ -56,6 +57,22 @@ def _write_context_state(memory_path: Path, memory_fields: dict[str, object]) ->
 
 
 class ResearchSweepAgentTests(unittest.TestCase):
+    def test_build_instance_payload_returns_explicit_dto(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as temp_dir:
+            agent = ResearchSweepAgent(
+                model=_SequenceModel([]),
+                query="CRISPR therapeutic applications",
+                memory_path=temp_dir,
+                serper_client=_serper_client(),
+            )
+
+            payload = agent.build_instance_payload()
+
+            self.assertIsInstance(payload, ResearchSweepAgentInstancePayload)
+            self.assertEqual(payload.to_dict()["config"]["query"], "CRISPR therapeutic applications")
+
     def test_parameter_sections_render_master_prompt_config_and_custom_memory(self) -> None:
         with self.subTest("initial sections"):
             from tempfile import TemporaryDirectory

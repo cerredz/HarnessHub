@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 from harnessiq.agents.helpers import read_optional_text
+from harnessiq.shared.dtos import ExaOutreachAgentInstancePayload
 from harnessiq.shared.exa_outreach import EmailTemplate, ExaOutreachMemoryStore
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
 
@@ -59,28 +60,34 @@ def build_exa_outreach_instance_payload(
     reset_threshold: float,
     allowed_resend_operations: tuple[str, ...] | None,
     allowed_exa_operations: tuple[str, ...] | None,
-) -> dict[str, Any]:
+) -> ExaOutreachAgentInstancePayload:
     """Build the agent instance payload from runtime config and persisted memory."""
-    payload: dict[str, Any] = {
-        "allowed_exa_operations": list(allowed_exa_operations) if allowed_exa_operations is not None else None,
-        "allowed_resend_operations": list(allowed_resend_operations) if allowed_resend_operations is not None else None,
-        "email_data": [item.as_dict() for item in email_data],
-        "max_tokens": max_tokens,
-        "reset_threshold": reset_threshold,
-        "search_query": search_query,
-    }
-    if memory_path is not None:
-        payload["memory_path"] = str(memory_path)
+    payload = ExaOutreachAgentInstancePayload(
+        allowed_exa_operations=allowed_exa_operations,
+        allowed_resend_operations=allowed_resend_operations,
+        email_data=tuple(item.as_dict() for item in email_data),
+        max_tokens=max_tokens,
+        memory_path=memory_path,
+        reset_threshold=reset_threshold,
+        search_query=search_query,
+    )
     if memory_path is None or not memory_path.exists():
         return payload
 
     store = ExaOutreachMemoryStore(memory_path=memory_path)
-    payload["agent_identity"] = read_optional_text(store.agent_identity_path)
-    payload["additional_prompt"] = read_optional_text(store.additional_prompt_path)
     query_config = store.read_query_config() if store.query_config_path.exists() else {}
-    if query_config:
-        payload["query_config"] = query_config
-    return payload
+    return ExaOutreachAgentInstancePayload(
+        allowed_exa_operations=allowed_exa_operations,
+        allowed_resend_operations=allowed_resend_operations,
+        email_data=tuple(item.as_dict() for item in email_data),
+        max_tokens=max_tokens,
+        memory_path=memory_path,
+        reset_threshold=reset_threshold,
+        search_query=search_query,
+        agent_identity=read_optional_text(store.agent_identity_path),
+        additional_prompt=read_optional_text(store.additional_prompt_path),
+        query_config=query_config or None,
+    )
 
 
 def create_exa_tools(

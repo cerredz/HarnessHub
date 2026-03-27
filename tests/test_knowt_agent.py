@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 
 from harnessiq.agents import KnowtAgent, KnowtMemoryStore
 from harnessiq.shared.agents import AgentModelResponse, AgentParameterSection, AgentRuntimeConfig
+from harnessiq.shared.dtos import KnowtAgentInstancePayload
 from harnessiq.shared.exceptions import ResourceNotFoundError
 from harnessiq.shared.knowt import KnowtAgentConfig
 from harnessiq.shared.tools import (
@@ -86,6 +87,14 @@ class TestKnowtAgentInitialization(unittest.TestCase):
     def test_memory_path_as_string_accepted(self) -> None:
         agent = KnowtAgent(model=self.model, memory_path=str(self.tmp))
         self.assertIsNotNone(agent)
+
+    def test_build_instance_payload_returns_explicit_dto(self) -> None:
+        agent = KnowtAgent(model=self.model, memory_path=self.tmp)
+
+        payload = agent.build_instance_payload()
+
+        self.assertIsInstance(payload, KnowtAgentInstancePayload)
+        self.assertEqual(payload.to_dict()["memory_path"], Path(self.tmp).as_posix())
 
 
 class TestKnowtAgentSystemPrompt(unittest.TestCase):
