@@ -1,5 +1,6 @@
 Title: Add the `cognitive_multiplexer` bundled master prompt
 Issue URL: https://github.com/cerredz/HarnessHub/issues/305
+PR URL: https://github.com/cerredz/HarnessHub/pull/308
 Intent: Add the user-provided cognitive multiplexer master prompt to the bundled prompt catalog so it can be retrieved through the SDK, CLI, and prompt session injection workflow like the existing curated prompts.
 Scope: Create one new prompt JSON asset under `harnessiq/master_prompts/prompts/`, update the prompt catalog regression tests for the new bundled key, and write workflow artifacts under `memory/create-new-master-prompt/`. Do not refactor the prompt registry, session injection helpers, CLI wiring, or unrelated prompt assets.
 Relevant Files:
