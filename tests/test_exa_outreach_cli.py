@@ -101,7 +101,7 @@ class TestPrepareCommand:
 
     def test_prepare_default_memory_root(self, tmp_path, capsys):
         # Run with default memory-root; should not raise
-        with patch("harnessiq.cli.exa_outreach.commands.ExaOutreachMemoryStore") as MockStore:
+        with patch("harnessiq.cli.builders.exa_outreach.ExaOutreachMemoryStore") as MockStore:
             instance = MagicMock()
             instance.memory_path.resolve.return_value = tmp_path / "my-agent"
             MockStore.return_value = instance
@@ -360,16 +360,15 @@ class TestRunCommand:
                 return_value=lambda: mock_model,
             ),
             patch(
-                "harnessiq.cli.exa_outreach.commands._load_factory",
+                "harnessiq.cli.runners.exa_outreach.load_factory",
                 side_effect=[
                     lambda: mock_exa_creds,
                     lambda: mock_resend_creds,
                     lambda: mock_email_data,
                 ],
             ),
-            # ExaOutreachAgent is imported locally inside _handle_run; patch at source
             patch(
-                "harnessiq.agents.exa_outreach.ExaOutreachAgent",
+                "harnessiq.cli.runners.exa_outreach.ExaOutreachAgent",
                 return_value=mock_agent,
             ),
         ):
@@ -404,7 +403,7 @@ class TestRunCommand:
                 return_value=lambda: mock_model_no_generate,
             ),
             patch(
-                "harnessiq.cli.exa_outreach.commands._load_factory",
+                "harnessiq.cli.runners.exa_outreach.load_factory",
                 side_effect=[
                     lambda: MagicMock(),
                     lambda: MagicMock(),
@@ -435,7 +434,7 @@ class TestRunCommand:
                 return_value=lambda: mock_model,
             ),
             patch(
-                "harnessiq.cli.exa_outreach.commands._load_factory",
+                "harnessiq.cli.runners.exa_outreach.load_factory",
                 side_effect=[
                     lambda: MagicMock(),
                     lambda: MagicMock(),

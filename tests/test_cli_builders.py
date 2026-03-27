@@ -5,6 +5,7 @@ from pathlib import Path
 
 from harnessiq.cli.adapters.context import HarnessAdapterContext
 from harnessiq.cli.builders import (
+    ExaOutreachCliBuilder,
     HarnessCliLifecycleBuilder,
     InstagramCliBuilder,
     LeadsCliBuilder,
@@ -331,3 +332,28 @@ def test_prospecting_builder_configure_and_show_round_trip(tmp_path: Path) -> No
     assert configured_payload["custom_parameters"]["website_inspect_enabled"] is False
     assert configured_payload["custom_parameters"]["eval_system_prompt"] == "Return strict JSON."
     assert shown_payload["company_description"] == "Owner-operated dental practices in New Jersey."
+
+
+def test_exa_outreach_builder_configure_and_show_round_trip(tmp_path: Path) -> None:
+    builder = ExaOutreachCliBuilder()
+
+    configured_payload = builder.configure(
+        agent_name="outreach-a",
+        memory_root=str(tmp_path),
+        query_text="VPs of Engineering",
+        query_file=None,
+        agent_identity_text="I am a growth hacker.",
+        agent_identity_file=None,
+        additional_prompt_text="Keep emails under 80 words.",
+        additional_prompt_file=None,
+        runtime_assignments=["max_tokens=50000"],
+    )
+    shown_payload = builder.show(
+        agent_name="outreach-a",
+        memory_root=str(tmp_path),
+    )
+
+    assert configured_payload["status"] == "configured"
+    assert configured_payload["query_config"]["search_query"] == "VPs of Engineering"
+    assert configured_payload["query_config"]["max_tokens"] == 50000
+    assert shown_payload["agent_identity"] == "I am a growth hacker."
