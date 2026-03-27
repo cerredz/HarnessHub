@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+from harnessiq.providers.proxycurl.operations import get_proxycurl_operation
 from harnessiq.providers.proxycurl.api import (
     DEFAULT_BASE_URL,
     build_headers,
@@ -38,6 +39,8 @@ from harnessiq.providers.proxycurl.requests import (
     build_search_jobs_params,
 )
 from harnessiq.providers.http import RequestExecutor, request_json
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
+from harnessiq.shared.provider_payloads import execute_payload_operation
 
 
 @dataclass(frozen=True, slots=True)
@@ -280,6 +283,12 @@ class ProxycurlClient:
         )
         endpoint = get_personal_contacts_url(self.base_url, query=params)
         return self._get(endpoint)
+
+    def execute_operation(self, request: ProviderPayloadRequestDTO) -> ProviderPayloadResultDTO:
+        """Execute one Proxycurl operation from a DTO envelope."""
+
+        get_proxycurl_operation(request.operation)
+        return execute_payload_operation(self, request)
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 

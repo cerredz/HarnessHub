@@ -7,6 +7,7 @@ from typing import Any
 from urllib import parse
 
 from harnessiq.providers.http import RequestExecutor, request_json
+from harnessiq.providers.snovio.operations import get_snovio_operation
 from harnessiq.providers.snovio.api import (
     DEFAULT_BASE_URL,
     access_token_url,
@@ -60,6 +61,8 @@ from harnessiq.providers.snovio.requests import (
     build_url_search_request,
     build_user_info_params,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
+from harnessiq.shared.provider_payloads import execute_payload_operation
 
 
 @dataclass(frozen=True, slots=True)
@@ -283,6 +286,12 @@ class SnovioClient:
         """Retrieve current user account information."""
         params = build_user_info_params(access_token)
         return self._get(user_info_url(self.base_url), params=params)
+
+    def execute_operation(self, request: ProviderPayloadRequestDTO) -> ProviderPayloadResultDTO:
+        """Execute one Snov.io operation from a DTO envelope."""
+
+        get_snovio_operation(request.operation)
+        return execute_payload_operation(self, request)
 
     # -------------------------------------------------------------------------
     # Internal helpers

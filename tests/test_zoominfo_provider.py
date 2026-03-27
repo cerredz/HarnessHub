@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import Mock
 
 from harnessiq.providers.zoominfo.operations import (
     ZoomInfoOperation,
     build_zoominfo_operation_catalog,
     get_zoominfo_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
 from harnessiq.shared.tools import ZOOMINFO_REQUEST
 from harnessiq.tools.zoominfo import create_zoominfo_tools
 from harnessiq.tools.registry import ToolRegistry
@@ -43,6 +45,24 @@ class ZoomInfoOperationCatalogTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             get_zoominfo_operation("nonexistent_op")
         self.assertIn("nonexistent_op", str(ctx.exception))
+
+
+class ZoomInfoClientTests(unittest.TestCase):
+    def test_execute_operation_accepts_payload_request_dto(self) -> None:
+        from harnessiq.providers.zoominfo.client import ZoomInfoClient
+
+        client = ZoomInfoClient(
+            username="user",
+            password="pass",
+            request_executor=lambda m, u, **kw: {"usage": {}},
+        )
+
+        result = client.execute_operation(
+            ProviderPayloadRequestDTO(operation="get_usage", payload={"jwt": "testjwt"})
+        )
+
+        self.assertIsInstance(result, ProviderPayloadResultDTO)
+        self.assertEqual(result.operation, "get_usage")
 
 
 class ZoomInfoToolsTests(unittest.TestCase):
@@ -85,6 +105,23 @@ class ZoomInfoToolsTests(unittest.TestCase):
         result = registry.execute(ZOOMINFO_REQUEST, {"operation": "get_usage"})
         self.assertEqual(result.output["operation"], "get_usage")
         self.assertGreaterEqual(len(captured), 1)
+
+    def test_tool_handler_injects_jwt_into_dto_request(self) -> None:
+        client = Mock()
+        client.authenticate.return_value = "testjwt"
+        client.execute_operation.return_value = ProviderPayloadResultDTO(
+            operation="get_usage",
+            result={"usage": {}},
+        )
+
+        tools = create_zoominfo_tools(client=client)
+        registry = ToolRegistry(tools)
+        result = registry.execute(ZOOMINFO_REQUEST, {"operation": "get_usage"})
+
+        self.assertEqual(result.output["operation"], "get_usage")
+        request = client.execute_operation.call_args.args[0]
+        self.assertIsInstance(request, ProviderPayloadRequestDTO)
+        self.assertEqual(request.payload["jwt"], "testjwt")
 
     def test_create_zoominfo_tools_raises_without_credentials_or_client(self) -> None:
         with self.assertRaises(ValueError):

@@ -10,6 +10,7 @@ from harnessiq.providers.snovio.operations import (
     build_snovio_operation_catalog,
     get_snovio_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO
 from harnessiq.shared.tools import SNOVIO_REQUEST, RegisteredTool, ToolArguments, ToolDefinition
 
 if TYPE_CHECKING:
@@ -83,7 +84,6 @@ def create_snovio_tools(
     )
 
     def handler(arguments: ToolArguments) -> dict[str, Any]:
-        operation_name = _require_operation_name(arguments, allowed_names)
         payload: dict[str, Any] = dict(_optional_mapping(arguments, "payload") or {})
 
         # Exchange client credentials for an OAuth2 access token.
@@ -94,8 +94,11 @@ def create_snovio_tools(
             else str(token_response)
         )
 
-        result = getattr(snovio_client, operation_name)(access_token, **payload)
-        return {"operation": operation_name, "result": result}
+        request = ProviderPayloadRequestDTO(
+            operation=_require_operation_name(arguments, allowed_names),
+            payload={"access_token": access_token, **payload},
+        )
+        return snovio_client.execute_operation(request).to_dict()
 
     return (RegisteredTool(definition=definition, handler=handler),)
 

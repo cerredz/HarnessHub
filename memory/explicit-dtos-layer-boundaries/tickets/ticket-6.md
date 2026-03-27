@@ -34,10 +34,10 @@ Assumptions:
 - Existing endpoint coverage stays the same in this ticket.
 
 Acceptance Criteria:
-- [ ] Legacy provider families in scope stop exposing raw dict request/result contracts at their public tool/client seams.
-- [ ] Shared provider DTOs cover the legacy-family transport shapes that need explicit typing.
-- [ ] The legacy provider test suites continue to pass with DTO-first expectations.
-- [ ] No provider loses existing endpoint behavior as a side effect of the DTO refactor.
+- [x] Legacy provider families in scope stop exposing raw dict request/result contracts at their public tool/client seams.
+- [x] Shared provider DTOs cover the legacy-family transport shapes that need explicit typing.
+- [x] The legacy provider test suites continue to pass with DTO-first expectations.
+- [x] No provider loses existing endpoint behavior as a side effect of the DTO refactor.
 
 Verification Steps:
 - Run the provider test modules listed above.

@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from collections.abc import Mapping
 from dataclasses import dataclass
 
+from harnessiq.shared.provider_payloads import (
+    optional_payload_bool,
+    optional_payload_string,
+    require_payload_string,
+)
 from harnessiq.shared.providers import (
     GOOGLE_DRIVE_DEFAULT_BASE_URL,
     GOOGLE_DRIVE_DEFAULT_SCOPE,
@@ -180,7 +186,27 @@ def get_google_drive_operation(operation_name: str) -> GoogleDriveOperation:
     return operation
 
 
+def build_google_drive_permission_payload(payload: Mapping[str, object]) -> dict[str, object]:
+    """Normalize the Google Drive permission payload from a DTO request envelope."""
+
+    permission = {
+        "type": require_payload_string(payload, "type"),
+        "role": require_payload_string(payload, "role"),
+    }
+    email_address = optional_payload_string(payload, "email_address")
+    if email_address is not None:
+        permission["emailAddress"] = email_address
+    domain = optional_payload_string(payload, "domain")
+    if domain is not None:
+        permission["domain"] = domain
+    allow_file_discovery = optional_payload_bool(payload, "allow_file_discovery")
+    if allow_file_discovery is not None:
+        permission["allowFileDiscovery"] = allow_file_discovery
+    return permission
+
+
 __all__ = [
+    "build_google_drive_permission_payload",
     "GoogleDriveCredentials",
     "GoogleDriveOperation",
     "build_google_drive_operation_catalog",

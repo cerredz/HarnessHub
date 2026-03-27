@@ -9,6 +9,7 @@ from harnessiq.providers.coresignal.operations import (
     build_coresignal_operation_catalog,
     get_coresignal_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
 from harnessiq.shared.tools import CORESIGNAL_REQUEST
 from harnessiq.tools.coresignal import create_coresignal_tools
 from harnessiq.tools.registry import ToolRegistry
@@ -38,6 +39,23 @@ class CoreSignalOperationCatalogTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             get_coresignal_operation("nonexistent_op")
         self.assertIn("nonexistent_op", str(ctx.exception))
+
+
+class CoreSignalClientTests(unittest.TestCase):
+    def test_execute_operation_accepts_payload_request_dto(self) -> None:
+        from harnessiq.providers.coresignal.client import CoreSignalClient
+
+        client = CoreSignalClient(
+            api_key="testkey",
+            request_executor=lambda m, u, **kw: {"data": []},
+        )
+
+        result = client.execute_operation(
+            ProviderPayloadRequestDTO(operation="search_employees_by_filter", payload={})
+        )
+
+        self.assertIsInstance(result, ProviderPayloadResultDTO)
+        self.assertEqual(result.operation, "search_employees_by_filter")
 
 
 class CoreSignalToolsTests(unittest.TestCase):

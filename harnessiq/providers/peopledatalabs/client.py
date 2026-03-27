@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 
 from harnessiq.providers.base import omit_none_values
 from harnessiq.providers.http import RequestExecutor, request_json
+from harnessiq.providers.peopledatalabs.operations import get_peopledatalabs_operation
 from harnessiq.providers.peopledatalabs.api import (
     DEFAULT_BASE_URL,
     autocomplete_url,
@@ -29,6 +30,8 @@ from harnessiq.providers.peopledatalabs.requests import (
     build_person_bulk_request,
     build_person_search_request,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
+from harnessiq.shared.provider_payloads import execute_payload_operation
 
 
 def _append_query(url: str, params: dict[str, Any]) -> str:
@@ -253,6 +256,12 @@ class PeopleDataLabsClient:
             {"job_title": job_title, "pretty": pretty},
         )
         return self._request("GET", url)
+
+    def execute_operation(self, request: ProviderPayloadRequestDTO) -> ProviderPayloadResultDTO:
+        """Execute one People Data Labs operation from a DTO envelope."""
+
+        get_peopledatalabs_operation(request.operation)
+        return execute_payload_operation(self, request)
 
     # ── Internal ──────────────────────────────────────────────────────────────
 

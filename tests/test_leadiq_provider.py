@@ -9,6 +9,7 @@ from harnessiq.providers.leadiq.operations import (
     build_leadiq_operation_catalog,
     get_leadiq_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
 from harnessiq.shared.tools import LEADIQ_REQUEST
 from harnessiq.tools.leadiq import create_leadiq_tools
 from harnessiq.tools.registry import ToolRegistry
@@ -39,6 +40,23 @@ class LeadIQOperationCatalogTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             get_leadiq_operation("nonexistent_op")
         self.assertIn("nonexistent_op", str(ctx.exception))
+
+
+class LeadIQClientTests(unittest.TestCase):
+    def test_execute_operation_accepts_payload_request_dto(self) -> None:
+        from harnessiq.providers.leadiq.client import LeadIQClient
+
+        client = LeadIQClient(
+            api_key="testkey",
+            request_executor=lambda m, u, **kw: [{"id": "tag-1"}],
+        )
+
+        result = client.execute_operation(
+            ProviderPayloadRequestDTO(operation="get_tags", payload={})
+        )
+
+        self.assertIsInstance(result, ProviderPayloadResultDTO)
+        self.assertEqual(result.operation, "get_tags")
 
 
 class LeadIQToolsTests(unittest.TestCase):

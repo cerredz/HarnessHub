@@ -16,6 +16,11 @@ from harnessiq.providers.arxiv.api import (
 from harnessiq.providers.http import ProviderHTTPError, RequestExecutor, request_json
 from harnessiq.shared.dtos import ArxivOperationResultDTO, ProviderPayloadRequestDTO
 from harnessiq.shared.provider_configs import ArxivConfig
+from harnessiq.shared.provider_payloads import (
+    optional_payload_int,
+    optional_payload_string,
+    require_payload_string,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,29 +132,29 @@ class ArxivClient:
         payload = request.payload
         if request.operation == "search":
             results = self.search(
-                query=_require_payload_string(payload, "query"),
-                max_results=_optional_payload_int(payload, "max_results") or 10,
-                start=_optional_payload_int(payload, "start") or 0,
-                sort_by=_optional_payload_string(payload, "sort_by") or "relevance",
-                sort_order=_optional_payload_string(payload, "sort_order") or "descending",
+                query=require_payload_string(payload, "query"),
+                max_results=optional_payload_int(payload, "max_results") or 10,
+                start=optional_payload_int(payload, "start") or 0,
+                sort_by=optional_payload_string(payload, "sort_by") or "relevance",
+                sort_order=optional_payload_string(payload, "sort_order") or "descending",
             )
             return ArxivOperationResultDTO.from_search(results=results)
         if request.operation == "search_raw":
             xml = self.search_raw(
-                query=_require_payload_string(payload, "query"),
-                max_results=_optional_payload_int(payload, "max_results") or 10,
-                start=_optional_payload_int(payload, "start") or 0,
-                sort_by=_optional_payload_string(payload, "sort_by") or "relevance",
-                sort_order=_optional_payload_string(payload, "sort_order") or "descending",
+                query=require_payload_string(payload, "query"),
+                max_results=optional_payload_int(payload, "max_results") or 10,
+                start=optional_payload_int(payload, "start") or 0,
+                sort_by=optional_payload_string(payload, "sort_by") or "relevance",
+                sort_order=optional_payload_string(payload, "sort_order") or "descending",
             )
             return ArxivOperationResultDTO.from_search_raw(xml=xml)
         if request.operation == "get_paper":
-            paper = self.get_paper(_require_payload_string(payload, "paper_id"))
+            paper = self.get_paper(require_payload_string(payload, "paper_id"))
             return ArxivOperationResultDTO.from_get_paper(paper=paper)
         if request.operation == "download_paper":
             saved_to = self.download_paper(
-                _require_payload_string(payload, "paper_id"),
-                _require_payload_string(payload, "save_path"),
+                require_payload_string(payload, "paper_id"),
+                require_payload_string(payload, "save_path"),
             )
             return ArxivOperationResultDTO.from_download_paper(saved_to=saved_to)
         raise ValueError(f"Unsupported arXiv operation '{request.operation}'.")
@@ -175,28 +180,3 @@ class ArxivClient:
                 url=url,
             )
         return result
-
-
-def _require_payload_string(payload: dict[str, object], key: str) -> str:
-    value = payload.get(key)
-    if not isinstance(value, str):
-        raise ValueError(f"The '{key}' argument must be a string.")
-    return value
-
-
-def _optional_payload_string(payload: dict[str, object], key: str) -> str | None:
-    value = payload.get(key)
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise ValueError(f"The '{key}' argument must be a string when provided.")
-    return value
-
-
-def _optional_payload_int(payload: dict[str, object], key: str) -> int | None:
-    value = payload.get(key)
-    if value is None:
-        return None
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise ValueError(f"The '{key}' argument must be an integer when provided.")
-    return value
