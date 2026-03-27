@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO
 from harnessiq.providers.browser_use.operations import (
     BrowserUseOperation,
     build_browser_use_operation_catalog,
@@ -78,10 +79,11 @@ def create_browser_use_tools(
     )
 
     def handler(arguments: ToolArguments) -> dict[str, Any]:
-        operation_name = _require_operation_name(arguments, allowed_names)
-        payload = dict(_optional_mapping(arguments, "payload") or {})
-        result = getattr(browser_use_client, operation_name)(**payload)
-        return {"operation": operation_name, "result": result}
+        request = ProviderPayloadRequestDTO(
+            operation=_require_operation_name(arguments, allowed_names),
+            payload=dict(_optional_mapping(arguments, "payload") or {}),
+        )
+        return browser_use_client.execute_operation(request).to_dict()
 
     return (RegisteredTool(definition=definition, handler=handler),)
 

@@ -6,6 +6,7 @@ from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
 from harnessiq.interfaces import RequestPreparingClient
+from harnessiq.shared.dtos import ProviderOperationRequestDTO
 
 from harnessiq.providers.instantly.operations import (
     InstantlyOperation,
@@ -81,26 +82,13 @@ def create_instantly_tools(
     )
 
     def handler(arguments: ToolArguments) -> dict[str, Any]:
-        operation_name = _require_operation_name(arguments, allowed_names)
-        prepared = instantly_client.prepare_request(
-            operation_name,
-            path_params=_optional_mapping(arguments, "path_params"),
-            query=_optional_mapping(arguments, "query"),
+        request = ProviderOperationRequestDTO(
+            operation=_require_operation_name(arguments, allowed_names),
+            path_params=_optional_mapping(arguments, "path_params") or {},
+            query=_optional_mapping(arguments, "query") or {},
             payload=arguments.get("payload"),
         )
-        response = instantly_client.request_executor(
-            prepared.method,
-            prepared.url,
-            headers=prepared.headers,
-            json_body=prepared.json_body,
-            timeout_seconds=instantly_client.credentials.timeout_seconds,
-        )
-        return {
-            "operation": prepared.operation.name,
-            "method": prepared.method,
-            "path": prepared.path,
-            "response": response,
-        }
+        return instantly_client.execute_operation(request).to_dict()
 
     return (RegisteredTool(definition=definition, handler=handler),)
 
@@ -179,5 +167,3 @@ __all__ = [
     "build_instantly_request_tool_definition",
     "create_instantly_tools",
 ]
-
-

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from unittest.mock import MagicMock
 
+from harnessiq.shared.dtos import PreparedProviderOperationResultDTO, ProviderOperationRequestDTO
 from harnessiq.shared.knowt import KnowtMemoryStore
 from harnessiq.shared.tools import (
     FILES_CREATE_FILE,
@@ -28,7 +29,12 @@ def _make_store(tmp_path: Path) -> KnowtMemoryStore:
 
 def _make_mock_client(response: Any = None) -> MagicMock:
     client = MagicMock()
-    client.execute_operation.return_value = response or {"id": "video-abc123", "status": "pending"}
+    client.execute_operation.return_value = PreparedProviderOperationResultDTO(
+        operation="create_lipsync_v2",
+        method="POST",
+        path="/v2/lipsync",
+        response=response or {"id": "video-abc123", "status": "pending"},
+    )
     return client
 
 
@@ -251,11 +257,11 @@ class TestCreateVideoTool(unittest.TestCase):
         result = registry.execute(KNOWT_CREATE_VIDEO, {
             "script": "The actual script.", "avatar_id": "av-123", "voice_id": "vo-456"
         })
-        mock_client.execute_operation.assert_called_once_with(
-            "create_lipsync_v2", payload=unittest.mock.ANY
-        )
-        call_kwargs = mock_client.execute_operation.call_args
-        payload = call_kwargs[1]["payload"]
+        mock_client.execute_operation.assert_called_once()
+        request = mock_client.execute_operation.call_args.args[0]
+        self.assertIsInstance(request, ProviderOperationRequestDTO)
+        payload = request.payload
+        self.assertEqual(request.operation, "create_lipsync_v2")
         self.assertEqual(payload["script"], "The actual script.")
         self.assertEqual(payload["avatar_id"], "av-123")
         self.assertEqual(payload["voice_id"], "vo-456")
@@ -268,7 +274,7 @@ class TestCreateVideoTool(unittest.TestCase):
         registry.execute(KNOWT_CREATE_VIDEO, {
             "script": "s", "avatar_id": "a", "voice_id": "v"
         })
-        payload = mock_client.execute_operation.call_args[1]["payload"]
+        payload = mock_client.execute_operation.call_args.args[0].payload
         self.assertEqual(payload["aspect_ratio"], "9:16")
 
     def test_custom_aspect_ratio_passed_to_api(self) -> None:
@@ -278,7 +284,7 @@ class TestCreateVideoTool(unittest.TestCase):
         registry.execute(KNOWT_CREATE_VIDEO, {
             "script": "s", "avatar_id": "a", "voice_id": "v", "aspect_ratio": "1:1"
         })
-        payload = mock_client.execute_operation.call_args[1]["payload"]
+        payload = mock_client.execute_operation.call_args.args[0].payload
         self.assertEqual(payload["aspect_ratio"], "1:1")
 
     def test_optional_name_and_background_url_passed_when_provided(self) -> None:
@@ -289,7 +295,7 @@ class TestCreateVideoTool(unittest.TestCase):
             "script": "s", "avatar_id": "a", "voice_id": "v",
             "name": "My Video", "background_url": "https://example.com/bg.jpg"
         })
-        payload = mock_client.execute_operation.call_args[1]["payload"]
+        payload = mock_client.execute_operation.call_args.args[0].payload
         self.assertEqual(payload["name"], "My Video")
         self.assertEqual(payload["background_url"], "https://example.com/bg.jpg")
 
@@ -300,7 +306,7 @@ class TestCreateVideoTool(unittest.TestCase):
         registry.execute(KNOWT_CREATE_VIDEO, {
             "script": "s", "avatar_id": "a", "voice_id": "v"
         })
-        payload = mock_client.execute_operation.call_args[1]["payload"]
+        payload = mock_client.execute_operation.call_args.args[0].payload
         self.assertNotIn("name", payload)
         self.assertNotIn("background_url", payload)
 

@@ -21,6 +21,7 @@ from harnessiq.interfaces import (
     WebhookSinkClient,
     ZeroArgumentFactory,
 )
+from harnessiq.shared.dtos import PreparedProviderOperationResultDTO, ProviderOperationRequestDTO
 
 
 @dataclass
@@ -50,14 +51,20 @@ class _FakeRequestPreparingClient:
 
     def prepare_request(
         self,
-        operation_name: str,
-        *,
-        path_params=None,
-        query=None,
-        payload=None,
+        request: ProviderOperationRequestDTO,
     ) -> _FakePreparedRequest:
-        del operation_name, path_params, query, payload
+        del request
         return _FakePreparedRequest()
+
+    def execute_operation(
+        self,
+        request: ProviderOperationRequestDTO,
+    ) -> PreparedProviderOperationResultDTO:
+        prepared = self.prepare_request(request)
+        return PreparedProviderOperationResultDTO.from_prepared_request(
+            prepared=prepared,
+            response={"ok": True},
+        )
 
 
 class _FakeWebhookClient:

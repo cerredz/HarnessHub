@@ -31,6 +31,13 @@ from .cli import (
     HarnessRunSummaryDTO,
     HarnessStatePayloadDTO,
 )
+from .providers import (
+    ArxivOperationResultDTO,
+    PreparedProviderOperationResultDTO,
+    ProviderOperationRequestDTO,
+    ProviderPayloadRequestDTO,
+    ProviderPayloadResultDTO,
+)
 from .base import SerializableDTO, coerce_serializable_mapping
 
 __all__ = [
@@ -41,6 +48,7 @@ __all__ = [
     "ExaAgentRequest",
     "InstagramAgentInstancePayload",
     "InstantlyAgentRequest",
+    "ArxivOperationResultDTO",
     "HarnessAdapterResponseDTO",
     "HarnessCommandPayloadDTO",
     "HarnessParameterBundleDTO",
@@ -57,7 +65,11 @@ __all__ = [
     "LeadsAgentInstancePayload",
     "LinkedInAgentInstancePayload",
     "OutreachAgentRequest",
+    "PreparedProviderOperationResultDTO",
     "ProspectingAgentInstancePayload",
+    "ProviderOperationRequestDTO",
+    "ProviderPayloadRequestDTO",
+    "ProviderPayloadResultDTO",
     "ProviderToolAgentRequest",
     "ResearchSweepAgentInstancePayload",
     "SerializableDTO",

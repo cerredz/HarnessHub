@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO
 from harnessiq.providers.google_drive.operations import (
     GoogleDriveOperation,
     build_google_drive_operation_catalog,
@@ -60,70 +61,11 @@ def create_google_drive_tools(
     )
 
     def handler(arguments: ToolArguments) -> dict[str, Any]:
-        operation_name = _require_operation_name(arguments, allowed_names)
-        payload = dict(_optional_mapping(arguments, "payload") or {})
-        if operation_name == "ensure_folder":
-            name = _require_string(payload, "name")
-            parent_id = _optional_string(payload, "parent_id")
-            result = google_drive_client.ensure_folder(name=name, parent_id=parent_id)
-        elif operation_name == "list_files":
-            result = google_drive_client.list_files(
-                name=_optional_string(payload, "name"),
-                parent_id=_optional_string(payload, "parent_id"),
-                mime_type=_optional_string(payload, "mime_type"),
-                query=_optional_string(payload, "query"),
-                page_size=_optional_int(payload, "page_size") or 100,
-                include_trashed=_optional_bool(payload, "include_trashed") or False,
-            )
-        elif operation_name == "find_file":
-            name = _require_string(payload, "name")
-            result = google_drive_client.find_file(
-                name=name,
-                parent_id=_optional_string(payload, "parent_id"),
-                mime_type=_optional_string(payload, "mime_type"),
-            )
-        elif operation_name == "get_file":
-            result = google_drive_client.get_file(_require_string(payload, "file_id"))
-        elif operation_name == "copy_file":
-            result = google_drive_client.copy_file(
-                _require_string(payload, "file_id"),
-                name=_optional_string(payload, "name"),
-                parent_id=_optional_string(payload, "parent_id"),
-            )
-        elif operation_name == "move_file":
-            clear_existing_parents = _optional_bool(payload, "clear_existing_parents")
-            result = google_drive_client.move_file(
-                _require_string(payload, "file_id"),
-                new_parent_id=_optional_string(payload, "new_parent_id"),
-                remove_parent_ids=_optional_string_list(payload, "remove_parent_ids"),
-                clear_existing_parents=True if clear_existing_parents is None else clear_existing_parents,
-                name=_optional_string(payload, "name"),
-            )
-        elif operation_name == "create_shortcut":
-            result = google_drive_client.create_shortcut(
-                target_file_id=_require_string(payload, "target_file_id"),
-                name=_optional_string(payload, "name"),
-                parent_id=_optional_string(payload, "parent_id"),
-            )
-        elif operation_name == "list_permissions":
-            result = google_drive_client.list_permissions(_require_string(payload, "file_id"))
-        elif operation_name == "create_permission":
-            result = google_drive_client.create_permission(
-                _require_string(payload, "file_id"),
-                permission=_build_permission_payload(payload),
-                send_notification_email=_optional_bool(payload, "send_notification_email"),
-            )
-        else:
-            name = _require_string(payload, "name")
-            file_payload = payload.get("payload")
-            if not isinstance(file_payload, Mapping):
-                raise ValueError("The 'payload.payload' field must be an object for upsert_json_file.")
-            result = google_drive_client.upsert_json_file(
-                name=name,
-                parent_id=_optional_string(payload, "parent_id"),
-                payload={str(key): value for key, value in file_payload.items()},
-            )
-        return {"operation": operation_name, "result": result}
+        request = ProviderPayloadRequestDTO(
+            operation=_require_operation_name(arguments, allowed_names),
+            payload=dict(_optional_mapping(arguments, "payload") or {}),
+        )
+        return google_drive_client.execute_operation(request).to_dict()
 
     return (RegisteredTool(definition=definition, handler=handler),)
 
@@ -183,72 +125,6 @@ def _optional_mapping(arguments: Mapping[str, object], key: str) -> Mapping[str,
     if not isinstance(value, Mapping):
         raise ValueError(f"The '{key}' argument must be an object when provided.")
     return value
-
-
-def _require_string(payload: Mapping[str, object], key: str) -> str:
-    value = payload.get(key)
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"The '{key}' field must be a non-empty string.")
-    return value
-
-
-def _optional_string(payload: Mapping[str, object], key: str) -> str | None:
-    value = payload.get(key)
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise ValueError(f"The '{key}' field must be a string when provided.")
-    normalized = value.strip()
-    return normalized or None
-
-
-def _optional_int(payload: Mapping[str, object], key: str) -> int | None:
-    value = payload.get(key)
-    if value is None:
-        return None
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise ValueError(f"The '{key}' field must be an integer when provided.")
-    return value
-
-
-def _optional_bool(payload: Mapping[str, object], key: str) -> bool | None:
-    value = payload.get(key)
-    if value is None:
-        return None
-    if not isinstance(value, bool):
-        raise ValueError(f"The '{key}' field must be a boolean when provided.")
-    return value
-
-
-def _optional_string_list(payload: Mapping[str, object], key: str) -> list[str] | None:
-    value = payload.get(key)
-    if value is None:
-        return None
-    if not isinstance(value, list):
-        raise ValueError(f"The '{key}' field must be a list of strings when provided.")
-    normalized: list[str] = []
-    for item in value:
-        if not isinstance(item, str) or not item.strip():
-            raise ValueError(f"The '{key}' field must contain only non-empty strings.")
-        normalized.append(item.strip())
-    return normalized
-
-
-def _build_permission_payload(payload: Mapping[str, object]) -> dict[str, object]:
-    permission = {
-        "type": _require_string(payload, "type"),
-        "role": _require_string(payload, "role"),
-    }
-    email_address = _optional_string(payload, "email_address")
-    if email_address is not None:
-        permission["emailAddress"] = email_address
-    domain = _optional_string(payload, "domain")
-    if domain is not None:
-        permission["domain"] = domain
-    allow_file_discovery = _optional_bool(payload, "allow_file_discovery")
-    if allow_file_discovery is not None:
-        permission["allowFileDiscovery"] = allow_file_discovery
-    return permission
 
 
 __all__ = [

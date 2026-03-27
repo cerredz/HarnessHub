@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Mapping
 
+from harnessiq.shared.dtos import ProviderOperationRequestDTO
 from harnessiq.shared.tools import (
     FILES_CREATE_FILE,
     FILES_EDIT_FILE,
@@ -252,7 +253,12 @@ def _build_create_video_tool(
         if background_url:
             payload["background_url"] = background_url
 
-        response = creatify_client.execute_operation("create_lipsync_v2", payload=payload)
+        response = creatify_client.execute_operation(
+            ProviderOperationRequestDTO(
+                operation="create_lipsync_v2",
+                payload=payload,
+            )
+        ).response
         memory_store.append_creation_log({
             "timestamp": _utcnow(),
             "action": "create_video",

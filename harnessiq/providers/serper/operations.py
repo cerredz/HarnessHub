@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
 from harnessiq.interfaces import RequestPreparingClient
+from harnessiq.shared.dtos import ProviderOperationRequestDTO
 
 from harnessiq.providers.http import join_url
 from harnessiq.shared.tools import (
@@ -69,24 +70,11 @@ def create_serper_tools(
     )
 
     def handler(arguments: ToolArguments) -> dict[str, Any]:
-        operation_name = _require_operation_name(arguments, allowed_names)
-        prepared = serper_client.prepare_request(
-            operation_name,
+        request = ProviderOperationRequestDTO(
+            operation=_require_operation_name(arguments, allowed_names),
             payload=arguments.get("payload"),
         )
-        response = serper_client.request_executor(
-            prepared.method,
-            prepared.url,
-            headers=prepared.headers,
-            json_body=prepared.json_body,
-            timeout_seconds=serper_client.credentials.timeout_seconds,
-        )
-        return {
-            "operation": prepared.operation.name,
-            "method": prepared.method,
-            "path": prepared.path,
-            "response": response,
-        }
+        return serper_client.execute_operation(request).to_dict()
 
     return (RegisteredTool(definition=definition, handler=handler),)
 
@@ -182,5 +170,3 @@ __all__ = [
     "create_serper_tools",
     "get_serper_operation",
 ]
-
-
