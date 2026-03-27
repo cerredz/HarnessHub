@@ -6,7 +6,7 @@ import json
 from tempfile import TemporaryDirectory
 import unittest
 
-from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection
+from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection, AgentRuntimeConfig
 from harnessiq.agents.provider_base import BaseProviderToolAgent
 from harnessiq.providers.apollo import ApolloCredentials
 from harnessiq.providers.exa import ExaCredentials
@@ -27,6 +27,7 @@ from harnessiq.shared.provider_agents import (
     render_redacted_provider_credentials,
     render_tool_operation_summary,
 )
+from harnessiq.shared.tool_selection import ToolSelectionConfig, ToolSelectionResult
 from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
 from harnessiq.tools.resend import ResendCredentials
 
@@ -50,6 +51,8 @@ class _TestProviderAgent(BaseProviderToolAgent):
         tools: tuple[RegisteredTool, ...] = (),
         credential_content: str | None = None,
         provider_name: str = "Example Provider",
+        runtime_config: AgentRuntimeConfig | None = None,
+        dynamic_tool_selector=None,
         repo_root: str | None = None,
     ) -> None:
         self._credential_content = credential_content or render_redacted_provider_credentials(
@@ -66,6 +69,8 @@ class _TestProviderAgent(BaseProviderToolAgent):
                 reset_threshold=0.5,
             ),
             tools=tools,
+            runtime_config=runtime_config,
+            dynamic_tool_selector=dynamic_tool_selector,
             repo_root=repo_root,
         )
 
@@ -89,6 +94,28 @@ class _TestProviderAgent(BaseProviderToolAgent):
 
     def additional_provider_instructions(self) -> str | None:
         return "Return concise action summaries after each successful tool call."
+
+
+class _FakeDynamicToolSelector:
+    def __init__(self, *, selected_keys: tuple[str, ...]) -> None:
+        self._selected_keys = selected_keys
+
+    @property
+    def config(self) -> ToolSelectionConfig:
+        return ToolSelectionConfig(enabled=True, top_k=max(1, len(self._selected_keys)))
+
+    def index(self, profiles) -> None:
+        self._indexed = tuple(profile.key for profile in profiles)
+
+    def select(self, *, context_window, candidate_profiles, metadata=None) -> ToolSelectionResult:
+        del context_window, metadata
+        candidate_keys = tuple(profile.key for profile in candidate_profiles)
+        selected_keys = tuple(key for key in self._selected_keys if key in candidate_keys)
+        return ToolSelectionResult(
+            selected_keys=selected_keys,
+            retrieval_query="provider-query",
+            rejected_keys=tuple(key for key in candidate_keys if key not in selected_keys),
+        )
 
 
 class ProviderAgentHelperTests(unittest.TestCase):
@@ -190,6 +217,34 @@ class BaseProviderToolAgentTests(unittest.TestCase):
             self.assertIsInstance(agent.request, ProviderToolAgentRequest)
             self.assertIsInstance(agent.build_instance_payload(), StatelessAgentInstancePayload)
             self.assertEqual(agent.build_instance_payload().to_dict(), {})
+
+    def test_agent_dynamic_selection_keeps_prompt_and_schemas_aligned(self) -> None:
+        with TemporaryDirectory() as temp_repo_root:
+            provider_tool = _make_provider_tool()
+            custom_tool = _make_custom_tool()
+            selector = _FakeDynamicToolSelector(selected_keys=("example.request",))
+            model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+            agent = _TestProviderAgent(
+                model=model,
+                provider_tools=(provider_tool,),
+                tools=(custom_tool,),
+                runtime_config=AgentRuntimeConfig(
+                    tool_selection=ToolSelectionConfig(
+                        enabled=True,
+                        top_k=1,
+                        candidate_tool_keys=("example.request", "custom.helper"),
+                    )
+                ),
+                dynamic_tool_selector=selector,
+                repo_root=temp_repo_root,
+            )
+
+            agent.run(max_cycles=1)
+
+            request = model.requests[0]
+            self.assertEqual([tool.key for tool in request.tools], ["example.request"])
+            self.assertIn("provider_request", request.system_prompt)
+            self.assertNotIn("custom_helper", request.system_prompt)
 
     def test_agent_preserves_default_provider_tool_surface_when_custom_tools_conflict(self) -> None:
         with TemporaryDirectory() as temp_repo_root:

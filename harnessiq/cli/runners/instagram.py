@@ -35,6 +35,10 @@ class InstagramCliRunner:
         max_cycles: int | None,
         approval_policy: str | None,
         allowed_tools: Sequence[str],
+        dynamic_tools: bool = False,
+        dynamic_tool_candidates: Sequence[str] = (),
+        dynamic_tool_top_k: int = 5,
+        dynamic_tool_embedding_model: str | None = None,
     ) -> dict[str, Any]:
         from harnessiq.agents.instagram import InstagramKeywordDiscoveryAgent
 
@@ -60,6 +64,10 @@ class InstagramCliRunner:
                 sink_specs=(),
                 approval_policy=approval_policy,
                 allowed_tools=allowed_tools,
+                dynamic_tools_enabled=dynamic_tools,
+                dynamic_tool_candidates=dynamic_tool_candidates,
+                dynamic_tool_top_k=dynamic_tool_top_k,
+                dynamic_tool_embedding_model=dynamic_tool_embedding_model,
             ),
         )
         result = agent.run(max_cycles=max_cycles)

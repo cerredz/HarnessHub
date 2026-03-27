@@ -7,6 +7,8 @@ from typing import Literal
 
 from harnessiq.shared.validated import NonEmptyString, PositiveInt
 
+DEFAULT_TOOL_SELECTION_EMBEDDING_MODEL = "openai:text-embedding-3-small"
+
 ToolSelectionRerankerMode = Literal["none", "auto", "always"]
 
 
@@ -114,6 +116,7 @@ class ToolSelectionResult:
 
 
 __all__ = [
+    "DEFAULT_TOOL_SELECTION_EMBEDDING_MODEL",
     "ToolProfile",
     "ToolSelectionConfig",
     "ToolSelectionResult",

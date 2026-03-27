@@ -8,14 +8,14 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Metric | Count |
 | --- | --- |
-| Concrete harness manifests | 7 |
+| Concrete harness manifests | 9 |
 | Top-level CLI commands | 18 |
-| Registered CLI command paths | 132 |
+| Registered CLI command paths | 146 |
 | Model providers | 4 |
-| Service provider packages | 26 |
+| Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-| Test modules | 108 |
+| Test modules | 116 |
 
 ## Codebase Standards
 
@@ -31,9 +31,12 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Kind | Responsibility |
 | --- | --- | --- |
+| `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
 | `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
+| `build/` | generated/cache | Setuptools build output; generated, not part of the live source tree. |
 | `docs/` | repo docs | Focused usage and architecture notes for the package. |
 | `harnessiq/` | source | Live SDK package source. |
+| `harnessiq.egg-info/` | generated/cache | Packaging metadata emitted by local builds. |
 | `memory/` | local state | Task artifacts plus durable agent runtime state; not part of the shipped package. |
 | `scripts/` | repo tooling | Repository maintenance and generation scripts. |
 | `tests/` | source | unittest coverage for runtime, CLI, providers, and tools. |
@@ -42,14 +45,14 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Live Subpackages | Responsibility |
 | --- | --- | --- |
-| `harnessiq/agents/` | apollo, base, email, exa, exa_outreach, instagram, instantly, knowt, leads, linkedin, outreach, prospecting, provider_base, research_sweep | Shared runtime bases plus the concrete harness packages exported by the SDK. |
+| `harnessiq/agents/` | apollo, base, email, exa, exa_outreach, instagram, instantly, knowt, leads, linkedin, mission_driven, outreach, prospecting, provider_base, research_sweep, spawn_specialized_subagents | Shared runtime bases plus the concrete harness packages exported by the SDK. |
 | `harnessiq/cli/` | adapters, builders, commands, exa_outreach, gcloud, instagram, leads, ledger, linkedin, master_prompts, models, prospecting, research_sweep, runners | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
 | `harnessiq/config/` | provider_credentials | Environment loading, credential binding, and provider-credential spec models. |
 | `harnessiq/integrations/` | - | Concrete external runtime adapters such as Playwright backends and model factories. |
 | `harnessiq/master_prompts/` | prompts | Packaged prompt assets and prompt registry helpers. |
-| `harnessiq/providers/` | anthropic, apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, gcloud, gemini, google_drive, grok, inboxapp, instantly, leadiq, lemlist, lusha, openai, outreach, paperclip, peopledatalabs, phantombuster, playwright, proxycurl, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | Model-provider adapters, external service clients, output-sink transport clients, and Playwright runtime support. |
+| `harnessiq/providers/` | anthropic, apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, gcloud, gemini, google_drive, grok, hunter, inboxapp, instantly, leadiq, lemlist, lusha, openai, outreach, paperclip, peopledatalabs, phantombuster, playwright, proxycurl, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | Model-provider adapters, external service clients, output-sink transport clients, and Playwright runtime support. |
 | `harnessiq/shared/` | dtos | Shared manifests, durable memory stores, operation metadata, and package-wide types/constants. |
-| `harnessiq/tools/` | apollo, arcads, arxiv, attio, browser_use, context, coresignal, creatify, eval, exa, expandi, google_drive, hooks, inboxapp, instagram, instantly, knowt, leadiq, leads, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, prospecting, proxycurl, reasoning, salesforge, search, serper, smartlead, snovio, zerobounce, zoominfo | Built-in tool families, provider-backed tool factories, and domain-specific helper tools. |
+| `harnessiq/tools/` | apollo, arcads, arxiv, attio, browser_use, context, coresignal, creatify, eval, exa, expandi, google_drive, hooks, hunter, inboxapp, instagram, instantly, knowt, leadiq, leads, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, prospecting, proxycurl, reasoning, salesforge, search, serper, smartlead, snovio, zerobounce, zoominfo | Built-in tool families, provider-backed tool factories, and domain-specific helper tools. |
 | `harnessiq/toolset/` | - | Static tool catalog plus registration and lookup helpers for reusable tool composition. |
 | `harnessiq/utils/` | harness_manifest | Agent instance storage, ledger export/report helpers, and built-in output sink implementations. |
 
@@ -84,10 +87,12 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | exa_outreach | Exa Outreach | `harnessiq.agents.exa_outreach:ExaOutreachAgent` | `memory/outreach` | max_tokens, reset_threshold | - | query_config.json, agent_identity.txt, additional_prompt.txt, runs | exa, resend | emails_sent, leads_found, search_query |
 | instagram | Instagram Keyword Discovery | `harnessiq.agents.instagram:InstagramKeywordDiscoveryAgent` | `memory/instagram` | max_tokens, recent_result_window, recent_search_window, reset_threshold, search_result_limit | open-ended | icp_profiles.json, search_history.json, run_state.json, icps/*.json, lead_database.json, runtime_parameters.json, custom_parameters.json, agent_identity.txt, additional_prompt.txt | playwright | emails, leads, search_history |
 | knowt | Knowt Content Creator | `harnessiq.agents.knowt:KnowtAgent` | `memory/knowt` | max_tokens, reset_threshold | - | current_script.md, current_avatar_description.md, creation_log.jsonl | creatify | avatar_description, creation_log, script |
-| leads | Leads Agent | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | run_config.json, run_state.json, runtime_parameters.json, icps/*.json, lead_storage, lead_storage/saved_leads.json | apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | icp_states, run_config, run_state, saved_leads |
+| leads | Leads Agent | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | run_config.json, run_state.json, runtime_parameters.json, icps/*.json, lead_storage, lead_storage/saved_leads.json | apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, hunter, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | icp_states, run_config, run_state, saved_leads |
 | linkedin | LinkedIn Job Applier | `harnessiq.agents.linkedin:LinkedInJobApplierAgent` | `memory/linkedin` | max_tokens, reset_threshold, action_log_window, linkedin_start_url, notify_on_pause, pause_webhook | open-ended | job_preferences.md, user_profile.md, agent_identity.md, runtime_parameters.json, custom_parameters.json, additional_prompt.md, applied_jobs.jsonl, action_log.jsonl, managed_files.json, managed_files, screenshots | playwright | jobs_applied, managed_files, recent_actions |
+| mission_driven | Mission Driven | `harnessiq.agents.mission_driven:MissionDrivenAgent` | `memory/mission_driven` | max_tokens, reset_threshold | mission_goal, mission_type | mission.json, task_plan.json, memory_store.json, decision_log.json, file_manifest.json, error_log.json, feedback_log.json, test_results.json, artifacts.json, progress_log.jsonl, README.md, checkpoints, additional_prompt.md, runtime_parameters.json, custom_parameters.json | - | artifact_count, blocked_task_count, completed_task_count, current_task_pointer, mission_goal, mission_status, mission_type, next_actions, task_count |
 | prospecting | Google Maps Prospecting | `harnessiq.agents.prospecting:GoogleMapsProspectingAgent` | `memory/prospecting` | max_tokens, reset_threshold | qualification_threshold, summarize_at_x, max_searches_per_run, max_listings_per_search, website_inspect_enabled, sink_record_type, eval_system_prompt | company_description.md, agent_identity.md, additional_prompt.md, runtime_parameters.json, custom_parameters.json, prospecting_state.json, qualified_leads.jsonl, browser-data | playwright | company_description, counts, qualified_leads, searches_completed, summary |
 | research_sweep | Research Sweep | `harnessiq.agents.research_sweep:ResearchSweepAgent` | `memory/research_sweep` | max_tokens, reset_threshold | query, allowed_serper_operations | query.txt, additional_prompt.md, runtime_parameters.json, custom_parameters.json, context_runtime_state.json | serper | all_sites_empty, continuation_pointer, final_report, query, site_results |
+| spawn_specialized_subagents | Spawn Specialized Subagents | `harnessiq.agents.spawn_specialized_subagents:SpawnSpecializedSubagentsAgent` | `memory/spawn_specialized_subagents` | max_tokens, reset_threshold | objective, available_agent_types | objective.md, current_context.md, additional_prompt.md, plan.json, worker_outputs.json, integration_summary.json, execution_log.jsonl, README.md, runtime_parameters.json, custom_parameters.json | - | assignment_count, final_response, immediate_local_step, objective, worker_output_count |
 
 ## CLI Architecture
 
@@ -97,20 +102,20 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections | `harnessiq/cli/ledger/commands.py` |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings | `harnessiq/cli/platform_commands.py` |
 | harnessiq export | - | Export ledger entries in a structured format | `harnessiq/cli/ledger/commands.py` |
-| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Inspect one harness manifest and generated CLI surface | `harnessiq/cli/platform_commands.py` |
+| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Inspect one harness manifest and generated CLI surface | `harnessiq/cli/platform_commands.py` |
 | harnessiq instagram | configure, get-emails, prepare, run, show | Manage and run the Instagram keyword discovery agent | `harnessiq/cli/instagram/commands.py` |
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent | `harnessiq/cli/leads/commands.py` |
 | harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent | `harnessiq/cli/linkedin/commands.py` |
 | harnessiq logs | - | Inspect the local audit ledger | `harnessiq/cli/ledger/commands.py` |
 | harnessiq models | add, list | Manage reusable provider-backed model profiles | `harnessiq/cli/models/commands.py` |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent | `harnessiq/cli/exa_outreach/commands.py` |
-| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
+| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
 | harnessiq prompts | activate, clear, current, list, show, text | Inspect bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent | `harnessiq/cli/prospecting/commands.py` |
 | harnessiq report | - | Build a cross-agent report from the local ledger | `harnessiq/cli/ledger/commands.py` |
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness | `harnessiq/cli/research_sweep/commands.py` |
-| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
-| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
+| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
+| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
 
 ## Provider Surfaces
 
@@ -137,6 +142,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | exa | 15 | `harnessiq/providers/exa` | `harnessiq/tools/exa/operations.py` | `harnessiq/shared/exa.py` |
 | expandi | 22 | `harnessiq/providers/expandi` | `harnessiq/tools/expandi/operations.py` | `harnessiq/shared/expandi.py` |
 | google_drive | 10 | `harnessiq/providers/google_drive` | `harnessiq/tools/google_drive/operations.py` | `harnessiq/shared/google_drive.py` |
+| hunter | 14 | `harnessiq/providers/hunter` | `harnessiq/tools/hunter/operations.py` | `harnessiq/shared/hunter.py` |
 | inboxapp | 9 | `harnessiq/providers/inboxapp` | `harnessiq/tools/inboxapp/operations.py` | `harnessiq/shared/inboxapp.py` |
 | instantly | 75 | `harnessiq/providers/instantly` | `harnessiq/tools/instantly/operations.py` | `harnessiq/shared/instantly.py` |
 | leadiq | 12 | `harnessiq/providers/leadiq` | `harnessiq/tools/leadiq/operations.py` | `harnessiq/shared/leadiq.py` |
@@ -177,13 +183,13 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 ## Test Surface
 
-`tests/` currently contains 108 test modules. The table below groups them by dominant responsibility.
+`tests/` currently contains 116 test modules. The table below groups them by dominant responsibility.
 
 | Area | Count | Examples |
 | --- | --- | --- |
-| agents | 18 | `tests/test_agent_instances.py`, `tests/test_agent_models.py`, `tests/test_agents_base.py` |
+| agents | 20 | `tests/test_agent_instances.py`, `tests/test_agent_models.py`, `tests/test_agents_base.py` |
 | cli | 10 | `tests/test_exa_outreach_cli.py`, `tests/test_gcloud_cli.py`, `tests/test_instagram_cli.py` |
 | ledger | 1 | `tests/test_output_sinks.py` |
-| providers | 31 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
-| support | 35 | `tests/test_cli_builders.py`, `tests/test_cli_common.py`, `tests/test_cli_environment.py` |
-| tools | 13 | `tests/test_context_compaction_tools.py`, `tests/test_context_window_tools.py`, `tests/test_general_tools.py` |
+| providers | 32 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
+| support | 38 | `tests/test_cli_builders.py`, `tests/test_cli_common.py`, `tests/test_cli_environment.py` |
+| tools | 15 | `tests/test_context_compaction_tools.py`, `tests/test_context_window_tools.py`, `tests/test_general_tools.py` |

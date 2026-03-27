@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Sequence
 
+from harnessiq.interfaces.tool_selection import DynamicToolSelector
+from harnessiq.integrations import create_embedding_backend_from_spec
 from harnessiq.shared.agents import (
     AgentContextWindow,
     AgentModel,
@@ -22,6 +24,7 @@ from harnessiq.shared.agents import (
     json_parameter_section,
     render_json_parameter_content,
 )
+from harnessiq.shared.tool_selection import DEFAULT_TOOL_SELECTION_EMBEDDING_MODEL, ToolSelectionResult
 from harnessiq.shared.dtos import SerializableDTO
 from harnessiq.shared.hooks import HookDefinition
 from harnessiq.shared.tools import (
@@ -33,6 +36,8 @@ from harnessiq.shared.tools import (
     ToolDefinition,
     ToolResult,
 )
+from harnessiq.toolset import DefaultDynamicToolSelector, resolve_tool_definition_profiles
+from harnessiq.tools.hooks.defaults import is_tool_allowed
 from harnessiq.utils.agent_instances import AgentInstanceRecord, AgentInstanceStore
 from .helpers import BaseAgentHelpersMixin, _resolve_repo_root, _utcnow
 
@@ -57,6 +62,7 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         model: AgentModel,
         tool_executor: AgentToolExecutor,
         runtime_config: AgentRuntimeConfig | None = None,
+        dynamic_tool_selector: DynamicToolSelector | None = None,
         memory_path: Path | None = None,
         repo_root: str | Path | None = None,
         instance_name: str | None = None,
@@ -85,6 +91,9 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         self._context_runtime_state = self._load_context_runtime_state()
         self._tool_executor = tool_executor
         self._hook_tools = self._build_hook_tools()
+        self._active_request_tool_keys: tuple[str, ...] | None = None
+        self._dynamic_tool_selector = dynamic_tool_selector or self._build_dynamic_tool_selector()
+        self._last_tool_selection_result: ToolSelectionResult | None = None
 
     @property
     def name(self) -> str:
@@ -146,6 +155,10 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
     def session_id(self) -> str | None:
         return self._session_id
 
+    @property
+    def last_tool_selection_result(self) -> ToolSelectionResult | None:
+        return self._last_tool_selection_result
+
     def build_context_window(self) -> AgentContextWindow:
         """Return the current context window including parameters and transcript entries."""
         if not self._parameter_sections:
@@ -173,9 +186,10 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
     def prepare(self) -> None:
         """Perform any one-time setup before the run loop starts."""
 
-    def available_tools(self) -> tuple[ToolDefinition, ...]:
+    def available_tools(self, tool_keys: Sequence[str] | None = None) -> tuple[ToolDefinition, ...]:
         """Return the currently registered runtime tools."""
-        return tuple(self._tool_executor.definitions())
+        requested_keys = tool_keys if tool_keys is not None else self._active_request_tool_keys
+        return tuple(self._tool_executor.definitions(requested_keys))
 
     def inspect_tools(self, tool_keys: Sequence[str] | None = None) -> tuple[dict[str, Any], ...]:
         """Return rich inspection metadata for all or selected tools."""
@@ -215,12 +229,19 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         """Build the provider-agnostic model request for the next turn."""
         if not self._parameter_sections:
             self.refresh_parameters()
+        active_tool_keys = self._resolve_active_tool_keys()
+        self._active_request_tool_keys = active_tool_keys
+        try:
+            system_prompt = self._effective_system_prompt()
+            tools = self.available_tools(active_tool_keys)
+        finally:
+            self._active_request_tool_keys = None
         return AgentModelRequest(
             agent_name=self._name,
-            system_prompt=self._effective_system_prompt(),
+            system_prompt=system_prompt,
             parameter_sections=self._parameter_sections,
             transcript=tuple(self._transcript),
-            tools=self.available_tools(),
+            tools=tools,
         )
 
     def enable_context_tools(self) -> None:
@@ -408,3 +429,51 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
     def _pause_signal_marks_completion(self, pause_signal: AgentPauseSignal) -> bool:
         details = pause_signal.details
         return isinstance(details, dict) and details.get("status") == "completed"
+
+    def _build_dynamic_tool_selector(self) -> DynamicToolSelector | None:
+        config = self._runtime_config.tool_selection
+        if not config.enabled:
+            return None
+        embedding_model = config.embedding_model or DEFAULT_TOOL_SELECTION_EMBEDDING_MODEL
+        backend = create_embedding_backend_from_spec(embedding_model)
+        return DefaultDynamicToolSelector(
+            config=config,
+            embedding_backend=backend,
+        )
+
+    def _resolve_active_tool_keys(self) -> tuple[str, ...]:
+        available_definitions = self.available_tools(None)
+        if self._dynamic_tool_selector is None or not self._runtime_config.tool_selection.enabled:
+            self._last_tool_selection_result = None
+            return tuple(definition.key for definition in available_definitions)
+
+        candidate_definitions = self._resolve_dynamic_candidate_definitions(available_definitions)
+        candidate_profiles = resolve_tool_definition_profiles(candidate_definitions)
+        selection = self._dynamic_tool_selector.select(
+            context_window=self.build_context_window(),
+            candidate_profiles=candidate_profiles,
+            metadata={"agent_name": self.name},
+        )
+        self._last_tool_selection_result = selection
+        return selection.selected_keys
+
+    def _resolve_dynamic_candidate_definitions(
+        self,
+        definitions: Sequence[ToolDefinition],
+    ) -> tuple[ToolDefinition, ...]:
+        candidates = tuple(definitions)
+        allowed_patterns = self._runtime_config.allowed_tools
+        if allowed_patterns:
+            candidates = tuple(
+                definition
+                for definition in candidates
+                if is_tool_allowed(definition.key, allowed_patterns)
+            )
+        candidate_patterns = self._runtime_config.tool_selection.candidate_tool_keys
+        if candidate_patterns:
+            candidates = tuple(
+                definition
+                for definition in candidates
+                if is_tool_allowed(definition.key, candidate_patterns)
+            )
+        return candidates

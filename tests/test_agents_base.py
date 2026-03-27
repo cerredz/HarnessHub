@@ -18,6 +18,7 @@ from harnessiq.agents import (
     json_parameter_section,
 )
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
+from harnessiq.shared.tool_selection import ToolSelectionConfig, ToolSelectionResult
 from harnessiq.shared.tools import (
     CONTEXT_INJECT_ASSISTANT_NOTE,
     CONTEXT_PARAM_INJECT_SECTION,
@@ -62,6 +63,7 @@ class _InspectableAgent(BaseAgent):
         progress_step: int | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
         payload: dict | None = None,
+        dynamic_tool_selector=None,
         repo_root: str | Path | None = None,
     ) -> None:
         self._parameter_versions = parameter_versions or ["initial"]
@@ -74,6 +76,7 @@ class _InspectableAgent(BaseAgent):
             model=model,
             tool_executor=tool_executor,
             runtime_config=runtime_config or AgentRuntimeConfig(include_default_output_sink=False),
+            dynamic_tool_selector=dynamic_tool_selector,
             repo_root=repo_root,
         )
 
@@ -137,6 +140,31 @@ def _echo_handler(arguments: dict[str, object]) -> dict[str, object]:
     return {"echoed": arguments["text"]}
 
 
+class _FakeDynamicToolSelector:
+    def __init__(self, *, selected_keys: tuple[str, ...]) -> None:
+        self._selected_keys = selected_keys
+        self.calls: list[tuple[tuple[str, ...], str]] = []
+
+    @property
+    def config(self) -> ToolSelectionConfig:
+        top_k = max(1, len(self._selected_keys))
+        return ToolSelectionConfig(enabled=True, top_k=top_k)
+
+    def index(self, profiles) -> None:
+        self._indexed = tuple(profile.key for profile in profiles)
+
+    def select(self, *, context_window, candidate_profiles, metadata=None) -> ToolSelectionResult:
+        del context_window, metadata
+        candidate_keys = tuple(profile.key for profile in candidate_profiles)
+        selected_keys = tuple(key for key in self._selected_keys if key in candidate_keys)
+        self.calls.append((candidate_keys, "select"))
+        return ToolSelectionResult(
+            selected_keys=selected_keys,
+            retrieval_query="test-query",
+            rejected_keys=tuple(key for key in candidate_keys if key not in selected_keys),
+        )
+
+
 class BaseAgentTests(unittest.TestCase):
     def test_runtime_config_defaults_align_with_shared_constants(self) -> None:
         runtime_config = AgentRuntimeConfig()
@@ -145,6 +173,66 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(runtime_config.reset_threshold, DEFAULT_AGENT_RESET_THRESHOLD)
         self.assertIsNone(runtime_config.prune_progress_interval)
         self.assertIsNone(runtime_config.prune_token_limit)
+        self.assertFalse(runtime_config.tool_selection.enabled)
+
+    def test_build_model_request_preserves_static_tool_surface_when_dynamic_selection_is_disabled(self) -> None:
+        registry = ToolRegistry(
+            [
+                _constant_tool("session.echo", "echo", _echo_handler),
+                _constant_tool("session.write", "write", lambda arguments: {"written": arguments}),
+            ]
+        )
+        selector = _FakeDynamicToolSelector(selected_keys=("session.echo",))
+        agent = _InspectableAgent(
+            model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+            tool_executor=registry,
+            runtime_config=AgentRuntimeConfig(
+                include_default_output_sink=False,
+                tool_selection=ToolSelectionConfig(enabled=False),
+            ),
+            dynamic_tool_selector=selector,
+        )
+
+        request = agent.build_model_request()
+
+        self.assertEqual([tool.key for tool in request.tools], ["session.echo", "session.write"])
+        self.assertEqual(selector.calls, [])
+        self.assertIsNone(agent.last_tool_selection_result)
+
+    def test_build_model_request_uses_selected_dynamic_tool_subset_when_enabled(self) -> None:
+        registry = ToolRegistry(
+            [
+                _constant_tool("session.echo", "echo", _echo_handler),
+                _constant_tool("session.write", "write", lambda arguments: {"written": arguments}),
+                _constant_tool("filesystem.read", "read", lambda arguments: {"read": arguments}),
+            ]
+        )
+        selector = _FakeDynamicToolSelector(selected_keys=("session.write", "filesystem.read"))
+        agent = _InspectableAgent(
+            model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+            tool_executor=registry,
+            runtime_config=AgentRuntimeConfig(
+                include_default_output_sink=False,
+                allowed_tools=("session.*", "filesystem.read"),
+                tool_selection=ToolSelectionConfig(
+                    enabled=True,
+                    top_k=2,
+                    candidate_tool_keys=("session.write", "filesystem.read"),
+                ),
+            ),
+            dynamic_tool_selector=selector,
+        )
+
+        request = agent.build_model_request()
+
+        self.assertEqual([tool.key for tool in request.tools], ["session.write", "filesystem.read"])
+        self.assertEqual(
+            selector.calls,
+            [(("session.write", "filesystem.read"), "select")],
+        )
+        self.assertIsNotNone(agent.last_tool_selection_result)
+        assert agent.last_tool_selection_result is not None
+        self.assertEqual(agent.last_tool_selection_result.selected_keys, ("session.write", "filesystem.read"))
 
     def test_run_records_tool_results_and_passes_transcript_to_next_turn(self) -> None:
         registry = ToolRegistry(

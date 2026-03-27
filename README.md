@@ -30,14 +30,14 @@ print(result.output)
 
 | Metric | Count |
 | --- | --- |
-| Concrete harness manifests | 7 |
+| Concrete harness manifests | 9 |
 | Top-level CLI commands | 18 |
-| Registered CLI command paths | 132 |
+| Registered CLI command paths | 146 |
 | Model providers | 4 |
-| Service provider packages | 26 |
+| Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-| Test modules | 108 |
+| Test modules | 116 |
 
 ## Agent Matrix
 
@@ -46,14 +46,16 @@ print(result.output)
 | Exa Outreach | `outreach` | `harnessiq.agents.exa_outreach:ExaOutreachAgent` | `memory/outreach` | max_tokens, reset_threshold | - | exa, resend |
 | Instagram Keyword Discovery | `instagram` | `harnessiq.agents.instagram:InstagramKeywordDiscoveryAgent` | `memory/instagram` | max_tokens, recent_result_window, recent_search_window, reset_threshold, search_result_limit | open-ended | playwright |
 | Knowt Content Creator | - | `harnessiq.agents.knowt:KnowtAgent` | `memory/knowt` | max_tokens, reset_threshold | - | creatify |
-| Leads Agent | `leads` | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo |
+| Leads Agent | `leads` | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, hunter, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo |
 | LinkedIn Job Applier | `linkedin` | `harnessiq.agents.linkedin:LinkedInJobApplierAgent` | `memory/linkedin` | max_tokens, reset_threshold, action_log_window, linkedin_start_url, notify_on_pause, pause_webhook | open-ended | playwright |
+| Mission Driven | - | `harnessiq.agents.mission_driven:MissionDrivenAgent` | `memory/mission_driven` | max_tokens, reset_threshold | mission_goal, mission_type | - |
 | Google Maps Prospecting | `prospecting` | `harnessiq.agents.prospecting:GoogleMapsProspectingAgent` | `memory/prospecting` | max_tokens, reset_threshold | qualification_threshold, summarize_at_x, max_searches_per_run, max_listings_per_search, website_inspect_enabled, sink_record_type, eval_system_prompt | playwright |
 | Research Sweep | `research-sweep` | `harnessiq.agents.research_sweep:ResearchSweepAgent` | `memory/research_sweep` | max_tokens, reset_threshold | query, allowed_serper_operations | serper |
+| Spawn Specialized Subagents | - | `harnessiq.agents.spawn_specialized_subagents:SpawnSpecializedSubagentsAgent` | `memory/spawn_specialized_subagents` | max_tokens, reset_threshold | objective, available_agent_types | - |
 
 ## Provider Surface
 
-Harnessiq currently ships 4 model-provider adapters, 26 service provider packages under `harnessiq/providers/`, and 1 tool-only external service surface outside the provider package tree.
+Harnessiq currently ships 4 model-provider adapters, 27 service provider packages under `harnessiq/providers/`, and 1 tool-only external service surface outside the provider package tree.
 
 ### Model Providers
 
@@ -78,6 +80,7 @@ Harnessiq currently ships 4 model-provider adapters, 26 service provider package
 | exa | 15 | `harnessiq/providers/exa` | `harnessiq/tools/exa/operations.py` |
 | expandi | 22 | `harnessiq/providers/expandi` | `harnessiq/tools/expandi/operations.py` |
 | google_drive | 10 | `harnessiq/providers/google_drive` | `harnessiq/tools/google_drive/operations.py` |
+| hunter | 14 | `harnessiq/providers/hunter` | `harnessiq/tools/hunter/operations.py` |
 | inboxapp | 9 | `harnessiq/providers/inboxapp` | `harnessiq/tools/inboxapp/operations.py` |
 | instantly | 75 | `harnessiq/providers/instantly` | `harnessiq/tools/instantly/operations.py` |
 | leadiq | 12 | `harnessiq/providers/leadiq` | `harnessiq/tools/leadiq/operations.py` |
@@ -111,20 +114,20 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings |
 | harnessiq export | - | Export ledger entries in a structured format |
-| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Inspect one harness manifest and generated CLI surface |
+| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Inspect one harness manifest and generated CLI surface |
 | harnessiq instagram | configure, get-emails, prepare, run, show | Manage and run the Instagram keyword discovery agent |
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent |
 | harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent |
 | harnessiq logs | - | Inspect the local audit ledger |
 | harnessiq models | add, list | Manage reusable provider-backed model profiles |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent |
-| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Prepare and persist generic config for a harness |
+| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Prepare and persist generic config for a harness |
 | harnessiq prompts | activate, clear, current, list, show, text | Inspect bundled master prompts |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent |
 | harnessiq report | - | Build a cross-agent report from the local ledger |
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness |
-| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Run a harness through the platform-first CLI |
-| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, prospecting, research_sweep (research-sweep) | Show persisted platform config and harness state |
+| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI |
+| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state |
 
 ## Repo Docs
 

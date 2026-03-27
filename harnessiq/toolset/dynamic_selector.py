@@ -101,6 +101,26 @@ def resolve_tool_profiles(
     return tuple(profiles)
 
 
+def resolve_tool_definition_profiles(
+    definitions: Sequence[ToolDefinition],
+    *,
+    catalog_entries: Mapping[str, ToolEntry] | Sequence[ToolEntry] | None = None,
+    profile_overrides: Mapping[str, ToolProfileOverride] | None = None,
+    always_on_keys: Sequence[str] = (),
+) -> tuple[ToolProfile, ...]:
+    """Derive retrieval profiles from tool definitions without executable handlers."""
+    synthetic_tools = tuple(
+        RegisteredTool(definition=definition, handler=_unreachable_handler)
+        for definition in definitions
+    )
+    return resolve_tool_profiles(
+        synthetic_tools,
+        catalog_entries=catalog_entries,
+        profile_overrides=profile_overrides,
+        always_on_keys=always_on_keys,
+    )
+
+
 def resolve_registry_tool_profiles(
     registry: ToolsetRegistry,
     tool_keys: Sequence[str],
@@ -474,10 +494,16 @@ def _cosine_similarity(left: Sequence[float], right: Sequence[float]) -> float:
     return numerator / (left_norm * right_norm)
 
 
+def _unreachable_handler(arguments: dict[str, object]) -> object:
+    del arguments
+    raise RuntimeError("Synthetic selector profile tools are not executable.")
+
+
 __all__ = [
     "DefaultDynamicToolSelector",
     "ToolProfileOverride",
     "build_tool_selection_query",
+    "resolve_tool_definition_profiles",
     "resolve_registry_tool_profiles",
     "resolve_tool_profiles",
 ]

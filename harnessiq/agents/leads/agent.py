@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from harnessiq.agents.base import BaseAgent
+from harnessiq.interfaces.tool_selection import DynamicToolSelector
 from harnessiq.agents.leads.helpers import (
     build_leads_instance_payload as _build_leads_instance_payload,
     render_search_history as _render_search_history,
@@ -75,6 +76,7 @@ class LeadsAgent(BaseAgent):
         allowed_provider_operations: Mapping[str, Sequence[str] | None] | None = None,
         tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
+        dynamic_tool_selector: DynamicToolSelector | None = None,
     ) -> None:
         self._config = LeadsAgentConfig.from_inputs(
             company_background=company_background,
@@ -118,6 +120,7 @@ class LeadsAgent(BaseAgent):
                 prune_progress_interval=self._config.prune_search_interval,
                 prune_token_limit=self._config.prune_token_limit,
             ),
+            dynamic_tool_selector=dynamic_tool_selector,
             memory_path=self._config.memory_path,
         )
 
