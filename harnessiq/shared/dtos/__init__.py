@@ -39,6 +39,12 @@ from .providers import (
     ProviderPayloadResultDTO,
 )
 from .base import SerializableDTO, coerce_serializable_mapping
+from .prompt_harnesses import (
+    MissionDrivenInstancePayload,
+    SpawnSpecializedSubagentsInstancePayload,
+    SubAgentAssignmentDTO,
+    WorkerExecutionResultDTO,
+)
 
 __all__ = [
     "AgentInstancePayload",
@@ -72,7 +78,11 @@ __all__ = [
     "ProviderPayloadResultDTO",
     "ProviderToolAgentRequest",
     "ResearchSweepAgentInstancePayload",
+    "MissionDrivenInstancePayload",
     "SerializableDTO",
+    "SpawnSpecializedSubagentsInstancePayload",
     "StatelessAgentInstancePayload",
+    "SubAgentAssignmentDTO",
+    "WorkerExecutionResultDTO",
     "coerce_serializable_mapping",
 ]
