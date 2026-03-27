@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Protocol, Sequence
+
+from harnessiq.shared.validated import NonEmptyString, ToolDescription
 
 JsonObject = dict[str, Any]
 ToolArguments = dict[str, Any]
@@ -294,6 +296,18 @@ class ToolDefinition:
     input_schema: JsonObject
     tool_type: str = "function"
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "key", NonEmptyString(self.key, field_name="tool key"))
+        object.__setattr__(self, "name", NonEmptyString(self.name, field_name="tool name"))
+        object.__setattr__(
+            self,
+            "description",
+            ToolDescription(self.description, field_name=f"tool description for {self.key}"),
+        )
+        if not isinstance(self.input_schema, dict):
+            raise TypeError("ToolDefinition input_schema must be a JSON object mapping.")
+        object.__setattr__(self, "input_schema", deepcopy(self.input_schema))
+
     def as_dict(self) -> JsonObject:
         """Return the canonical metadata without executable runtime state.
 
@@ -411,6 +425,31 @@ def _describe_handler(handler: ToolHandler) -> JsonObject:
         "qualname": str(qualname),
         "name": str(name),
     }
+
+
+def build_grouped_operation_description(
+    operations: Sequence[object],
+    *,
+    lead: str,
+    usage: str | None = None,
+    closing: str | None = None,
+) -> str:
+    """Build a stable grouped operation description for provider-backed request tools."""
+
+    grouped: dict[str, list[str]] = {}
+    for operation in operations:
+        category = str(getattr(operation, "category"))
+        summary = str(operation.summary())
+        grouped.setdefault(category, []).append(summary)
+
+    lines = [str(ToolDescription(lead, field_name="operation description lead"))]
+    if usage is not None:
+        lines.extend(["", str(ToolDescription(usage, field_name="operation description usage"))])
+    for category, summaries in grouped.items():
+        lines.append(f"{category}: {', '.join(summaries)}")
+    if closing is not None:
+        lines.append(str(ToolDescription(closing, field_name="operation description closing")))
+    return str(ToolDescription("\n".join(lines), field_name="operation description"))
 
 
 __all__ = [
@@ -608,6 +647,7 @@ __all__ = [
     "TEXT_TRUNCATE_TEXT",
     "ToolArguments",
     "ToolCall",
+    "build_grouped_operation_description",
     "ToolDefinition",
     "ToolHandler",
     "ToolResult",

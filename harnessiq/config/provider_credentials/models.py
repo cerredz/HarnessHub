@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Mapping
 
+from harnessiq.shared.validated import NonEmptyString, ProviderFamilyName
+
 from .masking import mask_secret
 
 
@@ -16,10 +18,12 @@ class ProviderCredentialFieldSpec:
     description: str
 
     def __post_init__(self) -> None:
-        if not self.name.strip():
-            raise ValueError("Provider credential field name must not be blank.")
-        if not self.description.strip():
-            raise ValueError("Provider credential field description must not be blank.")
+        object.__setattr__(self, "name", NonEmptyString(self.name, field_name="Provider credential field name"))
+        object.__setattr__(
+            self,
+            "description",
+            NonEmptyString(self.description, field_name="Provider credential field description"),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,14 +36,14 @@ class ProviderCredentialSpec:
     builder: Callable[[Mapping[str, str]], object]
 
     def __post_init__(self) -> None:
-        normalized_family = self.family.strip().lower()
-        if not normalized_family:
-            raise ValueError("Provider credential family must not be blank.")
-        if not self.description.strip():
-            raise ValueError("Provider credential description must not be blank.")
+        object.__setattr__(self, "family", ProviderFamilyName(self.family, field_name="Provider credential family"))
+        object.__setattr__(
+            self,
+            "description",
+            NonEmptyString(self.description, field_name="Provider credential description"),
+        )
         if not self.fields:
             raise ValueError("Provider credential specs must declare at least one field.")
-        object.__setattr__(self, "family", normalized_family)
         object.__setattr__(self, "fields", tuple(self.fields))
 
     @property
@@ -58,7 +62,10 @@ class ProviderCredentialSpec:
         if unsupported:
             rendered = ", ".join(unsupported)
             raise ValueError(f"Provider family '{self.family}' does not support credential fields: {rendered}.")
-        return {key: normalized[key] for key in self.field_names}
+        return {
+            key: str(NonEmptyString(normalized[key], field_name=f"{self.family} credential field '{key}'"))
+            for key in self.field_names
+        }
 
     def build_credentials(self, values: Mapping[str, str]) -> object:
         """Construct one provider credential object from validated values."""

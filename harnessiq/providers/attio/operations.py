@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import OrderedDict
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
@@ -10,7 +9,13 @@ from harnessiq.interfaces import RequestPreparingClient
 from urllib.parse import quote
 
 from harnessiq.providers.http import join_url
-from harnessiq.shared.tools import ATTIO_REQUEST, RegisteredTool, ToolArguments, ToolDefinition
+from harnessiq.shared.tools import (
+    ATTIO_REQUEST,
+    RegisteredTool,
+    ToolArguments,
+    ToolDefinition,
+    build_grouped_operation_description,
+)
 
 if TYPE_CHECKING:
     from harnessiq.providers.attio.client import AttioCredentials
@@ -178,26 +183,20 @@ def _optional_mapping(arguments: Mapping[str, object], key: str) -> Mapping[str,
 
 
 def _build_tool_description(operations: Sequence[AttioOperation]) -> str:
-    grouped: OrderedDict[str, list[str]] = OrderedDict()
-    for op in operations:
-        grouped.setdefault(op.category, []).append(op.summary())
-
-    lines = [
-        "Execute authenticated Attio CRM REST API operations.",
-        "",
-        "Attio is a CRM and record system built around objects, attributes, and records. "
-        "Use object operations to inspect workspace schema, attribute operations to inspect "
-        "fields, and record operations to query, create, assert, fetch, or delete records.",
-        "",
-        "Available operations by category:",
-    ]
-    for category, summaries in grouped.items():
-        lines.append(f"  {category}: {', '.join(summaries)}")
-    lines.append(
-        "\nParameter guidance: use 'path_params' for object, record, target, and identifier "
-        "segments; use 'query' for supported list filters; use 'payload' for record query/create/assert bodies."
+    return build_grouped_operation_description(
+        operations,
+        lead="Execute authenticated Attio CRM REST API operations.",
+        usage=(
+            "Attio is a CRM and record system built around objects, attributes, and records. "
+            "Use object operations to inspect workspace schema, attribute operations to inspect "
+            "fields, and record operations to query, create, assert, fetch, or delete records."
+        ),
+        closing=(
+            "Parameter guidance: use 'path_params' for object, record, target, and identifier "
+            "segments; use 'query' for supported list filters; use 'payload' for record "
+            "query/create/assert bodies."
+        ),
     )
-    return "\n".join(lines)
 
 
 __all__ = [

@@ -9,8 +9,9 @@ from typing import Any
 from .. import (
     ContextToolRuntime,
     coerce_bool,
-    coerce_int,
+    coerce_non_negative_int,
     coerce_optional_string,
+    coerce_positive_int,
     coerce_string,
     coerce_string_list,
     context_entry_tool_key,
@@ -25,7 +26,7 @@ from .. import (
 
 
 def truncate(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dict[str, Any]:
-    keep_last = coerce_int(arguments, "keep_last")
+    keep_last = coerce_positive_int(arguments, "keep_last")
     parameter_entries, transcript_entries = split_context_window(current_context_window(runtime))
     if len(transcript_entries) <= keep_last:
         return {"context_window": rebuild_context_window(parameter_entries, transcript_entries)}
@@ -67,7 +68,7 @@ def deduplicate(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dict[
     similarity_threshold = arguments.get("similarity_threshold", 0.9)
     if isinstance(similarity_threshold, bool) or not isinstance(similarity_threshold, (int, float)):
         raise ValueError("The 'similarity_threshold' argument must be numeric.")
-    max_gap = coerce_int(arguments, "max_gap", default=2)
+    max_gap = coerce_non_negative_int(arguments, "max_gap", default=2)
 
     parameter_entries, transcript_entries = split_context_window(current_context_window(runtime))
     kept: list[dict[str, Any]] = []
@@ -97,7 +98,7 @@ def deduplicate(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dict[
 
 
 def reorder(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dict[str, Any]:
-    entry_index = coerce_int(arguments, "entry_index")
+    entry_index = coerce_non_negative_int(arguments, "entry_index")
     parameter_entries, transcript_entries = split_context_window(current_context_window(runtime))
     if entry_index >= len(transcript_entries):
         raise ValueError("The 'entry_index' argument is outside the transcript range.")
@@ -108,8 +109,8 @@ def reorder(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dict[str,
 
 
 def collapse_chain(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dict[str, Any]:
-    start_index = coerce_int(arguments, "start_index")
-    end_index = coerce_int(arguments, "end_index")
+    start_index = coerce_non_negative_int(arguments, "start_index")
+    end_index = coerce_non_negative_int(arguments, "end_index")
     summary = coerce_string(arguments, "summary")
     if end_index < start_index:
         raise ValueError("The 'end_index' argument must be greater than or equal to 'start_index'.")
@@ -169,9 +170,9 @@ def merge_sections(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> di
 
 
 def window_slice(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dict[str, Any]:
-    start_index = coerce_int(arguments, "start_index")
-    end_index = coerce_int(arguments, "end_index")
-    preserve_latest_n = coerce_int(arguments, "preserve_latest_n", default=0)
+    start_index = coerce_non_negative_int(arguments, "start_index")
+    end_index = coerce_non_negative_int(arguments, "end_index")
+    preserve_latest_n = coerce_non_negative_int(arguments, "preserve_latest_n", default=0)
     if end_index < start_index:
         raise ValueError("The 'end_index' argument must be greater than or equal to 'start_index'.")
     parameter_entries, transcript_entries = split_context_window(current_context_window(runtime))
@@ -189,7 +190,7 @@ def window_slice(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dict
 
 def fold_by_tool_key(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dict[str, Any]:
     tool_key = coerce_string(arguments, "tool_key")
-    keep_latest_n = coerce_int(arguments, "keep_latest_n", default=1)
+    keep_latest_n = coerce_non_negative_int(arguments, "keep_latest_n", default=1)
     model_override = coerce_optional_string(arguments, "model_override")
     parameter_entries, transcript_entries = split_context_window(current_context_window(runtime))
     matching_indices = [
@@ -320,7 +321,8 @@ def _coerce_index_range(arguments: dict[str, Any], key: str) -> tuple[int, int]:
     raw = arguments.get(key)
     if not isinstance(raw, list) or len(raw) != 2 or not all(isinstance(item, int) and not isinstance(item, bool) for item in raw):
         raise ValueError(f"The '{key}' argument must be a two-item integer array.")
-    start, end = int(raw[0]), int(raw[1])
+    start = coerce_non_negative_int({key: raw[0]}, key)
+    end = coerce_non_negative_int({key: raw[1]}, key)
     if end < start:
         raise ValueError(f"The '{key}' argument must use [start_index, end_index] with end >= start.")
     return start, end

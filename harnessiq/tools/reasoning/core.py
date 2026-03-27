@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from harnessiq.shared.validated import NonEmptyString, parse_bounded_int
 from harnessiq.shared.tools import (
     REASON_BRAINSTORM,
     REASON_BRAINSTORM_COUNT_DEFAULT,
@@ -319,20 +320,18 @@ def _resolve_brainstorm_count(arguments: ToolArguments) -> int:
             )
         return _BRAINSTORM_COUNT_PRESETS[raw]
     if isinstance(raw, int):
-        if not (_BRAINSTORM_COUNT_MIN <= raw <= _BRAINSTORM_COUNT_MAX):
-            raise ValueError(
-                f"'count' must be between {_BRAINSTORM_COUNT_MIN} and "
-                f"{_BRAINSTORM_COUNT_MAX}, got {raw}."
-            )
-        return raw
+        return parse_bounded_int(
+            raw,
+            field_name="count",
+            minimum=_BRAINSTORM_COUNT_MIN,
+            maximum=_BRAINSTORM_COUNT_MAX,
+        )
     raise ValueError("'count' must be an integer or preset string when provided.")
 
 
 def _require_string(arguments: ToolArguments, key: str) -> str:
     value = arguments.get(key)
-    if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"'{key}' must be a non-empty string.")
-    return value.strip()
+    return str(NonEmptyString(value, field_name=key))
 
 
 def _optional_string(arguments: ToolArguments, key: str) -> str:
@@ -351,6 +350,13 @@ def _optional_int(arguments: ToolArguments, key: str, default: int) -> int:
     if isinstance(value, bool):
         raise ValueError(f"'{key}' must be an integer, not a boolean.")
     if isinstance(value, int):
+        if key == "steps":
+            return parse_bounded_int(
+                value,
+                field_name=key,
+                minimum=_COT_STEPS_MIN,
+                maximum=_COT_STEPS_MAX,
+            )
         return value
     raise ValueError(f"'{key}' must be an integer when provided.")
 

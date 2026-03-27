@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from harnessiq.shared.validated import ProviderFamilyName
+
 from .catalog import PROVIDER_CREDENTIAL_SPECS
 from .models import ProviderCredentialSpec
 
 
 def get_provider_credential_spec(family: str) -> ProviderCredentialSpec:
     """Resolve one provider credential spec by normalized family name."""
-    normalized_family = family.strip().lower()
+    normalized_family = str(ProviderFamilyName(family))
     if normalized_family not in PROVIDER_CREDENTIAL_SPECS:
         raise KeyError(f"No provider credential spec exists for '{family}'.")
     return PROVIDER_CREDENTIAL_SPECS[normalized_family]

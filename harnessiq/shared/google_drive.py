@@ -10,6 +10,7 @@ from harnessiq.shared.providers import (
     GOOGLE_DRIVE_DEFAULT_SCOPE,
     GOOGLE_DRIVE_DEFAULT_TOKEN_URL,
 )
+from harnessiq.shared.validated import HttpUrl, NonEmptyString, parse_positive_number
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,20 +26,25 @@ class GoogleDriveCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.client_id.strip():
-            raise ValueError("Google Drive client_id must not be blank.")
-        if not self.client_secret.strip():
-            raise ValueError("Google Drive client_secret must not be blank.")
-        if not self.refresh_token.strip():
-            raise ValueError("Google Drive refresh_token must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Google Drive base_url must not be blank.")
-        if not self.token_url.strip():
-            raise ValueError("Google Drive token_url must not be blank.")
-        if not self.scope.strip():
-            raise ValueError("Google Drive scope must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Google Drive timeout_seconds must be greater than zero.")
+        object.__setattr__(self, "client_id", NonEmptyString(self.client_id, field_name="Google Drive client_id"))
+        object.__setattr__(
+            self,
+            "client_secret",
+            NonEmptyString(self.client_secret, field_name="Google Drive client_secret"),
+        )
+        object.__setattr__(
+            self,
+            "refresh_token",
+            NonEmptyString(self.refresh_token, field_name="Google Drive refresh_token"),
+        )
+        object.__setattr__(self, "base_url", HttpUrl(self.base_url, field_name="Google Drive base_url"))
+        object.__setattr__(self, "token_url", HttpUrl(self.token_url, field_name="Google Drive token_url"))
+        object.__setattr__(self, "scope", NonEmptyString(self.scope, field_name="Google Drive scope"))
+        object.__setattr__(
+            self,
+            "timeout_seconds",
+            parse_positive_number(self.timeout_seconds, field_name="Google Drive timeout_seconds"),
+        )
 
     def masked_refresh_token(self) -> str:
         token = self.refresh_token

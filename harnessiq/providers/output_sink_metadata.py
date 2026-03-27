@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from harnessiq.shared.validated import NonEmptyString
+
 _known_model_provider_names = (
     "openai",
     "anthropic",
@@ -99,8 +101,10 @@ def _coerce_optional_bool(value: Any) -> bool | None:
 def _coerce_optional_string(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
-    normalized = value.strip()
-    return normalized or None
+    try:
+        return str(NonEmptyString(value))
+    except ValueError:
+        return None
 
 
 __all__ = ["extract_model_metadata"]

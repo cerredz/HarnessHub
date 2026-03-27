@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Literal, Mapping
 
+from harnessiq.shared.validated import HttpUrl, NonEmptyString, parse_positive_number
+
 DEFAULT_RESEND_BASE_URL = "https://api.resend.com"
 DEFAULT_RESEND_USER_AGENT = "Harnessiq/resend-tool"
 RESEND_REQUEST = "resend.request"
@@ -24,14 +26,14 @@ class ResendCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("Resend api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Resend base_url must not be blank.")
-        if not self.user_agent.strip():
-            raise ValueError("Resend user_agent must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Resend timeout_seconds must be greater than zero.")
+        object.__setattr__(self, "api_key", NonEmptyString(self.api_key, field_name="Resend api_key"))
+        object.__setattr__(self, "base_url", HttpUrl(self.base_url, field_name="Resend base_url"))
+        object.__setattr__(self, "user_agent", NonEmptyString(self.user_agent, field_name="Resend user_agent"))
+        object.__setattr__(
+            self,
+            "timeout_seconds",
+            parse_positive_number(self.timeout_seconds, field_name="Resend timeout_seconds"),
+        )
 
     def masked_api_key(self) -> str:
         """Return a redacted version of the configured API key."""

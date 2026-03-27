@@ -24,6 +24,33 @@ from harnessiq.shared.providers import (
     ZEROBOUNCE_DEFAULT_BASE_URL,
     ZEROBOUNCE_DEFAULT_BULK_BASE_URL,
 )
+from harnessiq.shared.validated import HttpUrl, NonEmptyString, parse_positive_number
+
+
+def _validate_text_fields(instance: object, *field_names: str) -> None:
+    for field_name in field_names:
+        object.__setattr__(
+            instance,
+            field_name,
+            NonEmptyString(getattr(instance, field_name), field_name=field_name),
+        )
+
+
+def _validate_url_fields(instance: object, *field_names: str) -> None:
+    for field_name in field_names:
+        object.__setattr__(
+            instance,
+            field_name,
+            HttpUrl(getattr(instance, field_name), field_name=field_name),
+        )
+
+
+def _validate_timeout(instance: object) -> None:
+    object.__setattr__(
+        instance,
+        "timeout_seconds",
+        parse_positive_number(getattr(instance, "timeout_seconds"), field_name="timeout_seconds"),
+    )
 
 
 class SnovioCredentials(ProviderCredentialConfig, total=True):
@@ -116,12 +143,9 @@ class ApolloCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("Apollo api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Apollo base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Apollo timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_key")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         api_key = self.api_key
@@ -147,14 +171,9 @@ class ArcadsCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.client_id.strip():
-            raise ValueError("Arcads client_id must not be blank.")
-        if not self.client_secret.strip():
-            raise ValueError("Arcads client_secret must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Arcads base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Arcads timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "client_id", "client_secret")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_client_secret(self) -> str:
         secret = self.client_secret
@@ -180,12 +199,9 @@ class AttioCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("Attio api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Attio base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Attio timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_key")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         key = self.api_key
@@ -210,12 +226,9 @@ class BrowserUseCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("Browser Use api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Browser Use base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Browser Use timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_key")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         key = self.api_key
@@ -241,14 +254,9 @@ class CreatifyCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_id.strip():
-            raise ValueError("Creatify api_id must not be blank.")
-        if not self.api_key.strip():
-            raise ValueError("Creatify api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Creatify base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Creatify timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_id", "api_key")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         key = self.api_key
@@ -274,12 +282,9 @@ class ExaCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("Exa api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Exa base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Exa timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_key")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         key = self.api_key
@@ -305,14 +310,9 @@ class ExpandiCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("Expandi api_key must not be blank.")
-        if not self.api_secret.strip():
-            raise ValueError("Expandi api_secret must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Expandi base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Expandi timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_key", "api_secret")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         key = self.api_key
@@ -344,12 +344,9 @@ class InboxAppCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("InboxApp api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("InboxApp base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("InboxApp timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_key")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         key = self.api_key
@@ -374,12 +371,9 @@ class InstantlyCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("Instantly api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Instantly base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Instantly timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_key")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         key = self.api_key
@@ -404,12 +398,9 @@ class LemlistCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("Lemlist api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Lemlist base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Lemlist timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_key")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         key = self.api_key
@@ -434,12 +425,9 @@ class LushaCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("Lusha api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Lusha base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Lusha timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_key")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         key = self.api_key
@@ -464,12 +452,9 @@ class OutreachCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.access_token.strip():
-            raise ValueError("Outreach access_token must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Outreach base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Outreach timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "access_token")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_access_token(self) -> str:
         token = self.access_token
@@ -494,12 +479,9 @@ class PaperclipCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("Paperclip api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Paperclip base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Paperclip timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_key")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         key = self.api_key
@@ -524,12 +506,9 @@ class SerperCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("Serper api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Serper base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Serper timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_key")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         key = self.api_key
@@ -554,12 +533,9 @@ class SmartleadCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("Smartlead api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("Smartlead base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("Smartlead timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_key")
+        _validate_url_fields(self, "base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         key = self.api_key
@@ -585,14 +561,9 @@ class ZeroBounceCredentials:
     timeout_seconds: float = 60.0
 
     def __post_init__(self) -> None:
-        if not self.api_key.strip():
-            raise ValueError("ZeroBounce api_key must not be blank.")
-        if not self.base_url.strip():
-            raise ValueError("ZeroBounce base_url must not be blank.")
-        if not self.bulk_base_url.strip():
-            raise ValueError("ZeroBounce bulk_base_url must not be blank.")
-        if self.timeout_seconds <= 0:
-            raise ValueError("ZeroBounce timeout_seconds must be greater than zero.")
+        _validate_text_fields(self, "api_key")
+        _validate_url_fields(self, "base_url", "bulk_base_url")
+        _validate_timeout(self)
 
     def masked_api_key(self) -> str:
         key = self.api_key

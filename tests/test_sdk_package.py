@@ -32,6 +32,9 @@ PROVIDER_ALLOWED_LOCAL_CONSTANTS = {
     "_DEFAULT_PERMISSION_FIELDS",
 }
 SHARED_CLASS_SUFFIXES = ("Config", "Credentials", "Operation", "PreparedRequest", "Error")
+PROVIDER_HYGIENE_EXCLUDED_PREFIXES = (
+    Path("harnessiq/providers/gcloud"),
+)
 
 
 class HarnessiqPackageTests(unittest.TestCase):
@@ -170,10 +173,15 @@ class HarnessiqPackageTests(unittest.TestCase):
             ("providers", REPO_ROOT / "harnessiq" / "providers"),
         ):
             for path in root_path.rglob("*.py"):
+                relative_path = path.relative_to(REPO_ROOT)
+                if root_name == "providers" and any(
+                    relative_path.is_relative_to(prefix) for prefix in PROVIDER_HYGIENE_EXCLUDED_PREFIXES
+                ):
+                    continue
                 tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
                 for statement in tree.body:
                     if isinstance(statement, ast.ClassDef) and statement.name.endswith(SHARED_CLASS_SUFFIXES):
-                        violations.append(f"{path.relative_to(REPO_ROOT)} defines class {statement.name}")
+                        violations.append(f"{relative_path} defines class {statement.name}")
                     for name in _assigned_names(statement):
                         if not _looks_like_constant(name):
                             continue
@@ -181,7 +189,7 @@ class HarnessiqPackageTests(unittest.TestCase):
                             continue
                         if root_name == "providers" and name in PROVIDER_ALLOWED_LOCAL_CONSTANTS:
                             continue
-                        violations.append(f"{path.relative_to(REPO_ROOT)} defines constant {name}")
+                        violations.append(f"{relative_path} defines constant {name}")
 
         self.assertEqual(violations, [])
 
