@@ -18,6 +18,7 @@ from harnessiq.master_prompts import (
 EXPECTED_PROMPT_KEYS = {
     "answer_with_notable_web_sources",
     "autonomous_execution_loop",
+    "cognitive_multiplexer",
     "create_github_execution_issues",
     "create_jira_execution_tickets",
     "create_linear_execution_tickets",
@@ -37,7 +38,7 @@ EXPECTED_PROMPT_KEYS = {
     "spawn_specialized_subagents",
     "surgical_bugfix",
 }
-STANDARD_STRUCTURE_PROMPT_KEYS = EXPECTED_PROMPT_KEYS - {"mission_driven"}
+STANDARD_STRUCTURE_PROMPT_KEYS = EXPECTED_PROMPT_KEYS - {"cognitive_multiplexer", "mission_driven"}
 REQUIRED_PROMPT_SECTIONS = (
     "Identity",
     "Goal",
@@ -57,6 +58,17 @@ MISSION_DRIVEN_REQUIRED_SECTIONS = (
     "Success Criteria",
     "Inputs",
 )
+COGNITIVE_MULTIPLEXER_REQUIRED_SECTIONS = (
+    "Identity / Persona",
+    "Goal",
+    "Checklist",
+    "Things Not To Do",
+    "Success Criteria",
+    "Artifacts",
+    "Inputs",
+)
+
+
 class MasterPromptDataclassTests(unittest.TestCase):
     def test_master_prompt_is_frozen(self) -> None:
         prompt = MasterPrompt(key="k", title="T", description="D", prompt="P")
@@ -246,6 +258,29 @@ class MissionDrivenPromptTests(unittest.TestCase):
     def test_mission_driven_sections_appear_in_order(self) -> None:
         positions = [self.prompt.prompt.index(section_name) for section_name in MISSION_DRIVEN_REQUIRED_SECTIONS]
         self.assertEqual(positions, sorted(positions))
+
+
+class CognitiveMultiplexerPromptTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.prompt = MasterPromptRegistry().get("cognitive_multiplexer")
+
+    def test_cognitive_multiplexer_contains_expected_sections(self) -> None:
+        for section_name in COGNITIVE_MULTIPLEXER_REQUIRED_SECTIONS:
+            with self.subTest(section=section_name):
+                self.assertIn(section_name, self.prompt.prompt)
+
+    def test_cognitive_multiplexer_sections_appear_in_order(self) -> None:
+        positions = [self.prompt.prompt.index(section_name) for section_name in COGNITIVE_MULTIPLEXER_REQUIRED_SECTIONS]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_cognitive_multiplexer_contains_requested_persona_language(self) -> None:
+        self.assertIn("You are a cognitive multiplexer", self.prompt.prompt)
+        self.assertIn("You are a cognitive multiplexer \u2014 an expert orchestration system", self.prompt.prompt)
+        self.assertIn("You are not trying to produce consensus. You are trying to produce coverage.", self.prompt.prompt)
+        self.assertIn("Desired Persona Count (optional):", self.prompt.prompt)
+
+    def test_cognitive_multiplexer_key_matches_filename_convention(self) -> None:
+        self.assertEqual(self.prompt.key, "cognitive_multiplexer")
 
 
 class ModuleLevelAPITests(unittest.TestCase):
