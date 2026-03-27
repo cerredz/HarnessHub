@@ -60,7 +60,7 @@ def build_smartlead_request_tool_definition(
 def create_smartlead_tools(
     *,
     credentials: "SmartleadCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Smartlead request tool backed by the provided client."""
@@ -211,5 +211,6 @@ __all__ = [
     "create_smartlead_tools",
     "get_smartlead_operation",
 ]
+
 
 

@@ -60,7 +60,7 @@ def build_lemlist_request_tool_definition(
 def create_lemlist_tools(
     *,
     credentials: "LemlistCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Lemlist request tool backed by the provided client."""
@@ -200,5 +200,6 @@ __all__ = [
     "create_lemlist_tools",
     "get_lemlist_operation",
 ]
+
 
 

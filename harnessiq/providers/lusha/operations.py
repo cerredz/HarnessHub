@@ -65,7 +65,7 @@ def build_lusha_request_tool_definition(
 def create_lusha_tools(
     *,
     credentials: "LushaCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Lusha request tool backed by the provided client."""
@@ -213,5 +213,6 @@ __all__ = [
     "create_lusha_tools",
     "get_lusha_operation",
 ]
+
 
 

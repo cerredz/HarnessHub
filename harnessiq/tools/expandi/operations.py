@@ -82,7 +82,7 @@ def build_expandi_request_tool_definition(
 def create_expandi_tools(
     *,
     credentials: "ExpandiCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Expandi request tool backed by the provided client."""
@@ -195,4 +195,5 @@ __all__ = [
     "build_expandi_request_tool_definition",
     "create_expandi_tools",
 ]
+
 

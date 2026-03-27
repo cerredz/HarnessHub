@@ -71,7 +71,7 @@ def build_arcads_request_tool_definition(
 def create_arcads_tools(
     *,
     credentials: "ArcadsCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Arcads request tool backed by the provided client."""
@@ -181,4 +181,5 @@ __all__ = [
     "build_arcads_request_tool_definition",
     "create_arcads_tools",
 ]
+
 

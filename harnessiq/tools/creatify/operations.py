@@ -74,7 +74,7 @@ def build_creatify_request_tool_definition(
 def create_creatify_tools(
     *,
     credentials: "CreatifyCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Creatify request tool backed by the provided client.
@@ -192,4 +192,5 @@ __all__ = [
     "build_creatify_request_tool_definition",
     "create_creatify_tools",
 ]
+
 

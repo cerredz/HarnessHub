@@ -74,7 +74,7 @@ def build_apollo_request_tool_definition(
 def create_apollo_tools(
     *,
     credentials: "ApolloCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Apollo request tool backed by the provided client."""
@@ -250,5 +250,6 @@ __all__ = [
     "create_apollo_tools",
     "get_apollo_operation",
 ]
+
 
 

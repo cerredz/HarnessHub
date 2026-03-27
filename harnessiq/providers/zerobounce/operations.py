@@ -70,7 +70,7 @@ def build_zerobounce_request_tool_definition(
 def create_zerobounce_tools(
     *,
     credentials: "ZeroBounceCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style ZeroBounce request tool backed by the provided client."""
@@ -223,5 +223,6 @@ __all__ = [
     "create_zerobounce_tools",
     "get_zerobounce_operation",
 ]
+
 
 

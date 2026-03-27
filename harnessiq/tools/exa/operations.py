@@ -70,7 +70,7 @@ def build_exa_request_tool_definition(
 def create_exa_tools(
     *,
     credentials: "ExaCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Exa request tool backed by the provided client."""
@@ -180,4 +180,5 @@ __all__ = [
     "build_exa_request_tool_definition",
     "create_exa_tools",
 ]
+
 

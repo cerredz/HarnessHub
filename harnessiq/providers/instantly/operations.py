@@ -60,7 +60,7 @@ def build_instantly_request_tool_definition(
 def create_instantly_tools(
     *,
     credentials: "InstantlyCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Instantly request tool backed by the provided client."""
@@ -200,5 +200,6 @@ __all__ = [
     "create_instantly_tools",
     "get_instantly_operation",
 ]
+
 
 

@@ -67,7 +67,7 @@ def build_attio_request_tool_definition(
 def create_attio_tools(
     *,
     credentials: "AttioCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Attio request tool backed by the provided client."""
@@ -171,4 +171,5 @@ __all__ = [
     "build_attio_request_tool_definition",
     "create_attio_tools",
 ]
+
 

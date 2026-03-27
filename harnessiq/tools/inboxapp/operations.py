@@ -65,7 +65,7 @@ def build_inboxapp_request_tool_definition(
 def create_inboxapp_tools(
     *,
     credentials: "InboxAppCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style InboxApp request tool backed by the provided client."""
@@ -169,4 +169,5 @@ __all__ = [
     "build_inboxapp_request_tool_definition",
     "create_inboxapp_tools",
 ]
+
 

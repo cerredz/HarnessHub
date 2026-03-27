@@ -56,7 +56,7 @@ def build_serper_request_tool_definition(
 def create_serper_tools(
     *,
     credentials: "SerperCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Serper request tool backed by the provided client."""
@@ -149,4 +149,5 @@ __all__ = [
     "build_serper_request_tool_definition",
     "create_serper_tools",
 ]
+
 

@@ -60,7 +60,7 @@ def build_outreach_request_tool_definition(
 def create_outreach_tools(
     *,
     credentials: "OutreachCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Outreach request tool backed by the provided client."""
@@ -200,5 +200,6 @@ __all__ = [
     "create_outreach_tools",
     "get_outreach_operation",
 ]
+
 
 

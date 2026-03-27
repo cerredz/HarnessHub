@@ -69,7 +69,7 @@ def build_paperclip_request_tool_definition(
 def create_paperclip_tools(
     *,
     credentials: "PaperclipCredentials | None" = None,
-    client: "RequestPreparingClient | None" = None,
+    client: RequestPreparingClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Paperclip request tool backed by the provided client."""
@@ -186,4 +186,5 @@ __all__ = [
     "build_paperclip_request_tool_definition",
     "create_paperclip_tools",
 ]
+
 
