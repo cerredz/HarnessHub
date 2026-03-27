@@ -122,6 +122,9 @@
    Dependency: Ticket 12, Ticket 13
    Issue: #301
    URL: https://github.com/cerredz/HarnessHub/issues/301
+   PR: #342
+   PR URL: https://github.com/cerredz/HarnessHub/pull/342
+   Status: implemented, awaiting merge into `main`
 
 15. Ticket 15: Add a cloud runtime wrapper and GCS-backed memory sync
    Description: Introduce the Cloud Run runtime path that syncs harness memory/profile state to and from GCS for scheduled cloud execution continuity.
