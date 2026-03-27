@@ -1,5 +1,6 @@
 ﻿Title: Implement Artifact Registry and Cloud Run providers
 Issue URL: https://github.com/cerredz/HarnessHub/issues/292
+PR URL: https://github.com/cerredz/HarnessHub/pull/310
 
 Intent:
 Deliver the first executable deployment slice on top of the builder layer so HarnessIQ can build container images and create or update Cloud Run Jobs through a thin provider API.
