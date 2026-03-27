@@ -1,5 +1,6 @@
 Title: Resolve the PR #382 prompt-harness review follow-ups
 Issue URL: https://github.com/cerredz/HarnessHub/issues/394
+PR URL: https://github.com/cerredz/HarnessHub/pull/396
 
 Intent:
 Implement the architectural and behavior changes requested in the inline review comments on PR #382 so the new prompt-driven harnesses conform to repository standards, persist richer durable mission state, and stop duplicating file-backed agent initialization logic.
