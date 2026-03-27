@@ -78,6 +78,28 @@ class TestConfigureAndShow:
         assert shown["query"] == "mRNA vaccine efficacy"
         assert shown["additional_prompt"] == "Focus on clinically relevant papers."
 
+    def test_configure_custom_query_param_updates_query_and_resets_progress(self, tmp_path, capsys) -> None:
+        _run(["research-sweep", "prepare", "--agent", "sweep-b", "--memory-root", str(tmp_path)])
+        capsys.readouterr()
+
+        _run(
+            [
+                "research-sweep",
+                "configure",
+                "--agent",
+                "sweep-b",
+                "--memory-root",
+                str(tmp_path),
+                "--custom-param",
+                'query="graph neural networks for drug discovery"',
+            ]
+        )
+        configured = json.loads(capsys.readouterr().out)
+
+        assert configured["query"] == "graph neural networks for drug discovery"
+        assert configured["custom_parameters"]["query"] == "graph neural networks for drug discovery"
+        assert "progress_reset" in configured["updated"]
+
 
 class TestRunCommand:
     def test_run_uses_supplied_serper_credentials_factory(self, tmp_path, capsys) -> None:
@@ -142,6 +164,40 @@ class TestRunCommand:
         assert payload["instance_name"] == "sweep-a"
         kwargs = patched_from_memory.call_args.kwargs
         assert kwargs["serper_credentials"].api_key == "cli-serper-key"
+
+    def test_run_requires_serper_factory_or_bound_credentials(self, tmp_path, capsys) -> None:
+        _run(["research-sweep", "prepare", "--agent", "sweep-a", "--memory-root", str(tmp_path)])
+        _run(
+            [
+                "research-sweep",
+                "configure",
+                "--agent",
+                "sweep-a",
+                "--memory-root",
+                str(tmp_path),
+                "--query-text",
+                "few-shot learning for protein folding",
+            ]
+        )
+        capsys.readouterr()
+
+        with patch("harnessiq.cli.runners.research_sweep.resolve_agent_model", return_value=MagicMock()):
+            with pytest.raises(
+                ValueError,
+                match="--serper-credentials-factory is required unless you have already bound Serper credentials",
+            ):
+                _run(
+                    [
+                        "research-sweep",
+                        "run",
+                        "--agent",
+                        "sweep-a",
+                        "--memory-root",
+                        str(tmp_path),
+                        "--model-factory",
+                        "mod:model",
+                    ]
+                )
 
 
 if __name__ == "__main__":
