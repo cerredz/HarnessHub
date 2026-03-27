@@ -384,6 +384,7 @@ class HarnessCliLifecycleBuilder:
         references: dict[str, str],
     ) -> None:
         grouped: dict[str, dict[str, str]] = defaultdict(dict)
+        provider_families = set(manifest.provider_families)
         for field_name, env_var in references.items():
             family, separator, credential_field = field_name.partition(".")
             if not separator:
@@ -391,7 +392,7 @@ class HarnessCliLifecycleBuilder:
                     f"Credential field '{field_name}' must use FAMILY.FIELD notation, for example exa.api_key."
                 )
             normalized_family = family.strip().lower()
-            if normalized_family not in set(manifest.provider_families):
+            if normalized_family not in provider_families:
                 raise ValueError(
                     f"Harness '{manifest.manifest_id}' does not declare provider family '{normalized_family}'."
                 )

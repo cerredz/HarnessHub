@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Any
 
 from harnessiq.cli.builders import HarnessCliLifecycleBuilder
 from harnessiq.cli.common import (
