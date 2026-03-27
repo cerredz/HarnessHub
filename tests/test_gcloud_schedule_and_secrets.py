@@ -111,6 +111,15 @@ def test_scheduler_provider_validates_required_service_account_and_cron() -> Non
         provider.create_schedule()
 
 
+def test_scheduler_provider_surfaces_non_not_found_errors() -> None:
+    client = Mock()
+    provider = SchedulerProvider(client, _config())
+
+    client.run_json.side_effect = _gcloud_error("gcloud", "scheduler", stderr="permission denied")
+    with pytest.raises(GcloudError):
+        provider.schedule_exists()
+
+
 def test_secret_manager_provider_set_and_rotate_do_not_leak_values_in_commands() -> None:
     client = Mock()
     provider = SecretManagerProvider(client, _config())
