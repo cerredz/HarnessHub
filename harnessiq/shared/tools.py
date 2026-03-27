@@ -252,6 +252,7 @@ ARCADS_REQUEST = "arcads.request"
 ARXIV_REQUEST = "arxiv.request"
 CREATIFY_REQUEST = "creatify.request"
 EXA_REQUEST = "exa.request"
+HUNTER_REQUEST = "hunter.request"
 INSTANTLY_REQUEST = "instantly.request"
 INBOXAPP_REQUEST = "inboxapp.request"
 LEMLIST_REQUEST = "lemlist.request"
@@ -486,6 +487,7 @@ __all__ = [
     "EXA_OUTREACH_LOG_EMAIL_SENT",
     "EXA_OUTREACH_LOG_LEAD",
     "EXA_REQUEST",
+    "HUNTER_REQUEST",
     "FILESYSTEM_APPEND_TEXT_FILE",
     "FILESYSTEM_COPY_PATH",
     "FILESYSTEM_GET_CURRENT_DIRECTORY",

@@ -129,6 +129,8 @@ def _infer_provider_name(url: str) -> str:
         return "creatify"
     if "arcads" in host:
         return "arcads"
+    if "hunter.io" in host:
+        return "hunter"
     if "instantly" in host:
         return "instantly"
     if "outreach" in host:

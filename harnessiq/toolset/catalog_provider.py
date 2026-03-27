@@ -92,6 +92,13 @@ PROVIDER_ENTRIES: tuple[ToolEntry, ...] = (
         requires_credentials=True,
     ),
     ToolEntry(
+        key="hunter.request",
+        name="hunter_request",
+        description="Execute authenticated Hunter.io email discovery, verification, enrichment, and lead management API operations.",
+        family="hunter",
+        requires_credentials=True,
+    ),
+    ToolEntry(
         key="instantly.request",
         name="instantly_request",
         description="Execute authenticated Instantly cold email platform API operations.",
@@ -227,6 +234,7 @@ PROVIDER_FACTORY_MAP: dict[str, tuple[str, str]] = {
     "creatify": ("harnessiq.tools.creatify", "create_creatify_tools"),
     "exa": ("harnessiq.tools.exa", "create_exa_tools"),
     "expandi": ("harnessiq.tools.expandi", "create_expandi_tools"),
+    "hunter": ("harnessiq.tools.hunter", "create_hunter_tools"),
     "instantly": ("harnessiq.tools.instantly", "create_instantly_tools"),
     "inboxapp": ("harnessiq.tools.inboxapp", "create_inboxapp_tools"),
     "leadiq": ("harnessiq.tools.leadiq", "create_leadiq_tools"),

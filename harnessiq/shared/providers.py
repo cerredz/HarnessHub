@@ -51,6 +51,7 @@ GOOGLE_DRIVE_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 GOOGLE_DRIVE_JSON_MIME_TYPE = "application/json"
 GOOGLE_DRIVE_UPLOAD_FILES_PATH = "/files"
 GROK_DEFAULT_BASE_URL = "https://api.x.ai"
+HUNTER_DEFAULT_BASE_URL = "https://api.hunter.io/v2"
 INBOXAPP_DEFAULT_BASE_URL = "https://inboxapp.com/api/v1"
 INSTANTLY_DEFAULT_BASE_URL = "https://api.instantly.ai/api/v2"
 LEADIQ_DEFAULT_BASE_URL = "https://api.leadiq.com"
@@ -94,6 +95,7 @@ __all__ = [
     "GOOGLE_DRIVE_JSON_MIME_TYPE",
     "GOOGLE_DRIVE_UPLOAD_FILES_PATH",
     "GROK_DEFAULT_BASE_URL",
+    "HUNTER_DEFAULT_BASE_URL",
     "INBOXAPP_DEFAULT_BASE_URL",
     "INSTANTLY_DEFAULT_BASE_URL",
     "LEADIQ_DEFAULT_BASE_URL",
