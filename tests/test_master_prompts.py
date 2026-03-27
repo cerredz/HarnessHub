@@ -27,6 +27,7 @@ EXPECTED_PROMPT_KEYS = {
     "hybrid_academic_and_web_research",
     "implement_and_critique_solutions",
     "mission_driven",
+    "never_stop",
     "parallel_problem_decomposition",
     "phased_code_review",
     "principal_software_engineer_design_patterns",
