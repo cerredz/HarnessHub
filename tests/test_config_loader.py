@@ -305,7 +305,7 @@ class HttpTransportHostnameTests(unittest.TestCase):
 
 
 class HttpHostnameMapTests(unittest.TestCase):
-    """Verify _infer_provider_name maps all six new provider hostnames."""
+    """Verify _infer_provider_name maps all seven new provider hostnames."""
 
     def _assert_provider(self, url: str, expected: str) -> None:
         self.assertEqual(_infer_provider_name(url), expected)
@@ -315,6 +315,9 @@ class HttpHostnameMapTests(unittest.TestCase):
 
     def test_arcads_hostname(self) -> None:
         self._assert_provider("https://external-api.arcads.ai/v1/products", "arcads")
+
+    def test_hunter_hostname(self) -> None:
+        self._assert_provider("https://api.hunter.io/v2/domain-search", "hunter")
 
     def test_instantly_hostname(self) -> None:
         self._assert_provider("https://api.instantly.ai/api/v2/campaigns", "instantly")
