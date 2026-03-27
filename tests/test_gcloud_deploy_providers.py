@@ -21,8 +21,8 @@ def _config() -> GcpAgentConfig:
     )
 
 
-def _gcloud_error(*parts: str) -> GcloudError:
-    return GcloudError(command=tuple(parts or ("gcloud",)), exit_code=1, stderr="not found")
+def _gcloud_error(*parts: str, stderr: str = "not found") -> GcloudError:
+    return GcloudError(command=tuple(parts or ("gcloud",)), exit_code=1, stderr=stderr)
 
 
 def test_artifact_registry_repository_exists_checks_describe() -> None:
@@ -38,6 +38,10 @@ def test_artifact_registry_repository_exists_checks_describe() -> None:
     client.run_json.reset_mock(side_effect=True)
     client.run_json.side_effect = _gcloud_error("gcloud", "artifacts")
     assert provider.repository_exists() is False
+
+    client.run_json.side_effect = _gcloud_error("gcloud", "artifacts", stderr="permission denied")
+    with pytest.raises(GcloudError):
+        provider.repository_exists()
 
 
 def test_artifact_registry_ensure_repository_creates_only_when_missing() -> None:
@@ -96,6 +100,10 @@ def test_cloud_run_job_exists_and_describe_use_builder_commands() -> None:
     client.run_json.reset_mock(side_effect=True)
     client.run_json.side_effect = _gcloud_error("gcloud", "run")
     assert provider.job_exists() is False
+
+    client.run_json.side_effect = _gcloud_error("gcloud", "run", stderr="permission denied")
+    with pytest.raises(GcloudError):
+        provider.job_exists()
 
     client.run_json.reset_mock(side_effect=True)
     client.run_json.side_effect = None

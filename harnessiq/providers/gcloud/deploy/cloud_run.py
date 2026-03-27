@@ -16,8 +16,15 @@ class CloudRunProvider(BaseGcpProvider):
         try:
             self.client.run_json(cmd.describe_job(self.config.job_name, self.config.region))
             return True
-        except GcloudError:
-            return False
+        except GcloudError as exc:
+            if self._is_not_found_error(exc):
+                return False
+            raise
+
+    @staticmethod
+    def _is_not_found_error(error: GcloudError) -> bool:
+        detail = f"{error.stderr}\n{error.stdout}".lower()
+        return "not found" in detail or "was not found" in detail
 
     def create_job(self) -> str:
         return self.client.run(cmd.create_job(cmd.JobSpec.from_config(self.config)))
