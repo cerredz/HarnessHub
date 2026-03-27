@@ -59,6 +59,9 @@
    Dependency: Ticket 3
    Issue: #294
    URL: https://github.com/cerredz/HarnessHub/issues/294
+   PR: #312
+   PR URL: https://github.com/cerredz/HarnessHub/pull/312
+   Status: implemented, awaiting merge into `main`
 
 8. Ticket 8: Implement billing, logging, monitoring, and Cloud Storage providers
    Description: Add the remaining operational providers needed for observability, cost inspection, and raw storage access.
