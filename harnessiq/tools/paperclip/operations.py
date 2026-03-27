@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
+from harnessiq.interfaces import RequestPreparingClient
+
 from harnessiq.providers.paperclip.operations import (
     PaperclipOperation,
     build_paperclip_operation_catalog,
@@ -67,7 +69,7 @@ def build_paperclip_request_tool_definition(
 def create_paperclip_tools(
     *,
     credentials: "PaperclipCredentials | None" = None,
-    client: "PaperclipClient | None" = None,
+    client: "RequestPreparingClient | None" = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Paperclip request tool backed by the provided client."""
@@ -142,7 +144,7 @@ def _select_operations(allowed: Sequence[str] | None) -> tuple[PaperclipOperatio
     return tuple(selected)
 
 
-def _coerce_client(*, credentials: Any, client: Any) -> Any:
+def _coerce_client(*, credentials: Any, client: RequestPreparingClient | None) -> RequestPreparingClient:
     if client is not None:
         return client
     if credentials is None:
@@ -184,3 +186,4 @@ __all__ = [
     "build_paperclip_request_tool_definition",
     "create_paperclip_tools",
 ]
+

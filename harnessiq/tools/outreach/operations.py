@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
+from harnessiq.interfaces import RequestPreparingClient
+
 from harnessiq.providers.outreach.operations import (
     OutreachOperation,
     build_outreach_operation_catalog,
@@ -64,7 +66,7 @@ def build_outreach_request_tool_definition(
 def create_outreach_tools(
     *,
     credentials: "OutreachCredentials | None" = None,
-    client: "OutreachClient | None" = None,
+    client: "RequestPreparingClient | None" = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Outreach request tool backed by the provided client."""
@@ -143,7 +145,7 @@ def _select_operations(allowed: Sequence[str] | None) -> tuple[OutreachOperation
     return tuple(selected)
 
 
-def _coerce_client(*, credentials: Any, client: Any) -> Any:
+def _coerce_client(*, credentials: Any, client: RequestPreparingClient | None) -> RequestPreparingClient:
     if client is not None:
         return client
     if credentials is None:
@@ -175,3 +177,4 @@ __all__ = [
     "build_outreach_request_tool_definition",
     "create_outreach_tools",
 ]
+

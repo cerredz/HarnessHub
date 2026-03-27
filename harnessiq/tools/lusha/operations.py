@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
+from harnessiq.interfaces import RequestPreparingClient
+
 from harnessiq.providers.lusha.operations import (
     LushaOperation,
     build_lusha_operation_catalog,
@@ -87,7 +89,7 @@ def build_lusha_request_tool_definition(
 def create_lusha_tools(
     *,
     credentials: "LushaCredentials | None" = None,
-    client: "LushaClient | None" = None,
+    client: "RequestPreparingClient | None" = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Lusha request tool backed by the provided client."""
@@ -167,7 +169,7 @@ def _select_operations(allowed: Sequence[str] | None) -> tuple[LushaOperation, .
     return tuple(selected)
 
 
-def _coerce_client(*, credentials: Any, client: Any) -> Any:
+def _coerce_client(*, credentials: Any, client: RequestPreparingClient | None) -> RequestPreparingClient:
     if client is not None:
         return client
     if credentials is None:
@@ -201,3 +203,4 @@ __all__ = [
     "build_lusha_request_tool_definition",
     "create_lusha_tools",
 ]
+

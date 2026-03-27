@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import OrderedDict
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
+
+from harnessiq.interfaces import RequestPreparingClient
 from urllib.parse import quote
 
 from harnessiq.providers.http import join_url
@@ -58,7 +60,7 @@ def build_lemlist_request_tool_definition(
 def create_lemlist_tools(
     *,
     credentials: "LemlistCredentials | None" = None,
-    client: "Any | None" = None,
+    client: "RequestPreparingClient | None" = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Lemlist request tool backed by the provided client."""
@@ -150,7 +152,7 @@ def _select_operations(allowed: Sequence[str] | None) -> tuple[LemlistOperation,
     return tuple(selected)
 
 
-def _coerce_client(*, credentials: Any, client: Any) -> Any:
+def _coerce_client(*, credentials: Any, client: RequestPreparingClient | None) -> RequestPreparingClient:
     from harnessiq.providers.lemlist.client import LemlistClient
     if client is not None:
         return client
@@ -198,3 +200,5 @@ __all__ = [
     "create_lemlist_tools",
     "get_lemlist_operation",
 ]
+
+

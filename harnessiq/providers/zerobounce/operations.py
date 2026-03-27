@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import OrderedDict
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
+
+from harnessiq.interfaces import RequestPreparingClient
 from urllib.parse import quote
 
 from harnessiq.providers.http import join_url
@@ -68,7 +70,7 @@ def build_zerobounce_request_tool_definition(
 def create_zerobounce_tools(
     *,
     credentials: "ZeroBounceCredentials | None" = None,
-    client: "Any | None" = None,
+    client: "RequestPreparingClient | None" = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style ZeroBounce request tool backed by the provided client."""
@@ -167,7 +169,7 @@ def _select_operations(allowed: Sequence[str] | None) -> tuple[ZeroBounceOperati
     return tuple(selected)
 
 
-def _coerce_client(*, credentials: Any, client: Any) -> Any:
+def _coerce_client(*, credentials: Any, client: RequestPreparingClient | None) -> RequestPreparingClient:
     from harnessiq.providers.zerobounce.client import ZeroBounceClient
     if client is not None:
         return client
@@ -221,3 +223,5 @@ __all__ = [
     "create_zerobounce_tools",
     "get_zerobounce_operation",
 ]
+
+
