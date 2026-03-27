@@ -61,8 +61,6 @@ class HarnessCliLifecycleBuilder:
         )
         merged_profile = self._merge_profile_parameters(
             profile=profile,
-            manifest=manifest,
-            agent_name=agent_name,
             incoming_runtime=incoming_runtime,
             incoming_custom=incoming_custom,
             base_runtime_parameters=base_runtime_parameters,
@@ -78,7 +76,11 @@ class HarnessCliLifecycleBuilder:
             profile=merged_profile,
             runtime_parameters=manifest.resolve_runtime_parameters(merged_profile.runtime_parameters),
             custom_parameters=manifest.resolve_custom_parameters(merged_profile.custom_parameters),
-            bound_credentials=self.resolve_bound_credentials(manifest=manifest, agent_name=agent_name, repo_root=repo_root),
+            bound_credentials=self.resolve_bound_credentials(
+                manifest=manifest,
+                agent_name=agent_name,
+                repo_root=repo_root,
+            ),
         )
         adapter.synchronize_profile(context)
         return context
@@ -183,8 +185,6 @@ class HarnessCliLifecycleBuilder:
         self,
         *,
         profile: HarnessProfile,
-        manifest: HarnessManifest,
-        agent_name: str,
         incoming_runtime: dict[str, Any],
         incoming_custom: dict[str, Any],
         base_runtime_parameters: dict[str, Any] | None,
@@ -197,8 +197,8 @@ class HarnessCliLifecycleBuilder:
         if incoming_custom:
             next_custom.update(incoming_custom)
         return HarnessProfile(
-            manifest_id=manifest.manifest_id,
-            agent_name=agent_name,
+            manifest_id=profile.manifest_id,
+            agent_name=profile.agent_name,
             runtime_parameters=next_runtime,
             custom_parameters=next_custom,
             last_run=profile.last_run,

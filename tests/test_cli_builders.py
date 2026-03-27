@@ -74,6 +74,7 @@ def test_lifecycle_builder_build_context_seeds_from_native_state_and_resolves_de
     }
     assert context.profile.custom_parameters == {"team": "cli-team"}
     assert context.custom_parameters == {"team": "cli-team"}
+    assert not (context.memory_path / ".harnessiq-profile.json").exists()
 
 
 def test_lifecycle_builder_build_context_prefers_persisted_profile_over_native_seed(tmp_path: Path) -> None:
