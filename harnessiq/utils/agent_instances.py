@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from harnessiq.shared.dtos import AgentInstancePayload
+from harnessiq.shared.dtos import AgentInstancePayload, SerializableDTO
 from harnessiq.utils.agent_ids import (
     build_agent_instance_dirname,
     build_agent_instance_id,
@@ -193,7 +193,7 @@ class AgentInstanceStore:
         self,
         *,
         agent_name: str,
-        payload: AgentInstancePayload | Mapping[str, Any] | None,
+        payload: SerializableDTO | Mapping[str, Any] | None,
         instance_name: str | None = None,
         memory_path: str | Path | None = None,
     ) -> AgentInstanceRecord:
@@ -251,7 +251,7 @@ class AgentInstanceStore:
         self,
         *,
         agent_name: str,
-        payload: AgentInstancePayload | Mapping[str, Any] | None,
+        payload: SerializableDTO | Mapping[str, Any] | None,
     ) -> AgentInstanceRecord:
         normalized_payload = AgentInstancePayload.from_dict(payload)
         instance_id = build_agent_instance_id(agent_name, normalized_payload.to_dict())
