@@ -1,5 +1,6 @@
 ﻿Title: Implement Scheduler and Secret Manager providers
 Issue URL: https://github.com/cerredz/HarnessHub/issues/293
+PR URL: https://github.com/cerredz/HarnessHub/pull/311
 
 Intent:
 Complete the remaining deployment-time provider surface so scheduling and runtime secret mutation can be composed into the shared context and CLI without embedding command logic there.
