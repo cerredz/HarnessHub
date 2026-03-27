@@ -6,7 +6,8 @@ import argparse
 from typing import Any
 
 from harnessiq.cli.common import emit_json
-from harnessiq.providers.gcloud import GcpAgentConfig, GcpContext
+from harnessiq.providers.gcloud import GcloudClient, GcpAgentConfig, GcpContext
+from harnessiq.providers.gcloud.health import HealthProvider
 
 
 def register_gcloud_commands(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -232,7 +233,7 @@ def _handle_credentials_sync(args: argparse.Namespace) -> int:
     payload = _context_payload(context)
     payload.update(
         {
-            "config_path": str(GcpAgentConfig.config_path_for(context.config.agent_name)),
+            "config_path": _config_path_for_agent(context.config.agent_name),
             "credentials": credentials,
             "dry_run": args.dry_run,
             "status": "synced" if not args.dry_run else "dry_run",
@@ -253,7 +254,7 @@ def _handle_credentials_set(args: argparse.Namespace) -> int:
     payload = _context_payload(context)
     payload.update(
         {
-            "config_path": str(GcpAgentConfig.config_path_for(context.config.agent_name)),
+            "config_path": _config_path_for_agent(context.config.agent_name),
             "dry_run": args.dry_run,
             "env_var": args.env_var,
             "secret_name": args.secret_name,
@@ -274,7 +275,7 @@ def _handle_credentials_remove(args: argparse.Namespace) -> int:
     payload = _context_payload(context)
     payload.update(
         {
-            "config_path": str(GcpAgentConfig.config_path_for(context.config.agent_name)),
+            "config_path": _config_path_for_agent(context.config.agent_name),
             "delete_from_gcp": args.delete_from_gcp,
             "dry_run": args.dry_run,
             "env_var": args.env_var,
@@ -338,13 +339,18 @@ def _load_context(agent_name: str, *, dry_run: bool = False) -> GcpContext:
     return GcpContext.from_config(agent_name, dry_run=dry_run)
 
 
-def _build_local_health_provider():
-    return GcpContext.from_init(
+def _build_local_health_provider() -> HealthProvider:
+    config = GcpAgentConfig(
         agent_name="local-auth-check",
-        project_id="local-project",
+        gcp_project_id="local-project",
         region="us-central1",
-        dry_run=False,
-    ).health
+    )
+    client = GcloudClient(project_id=config.gcp_project_id, region=config.region, dry_run=False)
+    return HealthProvider(client, config)
+
+
+def _config_path_for_agent(agent_name: str) -> str:
+    return str(GcpAgentConfig.config_path_for(agent_name))
 
 
 def _serialize_health_results(results: list[Any]) -> list[dict[str, Any]]:
