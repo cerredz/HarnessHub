@@ -7,6 +7,7 @@
 
 2. Ticket 2: Convert reusable provider-backed agent classes to DTO-first public contracts
    Issue: #327 - https://github.com/cerredz/HarnessHub/issues/327
+   PR: #346 - https://github.com/cerredz/HarnessHub/pull/346
    Moves the reusable provider-backed agent families onto explicit DTO boundaries.
 
 3. Ticket 3: Convert concrete durable-memory agents to explicit DTO contracts
