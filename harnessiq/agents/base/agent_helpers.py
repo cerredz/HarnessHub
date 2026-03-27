@@ -31,6 +31,7 @@ from harnessiq.shared.tools import CONTEXT_SELECT_CHECKPOINT, ToolCall, ToolDefi
 from harnessiq.tools.context import BoundContextToolExecutor, create_context_tools
 from harnessiq.tools.hooks import create_default_hook_tools
 from harnessiq.utils.ledger import JSONLLedgerSink, LedgerEntry, load_ledger_entries, new_run_id
+from harnessiq.utils.stats_projector import StatsProjector
 
 logger = logging.getLogger("harnessiq.agents.base.agent")
 _CONTEXT_STATE_FILENAME = "context_runtime_state.json"
@@ -282,6 +283,11 @@ class BaseAgentHelpersMixin:
         for sink in self._resolved_output_sinks():
             try:
                 sink.on_run_complete(entry)
+                if isinstance(sink, JSONLLedgerSink):
+                    try:
+                        StatsProjector(sink.path).apply_entry(entry)
+                    except Exception as projector_exc:  # pragma: no cover - non-fatal stats failures
+                        logger.error("StatsProjector failed after ledger write: %s", projector_exc)
             except Exception as sink_exc:  # pragma: no cover - sink failures are explicitly swallowed
                 logger.warning("OutputSink %s failed: %s", type(sink).__name__, sink_exc)
 
