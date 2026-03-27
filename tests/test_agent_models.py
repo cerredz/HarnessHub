@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from unittest.mock import patch
+from typing import Any
 
 from harnessiq.config import ModelProfile
 from harnessiq.integrations import (
@@ -8,6 +9,7 @@ from harnessiq.integrations import (
     GeminiAgentModel,
     GrokAgentModel,
     OpenAIAgentModel,
+    ProviderAgentModel,
     build_provider_messages,
     create_model_from_profile,
     create_model_from_spec,
@@ -15,6 +17,121 @@ from harnessiq.integrations import (
 )
 from harnessiq.shared.agents import AgentModelRequest, AgentTranscriptEntry, json_parameter_section
 from harnessiq.shared.tools import ToolDefinition
+
+
+class _FakeOpenAIStyleClient:
+    def __init__(self, *, assistant_message: str = "Completed.") -> None:
+        self.assistant_message = assistant_message
+        self.calls: list[dict[str, Any]] = []
+
+    def create_chat_completion(
+        self,
+        *,
+        model_name: str,
+        system_prompt: str,
+        messages: list[dict[str, Any]],
+        tools=None,
+        max_tokens=None,
+        temperature=None,
+        parallel_tool_calls=None,
+        reasoning_effort=None,
+    ) -> dict[str, Any]:
+        self.calls.append(
+            {
+                "model_name": model_name,
+                "system_prompt": system_prompt,
+                "messages": messages,
+                "tools": tools,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "parallel_tool_calls": parallel_tool_calls,
+                "reasoning_effort": reasoning_effort,
+            }
+        )
+        return {
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "message": {
+                        "content": self.assistant_message,
+                        "role": "assistant",
+                    },
+                }
+            ]
+        }
+
+
+class _FakeAnthropicClient:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def create_message(
+        self,
+        *,
+        model_name: str,
+        messages: list[dict[str, Any]],
+        max_tokens: int,
+        system_prompt: str | None = None,
+        tools=None,
+        tool_choice=None,
+        temperature=None,
+    ) -> dict[str, Any]:
+        self.calls.append(
+            {
+                "model_name": model_name,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "system_prompt": system_prompt,
+                "tools": tools,
+                "tool_choice": tool_choice,
+                "temperature": temperature,
+            }
+        )
+        return {
+            "content": [
+                {"type": "text", "text": "Anthropic response."},
+                {"type": "tool_use", "name": "browser_extract", "input": {"url": "https://example.com"}},
+            ],
+            "stop_reason": "tool_use",
+        }
+
+
+class _FakeGeminiClient:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def generate_content(
+        self,
+        *,
+        model_name: str,
+        contents: list[dict[str, Any]],
+        system_instruction: dict[str, Any] | None = None,
+        tools=None,
+        tool_config=None,
+        generation_config=None,
+    ) -> dict[str, Any]:
+        self.calls.append(
+            {
+                "model_name": model_name,
+                "contents": contents,
+                "system_instruction": system_instruction,
+                "tools": tools,
+                "tool_config": tool_config,
+                "generation_config": generation_config,
+            }
+        )
+        return {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {"text": "Gemini response."},
+                            {"functionCall": {"name": "browser_extract", "args": {"url": "https://example.com"}}},
+                        ]
+                    }
+                }
+            ]
+        }
 
 
 def _build_request() -> AgentModelRequest:
@@ -89,6 +206,59 @@ def test_anthropic_agent_model_parses_text_and_tool_use_blocks() -> None:
     assert response.should_continue is True
     assert response.tool_calls[0].tool_key == "browser.extract"
     assert response.tool_calls[0].arguments == {"url": "https://example.com"}
+
+
+def test_provider_agent_model_accepts_openai_style_contract_client() -> None:
+    client = _FakeOpenAIStyleClient(assistant_message="OpenAI response.")
+    model = ProviderAgentModel(provider="openai", model_name="gpt-5.4", client=client, tracing_enabled=False)
+
+    response = model.generate_turn(_build_request())
+
+    assert response.assistant_message == "OpenAI response."
+    assert response.should_continue is False
+    assert client.calls[0]["model_name"] == "gpt-5.4"
+    assert client.calls[0]["parallel_tool_calls"] is True
+
+
+def test_provider_agent_model_accepts_anthropic_contract_client() -> None:
+    client = _FakeAnthropicClient()
+    model = ProviderAgentModel(provider="anthropic", model_name="claude-3-7-sonnet", client=client, tracing_enabled=False)
+
+    response = model.generate_turn(_build_request())
+
+    assert response.assistant_message == "Anthropic response."
+    assert response.should_continue is True
+    assert response.tool_calls[0].tool_key == "browser.extract"
+    assert client.calls[0]["max_tokens"] == 4096
+
+
+def test_provider_agent_model_accepts_gemini_contract_client() -> None:
+    client = _FakeGeminiClient()
+    model = ProviderAgentModel(provider="gemini", model_name="gemini-2.5-pro", client=client, tracing_enabled=False)
+
+    response = model.generate_turn(_build_request())
+
+    assert response.assistant_message == "Gemini response."
+    assert response.should_continue is True
+    assert response.tool_calls[0].tool_key == "browser.extract"
+    assert client.calls[0]["model_name"] == "gemini-2.5-pro"
+
+
+def test_provider_agent_model_accepts_grok_openai_style_contract_client() -> None:
+    client = _FakeOpenAIStyleClient(assistant_message="Grok response.")
+    model = ProviderAgentModel(
+        provider="grok",
+        model_name="grok-4-1-fast-reasoning",
+        client=client,
+        reasoning_effort="high",
+        tracing_enabled=False,
+    )
+
+    response = model.generate_turn(_build_request())
+
+    assert response.assistant_message == "Grok response."
+    assert response.should_continue is False
+    assert client.calls[0]["reasoning_effort"] == "high"
 
 
 def test_gemini_agent_model_parses_text_and_function_calls() -> None:

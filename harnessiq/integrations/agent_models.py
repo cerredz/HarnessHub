@@ -6,9 +6,10 @@ import json
 import os
 import re
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
 from harnessiq.config import ModelProfile
+from harnessiq.interfaces import AnthropicModelClient, GeminiModelClient, OpenAIStyleModelClient
 from harnessiq.providers import trace_model_call
 from harnessiq.providers.anthropic import AnthropicClient
 from harnessiq.providers.gemini import (
@@ -27,6 +28,7 @@ from harnessiq.shared.tools import ToolCall, ToolDefinition
 DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS = 4096
 DEFAULT_GROK_MODEL = "grok-4-1-fast-reasoning"
 _SUPPORTED_PROVIDER_NAMES = frozenset(SUPPORTED_PROVIDERS)
+ProviderModelClient = OpenAIStyleModelClient | AnthropicModelClient | GeminiModelClient
 
 
 class ProviderAgentModel:
@@ -37,7 +39,7 @@ class ProviderAgentModel:
         *,
         provider: str,
         model_name: str,
-        client: Any,
+        client: ProviderModelClient,
         temperature: float | None = None,
         max_output_tokens: int | None = None,
         reasoning_effort: str | None = None,
@@ -108,6 +110,15 @@ class ProviderAgentModel:
             return self._generate_grok_turn(request=request, messages=messages, tools=tools)
         raise ValueError(f"Unsupported provider '{provider}'.")
 
+    def _openai_style_client(self) -> OpenAIStyleModelClient:
+        return cast(OpenAIStyleModelClient, self._client)
+
+    def _anthropic_client(self) -> AnthropicModelClient:
+        return cast(AnthropicModelClient, self._client)
+
+    def _gemini_client(self) -> GeminiModelClient:
+        return cast(GeminiModelClient, self._client)
+
     def _generate_openai_turn(
         self,
         *,
@@ -115,8 +126,9 @@ class ProviderAgentModel:
         messages: list[ProviderMessage],
         tools: list[ToolDefinition],
     ) -> AgentModelResponse:
+        client = self._openai_style_client()
         raw = trace_model_call(
-            lambda: self._client.create_chat_completion(
+            lambda: client.create_chat_completion(
                 model_name=self._model_name,
                 system_prompt=request.system_prompt,
                 messages=messages,
@@ -142,8 +154,9 @@ class ProviderAgentModel:
         messages: list[ProviderMessage],
         tools: list[ToolDefinition],
     ) -> AgentModelResponse:
+        client = self._anthropic_client()
         raw = trace_model_call(
-            lambda: self._client.create_message(
+            lambda: client.create_message(
                 model_name=self._model_name,
                 messages=messages,
                 max_tokens=self._max_output_tokens or DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS,
@@ -173,8 +186,9 @@ class ProviderAgentModel:
             temperature=self._temperature,
             max_output_tokens=self._max_output_tokens,
         )
+        client = self._gemini_client()
         raw = trace_model_call(
-            lambda: self._client.generate_content(
+            lambda: client.generate_content(
                 model_name=self._model_name,
                 contents=_build_gemini_contents(messages),
                 system_instruction=build_system_instruction(request.system_prompt) if request.system_prompt else None,
@@ -203,8 +217,9 @@ class ProviderAgentModel:
         messages: list[ProviderMessage],
         tools: list[ToolDefinition],
     ) -> AgentModelResponse:
+        client = self._openai_style_client()
         raw = trace_model_call(
-            lambda: self._client.create_chat_completion(
+            lambda: client.create_chat_completion(
                 model_name=self._model_name,
                 system_prompt=request.system_prompt,
                 messages=messages,
