@@ -29,6 +29,7 @@ EXPECTED_PROMPT_KEYS = {
     "implement_and_critique_solutions",
     "mission_driven",
     "never_stop",
+    "orchestrator_master_prompt",
     "parallel_problem_decomposition",
     "phased_code_review",
     "principal_software_engineer_design_patterns",
@@ -38,7 +39,11 @@ EXPECTED_PROMPT_KEYS = {
     "spawn_specialized_subagents",
     "surgical_bugfix",
 }
-STANDARD_STRUCTURE_PROMPT_KEYS = EXPECTED_PROMPT_KEYS - {"cognitive_multiplexer", "mission_driven"}
+STANDARD_STRUCTURE_PROMPT_KEYS = EXPECTED_PROMPT_KEYS - {
+    "cognitive_multiplexer",
+    "mission_driven",
+    "orchestrator_master_prompt",
+}
 REQUIRED_PROMPT_SECTIONS = (
     "Identity",
     "Goal",
@@ -58,7 +63,7 @@ MISSION_DRIVEN_REQUIRED_SECTIONS = (
     "Success Criteria",
     "Inputs",
 )
-COGNITIVE_MULTIPLEXER_REQUIRED_SECTIONS = (
+PERSONA_PROMPT_REQUIRED_SECTIONS = (
     "Identity / Persona",
     "Goal",
     "Checklist",
@@ -265,12 +270,12 @@ class CognitiveMultiplexerPromptTests(unittest.TestCase):
         self.prompt = MasterPromptRegistry().get("cognitive_multiplexer")
 
     def test_cognitive_multiplexer_contains_expected_sections(self) -> None:
-        for section_name in COGNITIVE_MULTIPLEXER_REQUIRED_SECTIONS:
+        for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS:
             with self.subTest(section=section_name):
                 self.assertIn(section_name, self.prompt.prompt)
 
     def test_cognitive_multiplexer_sections_appear_in_order(self) -> None:
-        positions = [self.prompt.prompt.index(section_name) for section_name in COGNITIVE_MULTIPLEXER_REQUIRED_SECTIONS]
+        positions = [self.prompt.prompt.index(section_name) for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS]
         self.assertEqual(positions, sorted(positions))
 
     def test_cognitive_multiplexer_contains_requested_persona_language(self) -> None:
@@ -281,6 +286,29 @@ class CognitiveMultiplexerPromptTests(unittest.TestCase):
 
     def test_cognitive_multiplexer_key_matches_filename_convention(self) -> None:
         self.assertEqual(self.prompt.key, "cognitive_multiplexer")
+
+
+class OrchestratorMasterPromptTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.prompt = MasterPromptRegistry().get("orchestrator_master_prompt")
+
+    def test_orchestrator_master_prompt_contains_expected_sections(self) -> None:
+        for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS:
+            with self.subTest(section=section_name):
+                self.assertIn(section_name, self.prompt.prompt)
+
+    def test_orchestrator_master_prompt_sections_appear_in_order(self) -> None:
+        positions = [self.prompt.prompt.index(section_name) for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_orchestrator_master_prompt_contains_requested_persona_language(self) -> None:
+        self.assertIn("You are a master orchestrator", self.prompt.prompt)
+        self.assertIn("You produce graphs, not lists.", self.prompt.prompt)
+        self.assertIn("Every agent must be load-bearing.", self.prompt.prompt)
+        self.assertIn("Execution Mode (optional).", self.prompt.prompt)
+
+    def test_orchestrator_master_prompt_key_matches_filename_convention(self) -> None:
+        self.assertEqual(self.prompt.key, "orchestrator_master_prompt")
 
 
 class ModuleLevelAPITests(unittest.TestCase):
