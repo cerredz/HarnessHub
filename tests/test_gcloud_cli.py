@@ -443,6 +443,98 @@ def test_gcloud_credentials_sync_propagates_bridge_failures(monkeypatch: pytest.
         main(["gcloud", "credentials", "sync", "--agent", "candidate-a", "--non-interactive"])
 
 
+def test_gcloud_documented_workflow_runs_end_to_end(monkeypatch: pytest.MonkeyPatch) -> None:
+    config = SimpleNamespace(
+        agent_name="candidate-a",
+        gcp_project_id="proj-123",
+        region="us-central1",
+        image_url="us-central1-docker.pkg.dev/proj-123/harnessiq/candidate-a:latest",
+        job_name="harnessiq-candidate-a",
+        schedule_cron="0 */4 * * *",
+        scheduler_job_name="harnessiq-candidate-a-schedule",
+        service_account_email="runner@proj-123.iam.gserviceaccount.com",
+        timezone="UTC",
+        save=Mock(return_value=Path("/tmp/candidate-a.json")),
+    )
+    bridge = SimpleNamespace(
+        sync=Mock(return_value=[SimpleNamespace(status_dict=lambda: {"key": "ANTHROPIC_API_KEY", "gcp": True})]),
+        status=Mock(return_value=[SimpleNamespace(status_dict=lambda: {"key": "ANTHROPIC_API_KEY", "gcp": True})]),
+    )
+    fake_context = SimpleNamespace(
+        config=config,
+        health=SimpleNamespace(
+            validate_all=Mock(
+                return_value=[SimpleNamespace(name="gcloud CLI installed", passed=True, message="ok", fix=None)]
+            )
+        ),
+        credentials=SimpleNamespace(bridge=bridge),
+        deploy=SimpleNamespace(
+            artifact_registry=SimpleNamespace(
+                build_image=Mock(return_value="build submitted"),
+                repository_path="us-central1-docker.pkg.dev/proj-123/harnessiq",
+            ),
+            cloud_run=SimpleNamespace(
+                deploy_job=Mock(return_value="job deployed"),
+                execute=Mock(return_value="execution-123"),
+            ),
+            scheduler=SimpleNamespace(deploy_schedule=Mock(return_value="schedule deployed")),
+        ),
+        observability=SimpleNamespace(logging=SimpleNamespace(get_job_logs=Mock(return_value="line-1"))),
+        infra=SimpleNamespace(
+            billing=SimpleNamespace(
+                estimate_monthly_cost=Mock(
+                    return_value=CostEstimate(
+                        cloud_run_per_run_usd=0.02,
+                        cloud_run_monthly_usd=1.2,
+                        scheduler_monthly_usd=0.1,
+                        secret_manager_monthly_usd=0.06,
+                        artifact_registry_monthly_usd=0.05,
+                        total_monthly_usd=1.41,
+                        assumptions=["Monthly runs: 30"],
+                    )
+                )
+            )
+        ),
+    )
+    monkeypatch.setattr("harnessiq.cli.gcloud.commands._create_init_context", lambda args: fake_context)
+    monkeypatch.setattr("harnessiq.cli.gcloud.commands._load_context", lambda agent_name, dry_run=False: fake_context)
+    monkeypatch.setattr(
+        "harnessiq.cli.gcloud.commands.GcpAgentConfig.config_path_for",
+        lambda agent_name: Path("/tmp") / f"{agent_name}.json",
+    )
+
+    init_payload = _run_json_command(
+        [
+            "gcloud",
+            "init",
+            "--agent",
+            "candidate-a",
+            "--project-id",
+            "proj-123",
+            "--region",
+            "us-central1",
+            "--manifest-id",
+            "research_sweep",
+            "--non-interactive",
+        ]
+    )
+    build_payload = _run_json_command(["gcloud", "build", "--agent", "candidate-a", "--source-dir", "."])
+    deploy_payload = _run_json_command(["gcloud", "deploy", "--agent", "candidate-a"])
+    schedule_payload = _run_json_command(["gcloud", "schedule", "--agent", "candidate-a", "--cron", "0 */4 * * *"])
+    execute_payload = _run_json_command(["gcloud", "execute", "--agent", "candidate-a", "--wait"])
+    logs_payload = _run_json_command(["gcloud", "logs", "--agent", "candidate-a"])
+    cost_payload = _run_json_command(["gcloud", "cost", "--agent", "candidate-a"])
+
+    assert init_payload["status"] == "initialized"
+    assert build_payload["status"] == "built"
+    assert deploy_payload["status"] == "deployed"
+    assert schedule_payload["status"] == "scheduled"
+    assert execute_payload["status"] == "executed"
+    assert logs_payload["status"] == "ok"
+    assert cost_payload["status"] == "estimated"
+    bridge.sync.assert_called_once_with(interactive=False, dry_run=False)
+
+
 def _run_json_command(argv: list[str]) -> dict[str, object]:
     stdout = io.StringIO()
     with redirect_stdout(stdout):

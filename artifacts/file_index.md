@@ -15,7 +15,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-| Test modules | 90 |
+| Test modules | 106 |
 
 ## Codebase Standards
 
@@ -31,17 +31,12 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Kind | Responsibility |
 | --- | --- | --- |
-| `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
 | `.pytest_cache/` | generated/cache | Test runner cache; generated, not part of the source of truth. |
-| `.worktrees/` | local state | Git worktree checkouts used for isolated implementation branches; local-only and not part of the shipped package. |
 | `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
-| `build/` | generated/cache | Setuptools build output; generated, not part of the live source tree. |
 | `docs/` | repo docs | Focused usage and architecture notes for the package. |
 | `harnessiq/` | source | Live SDK package source. |
-| `harnessiq.egg-info/` | generated/cache | Packaging metadata emitted by local builds. |
 | `memory/` | local state | Task artifacts plus durable agent runtime state; not part of the shipped package. |
 | `scripts/` | repo tooling | Repository maintenance and generation scripts. |
-| `src/` | generated/cache | Legacy or generated residue in this checkout; not the authoritative package source. |
 | `tests/` | source | unittest coverage for runtime, CLI, providers, and tools. |
 
 ## Package Layout
@@ -49,12 +44,12 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Path | Live Subpackages | Responsibility |
 | --- | --- | --- |
 | `harnessiq/agents/` | apollo, base, email, exa, exa_outreach, instagram, instantly, knowt, leads, linkedin, outreach, prospecting, provider_base, research_sweep | Shared runtime bases plus the concrete harness packages exported by the SDK. |
-| `harnessiq/cli/` | adapters, commands, exa_outreach, instagram, leads, ledger, linkedin, master_prompts, models, prospecting, research_sweep | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
+| `harnessiq/cli/` | adapters, commands, exa_outreach, gcloud, instagram, leads, ledger, linkedin, master_prompts, models, prospecting, research_sweep | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
 | `harnessiq/config/` | provider_credentials | Environment loading, credential binding, and provider-credential spec models. |
 | `harnessiq/integrations/` | - | Concrete external runtime adapters such as Playwright backends and model factories. |
 | `harnessiq/master_prompts/` | prompts | Packaged prompt assets and prompt registry helpers. |
-| `harnessiq/providers/` | anthropic, apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, gemini, google_drive, grok, inboxapp, instantly, leadiq, lemlist, lusha, openai, outreach, paperclip, peopledatalabs, phantombuster, playwright, proxycurl, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | Model-provider adapters, external service clients, output-sink transport clients, and Playwright runtime support. |
-| `harnessiq/shared/` | - | Shared manifests, durable memory stores, operation metadata, and package-wide types/constants. |
+| `harnessiq/providers/` | anthropic, apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, gcloud, gemini, google_drive, grok, inboxapp, instantly, leadiq, lemlist, lusha, openai, outreach, paperclip, peopledatalabs, phantombuster, playwright, proxycurl, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | Model-provider adapters, external service clients, output-sink transport clients, and Playwright runtime support. |
+| `harnessiq/shared/` | dtos | Shared manifests, durable memory stores, operation metadata, and package-wide types/constants. |
 | `harnessiq/tools/` | apollo, arcads, arxiv, attio, browser_use, context, coresignal, creatify, eval, exa, expandi, google_drive, hooks, inboxapp, instagram, instantly, knowt, leadiq, leads, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, prospecting, proxycurl, reasoning, salesforge, search, serper, smartlead, snovio, zerobounce, zoominfo | Built-in tool families, provider-backed tool factories, and domain-specific helper tools. |
 | `harnessiq/toolset/` | - | Static tool catalog plus registration and lookup helpers for reusable tool composition. |
 | `harnessiq/utils/` | harness_manifest | Agent instance storage, ledger export/report helpers, and built-in output sink implementations. |
@@ -67,6 +62,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | `harnessiq/cli/adapters/utils/` | Shared helper modules for adapter store loading, payload shaping, factory resolution, and session-directory setup. |
 | `harnessiq/config/provider_credentials/` | Focused provider-credential spec package split into catalog, models, builders, and masking helpers. |
 | `harnessiq/utils/harness_manifest/` | Manifest coercion, validation, and registry helpers extracted from the public shared manifest modules. |
+| `harnessiq/providers/gcloud/` | Google Cloud deployment provider package with command builders, credential sync, manifest-backed deploy specs, and the Cloud Run runtime wrapper. |
 
 ## Key Files
 
@@ -182,13 +178,13 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 ## Test Surface
 
-`tests/` currently contains 90 test modules. The table below groups them by dominant responsibility.
+`tests/` currently contains 106 test modules. The table below groups them by dominant responsibility.
 
 | Area | Count | Examples |
 | --- | --- | --- |
 | agents | 18 | `tests/test_agent_instances.py`, `tests/test_agent_models.py`, `tests/test_agents_base.py` |
-| cli | 9 | `tests/test_exa_outreach_cli.py`, `tests/test_instagram_cli.py`, `tests/test_leads_cli.py` |
+| cli | 10 | `tests/test_exa_outreach_cli.py`, `tests/test_gcloud_cli.py`, `tests/test_instagram_cli.py` |
 | ledger | 1 | `tests/test_output_sinks.py` |
 | providers | 31 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
-| support | 18 | `tests/test_cli_common.py`, `tests/test_cli_environment.py`, `tests/test_cli_policy_options.py` |
+| support | 33 | `tests/test_cli_common.py`, `tests/test_cli_environment.py`, `tests/test_cli_policy_options.py` |
 | tools | 13 | `tests/test_context_compaction_tools.py`, `tests/test_context_window_tools.py`, `tests/test_general_tools.py` |

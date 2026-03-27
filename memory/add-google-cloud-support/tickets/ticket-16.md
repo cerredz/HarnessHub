@@ -1,5 +1,7 @@
-﻿Title: Document and verify the end-to-end GCP workflow
+Title: Document and verify the end-to-end GCP workflow
 Issue URL: https://github.com/cerredz/HarnessHub/issues/303
+PR URL: https://github.com/cerredz/HarnessHub/pull/360
+Status: implemented, awaiting merge into `main`
 
 Intent:
 Make the new GCP support operable by other engineers and lock in its behavior with end-to-end coverage. Without this ticket, the feature set would exist but remain difficult to adopt and easy to regress.
@@ -16,7 +18,7 @@ Relevant Files:
 - `artifacts/file_index.md`: Update generated architecture docs if the generator output changes.
 
 Approach:
-Document the implemented behavior rather than restating the design doc verbatim. Keep docs aligned with the repositoryâ€™s actual argparse and JSON conventions, call out the credential-binding reuse explicitly, and describe the GCS-backed memory sync approach chosen to fit the live harness architecture. If generated artifacts need updating, rerun the repoâ€™s doc-sync script rather than hand-editing the generated outputs.
+Document the implemented behavior rather than restating the design doc verbatim. Keep docs aligned with the repository's actual argparse and JSON conventions, call out the credential-binding reuse explicitly, and describe the GCS-backed memory sync approach chosen to fit the live harness architecture. If generated artifacts need updating, rerun the repo's doc-sync script rather than hand-editing the generated outputs.
 
 Assumptions:
 - A dedicated `docs/gcloud.md` page is the right place for operational instructions.
@@ -24,14 +26,14 @@ Assumptions:
 - By the time this ticket starts, the provider layer, CLI, deploy spec derivation, and runtime wrapper all exist.
 
 Acceptance Criteria:
-- [ ] The repository contains focused documentation for the GCP deployment workflow.
-- [ ] The README points readers to the new GCP support.
-- [ ] End-to-end CLI and runtime tests cover the main deployment flow and the memory-sync path.
-- [ ] Any generated docs affected by the new command family or provider package have been regenerated instead of hand-edited.
+- [x] The repository contains focused documentation for the GCP deployment workflow.
+- [x] The README points readers to the new GCP support.
+- [x] End-to-end CLI and runtime tests cover the main deployment flow and the memory-sync path.
+- [x] Any generated docs affected by the new command family or provider package have been regenerated instead of hand-edited.
 
 Verification Steps:
 - Static analysis: No configured linter; manually review docs for command accuracy and code fences for validity.
-- Type checking: No configured type checker; rely on the earlier ticketsâ€™ typed code plus test execution.
+- Type checking: No configured type checker; rely on the earlier tickets' typed code plus test execution.
 - Unit tests: Run the relevant GCP CLI and runtime test modules.
 - Integration and contract tests: Exercise the end-to-end mocked deployment path through the CLI and runtime wrapper.
 - Smoke and manual verification: Follow the documented flow locally with dry-run settings and confirm the documented outputs match reality.
@@ -41,4 +43,3 @@ Ticket 15.
 
 Drift Guard:
 Do not add new deployment features in this ticket. The work here is documentation, regression coverage, and generated-artifact alignment for the features already implemented.
-

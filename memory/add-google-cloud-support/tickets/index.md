@@ -140,6 +140,9 @@
    Dependency: Ticket 15
    Issue: #303
    URL: https://github.com/cerredz/HarnessHub/issues/303
+   PR: #360
+   PR URL: https://github.com/cerredz/HarnessHub/pull/360
+   Status: implemented, awaiting merge into `main`
 
 Phase 3a complete
 Phase 3 complete
