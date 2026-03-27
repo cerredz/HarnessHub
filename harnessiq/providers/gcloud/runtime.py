@@ -68,40 +68,40 @@ def run_runtime(
 
     local_memory_path = deserialize_repo_path(config.memory_path, repo_root=resolved_repo_root)
     synced_from_gcs = ctx.storage.sync_memory_from_gcs(config.memory_path, local_memory_path)
-    manifest = get_harness_manifest(config.manifest_id)
-    adapter = _build_adapter(manifest)
-    deploy_spec = ctx.derive_deploy_spec(repo_root=resolved_repo_root)
-    if deploy_spec.manifest_id != manifest.manifest_id:
-        raise ValueError(
-            f"Derived deploy spec manifest '{deploy_spec.manifest_id}' does not match runtime manifest '{manifest.manifest_id}'."
-        )
-    if deploy_spec.memory_path != config.memory_path:
-        raise ValueError(
-            f"Derived deploy spec memory path '{deploy_spec.memory_path}' does not match runtime memory path '{config.memory_path}'."
-        )
-
-    context = _build_context(
-        manifest=manifest,
-        adapter=adapter,
-        agent_name=config.agent_name,
-        memory_path=local_memory_path,
-        incoming_runtime=config.runtime_parameters,
-        incoming_custom=config.custom_parameters,
-        persist_profile=True,
-    )
-    run_request = _ResolvedRunRequest(
-        model_factory=deploy_spec.model_selection.model_factory,
-        model=deploy_spec.model_selection.model,
-        model_profile=deploy_spec.model_selection.model_profile,
-        sink_specs=deploy_spec.sink_specs,
-        max_cycles=deploy_spec.max_cycles,
-        adapter_arguments=deploy_spec.adapter_arguments,
-    )
-    context = _persist_run_snapshot(context, run_request)
-
     execution_error: Exception | None = None
+    sync_error: Exception | None = None
     result_payload: dict[str, Any] | None = None
     try:
+        manifest = get_harness_manifest(config.manifest_id)
+        adapter = _build_adapter(manifest)
+        deploy_spec = ctx.derive_deploy_spec(repo_root=resolved_repo_root)
+        if deploy_spec.manifest_id != manifest.manifest_id:
+            raise ValueError(
+                f"Derived deploy spec manifest '{deploy_spec.manifest_id}' does not match runtime manifest '{manifest.manifest_id}'."
+            )
+        if deploy_spec.memory_path != config.memory_path:
+            raise ValueError(
+                f"Derived deploy spec memory path '{deploy_spec.memory_path}' does not match runtime memory path '{config.memory_path}'."
+            )
+
+        context = _build_context(
+            manifest=manifest,
+            adapter=adapter,
+            agent_name=config.agent_name,
+            memory_path=local_memory_path,
+            incoming_runtime=config.runtime_parameters,
+            incoming_custom=config.custom_parameters,
+            persist_profile=True,
+        )
+        run_request = _ResolvedRunRequest(
+            model_factory=deploy_spec.model_selection.model_factory,
+            model=deploy_spec.model_selection.model,
+            model_profile=deploy_spec.model_selection.model_profile,
+            sink_specs=deploy_spec.sink_specs,
+            max_cycles=deploy_spec.max_cycles,
+            adapter_arguments=deploy_spec.adapter_arguments,
+        )
+        context = _persist_run_snapshot(context, run_request)
         seed_cli_environment(context.repo_root)
         model = resolve_agent_model(
             model_factory=run_request.model_factory,
@@ -129,11 +129,21 @@ def run_runtime(
     except Exception as exc:  # pragma: no cover - exercised by tests with assertions on side effects
         execution_error = exc
 
-    synced_to_gcs = ctx.storage.sync_memory_to_gcs(config.memory_path, local_memory_path)
+    try:
+        synced_to_gcs = ctx.storage.sync_memory_to_gcs(config.memory_path, local_memory_path)
+    except Exception as exc:  # pragma: no cover - exercised by tests with assertions on side effects
+        synced_to_gcs = False
+        sync_error = exc
     if result_payload is not None:
         result_payload["runtime"]["synced_to_gcs"] = synced_to_gcs
     if execution_error is not None:
+        if sync_error is not None:
+            raise RuntimeError(
+                f"Runtime execution failed with '{execution_error}' and sync-back failed with '{sync_error}'."
+            ) from execution_error
         raise execution_error
+    if sync_error is not None:
+        raise sync_error
     if result_payload is None:  # pragma: no cover - defensive
         raise RuntimeError("Runtime wrapper completed without a result payload.")
     return result_payload

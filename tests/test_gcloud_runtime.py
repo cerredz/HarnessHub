@@ -270,3 +270,87 @@ def test_run_runtime_syncs_back_on_adapter_failure(monkeypatch: pytest.MonkeyPat
         ("download", memory_path, str(local_memory_path)),
         ("upload", memory_path, str(local_memory_path)),
     ]
+
+
+def test_run_runtime_syncs_back_when_model_resolution_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    memory_path = "memory/research_sweep/candidate-c"
+    local_memory_path = tmp_path / "repo" / "memory" / "research_sweep" / "candidate-c"
+    storage = _RecordingStorage(synced_from_gcs=True)
+    adapter = _FakeAdapter()
+    manifest = HarnessManifest(
+        manifest_id="research_sweep",
+        agent_name="research_sweep_agent",
+        display_name="Research Sweep",
+        module_path="tests.fake",
+        class_name="FakeAgent",
+    )
+    deploy_spec = GcpDeploySpec(
+        manifest_id="research_sweep",
+        display_name="Research Sweep",
+        agent_name="candidate-c",
+        memory_path=memory_path,
+        provider_families=(),
+        memory_entries=(),
+        model_selection=GcpModelSelection(model="openai:gpt-5.4"),
+        max_cycles=3,
+        sink_specs=(),
+        adapter_arguments={},
+        runtime_parameters={},
+        custom_parameters={"query": "AI governance"},
+        env_vars={},
+        secret_references=(),
+        remote_command=("python", "-m", "harnessiq.providers.gcloud.runtime"),
+    )
+    gcp_context = _FakeGcpContext(
+        config=GcpAgentConfig(
+            agent_name="candidate-c",
+            gcp_project_id="proj-123",
+            region="us-central1",
+            manifest_id="research_sweep",
+            custom_parameters={"query": "AI governance"},
+        ),
+        storage=storage,
+        deploy_spec=deploy_spec,
+    )
+
+    built_context = HarnessAdapterContext(
+        manifest=manifest,
+        agent_name="candidate-c",
+        memory_path=local_memory_path,
+        repo_root=tmp_path / "repo",
+        profile=HarnessProfile(manifest_id="research_sweep", agent_name="candidate-c"),
+        runtime_parameters={},
+        custom_parameters={"query": "AI governance"},
+        bound_credentials={},
+    )
+
+    monkeypatch.setattr("harnessiq.providers.gcloud.runtime.get_harness_manifest", lambda _: manifest)
+    monkeypatch.setattr("harnessiq.providers.gcloud.runtime._build_adapter", lambda _: adapter)
+    monkeypatch.setattr("harnessiq.providers.gcloud.runtime._build_context", lambda **kwargs: built_context)
+    monkeypatch.setattr("harnessiq.providers.gcloud.runtime._persist_run_snapshot", lambda context, run_request: context)
+    monkeypatch.setattr("harnessiq.providers.gcloud.runtime.seed_cli_environment", lambda repo_root: None)
+    monkeypatch.setattr(
+        "harnessiq.providers.gcloud.runtime.resolve_agent_model",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("model resolution failed")),
+    )
+    monkeypatch.setattr(
+        "harnessiq.providers.gcloud.runtime.build_runtime_config",
+        lambda *, sink_specs: {"sink_specs": sink_specs},
+    )
+
+    with pytest.raises(RuntimeError, match="model resolution failed"):
+        run_runtime(
+            agent_name="candidate-c",
+            manifest_id="research_sweep",
+            memory_path=memory_path,
+            repo_root=tmp_path / "repo",
+            gcp_context=gcp_context,
+        )
+
+    assert storage.actions == [
+        ("download", memory_path, str(local_memory_path)),
+        ("upload", memory_path, str(local_memory_path)),
+    ]
