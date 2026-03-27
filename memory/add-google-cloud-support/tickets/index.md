@@ -23,6 +23,9 @@
    Dependency: Ticket 2
    Issue: #290
    URL: https://github.com/cerredz/HarnessHub/issues/290
+   PR: #307
+   PR URL: https://github.com/cerredz/HarnessHub/pull/307
+   Status: implemented, awaiting merge into `main`
 
 4. Ticket 4: Add Cloud Run, Scheduler, Artifact Registry, and Secret Manager command builders
    Description: Implement pure builders for the deployment and secret-management command surface.
