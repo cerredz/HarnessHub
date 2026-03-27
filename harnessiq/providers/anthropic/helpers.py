@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from harnessiq.providers.anthropic.messages import build_request as build_message_request
 from harnessiq.providers.anthropic.tools import format_tool_definition as format_anthropic_tool_definition
-from harnessiq.shared.providers import ProviderMessage
+from harnessiq.shared.dtos import AnthropicCountTokensRequestDTO
 from harnessiq.shared.tools import ToolDefinition
 
 
@@ -14,15 +14,7 @@ def format_tool_definition(definition: ToolDefinition) -> dict[str, object]:
 
 
 def build_request(
-    model_name: str,
-    system_prompt: str,
-    messages: list[ProviderMessage],
-    tools: list[ToolDefinition],
+    request: AnthropicCountTokensRequestDTO,
 ) -> dict[str, object]:
     """Build an Anthropic-style request body from canonical primitives."""
-    return build_message_request(
-        model_name=model_name,
-        system_prompt=system_prompt,
-        messages=messages,
-        tools=tools,
-    )
+    return build_message_request(request)

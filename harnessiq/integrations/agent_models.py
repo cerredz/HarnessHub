@@ -22,7 +22,16 @@ from harnessiq.providers.gemini import (
 from harnessiq.providers.grok import GrokClient
 from harnessiq.providers.openai import OpenAIClient
 from harnessiq.shared.agents import AgentModelRequest, AgentModelResponse
-from harnessiq.shared.providers import ProviderMessage, SUPPORTED_PROVIDERS
+from harnessiq.shared.dtos import (
+    AnthropicMessageDTO,
+    AnthropicMessageRequestDTO,
+    GeminiContentDTO,
+    GeminiGenerateContentRequestDTO,
+    GrokChatCompletionRequestDTO,
+    OpenAIChatCompletionRequestDTO,
+    ProviderMessageDTO,
+)
+from harnessiq.shared.providers import SUPPORTED_PROVIDERS
 from harnessiq.shared.tools import ToolCall, ToolDefinition
 
 DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS = 4096
@@ -96,7 +105,7 @@ class ProviderAgentModel:
         self,
         *,
         request: AgentModelRequest,
-        messages: list[ProviderMessage],
+        messages: list[ProviderMessageDTO],
         tools: list[ToolDefinition],
     ) -> AgentModelResponse:
         provider = self._provider_name
@@ -123,25 +132,27 @@ class ProviderAgentModel:
         self,
         *,
         request: AgentModelRequest,
-        messages: list[ProviderMessage],
+        messages: list[ProviderMessageDTO],
         tools: list[ToolDefinition],
     ) -> AgentModelResponse:
         client = self._openai_style_client()
+        provider_request = OpenAIChatCompletionRequestDTO(
+            model_name=self._model_name,
+            system_prompt=request.system_prompt,
+            messages=tuple(messages),
+            tools=tuple(tools),
+            max_tokens=self._max_output_tokens,
+            temperature=self._temperature,
+            parallel_tool_calls=True if tools else None,
+        )
         raw = trace_model_call(
-            lambda: client.create_chat_completion(
-                model_name=self._model_name,
-                system_prompt=request.system_prompt,
-                messages=messages,
-                tools=tools,
-                max_tokens=self._max_output_tokens,
-                temperature=self._temperature,
-                parallel_tool_calls=True if tools else None,
-            ),
+            lambda: client.create_chat_completion(provider_request),
             provider="openai",
             model_name=self._model_name,
             system_prompt=request.system_prompt,
             messages=messages,
             tools=tools,
+            request_payload=provider_request.to_dict(),
             project_name=self._project_name,
             enabled=self._tracing_enabled or None,
         )
@@ -151,25 +162,29 @@ class ProviderAgentModel:
         self,
         *,
         request: AgentModelRequest,
-        messages: list[ProviderMessage],
+        messages: list[ProviderMessageDTO],
         tools: list[ToolDefinition],
     ) -> AgentModelResponse:
         client = self._anthropic_client()
-        raw = trace_model_call(
-            lambda: client.create_message(
-                model_name=self._model_name,
-                messages=messages,
-                max_tokens=self._max_output_tokens or DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS,
-                system_prompt=request.system_prompt or None,
-                tools=tools,
-                tool_choice={"type": "auto"} if tools else None,
-                temperature=self._temperature,
+        provider_request = AnthropicMessageRequestDTO(
+            model_name=self._model_name,
+            messages=tuple(
+                AnthropicMessageDTO(role=message.role, content=message.content) for message in messages if message.role != "system"
             ),
+            max_tokens=self._max_output_tokens or DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS,
+            system_prompt=request.system_prompt or None,
+            tools=tuple(tools),
+            tool_choice={"type": "auto"} if tools else None,
+            temperature=self._temperature,
+        )
+        raw = trace_model_call(
+            lambda: client.create_message(provider_request),
             provider="anthropic",
             model_name=self._model_name,
             system_prompt=request.system_prompt,
             messages=messages,
             tools=tools,
+            request_payload=provider_request.to_dict(),
             project_name=self._project_name,
             enabled=self._tracing_enabled or None,
         )
@@ -179,7 +194,7 @@ class ProviderAgentModel:
         self,
         *,
         request: AgentModelRequest,
-        messages: list[ProviderMessage],
+        messages: list[ProviderMessageDTO],
         tools: list[ToolDefinition],
     ) -> AgentModelResponse:
         generation_config = build_generation_config(
@@ -187,24 +202,26 @@ class ProviderAgentModel:
             max_output_tokens=self._max_output_tokens,
         )
         client = self._gemini_client()
-        raw = trace_model_call(
-            lambda: client.generate_content(
-                model_name=self._model_name,
-                contents=_build_gemini_contents(messages),
-                system_instruction=build_system_instruction(request.system_prompt) if request.system_prompt else None,
-                tools=tools,
-                tool_config=(
-                    build_tool_config(function_calling_config=build_function_calling_config(mode="AUTO"))
-                    if tools
-                    else None
-                ),
-                generation_config=generation_config or None,
+        provider_request = GeminiGenerateContentRequestDTO(
+            model_name=self._model_name,
+            contents=tuple(_build_gemini_contents(messages)),
+            system_instruction=build_system_instruction(request.system_prompt) if request.system_prompt else None,
+            tools=tuple(tools),
+            tool_config=(
+                build_tool_config(function_calling_config=build_function_calling_config(mode="AUTO"))
+                if tools
+                else None
             ),
+            generation_config=generation_config or None,
+        )
+        raw = trace_model_call(
+            lambda: client.generate_content(provider_request),
             provider="gemini",
             model_name=self._model_name,
             system_prompt=request.system_prompt,
             messages=messages,
             tools=tools,
+            request_payload=provider_request.to_dict(),
             project_name=self._project_name,
             enabled=self._tracing_enabled or None,
         )
@@ -214,25 +231,27 @@ class ProviderAgentModel:
         self,
         *,
         request: AgentModelRequest,
-        messages: list[ProviderMessage],
+        messages: list[ProviderMessageDTO],
         tools: list[ToolDefinition],
     ) -> AgentModelResponse:
         client = self._openai_style_client()
+        provider_request = GrokChatCompletionRequestDTO(
+            model_name=self._model_name,
+            system_prompt=request.system_prompt,
+            messages=tuple(messages),
+            tools=tuple(tools),
+            max_tokens=self._max_output_tokens,
+            temperature=self._temperature,
+            reasoning_effort=self._reasoning_effort,
+        )
         raw = trace_model_call(
-            lambda: client.create_chat_completion(
-                model_name=self._model_name,
-                system_prompt=request.system_prompt,
-                messages=messages,
-                tools=tools,
-                max_tokens=self._max_output_tokens,
-                temperature=self._temperature,
-                reasoning_effort=self._reasoning_effort,
-            ),
+            lambda: client.create_chat_completion(provider_request),
             provider="grok",
             model_name=self._model_name,
             system_prompt=request.system_prompt,
             messages=messages,
             tools=tools,
+            request_payload=provider_request.to_dict(),
             project_name=self._project_name,
             enabled=self._tracing_enabled or None,
         )
@@ -496,7 +515,7 @@ class GrokAgentModel(ProviderAgentModel):
             tracing_enabled=self._tracing_enabled,
         )
 
-    def _build_messages(self, request: AgentModelRequest) -> list[ProviderMessage]:
+    def _build_messages(self, request: AgentModelRequest) -> list[ProviderMessageDTO]:
         """Compatibility helper preserved for older tests and callers."""
         return build_provider_messages(request)
 
@@ -625,11 +644,11 @@ def create_model_from_profile(
     )
 
 
-def build_provider_messages(request: AgentModelRequest) -> list[ProviderMessage]:
+def build_provider_messages(request: AgentModelRequest) -> list[ProviderMessageDTO]:
     """Reconstruct a provider-agnostic conversational message list from one agent request."""
-    messages: list[ProviderMessage] = []
+    messages: list[ProviderMessageDTO] = []
     parameter_block = request.render_parameter_block().strip()
-    messages.append({"role": "user", "content": parameter_block or "Continue."})
+    messages.append(ProviderMessageDTO(role="user", content=parameter_block or "Continue."))
     entries = list(request.transcript)
     index = 0
     while index < len(entries):
@@ -643,14 +662,14 @@ def build_provider_messages(request: AgentModelRequest) -> list[ProviderMessage]
                 assistant_parts.append(f"[TOOL CALL]\n{entries[index].content}")
                 index += 1
             messages.append(
-                {
-                    "role": "assistant",
-                    "content": "\n\n".join(assistant_parts) or "(continued)",
-                }
+                ProviderMessageDTO(
+                    role="assistant",
+                    content="\n\n".join(assistant_parts) or "(continued)",
+                )
             )
             continue
         if entry.entry_type == "user":
-            messages.append({"role": "user", "content": entry.content or "(user turn)"})
+            messages.append(ProviderMessageDTO(role="user", content=entry.content or "(user turn)"))
             index += 1
             continue
         if entry.entry_type in {"tool_result", "summary", "context"}:
@@ -665,11 +684,11 @@ def build_provider_messages(request: AgentModelRequest) -> list[ProviderMessage]
                     label = f"[CONTEXT: {current.label or 'Context'}]"
                 user_parts.append(f"{label}\n{current.content}".rstrip())
                 index += 1
-            messages.append({"role": "user", "content": "\n\n".join(user_parts)})
+            messages.append(ProviderMessageDTO(role="user", content="\n\n".join(user_parts)))
             continue
         index += 1
-    if messages and messages[-1]["role"] == "assistant":
-        messages.append({"role": "user", "content": "Continue."})
+    if messages and messages[-1].role == "assistant":
+        messages.append(ProviderMessageDTO(role="user", content="Continue."))
     return messages
 
 
@@ -683,19 +702,19 @@ def create_grok_model() -> GrokAgentModel:
     )
 
 
-def _build_gemini_contents(messages: Sequence[ProviderMessage]) -> list[dict[str, Any]]:
+def _build_gemini_contents(messages: Sequence[ProviderMessageDTO]) -> list[GeminiContentDTO]:
     role_map = {
         "user": "user",
         "assistant": "model",
         "system": "user",
     }
-    contents: list[dict[str, Any]] = []
+    contents: list[GeminiContentDTO] = []
     for message in messages:
         contents.append(
-            {
-                "role": role_map[message["role"]],
-                "parts": [{"text": message["content"]}],
-            }
+            GeminiContentDTO(
+                role=role_map[message.role],
+                parts=({"text": message.content},),
+            )
         )
     return contents
 

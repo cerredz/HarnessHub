@@ -1,5 +1,14 @@
 """Gemini request and client helpers."""
 
+from harnessiq.shared.dtos import (
+    GeminiCacheCreateRequestDTO,
+    GeminiContentDTO,
+    GeminiCountTokensRequestDTO,
+    GeminiGenerateContentRequestDTO,
+    GeminiGenerationConfigDTO,
+    GeminiSystemInstructionDTO,
+)
+
 from .client import GeminiClient
 from .content import (
     build_cached_content_request,
@@ -27,6 +36,12 @@ from .tools import (
 
 __all__ = [
     "GeminiClient",
+    "GeminiCacheCreateRequestDTO",
+    "GeminiContentDTO",
+    "GeminiCountTokensRequestDTO",
+    "GeminiGenerateContentRequestDTO",
+    "GeminiGenerationConfigDTO",
+    "GeminiSystemInstructionDTO",
     "build_cached_content_request",
     "build_code_execution_tool",
     "build_content",

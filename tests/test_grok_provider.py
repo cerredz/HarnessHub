@@ -6,6 +6,7 @@ import unittest
 
 from harnessiq.providers.grok import (
     GrokClient,
+    GrokChatCompletionRequestDTO,
     build_chat_completion_request,
     build_code_execution_tool,
     build_collections_search_tool,
@@ -19,6 +20,7 @@ from harnessiq.providers.grok import (
     build_x_search_tool,
     format_tool_definition,
 )
+from harnessiq.shared.dtos import ProviderMessageDTO
 from harnessiq.tools import ECHO_TEXT, create_builtin_registry
 
 
@@ -27,8 +29,8 @@ class GrokProviderTests(unittest.TestCase):
         registry = create_builtin_registry()
         self.tools = registry.definitions([ECHO_TEXT])
         self.messages = [
-            {"role": "user", "content": "ping"},
-            {"role": "assistant", "content": "pong"},
+            ProviderMessageDTO(role="user", content="ping"),
+            ProviderMessageDTO(role="assistant", content="pong"),
         ]
 
     def test_format_tool_definition_uses_function_shape_without_strict(self) -> None:
@@ -68,14 +70,16 @@ class GrokProviderTests(unittest.TestCase):
             sources=["web", "x"],
         )
         request = build_chat_completion_request(
-            model_name="grok-3",
-            system_prompt="Be precise.",
-            messages=self.messages,
-            tools=self.tools,
-            tool_choice=build_tool_choice(tool_name="echo_text"),
-            response_format=response_format,
-            search_parameters=search_parameters,
-            reasoning_effort="medium",
+            GrokChatCompletionRequestDTO(
+                model_name="grok-3",
+                system_prompt="Be precise.",
+                messages=tuple(self.messages),
+                tools=tuple(self.tools),
+                tool_choice=build_tool_choice(tool_name="echo_text"),
+                response_format=response_format,
+                search_parameters=search_parameters,
+                reasoning_effort="medium",
+            )
         )
 
         self.assertEqual(request["tool_choice"]["function"]["name"], "echo_text")
@@ -113,13 +117,15 @@ class GrokProviderTests(unittest.TestCase):
         client = GrokClient(api_key="test-key", timeout_seconds=8.0, request_executor=fake_request_executor)
 
         response = client.create_chat_completion(
-            model_name="grok-3",
-            system_prompt="Be precise.",
-            messages=self.messages,
-            tools=self.tools,
-            tool_choice=build_tool_choice(tool_name="echo_text"),
-            search_parameters=build_search_parameters(mode="on", return_citations=True),
-            reasoning_effort="medium",
+            GrokChatCompletionRequestDTO(
+                model_name="grok-3",
+                system_prompt="Be precise.",
+                messages=tuple(self.messages),
+                tools=tuple(self.tools),
+                tool_choice=build_tool_choice(tool_name="echo_text"),
+                search_parameters=build_search_parameters(mode="on", return_citations=True),
+                reasoning_effort="medium",
+            )
         )
 
         self.assertEqual(response, {"id": "chatcmpl_123"})

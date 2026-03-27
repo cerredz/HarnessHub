@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal
 
+from harnessiq.shared.dtos import ProviderMessageDTO
 from harnessiq.shared.exceptions import ValidationError
 
 ProviderName = Literal["anthropic", "openai", "grok", "gemini"]
@@ -15,11 +16,7 @@ class ProviderFormatError(ValidationError):
     """Raised when a request cannot be translated into provider format."""
 
 
-class ProviderMessage(TypedDict):
-    """Provider-agnostic chat message shape."""
-
-    role: ProviderMessageRole
-    content: str
+ProviderMessage = ProviderMessageDTO
 
 
 SUPPORTED_PROVIDERS: tuple[ProviderName, ...] = ("anthropic", "openai", "grok", "gemini")
@@ -105,6 +102,7 @@ __all__ = [
     "PEOPLEDATALABS_DEFAULT_BASE_URL",
     "PHANTOMBUSTER_DEFAULT_BASE_URL",
     "ProviderMessage",
+    "ProviderMessageDTO",
     "ProviderMessageRole",
     "ProviderFormatError",
     "ProviderName",

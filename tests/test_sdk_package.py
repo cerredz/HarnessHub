@@ -73,11 +73,19 @@ class HarnessiqPackageTests(unittest.TestCase):
                     (
                         f"import sys; sys.path.insert(0, r'{wheel_path}'); "
                         "import harnessiq, harnessiq.agents, harnessiq.config, harnessiq.integrations, harnessiq.shared, harnessiq.tools, harnessiq.utils; "
-                        "from harnessiq.shared.dtos import AgentInstancePayload; "
+                        "from harnessiq.shared.dtos import AgentInstancePayload, OpenAIChatCompletionRequestDTO, ProviderMessageDTO; "
+                        "from harnessiq.providers import AnthropicMessageRequestDTO, GeminiGenerateContentRequestDTO, GrokChatCompletionRequestDTO; "
+                        "from harnessiq.providers.openai import OpenAIResponseRequestDTO; "
                         "from harnessiq.cli.main import main as cli_main; "
                         "assert harnessiq.__version__ == '0.1.0'; "
                         "assert hasattr(harnessiq.shared, 'dtos'); "
                         "assert AgentInstancePayload.__module__ == 'harnessiq.shared.dtos.agents'; "
+                        "assert OpenAIChatCompletionRequestDTO.__module__ == 'harnessiq.shared.dtos.providers'; "
+                        "assert ProviderMessageDTO.__module__ == 'harnessiq.shared.dtos.providers'; "
+                        "assert AnthropicMessageRequestDTO.__module__ == 'harnessiq.shared.dtos.providers'; "
+                        "assert GeminiGenerateContentRequestDTO.__module__ == 'harnessiq.shared.dtos.providers'; "
+                        "assert GrokChatCompletionRequestDTO.__module__ == 'harnessiq.shared.dtos.providers'; "
+                        "assert OpenAIResponseRequestDTO.__module__ == 'harnessiq.shared.dtos.providers'; "
                         "assert hasattr(harnessiq.agents, 'BaseProviderToolAgent'); "
                         "assert hasattr(harnessiq.agents, 'BaseApolloAgent'); "
                         "assert hasattr(harnessiq.agents, 'BaseExaAgent'); "
@@ -143,9 +151,18 @@ class HarnessiqPackageTests(unittest.TestCase):
             OutreachAgentConfig,
             OutreachAgentRequest,
         )
-        from harnessiq.providers import ProviderFormatError, ProviderHTTPError
+        from harnessiq.providers import (
+            AnthropicMessageRequestDTO,
+            GeminiGenerateContentRequestDTO,
+            GrokChatCompletionRequestDTO,
+            OpenAIChatCompletionRequestDTO,
+            ProviderFormatError,
+            ProviderHTTPError,
+            ProviderMessageDTO,
+        )
         from harnessiq.providers.arxiv import ArxivConfig
         from harnessiq.providers.arcads import ArcadsOperation
+        from harnessiq.providers.openai import OpenAIResponseRequestDTO
         from harnessiq.shared.dtos import AgentInstancePayload, HarnessCommandPayloadDTO, HarnessRunSnapshotDTO
         from harnessiq.tools import ResendCredentials
 
@@ -162,6 +179,12 @@ class HarnessiqPackageTests(unittest.TestCase):
         self.assertEqual(InstantlyAgentConfig.__module__, "harnessiq.shared.instantly_agent")
         self.assertEqual(OutreachAgentRequest.__module__, "harnessiq.shared.dtos.agents")
         self.assertEqual(OutreachAgentConfig.__module__, "harnessiq.shared.outreach_agent")
+        self.assertEqual(ProviderMessageDTO.__module__, "harnessiq.shared.dtos.providers")
+        self.assertEqual(OpenAIChatCompletionRequestDTO.__module__, "harnessiq.shared.dtos.providers")
+        self.assertEqual(OpenAIResponseRequestDTO.__module__, "harnessiq.shared.dtos.providers")
+        self.assertEqual(AnthropicMessageRequestDTO.__module__, "harnessiq.shared.dtos.providers")
+        self.assertEqual(GeminiGenerateContentRequestDTO.__module__, "harnessiq.shared.dtos.providers")
+        self.assertEqual(GrokChatCompletionRequestDTO.__module__, "harnessiq.shared.dtos.providers")
         self.assertEqual(ProviderFormatError.__module__, "harnessiq.shared.providers")
         self.assertEqual(ProviderHTTPError.__module__, "harnessiq.shared.http")
         self.assertEqual(ArxivConfig.__module__, "harnessiq.shared.provider_configs")

@@ -6,6 +6,9 @@ import unittest
 
 from harnessiq.providers.openai import (
     OpenAIClient,
+    OpenAIChatCompletionRequestDTO,
+    OpenAIEmbeddingRequestDTO,
+    OpenAIResponseRequestDTO,
     build_chat_completion_request,
     build_chat_response_format_json_object,
     build_chat_response_format_json_schema,
@@ -27,6 +30,7 @@ from harnessiq.providers.openai import (
     build_web_search_tool,
     format_tool_definition,
 )
+from harnessiq.shared.dtos import ProviderMessageDTO
 from harnessiq.tools import ECHO_TEXT, create_builtin_registry
 
 
@@ -35,8 +39,8 @@ class OpenAIProviderTests(unittest.TestCase):
         registry = create_builtin_registry()
         self.tools = registry.definitions([ECHO_TEXT])
         self.messages = [
-            {"role": "user", "content": "ping"},
-            {"role": "assistant", "content": "pong"},
+            ProviderMessageDTO(role="user", content="ping"),
+            ProviderMessageDTO(role="assistant", content="pong"),
         ]
 
     def test_format_tool_definition_uses_function_shape_and_default_strict_false(self) -> None:
@@ -48,10 +52,12 @@ class OpenAIProviderTests(unittest.TestCase):
 
     def test_build_request_preserves_existing_chat_completion_behavior(self) -> None:
         request = build_request(
-            model_name="gpt-4.1",
-            system_prompt="Be precise.",
-            messages=self.messages,
-            tools=self.tools,
+            OpenAIChatCompletionRequestDTO(
+                model_name="gpt-4.1",
+                system_prompt="Be precise.",
+                messages=tuple(self.messages),
+                tools=tuple(self.tools),
+            )
         )
 
         self.assertEqual(request["messages"][0], {"role": "system", "content": "Be precise."})
@@ -70,13 +76,15 @@ class OpenAIProviderTests(unittest.TestCase):
             strict=True,
         )
         request = build_chat_completion_request(
-            model_name="gpt-4.1",
-            system_prompt="Be precise.",
-            messages=self.messages,
-            tools=self.tools,
-            tool_choice=build_tool_choice(tool_name="echo_text"),
-            response_format=response_format,
-            parallel_tool_calls=True,
+            OpenAIChatCompletionRequestDTO(
+                model_name="gpt-4.1",
+                system_prompt="Be precise.",
+                messages=tuple(self.messages),
+                tools=tuple(self.tools),
+                tool_choice=build_tool_choice(tool_name="echo_text"),
+                response_format=response_format,
+                parallel_tool_calls=True,
+            )
         )
 
         self.assertEqual(request["tool_choice"]["function"]["name"], "echo_text")
@@ -95,32 +103,34 @@ class OpenAIProviderTests(unittest.TestCase):
         ]
         web_location = build_web_search_location(city="Indianapolis", country="US", timezone="America/Indiana/Indianapolis")
         request = build_response_request(
-            model_name="gpt-4.1",
-            input_items=input_items,
-            instructions="Use tools when needed.",
-            tools=[
-                build_file_search_tool(["vs_123"]),
-                build_web_search_tool(user_location=web_location, search_context_size="high"),
-                build_code_interpreter_tool(container="auto"),
-                build_image_generation_tool(size="1024x1024", quality="high"),
-                build_computer_use_tool(display_width=1280, display_height=720, environment="browser"),
-                build_mcp_tool(server_label="docs", server_url="https://mcp.example.com"),
-            ],
-            text=build_response_text_config(
-                format=build_json_schema_output(
-                    "answer",
-                    {
-                        "type": "object",
-                        "properties": {"summary": {"type": "string"}},
-                        "required": ["summary"],
-                        "additionalProperties": False,
-                    },
-                    strict=True,
+            OpenAIResponseRequestDTO(
+                model_name="gpt-4.1",
+                input_items=tuple(input_items),
+                instructions="Use tools when needed.",
+                tools=(
+                    build_file_search_tool(["vs_123"]),
+                    build_web_search_tool(user_location=web_location, search_context_size="high"),
+                    build_code_interpreter_tool(container="auto"),
+                    build_image_generation_tool(size="1024x1024", quality="high"),
+                    build_computer_use_tool(display_width=1280, display_height=720, environment="browser"),
+                    build_mcp_tool(server_label="docs", server_url="https://mcp.example.com"),
                 ),
-                verbosity="medium",
+                text=build_response_text_config(
+                    format=build_json_schema_output(
+                        "answer",
+                        {
+                            "type": "object",
+                            "properties": {"summary": {"type": "string"}},
+                            "required": ["summary"],
+                            "additionalProperties": False,
+                        },
+                        strict=True,
+                    ),
+                    verbosity="medium",
+                ),
+                tool_choice="auto",
+                parallel_tool_calls=True,
             ),
-            tool_choice="auto",
-            parallel_tool_calls=True,
         )
 
         self.assertEqual(request["input"][0]["content"][1]["type"], "input_image")
@@ -161,9 +171,11 @@ class OpenAIProviderTests(unittest.TestCase):
         )
 
         response = client.create_response(
-            model_name="gpt-4.1",
-            input_items="Hello world",
-            instructions="Answer briefly.",
+            OpenAIResponseRequestDTO(
+                model_name="gpt-4.1",
+                input_items="Hello world",
+                instructions="Answer briefly.",
+            )
         )
 
         self.assertEqual(response, {"id": "resp_123"})
@@ -186,9 +198,11 @@ class OpenAIProviderTests(unittest.TestCase):
 
         models_response = client.list_models()
         embeddings_response = client.create_embedding(
-            model_name="text-embedding-3-large",
-            input_value=["alpha", "beta"],
-            dimensions=256,
+            OpenAIEmbeddingRequestDTO(
+                model_name="text-embedding-3-large",
+                input_value=("alpha", "beta"),
+                dimensions=256,
+            )
         )
 
         self.assertEqual(models_response, {"ok": True})
@@ -211,11 +225,13 @@ class OpenAIProviderTests(unittest.TestCase):
         client = OpenAIClient(api_key="test-key", request_executor=fake_request_executor)
 
         response = client.create_chat_completion(
-            model_name="gpt-4.1",
-            system_prompt="Be precise.",
-            messages=self.messages,
-            tools=self.tools,
-            tool_choice=build_tool_choice(tool_name="echo_text"),
+            OpenAIChatCompletionRequestDTO(
+                model_name="gpt-4.1",
+                system_prompt="Be precise.",
+                messages=tuple(self.messages),
+                tools=tuple(self.tools),
+                tool_choice=build_tool_choice(tool_name="echo_text"),
+            )
         )
 
         self.assertEqual(response, {"id": "chatcmpl_123"})

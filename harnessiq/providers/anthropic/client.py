@@ -14,8 +14,7 @@ from harnessiq.providers.anthropic.api import (
 )
 from harnessiq.providers.anthropic.messages import build_count_tokens_request, build_message_request
 from harnessiq.providers.http import RequestExecutor, request_json
-from harnessiq.shared.providers import ProviderMessage
-from harnessiq.shared.tools import ToolDefinition
+from harnessiq.shared.dtos import AnthropicCountTokensRequestDTO, AnthropicMessageRequestDTO
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,50 +30,18 @@ class AnthropicClient:
 
     def create_message(
         self,
-        *,
-        model_name: str,
-        messages: Sequence[ProviderMessage | dict[str, Any]],
-        max_tokens: int,
-        system_prompt: str | Sequence[dict[str, Any]] | None = None,
-        tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
-        tool_choice: dict[str, Any] | None = None,
-        thinking: dict[str, Any] | None = None,
-        metadata: dict[str, str] | None = None,
-        stop_sequences: Sequence[str] | None = None,
-        temperature: float | None = None,
-        mcp_servers: Sequence[dict[str, Any]] | None = None,
+        request: AnthropicMessageRequestDTO,
     ) -> Any:
         """Create an Anthropic Messages API request."""
-        payload = build_message_request(
-            model_name=model_name,
-            messages=messages,
-            max_tokens=max_tokens,
-            system_prompt=system_prompt,
-            tools=tools,
-            tool_choice=tool_choice,
-            thinking=thinking,
-            metadata=metadata,
-            stop_sequences=stop_sequences,
-            temperature=temperature,
-            mcp_servers=mcp_servers,
-        )
+        payload = build_message_request(request)
         return self._request("POST", messages_url(self.base_url), json_body=payload)
 
     def count_tokens(
         self,
-        *,
-        model_name: str,
-        messages: Sequence[ProviderMessage | dict[str, Any]],
-        system_prompt: str | Sequence[dict[str, Any]] | None = None,
-        tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
+        request: AnthropicCountTokensRequestDTO,
     ) -> Any:
         """Create an Anthropic token-count request."""
-        payload = build_count_tokens_request(
-            model_name=model_name,
-            messages=messages,
-            system_prompt=system_prompt,
-            tools=tools,
-        )
+        payload = build_count_tokens_request(request)
         return self._request("POST", count_tokens_url(self.base_url), json_body=payload)
 
     def _request(

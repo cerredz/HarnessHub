@@ -7,7 +7,15 @@ from typing import Any, Literal, Sequence
 
 from harnessiq.providers.base import build_gemini_contents, omit_none_values
 from harnessiq.providers.gemini.tools import build_function_tool
-from harnessiq.shared.providers import ProviderMessage
+from harnessiq.shared.dtos import (
+    GeminiCacheCreateRequestDTO,
+    GeminiContentDTO,
+    GeminiCountTokensRequestDTO,
+    GeminiGenerateContentRequestDTO,
+    GeminiGenerationConfigDTO,
+    GeminiSystemInstructionDTO,
+    ProviderMessageDTO,
+)
 from harnessiq.shared.tools import ToolDefinition
 
 ContentRole = Literal["user", "model"]
@@ -16,16 +24,16 @@ ContentRole = Literal["user", "model"]
 def build_request(
     model_name: str,
     system_prompt: str,
-    messages: list[ProviderMessage],
+    messages: list[ProviderMessageDTO],
     tools: list[ToolDefinition],
 ) -> dict[str, object]:
     """Build a Gemini-style compatibility request body from canonical primitives."""
     request: dict[str, object] = {
         "model": model_name,
-        "contents": build_gemini_contents(messages),
+        "contents": [content.to_dict() for content in build_gemini_contents(messages)],
     }
     if system_prompt:
-        request["system_instruction"] = {"parts": [{"text": system_prompt}]}
+        request["system_instruction"] = GeminiSystemInstructionDTO(parts=({"text": system_prompt},)).to_dict()
     if tools:
         request["tools"] = [build_function_tool(tools)]
     return request
@@ -49,21 +57,18 @@ def build_file_data_part(*, mime_type: str, file_uri: str) -> dict[str, object]:
 def build_content(
     role: ContentRole,
     parts: Sequence[dict[str, Any]],
-) -> dict[str, object]:
+) -> GeminiContentDTO:
     """Build a Gemini content item."""
-    return {
-        "role": role,
-        "parts": [deepcopy(part) for part in parts],
-    }
+    return GeminiContentDTO(role=role, parts=tuple(deepcopy(part) for part in parts))
 
 
-def build_system_instruction(parts: str | Sequence[dict[str, Any]]) -> dict[str, object]:
+def build_system_instruction(parts: str | Sequence[dict[str, Any]]) -> GeminiSystemInstructionDTO:
     """Build the Gemini system-instruction payload."""
     if isinstance(parts, str):
         normalized_parts = [build_text_part(parts)]
     else:
         normalized_parts = [deepcopy(part) for part in parts]
-    return {"parts": normalized_parts}
+    return GeminiSystemInstructionDTO(parts=tuple(normalized_parts))
 
 
 def build_generation_config(
@@ -74,78 +79,54 @@ def build_generation_config(
     max_output_tokens: int | None = None,
     response_mime_type: str | None = None,
     response_schema: dict[str, Any] | None = None,
-) -> dict[str, object]:
+) -> GeminiGenerationConfigDTO:
     """Build Gemini generation configuration."""
-    return omit_none_values(
-        {
-            "temperature": temperature,
-            "topP": top_p,
-            "topK": top_k,
-            "maxOutputTokens": max_output_tokens,
-            "responseMimeType": response_mime_type,
-            "responseSchema": deepcopy(response_schema) if response_schema is not None else None,
-        }
+    return GeminiGenerationConfigDTO(
+        temperature=temperature,
+        top_p=top_p,
+        top_k=top_k,
+        max_output_tokens=max_output_tokens,
+        response_mime_type=response_mime_type,
+        response_schema=deepcopy(response_schema) if response_schema is not None else None,
     )
 
 
-def build_generate_content_request(
-    *,
-    contents: Sequence[dict[str, Any]],
-    system_instruction: dict[str, Any] | None = None,
-    tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
-    tool_config: dict[str, Any] | None = None,
-    generation_config: dict[str, Any] | None = None,
-    cached_content: str | None = None,
-) -> dict[str, object]:
+def build_generate_content_request(request: GeminiGenerateContentRequestDTO) -> dict[str, object]:
     """Build a Gemini generate-content request body."""
     return omit_none_values(
         {
-            "contents": [deepcopy(content) for content in contents],
-            "systemInstruction": deepcopy(system_instruction) if system_instruction is not None else None,
-            "tools": _coerce_tools(tools),
-            "toolConfig": deepcopy(tool_config) if tool_config is not None else None,
-            "generationConfig": deepcopy(generation_config) if generation_config is not None else None,
-            "cachedContent": cached_content,
+            "contents": [content.to_dict() for content in request.contents],
+            "systemInstruction": request.system_instruction.to_dict() if isinstance(request.system_instruction, GeminiSystemInstructionDTO) else deepcopy(request.system_instruction),
+            "tools": _coerce_tools(request.tools),
+            "toolConfig": deepcopy(request.tool_config) if request.tool_config is not None else None,
+            "generationConfig": request.generation_config.to_dict() if isinstance(request.generation_config, GeminiGenerationConfigDTO) else deepcopy(request.generation_config),
+            "cachedContent": request.cached_content,
         }
     )
 
 
-def build_count_tokens_request(
-    *,
-    contents: Sequence[dict[str, Any]],
-    system_instruction: dict[str, Any] | None = None,
-    tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
-    tool_config: dict[str, Any] | None = None,
-) -> dict[str, object]:
+def build_count_tokens_request(request: GeminiCountTokensRequestDTO) -> dict[str, object]:
     """Build a Gemini count-tokens request body."""
     return omit_none_values(
         {
-            "contents": [deepcopy(content) for content in contents],
-            "systemInstruction": deepcopy(system_instruction) if system_instruction is not None else None,
-            "tools": _coerce_tools(tools),
-            "toolConfig": deepcopy(tool_config) if tool_config is not None else None,
+            "contents": [content.to_dict() for content in request.contents],
+            "systemInstruction": request.system_instruction.to_dict() if isinstance(request.system_instruction, GeminiSystemInstructionDTO) else deepcopy(request.system_instruction),
+            "tools": _coerce_tools(request.tools),
+            "toolConfig": deepcopy(request.tool_config) if request.tool_config is not None else None,
         }
     )
 
 
-def build_cached_content_request(
-    *,
-    model_name: str,
-    contents: Sequence[dict[str, Any]],
-    system_instruction: dict[str, Any] | None = None,
-    tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
-    ttl: str | None = None,
-    display_name: str | None = None,
-) -> dict[str, object]:
+def build_cached_content_request(request: GeminiCacheCreateRequestDTO) -> dict[str, object]:
     """Build a Gemini cached-content create request body."""
     return omit_none_values(
         {
-            "model": model_name,
-            "contents": [deepcopy(content) for content in contents],
-            "systemInstruction": deepcopy(system_instruction) if system_instruction is not None else None,
-            "tools": _coerce_tools(tools),
-            "ttl": ttl,
-            "displayName": display_name,
+            "model": request.model_name,
+            "contents": [content.to_dict() for content in request.contents],
+            "systemInstruction": request.system_instruction.to_dict() if isinstance(request.system_instruction, GeminiSystemInstructionDTO) else deepcopy(request.system_instruction),
+            "tools": _coerce_tools(request.tools),
+            "ttl": request.ttl,
+            "displayName": request.display_name,
         }
     )
 

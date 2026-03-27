@@ -1,5 +1,12 @@
 """OpenAI request and client helpers."""
 
+from harnessiq.shared.dtos import (
+    OpenAIChatCompletionRequestDTO,
+    OpenAIEmbeddingRequestDTO,
+    OpenAIResponseInputMessageDTO,
+    OpenAIResponseRequestDTO,
+)
+
 from .client import OpenAIClient
 from .helpers import build_request, format_tool_definition
 from .requests import (
@@ -29,6 +36,10 @@ from .tools import (
 
 __all__ = [
     "OpenAIClient",
+    "OpenAIChatCompletionRequestDTO",
+    "OpenAIEmbeddingRequestDTO",
+    "OpenAIResponseInputMessageDTO",
+    "OpenAIResponseRequestDTO",
     "build_chat_completion_request",
     "build_chat_response_format_json_object",
     "build_chat_response_format_json_schema",

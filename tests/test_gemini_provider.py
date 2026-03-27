@@ -6,6 +6,9 @@ import unittest
 
 from harnessiq.providers.gemini import (
     GeminiClient,
+    GeminiCacheCreateRequestDTO,
+    GeminiCountTokensRequestDTO,
+    GeminiGenerateContentRequestDTO,
     build_cached_content_request,
     build_code_execution_tool,
     build_content,
@@ -26,6 +29,7 @@ from harnessiq.providers.gemini import (
     build_url_context_tool,
     format_tool_definition,
 )
+from harnessiq.shared.dtos import ProviderMessageDTO
 from harnessiq.tools import ECHO_TEXT, create_builtin_registry
 
 
@@ -34,8 +38,8 @@ class GeminiProviderTests(unittest.TestCase):
         registry = create_builtin_registry()
         self.tools = registry.definitions([ECHO_TEXT])
         self.messages = [
-            {"role": "user", "content": "ping"},
-            {"role": "assistant", "content": "pong"},
+            ProviderMessageDTO(role="user", content="ping"),
+            ProviderMessageDTO(role="assistant", content="pong"),
         ]
 
     def test_format_tool_definition_uses_function_declaration_shape(self) -> None:
@@ -86,19 +90,22 @@ class GeminiProviderTests(unittest.TestCase):
             )
         )
         request = build_generate_content_request(
-            contents=contents,
-            system_instruction=system_instruction,
-            tools=[
-                *self.tools,
-                build_google_search_tool(),
-                build_google_maps_tool(),
-                build_url_context_tool(),
-                build_code_execution_tool(),
-                build_file_search_tool(data_store_ids=["store_123"], max_results=3),
-            ],
-            tool_config=tool_config,
-            generation_config=generation_config,
-            cached_content="cachedContents/abc123",
+            GeminiGenerateContentRequestDTO(
+                model_name="models/gemini-2.0-flash",
+                contents=tuple(contents),
+                system_instruction=system_instruction,
+                tools=(
+                    *self.tools,
+                    build_google_search_tool(),
+                    build_google_maps_tool(),
+                    build_url_context_tool(),
+                    build_code_execution_tool(),
+                    build_file_search_tool(data_store_ids=["store_123"], max_results=3),
+                ),
+                tool_config=tool_config,
+                generation_config=generation_config,
+                cached_content="cachedContents/abc123",
+            )
         )
 
         self.assertEqual(request["contents"][0]["parts"][1]["inlineData"]["mimeType"], "image/png")
@@ -115,17 +122,22 @@ class GeminiProviderTests(unittest.TestCase):
     def test_build_count_tokens_and_cache_requests(self) -> None:
         contents = [build_content("user", [build_text_part("hello")])]
         count_request = build_count_tokens_request(
-            contents=contents,
-            system_instruction=build_system_instruction("Be precise."),
-            tools=self.tools,
+            GeminiCountTokensRequestDTO(
+                model_name="gemini-2.5-flash",
+                contents=tuple(contents),
+                system_instruction=build_system_instruction("Be precise."),
+                tools=tuple(self.tools),
+            )
         )
         cache_request = build_cached_content_request(
-            model_name="models/gemini-2.5-flash",
-            contents=contents,
-            system_instruction=build_system_instruction("Be precise."),
-            tools=[build_function_tool(self.tools)],
-            ttl="3600s",
-            display_name="Docs cache",
+            GeminiCacheCreateRequestDTO(
+                model_name="models/gemini-2.5-flash",
+                contents=tuple(contents),
+                system_instruction=build_system_instruction("Be precise."),
+                tools=(build_function_tool(self.tools),),
+                ttl="3600s",
+                display_name="Docs cache",
+            )
         )
 
         self.assertEqual(count_request["contents"][0]["role"], "user")
@@ -145,19 +157,25 @@ class GeminiProviderTests(unittest.TestCase):
         contents = [build_content("user", [build_text_part("hello")])]
 
         generate_response = client.generate_content(
-            model_name="models/gemini-2.5-flash",
-            contents=contents,
-            system_instruction=build_system_instruction("Be precise."),
-            tools=self.tools,
+            GeminiGenerateContentRequestDTO(
+                model_name="models/gemini-2.5-flash",
+                contents=tuple(contents),
+                system_instruction=build_system_instruction("Be precise."),
+                tools=tuple(self.tools),
+            )
         )
         count_response = client.count_tokens(
-            model_name="gemini-2.5-flash",
-            contents=contents,
+            GeminiCountTokensRequestDTO(
+                model_name="gemini-2.5-flash",
+                contents=tuple(contents),
+            )
         )
         cache_response = client.create_cache(
-            model_name="models/gemini-2.5-flash",
-            contents=contents,
-            ttl="3600s",
+            GeminiCacheCreateRequestDTO(
+                model_name="models/gemini-2.5-flash",
+                contents=tuple(contents),
+                ttl="3600s",
+            )
         )
         models_response = client.list_models()
 
