@@ -31,7 +31,7 @@ def configure_docker_auth(location: str) -> list[str]:
 
 
 def submit_build(image_url: str, source_dir: str = ".") -> list[str]:
-    return ["builds", "submit", f.tag_flag(image_url)[0], source_dir]
+    return ["builds", "submit"] + f.tag_flag(image_url) + [source_dir]
 
 
 def list_images(image_path: str, location: str) -> list[str]:
