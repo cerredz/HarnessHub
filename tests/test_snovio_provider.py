@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import Mock
 from urllib import parse
 
 from harnessiq.providers.snovio import (
@@ -309,6 +310,26 @@ class SnovioToolsTests(unittest.TestCase):
         result = registry.execute(SNOVIO_REQUEST, {"operation": "get_user_info"})
         self.assertEqual(result.output["operation"], "get_user_info")
         self.assertGreaterEqual(len(captured), 2)
+
+    def test_tool_handler_injects_access_token_into_dto_request(self) -> None:
+        from harnessiq.tools.snovio import create_snovio_tools
+        from harnessiq.shared.tools import SNOVIO_REQUEST
+        from harnessiq.tools.registry import ToolRegistry
+
+        client = Mock()
+        client.get_access_token.return_value = {"access_token": "tok"}
+        client.execute_operation.return_value = ProviderPayloadResultDTO(
+            operation="get_user_info",
+            result={"credits": 100},
+        )
+
+        registry = ToolRegistry(create_snovio_tools(client=client))
+        result = registry.execute(SNOVIO_REQUEST, {"operation": "get_user_info"})
+
+        self.assertEqual(result.output["operation"], "get_user_info")
+        request = client.execute_operation.call_args.args[0]
+        self.assertIsInstance(request, ProviderPayloadRequestDTO)
+        self.assertEqual(request.payload["access_token"], "tok")
 
     def test_create_snovio_tools_raises_without_credentials_or_client(self) -> None:
         from harnessiq.tools.snovio import create_snovio_tools

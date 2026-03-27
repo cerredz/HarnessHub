@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import Mock
 
 from harnessiq.providers.zoominfo.operations import (
     ZoomInfoOperation,
@@ -104,6 +105,23 @@ class ZoomInfoToolsTests(unittest.TestCase):
         result = registry.execute(ZOOMINFO_REQUEST, {"operation": "get_usage"})
         self.assertEqual(result.output["operation"], "get_usage")
         self.assertGreaterEqual(len(captured), 1)
+
+    def test_tool_handler_injects_jwt_into_dto_request(self) -> None:
+        client = Mock()
+        client.authenticate.return_value = "testjwt"
+        client.execute_operation.return_value = ProviderPayloadResultDTO(
+            operation="get_usage",
+            result={"usage": {}},
+        )
+
+        tools = create_zoominfo_tools(client=client)
+        registry = ToolRegistry(tools)
+        result = registry.execute(ZOOMINFO_REQUEST, {"operation": "get_usage"})
+
+        self.assertEqual(result.output["operation"], "get_usage")
+        request = client.execute_operation.call_args.args[0]
+        self.assertIsInstance(request, ProviderPayloadRequestDTO)
+        self.assertEqual(request.payload["jwt"], "testjwt")
 
     def test_create_zoominfo_tools_raises_without_credentials_or_client(self) -> None:
         with self.assertRaises(ValueError):
