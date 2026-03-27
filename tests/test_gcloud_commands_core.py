@@ -1,4 +1,5 @@
 from harnessiq.providers.gcloud import GcpAgentConfig
+from harnessiq.providers.gcloud import commands as cmd
 from harnessiq.providers.gcloud.commands import (
     BucketSpec,
     ExecutionOptions,
@@ -147,3 +148,9 @@ def test_service_specific_flags_cover_scheduler_storage_and_monitoring() -> None
 
 def test_flags_module_does_not_define_project_flag() -> None:
     assert not hasattr(flags, "project_flag")
+
+
+def test_commands_package_exports_public_core_types() -> None:
+    assert cmd.JobSpec is JobSpec
+    assert cmd.SecretRef is SecretRef
+    assert cmd.flags is flags

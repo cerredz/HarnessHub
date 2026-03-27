@@ -3,7 +3,24 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Mapping, Protocol, Sequence
+
+
+class SupportsJobSpecConfig(Protocol):
+    """Structural contract for config objects that can hydrate a `JobSpec`."""
+
+    job_name: str
+    image_url: str
+    region: str
+    cpu: str
+    memory: str
+    task_timeout_seconds: int
+    max_retries: int
+    parallelism: int
+    task_count: int
+    env_vars: Mapping[str, str]
+    secrets: Sequence[Mapping[str, str]]
+    service_account_email: str | None
 
 
 @dataclass(slots=True)
@@ -33,7 +50,7 @@ class JobSpec:
     service_account_email: str = ""
 
     @classmethod
-    def from_config(cls, config: Any) -> "JobSpec":
+    def from_config(cls, config: SupportsJobSpecConfig) -> "JobSpec":
         """Derive a job command spec from a persisted GCP agent config."""
         return cls(
             job_name=config.job_name,
