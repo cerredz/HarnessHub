@@ -36,12 +36,12 @@ class ExaOutreachCliRunner:
     ) -> dict[str, Any]:
         store = self._load_store(agent_name=agent_name, memory_root=memory_root)
         store.prepare()
-        seed_cli_environment(Path(memory_root).expanduser())
         self._validate_delivery_factories(
             search_only=search_only,
             resend_credentials_factory=resend_credentials_factory,
             email_data_factory=email_data_factory,
         )
+        seed_cli_environment(Path(memory_root).expanduser())
 
         exa_credentials = load_factory(exa_credentials_factory)()
         resend_credentials = load_factory(resend_credentials_factory)() if resend_credentials_factory and not search_only else None
