@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -41,6 +42,154 @@ from harnessiq.utils import (
     register_output_sink,
     unregister_output_sink,
 )
+
+
+class _FakeWebhookClient:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def post_json(
+        self,
+        *,
+        url: str,
+        payload: Mapping[str, object],
+        headers: Mapping[str, str] | None = None,
+        timeout_seconds: float = 30.0,
+    ) -> None:
+        self.calls.append(
+            {
+                "url": url,
+                "payload": dict(payload),
+                "headers": dict(headers) if headers is not None else None,
+                "timeout_seconds": timeout_seconds,
+            }
+        )
+
+
+class _FakeNotionClient:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def create_page(
+        self,
+        *,
+        database_id: str,
+        properties: Mapping[str, object],
+        children: list[dict[str, object]] | None = None,
+    ) -> None:
+        self.calls.append(
+            {
+                "database_id": database_id,
+                "properties": dict(properties),
+                "children": list(children) if children is not None else None,
+            }
+        )
+
+
+class _FakeConfluenceClient:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def create_page(
+        self,
+        *,
+        space_key: str,
+        title: str,
+        body_storage: str,
+        parent_page_id: str | None = None,
+    ) -> None:
+        self.calls.append(
+            {
+                "space_key": space_key,
+                "title": title,
+                "body_storage": body_storage,
+                "parent_page_id": parent_page_id,
+            }
+        )
+
+
+class _FakeSupabaseClient:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def insert_row(self, *, table: str, row: Mapping[str, object], schema: str = "public") -> None:
+        self.calls.append({"table": table, "row": dict(row), "schema": schema})
+
+
+class _FakeLinearClient:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def create_issue(
+        self,
+        *,
+        team_id: str,
+        title: str,
+        description: str | None = None,
+        priority: int | None = None,
+    ) -> None:
+        self.calls.append(
+            {
+                "team_id": team_id,
+                "title": title,
+                "description": description,
+                "priority": priority,
+            }
+        )
+
+
+class _FakeGoogleSheetsClient:
+    def __init__(self, existing_values: list[list[object]] | None = None) -> None:
+        self.existing_values = existing_values or []
+        self.updated_rows: list[dict[str, object]] = []
+        self.appended_rows: list[dict[str, object]] = []
+
+    def get_values(self, *, spreadsheet_id: str, range_name: str) -> list[list[object]]:
+        return [list(row) for row in self.existing_values]
+
+    def update_values(
+        self,
+        *,
+        spreadsheet_id: str,
+        range_name: str,
+        values: list[list[object]],
+        value_input_option: str = "RAW",
+    ) -> None:
+        self.updated_rows.append(
+            {
+                "spreadsheet_id": spreadsheet_id,
+                "range_name": range_name,
+                "values": [list(row) for row in values],
+                "value_input_option": value_input_option,
+            }
+        )
+
+    def append_values(
+        self,
+        *,
+        spreadsheet_id: str,
+        range_name: str,
+        values: list[list[object]],
+        value_input_option: str = "RAW",
+        insert_data_option: str = "INSERT_ROWS",
+    ) -> None:
+        self.appended_rows.append(
+            {
+                "spreadsheet_id": spreadsheet_id,
+                "range_name": range_name,
+                "values": [list(row) for row in values],
+                "value_input_option": value_input_option,
+                "insert_data_option": insert_data_option,
+            }
+        )
+
+
+class _FakeMongoCollectionClient:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def insert_documents(self, *, documents: Sequence[Mapping[str, object]]) -> None:
+        self.calls.append({"documents": [dict(document) for document in documents]})
 
 
 def _entry() -> LedgerEntry:
@@ -133,13 +282,12 @@ class OutputSinkTests(unittest.TestCase):
         self.assertIn("content", second_payload)
 
     def test_provider_backed_sinks_delegate_to_clients(self) -> None:
-        notion_client = MagicMock()
-        confluence_client = MagicMock()
-        supabase_client = MagicMock()
-        linear_client = MagicMock()
-        mongo_client = MagicMock()
-        google_sheets_client = MagicMock()
-        google_sheets_client.get_values.return_value = []
+        notion_client = _FakeNotionClient()
+        confluence_client = _FakeConfluenceClient()
+        supabase_client = _FakeSupabaseClient()
+        linear_client = _FakeLinearClient()
+        mongo_client = _FakeMongoCollectionClient()
+        google_sheets_client = _FakeGoogleSheetsClient()
 
         NotionSink(api_token="token", database_id="db", client=notion_client).on_run_complete(_entry())
         ConfluenceSink(base_url="https://conf.example", api_token="token", space_key="ENG", client=confluence_client).on_run_complete(_entry())
@@ -159,13 +307,23 @@ class OutputSinkTests(unittest.TestCase):
             client=google_sheets_client,
         ).on_run_complete(_entry())
 
-        self.assertTrue(notion_client.create_page.called)
-        self.assertTrue(confluence_client.create_page.called)
-        self.assertTrue(supabase_client.insert_row.called)
-        self.assertTrue(mongo_client.insert_documents.called)
-        self.assertTrue(linear_client.create_issue.called)
-        self.assertTrue(google_sheets_client.update_values.called)
-        self.assertTrue(google_sheets_client.append_values.called)
+        self.assertEqual(len(notion_client.calls), 1)
+        self.assertEqual(len(confluence_client.calls), 1)
+        self.assertEqual(len(supabase_client.calls), 1)
+        self.assertEqual(len(mongo_client.calls), 1)
+        self.assertEqual(len(linear_client.calls), 1)
+        self.assertEqual(len(google_sheets_client.updated_rows), 1)
+        self.assertEqual(len(google_sheets_client.appended_rows), 1)
+
+    def test_slack_and_discord_sinks_accept_protocol_compatible_webhook_clients(self) -> None:
+        client = _FakeWebhookClient()
+
+        SlackSink(webhook_url="https://slack.example", client=client).on_run_complete(_entry())
+        DiscordSink(webhook_url="https://discord.example", client=client).on_run_complete(_entry())
+
+        self.assertEqual(len(client.calls), 2)
+        self.assertIn("text", client.calls[0]["payload"])
+        self.assertIn("content", client.calls[1]["payload"])
 
     def test_mongodb_client_inserts_documents_and_closes_managed_client(self) -> None:
         collection = MagicMock()

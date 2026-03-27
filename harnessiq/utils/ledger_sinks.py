@@ -10,6 +10,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from harnessiq.interfaces import (
+    ConfluenceSinkClient,
+    GoogleSheetsSinkClient,
+    LinearSinkClient,
+    MongoCollectionSinkClient,
+    NotionSinkClient,
+    SupabaseSinkClient,
+    WebhookSinkClient,
+)
 from harnessiq.providers.output_sinks import (
     ConfluenceClient,
     GoogleSheetsClient,
@@ -91,7 +100,7 @@ class SlackSink:
     """Post a completion summary to a Slack incoming webhook."""
 
     webhook_url: str
-    client: WebhookDeliveryClient | None = None
+    client: WebhookSinkClient | None = None
 
     def on_run_complete(self, entry: LedgerEntry) -> None:
         client = self.client or WebhookDeliveryClient()
@@ -103,7 +112,7 @@ class DiscordSink:
     """Post a completion summary to a Discord webhook."""
 
     webhook_url: str
-    client: WebhookDeliveryClient | None = None
+    client: WebhookSinkClient | None = None
 
     def on_run_complete(self, entry: LedgerEntry) -> None:
         client = self.client or WebhookDeliveryClient()
@@ -117,7 +126,7 @@ class NotionSink:
     api_token: str
     database_id: str
     property_mapping: dict[str, dict[str, Any]] | None = None
-    client: NotionClient | None = None
+    client: NotionSinkClient | None = None
 
     def on_run_complete(self, entry: LedgerEntry) -> None:
         client = self.client or NotionClient(api_token=self.api_token)
@@ -137,7 +146,7 @@ class ConfluenceSink:
     space_key: str
     parent_page_id: str | None = None
     title_template: str = "{agent_name} Run {date} {run_id}"
-    client: ConfluenceClient | None = None
+    client: ConfluenceSinkClient | None = None
 
     def on_run_complete(self, entry: LedgerEntry) -> None:
         client = self.client or ConfluenceClient(base_url=self.base_url, api_token=self.api_token)
@@ -161,7 +170,7 @@ class SupabaseSink:
     api_key: str
     table: str = "agent_runs"
     schema: str = "public"
-    client: SupabaseClient | None = None
+    client: SupabaseSinkClient | None = None
 
     def on_run_complete(self, entry: LedgerEntry) -> None:
         client = self.client or SupabaseClient(base_url=self.base_url, api_key=self.api_key)
@@ -176,7 +185,7 @@ class LinearSink:
     team_id: str
     explode_field: str | None = None
     title_template: str = "[{agent_name}] {status} {run_id}"
-    client: LinearClient | None = None
+    client: LinearSinkClient | None = None
 
     def on_run_complete(self, entry: LedgerEntry) -> None:
         client = self.client or LinearClient(api_key=self.api_key)
@@ -204,7 +213,7 @@ class GoogleSheetsSink:
     scope: str | None = None
     token_url: str | None = None
     base_url: str | None = None
-    client: GoogleSheetsClient | None = None
+    client: GoogleSheetsSinkClient | None = None
 
     def on_run_complete(self, entry: LedgerEntry) -> None:
         client = self.client or self._build_client()
@@ -222,7 +231,7 @@ class GoogleSheetsSink:
             include_header=self.include_header,
         )
 
-    def _build_client(self) -> GoogleSheetsClient:
+    def _build_client(self) -> GoogleSheetsSinkClient:
         kwargs: dict[str, Any] = {
             "client_id": self.client_id,
             "client_secret": self.client_secret,
@@ -245,7 +254,7 @@ class MongoDBSink:
     database: str
     collection: str
     explode_field: str | None = None
-    client: MongoDBClient | None = None
+    client: MongoCollectionSinkClient | None = None
 
     def on_run_complete(self, entry: LedgerEntry) -> None:
         client = self.client or MongoDBClient(
@@ -627,7 +636,7 @@ def _render_sheet_cell(value: Any) -> Any:
 
 def _append_google_sheet_rows(
     *,
-    client: GoogleSheetsClient,
+    client: GoogleSheetsSinkClient,
     spreadsheet_id: str,
     sheet_name: str,
     row_dicts: Sequence[Mapping[str, Any]],
