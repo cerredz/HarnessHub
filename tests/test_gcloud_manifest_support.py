@@ -203,6 +203,50 @@ def test_context_derive_deploy_spec_prefers_explicit_memory_path(tmp_path: Path)
     }
 
 
+def test_derive_deploy_spec_uses_snapshot_model_selection_when_config_omits_one(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    memory_path = repo_root / "memory" / "research_sweep" / "candidate-b"
+    HarnessProfileStore(memory_path).save(
+        HarnessProfile(
+            manifest_id="research_sweep",
+            agent_name="candidate-b",
+            runtime_parameters={"max_tokens": 24000},
+            custom_parameters={"query": "federal AI procurement"},
+            last_run=HarnessRunSnapshot(
+                model_profile="ops-fast",
+                sink_specs=("jsonl:data/profile.jsonl",),
+                adapter_arguments={"backend": "snapshot"},
+                runtime_parameters={"max_tokens": 24000},
+                custom_parameters={"query": "federal AI procurement"},
+                recorded_at="2026-03-24T00:00:00Z",
+            ),
+        )
+    )
+    HarnessProfileIndexStore(repo_root=repo_root).upsert(
+        manifest_id="research_sweep",
+        agent_name="candidate-b",
+        memory_path=memory_path,
+        updated_at="2026-03-24T00:00:00Z",
+    )
+
+    spec = derive_deploy_spec(
+        GcpAgentConfig(
+            agent_name="candidate-b",
+            gcp_project_id="proj-123",
+            region="us-central1",
+            manifest_id="research_sweep",
+        ),
+        repo_root=repo_root,
+    )
+
+    assert spec.model_selection.as_dict() == {"model_profile": "ops-fast"}
+    assert spec.custom_parameters == {
+        "allowed_serper_operations": "search,scholar",
+        "query": "federal AI procurement",
+    }
+
+
 def test_derive_deploy_spec_requires_model_selection_when_snapshot_missing(tmp_path: Path) -> None:
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
