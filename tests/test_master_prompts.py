@@ -274,7 +274,9 @@ class CognitiveMultiplexerPromptTests(unittest.TestCase):
 
     def test_cognitive_multiplexer_contains_requested_persona_language(self) -> None:
         self.assertIn("You are a cognitive multiplexer", self.prompt.prompt)
+        self.assertIn("You are a cognitive multiplexer \u2014 an expert orchestration system", self.prompt.prompt)
         self.assertIn("You are not trying to produce consensus. You are trying to produce coverage.", self.prompt.prompt)
+        self.assertIn("Desired Persona Count (optional):", self.prompt.prompt)
 
     def test_cognitive_multiplexer_key_matches_filename_convention(self) -> None:
         self.assertEqual(self.prompt.key, "cognitive_multiplexer")
