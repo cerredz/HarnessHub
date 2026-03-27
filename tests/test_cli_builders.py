@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 
 from harnessiq.cli.adapters.context import HarnessAdapterContext
-from harnessiq.cli.builders import HarnessCliLifecycleBuilder, InstagramCliBuilder, LinkedInCliBuilder
+from harnessiq.cli.builders import HarnessCliLifecycleBuilder, InstagramCliBuilder, LeadsCliBuilder, LinkedInCliBuilder
 from harnessiq.config import HarnessProfile, HarnessProfileStore
 from harnessiq.shared.harness_manifest import HarnessManifest, HarnessParameterSpec
 from harnessiq.shared.harness_manifests import get_harness_manifest
@@ -269,3 +269,28 @@ def test_instagram_builder_configure_show_and_get_emails_round_trip(tmp_path: Pa
     assert configured_payload["custom_parameters"]["target_segment"] == "micro-creators"
     assert shown_payload["agent_identity"] == "Creator scout"
     assert emails_payload["count"] == 0
+
+
+def test_leads_builder_configure_and_show_round_trip(tmp_path: Path) -> None:
+    builder = LeadsCliBuilder()
+
+    configured_payload = builder.configure(
+        agent_name="campaign-a",
+        memory_root=str(tmp_path),
+        company_background_text="We sell outbound infrastructure to B2B SaaS revenue teams.",
+        company_background_file=None,
+        icp_texts=["VP Sales at Series A SaaS companies"],
+        icp_files=[],
+        platforms=["apollo"],
+        runtime_assignments=["search_summary_every=25", "max_tokens=4096"],
+    )
+    shown_payload = builder.show(
+        agent_name="campaign-a",
+        memory_root=str(tmp_path),
+    )
+
+    assert configured_payload["status"] == "configured"
+    assert configured_payload["run_config"]["search_summary_every"] == 25
+    assert configured_payload["runtime_parameters"]["max_tokens"] == 4096
+    assert configured_payload["run_config"]["platforms"] == ["apollo"]
+    assert shown_payload["run_config"]["company_background"].startswith("We sell outbound")

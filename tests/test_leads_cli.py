@@ -332,7 +332,7 @@ class TestRunCommand:
         )
         capsys.readouterr()
 
-        with patch("harnessiq.cli.leads.commands.LeadsAgent") as mock_agent:
+        with patch("harnessiq.cli.runners.leads.LeadsAgent") as mock_agent:
             mock_result = SimpleNamespace(
                 cycles_completed=1,
                 pause_reason=None,
