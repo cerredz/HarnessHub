@@ -6,8 +6,8 @@ This artifact is generated from the live `harnessiq/cli/` source tree by `python
 
 | Metric | Count |
 | --- | --- |
-| Top-level commands | 18 |
-| Registered command paths | 146 |
+| Top-level commands | 19 |
+| Registered command paths | 153 |
 
 Alias paths are included in the registered command total. Canonical commands list aliases where they exist.
 
@@ -33,6 +33,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness | `harnessiq/cli/research_sweep/commands.py` |
 | harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
 | harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
+| harnessiq stats | agent, export, instance, rebuild, session, summary | Inspect local stats and analytics snapshots | `harnessiq/cli/stats/commands.py` |
 
 ## `harnessiq connect`
 
@@ -221,3 +222,14 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq show prospecting | - | show Google Maps Prospecting | `harnessiq/cli/platform_commands.py` |
 | harnessiq show research_sweep | research-sweep | show Research Sweep | `harnessiq/cli/platform_commands.py` |
 | harnessiq show spawn_specialized_subagents | - | show Spawn Specialized Subagents | `harnessiq/cli/platform_commands.py` |
+
+## `harnessiq stats`
+
+| Command | Description | Source |
+| --- | --- | --- |
+| harnessiq stats agent | Print one agent aggregate snapshot | `harnessiq/cli/stats/commands.py` |
+| harnessiq stats export | Export stats snapshots or flat per-run CSV | `harnessiq/cli/stats/commands.py` |
+| harnessiq stats instance | Print one instance aggregate snapshot | `harnessiq/cli/stats/commands.py` |
+| harnessiq stats rebuild | Rebuild all stats snapshots from the ledger | `harnessiq/cli/stats/commands.py` |
+| harnessiq stats session | Print one session snapshot | `harnessiq/cli/stats/commands.py` |
+| harnessiq stats summary | Print repo-wide stats summary | `harnessiq/cli/stats/commands.py` |

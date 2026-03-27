@@ -190,6 +190,7 @@ FILE_INDEX_STANDARDS = [
 
 README_DOC_LINKS = [
     ("docs/agent-runtime.md", "Runtime loop, manifests, and durable parameter sections."),
+    ("docs/dynamic-tool-selection.md", "Opt-in per-turn tool narrowing on top of the static runtime tool surface."),
     ("docs/gcloud.md", "Google Cloud deployment workflow, credential sync, and GCS-backed runtime memory continuity."),
     ("docs/tools.md", "Tool registry composition and provider-backed tool usage."),
     ("docs/output-sinks.md", "Ledger/output-sink injection and sink connection commands."),
@@ -1072,6 +1073,12 @@ def render_readme(inventory: dict[str, Any]) -> str:
         "result = registry.execute(ECHO_TEXT, {\"text\": \"hello\"})",
         "print(result.output)",
         "```",
+        "",
+        "## Dynamic Tool Selection",
+        "",
+        "Harnessiq keeps the static tool path by default. When you need to narrow a large tool surface per turn, opt into dynamic tool selection through `AgentRuntimeConfig.tool_selection` or the `--dynamic-tools` CLI flags.",
+        "",
+        "See `docs/dynamic-tool-selection.md` for the runtime contract, CLI flags, embedding-model configuration, and the boundary between existing tool keys and Python-only custom callables.",
         "",
         "## Live Snapshot",
         "",

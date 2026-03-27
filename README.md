@@ -26,18 +26,24 @@ result = registry.execute(ECHO_TEXT, {"text": "hello"})
 print(result.output)
 ```
 
+## Dynamic Tool Selection
+
+Harnessiq keeps the static tool path by default. When you need to narrow a large tool surface per turn, opt into dynamic tool selection through `AgentRuntimeConfig.tool_selection` or the `--dynamic-tools` CLI flags.
+
+See `docs/dynamic-tool-selection.md` for the runtime contract, CLI flags, embedding-model configuration, and the boundary between existing tool keys and Python-only custom callables.
+
 ## Live Snapshot
 
 | Metric | Count |
 | --- | --- |
 | Concrete harness manifests | 9 |
-| Top-level CLI commands | 18 |
-| Registered CLI command paths | 146 |
+| Top-level CLI commands | 19 |
+| Registered CLI command paths | 153 |
 | Model providers | 4 |
 | Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-| Test modules | 116 |
+| Test modules | 119 |
 
 ## Agent Matrix
 
@@ -128,10 +134,12 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness |
 | harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI |
 | harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state |
+| harnessiq stats | agent, export, instance, rebuild, session, summary | Inspect local stats and analytics snapshots |
 
 ## Repo Docs
 
 - `docs/agent-runtime.md`: Runtime loop, manifests, and durable parameter sections.
+- `docs/dynamic-tool-selection.md`: Opt-in per-turn tool narrowing on top of the static runtime tool surface.
 - `docs/gcloud.md`: Google Cloud deployment workflow, credential sync, and GCS-backed runtime memory continuity.
 - `docs/tools.md`: Tool registry composition and provider-backed tool usage.
 - `docs/output-sinks.md`: Ledger/output-sink injection and sink connection commands.
