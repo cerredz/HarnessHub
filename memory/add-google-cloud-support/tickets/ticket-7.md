@@ -1,5 +1,6 @@
 ﻿Title: Implement health and IAM providers
 Issue URL: https://github.com/cerredz/HarnessHub/issues/294
+PR URL: https://github.com/cerredz/HarnessHub/pull/312
 
 Intent:
 Add the first operational support providers so the deployment flow can validate prerequisites and manage service-account permissions without embedding that logic in the CLI.
