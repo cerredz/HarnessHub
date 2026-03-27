@@ -50,6 +50,9 @@
    Dependency: Ticket 4
    Issue: #293
    URL: https://github.com/cerredz/HarnessHub/issues/293
+   PR: #311
+   PR URL: https://github.com/cerredz/HarnessHub/pull/311
+   Status: implemented, awaiting merge into `main`
 
 7. Ticket 7: Implement health and IAM providers
    Description: Add environment validation and service-account role management on top of the support command builders.
