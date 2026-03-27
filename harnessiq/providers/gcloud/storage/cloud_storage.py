@@ -14,6 +14,8 @@ from harnessiq.providers.gcloud.client import GcloudError
 class CloudStorageProvider(BaseGcpProvider):
     """Manage buckets and raw object operations without higher-level sync logic."""
 
+    _STATE_ROOT_PREFIX = "runtime-state"
+
     @property
     def default_bucket_name(self) -> str:
         return f"harnessiq-{self.config.gcp_project_id[:20]}-agent-memory"
@@ -52,3 +54,49 @@ class CloudStorageProvider(BaseGcpProvider):
 
     def delete_object(self, gs_uri: str) -> str:
         return self.client.run(cmd.delete_object(gs_uri))
+
+    def runtime_state_uri(self, memory_path: str) -> str:
+        normalized = memory_path.strip().strip("/")
+        if not normalized:
+            raise ValueError("memory_path must not be blank.")
+        return f"gs://{self.default_bucket_name}/{self._STATE_ROOT_PREFIX}/{normalized}/"
+
+    def sync_memory_from_gcs(self, memory_path: str, local_path: Path | str) -> bool:
+        destination = Path(local_path)
+        source_uri = self.runtime_state_uri(memory_path)
+        if not self._prefix_exists(source_uri):
+            return False
+        destination.mkdir(parents=True, exist_ok=True)
+        self.client.run(
+            [
+                "storage",
+                "rsync",
+                source_uri,
+                str(destination),
+                "--recursive",
+            ]
+        )
+        return True
+
+    def sync_memory_to_gcs(self, memory_path: str, local_path: Path | str) -> bool:
+        source = Path(local_path)
+        if not source.exists():
+            return False
+        self.create_bucket()
+        self.client.run(
+            [
+                "storage",
+                "rsync",
+                str(source),
+                self.runtime_state_uri(memory_path),
+                "--recursive",
+                "--delete-unmatched-destination-objects",
+            ]
+        )
+        return True
+
+    def _prefix_exists(self, gs_uri: str) -> bool:
+        try:
+            return bool(self.list_objects(gs_uri))
+        except GcloudError:
+            return False
