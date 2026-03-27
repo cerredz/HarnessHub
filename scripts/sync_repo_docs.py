@@ -136,6 +136,10 @@ FOCUSED_SUBPACKAGE_DESCRIPTIONS = [
         "harnessiq/utils/harness_manifest/",
         "Manifest coercion, validation, and registry helpers extracted from the public shared manifest modules.",
     ),
+    (
+        "harnessiq/providers/gcloud/",
+        "Google Cloud deployment provider package with command builders, credential sync, manifest-backed deploy specs, and the Cloud Run runtime wrapper.",
+    ),
 ]
 
 KEY_FILE_DESCRIPTIONS = [
@@ -189,6 +193,7 @@ FILE_INDEX_STANDARDS = [
 
 README_DOC_LINKS = [
     ("docs/agent-runtime.md", "Runtime loop, manifests, and durable parameter sections."),
+    ("docs/gcloud.md", "Google Cloud deployment workflow, credential sync, and GCS-backed runtime memory continuity."),
     ("docs/tools.md", "Tool registry composition and provider-backed tool usage."),
     ("docs/output-sinks.md", "Ledger/output-sink injection and sink connection commands."),
     ("docs/linkedin-agent.md", "LinkedIn harness usage and browser session workflow."),
@@ -629,13 +634,21 @@ def parse_service_providers(model_providers: list[str]) -> tuple[list[dict[str, 
     for family in service_families:
         shared_catalog_path = SHARED_DIR / f"{family}.py"
         provider_catalog_path = PROVIDERS_DIR / family / "operations.py"
-        catalog_source = shared_catalog_path if shared_catalog_path.exists() else provider_catalog_path
+        tool_path = TOOLS_DIR / family / "operations.py"
+        if shared_catalog_path.exists():
+            catalog_source = shared_catalog_path
+        elif provider_catalog_path.exists():
+            catalog_source = provider_catalog_path
+        elif tool_path.exists():
+            catalog_source = tool_path
+        else:
+            continue
         service_rows.append(
             {
                 "family": family,
                 "operations": extract_catalog_count(catalog_source),
                 "provider_path": relative_path(PROVIDERS_DIR / family),
-                "tool_path": relative_path(TOOLS_DIR / family / "operations.py"),
+                "tool_path": relative_path(tool_path),
                 "catalog_path": relative_path(catalog_source),
             }
         )

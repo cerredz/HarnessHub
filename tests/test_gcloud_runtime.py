@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import io
+import json
 from pathlib import Path
+from contextlib import redirect_stdout
 
 import pytest
 
 from harnessiq.cli.adapters import HarnessAdapterContext
 from harnessiq.config import HarnessProfile
 from harnessiq.providers.gcloud import GcpAgentConfig
-from harnessiq.providers.gcloud.runtime import run_runtime
+from harnessiq.providers.gcloud.runtime import main, run_runtime
 from harnessiq.providers.gcloud.storage import CloudStorageProvider
 from harnessiq.shared.harness_manifest import HarnessManifest
 from harnessiq.providers.gcloud.manifest_support import GcpDeploySpec, GcpMemoryEntry, GcpModelSelection
@@ -354,3 +357,33 @@ def test_run_runtime_syncs_back_when_model_resolution_fails(
         ("download", memory_path, str(local_memory_path)),
         ("upload", memory_path, str(local_memory_path)),
     ]
+
+
+def test_runtime_main_emits_success_json(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "harnessiq.providers.gcloud.runtime.run_runtime",
+        lambda **kwargs: {
+            "agent": kwargs["agent_name"],
+            "manifest_id": kwargs["manifest_id"],
+            "memory_path": kwargs["memory_path"],
+            "status": "completed",
+        },
+    )
+
+    stdout = io.StringIO()
+    with redirect_stdout(stdout):
+        exit_code = main(
+            [
+                "--agent",
+                "candidate-a",
+                "--manifest-id",
+                "research_sweep",
+                "--memory-path",
+                "memory/research_sweep/candidate-a",
+            ]
+        )
+
+    assert exit_code == 0
+    payload = json.loads(stdout.getvalue())
+    assert payload["status"] == "completed"
+    assert payload["manifest_id"] == "research_sweep"

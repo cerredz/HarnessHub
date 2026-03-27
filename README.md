@@ -37,7 +37,7 @@ print(result.output)
 | Service provider packages | 26 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-| Test modules | 90 |
+| Test modules | 106 |
 
 ## Agent Matrix
 
@@ -129,6 +129,7 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 ## Repo Docs
 
 - `docs/agent-runtime.md`: Runtime loop, manifests, and durable parameter sections.
+- `docs/gcloud.md`: Google Cloud deployment workflow, credential sync, and GCS-backed runtime memory continuity.
 - `docs/tools.md`: Tool registry composition and provider-backed tool usage.
 - `docs/output-sinks.md`: Ledger/output-sink injection and sink connection commands.
 - `docs/linkedin-agent.md`: LinkedIn harness usage and browser session workflow.
