@@ -42,8 +42,17 @@ class FactoryLoader(Protocol):
         """Resolve one import spec to a zero-argument factory."""
 
 
+@runtime_checkable
+class IterableFactoryLoader(Protocol[ResultT]):
+    """Describe dynamic loaders that resolve iterable-returning zero-argument factories."""
+
+    def __call__(self, spec: str) -> IterableFactory[ResultT]:
+        """Resolve one import spec to an iterable-returning factory."""
+
+
 __all__ = [
     "FactoryLoader",
+    "IterableFactoryLoader",
     "IterableFactory",
     "PreparedStoreLoader",
     "ZeroArgumentFactory",

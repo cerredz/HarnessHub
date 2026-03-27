@@ -11,6 +11,7 @@ from harnessiq.interfaces import (
     AnthropicModelClient,
     FactoryLoader,
     GoogleSheetsSinkClient,
+    IterableFactoryLoader,
     OpenAIStyleModelClient,
     PreparedRequest,
     PreparedStoreLoader,
@@ -93,6 +94,14 @@ class _FakeFactoryLoader:
     def __call__(self, spec: str):
         def factory():
             return {"spec": spec}
+
+        return factory
+
+
+class _FakeIterableFactoryLoader:
+    def __call__(self, spec: str):
+        def factory():
+            return [{"spec": spec}]
 
         return factory
 
@@ -216,6 +225,11 @@ class CliContractTests(unittest.TestCase):
         factory = loader("module:factory")
         self.assertIsInstance(factory, ZeroArgumentFactory)
         self.assertEqual(factory()["spec"], "module:factory")
+
+    def test_iterable_factory_loader_protocol_matches_fake(self) -> None:
+        loader = _FakeIterableFactoryLoader()
+        self.assertIsInstance(loader, IterableFactoryLoader)
+        self.assertEqual(loader("module:factory")()[0]["spec"], "module:factory")
 
 
 class ModelContractTests(unittest.TestCase):
