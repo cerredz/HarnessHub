@@ -8,6 +8,7 @@ from typing import Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig
 from harnessiq.agents.provider_base import BaseProviderToolAgent
+from harnessiq.interfaces import RequestPreparingClient
 from harnessiq.providers.outreach import OutreachClient
 from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.outreach_agent import (
@@ -30,7 +31,7 @@ class BaseOutreachAgent(BaseProviderToolAgent, ABC):
         model: AgentModel,
         config: OutreachAgentConfig,
         tools: Sequence[RegisteredTool] | None = None,
-        outreach_client: OutreachClient | None = None,
+        outreach_client: RequestPreparingClient | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
         memory_path: str | Path | None = None,
         repo_root: str | Path | None = None,
@@ -65,7 +66,7 @@ class BaseOutreachAgent(BaseProviderToolAgent, ABC):
         return self._config
 
     @property
-    def outreach_client(self) -> OutreachClient:
+    def outreach_client(self) -> RequestPreparingClient:
         return self._outreach_client
 
     def outreach_identity(self) -> str:

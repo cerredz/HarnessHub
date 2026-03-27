@@ -58,6 +58,26 @@ class RequestPreparingClient(Protocol):
         """Build an executable request for one provider operation."""
 
 
+@runtime_checkable
+class ResendRequestClient(Protocol):
+    """Describe the richer Resend request-preparation client surface."""
+
+    credentials: TimeoutConfig
+    request_executor: RequestExecutor
+
+    def prepare_request(
+        self,
+        operation_name: str,
+        *,
+        path_params: Mapping[str, object] | None = None,
+        query: Mapping[str, object] | None = None,
+        payload: Any | None = None,
+        idempotency_key: str | None = None,
+        batch_validation: str | None = None,
+    ) -> PreparedRequest:
+        """Build an executable Resend request for one operation."""
+
+
 ProviderClientBuilder = Callable[[Any], RequestPreparingClient]
 
 
@@ -66,5 +86,6 @@ __all__ = [
     "ProviderClientBuilder",
     "RequestExecutor",
     "RequestPreparingClient",
+    "ResendRequestClient",
     "TimeoutConfig",
 ]

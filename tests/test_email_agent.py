@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import unittest
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection, BaseEmailAgent, EmailAgentConfig
@@ -48,6 +49,72 @@ class _TestEmailAgent(BaseEmailAgent):
 
 
 class BaseEmailAgentTests(unittest.TestCase):
+    def test_email_agent_accepts_protocol_compatible_client(self) -> None:
+        @dataclass
+        class _FakeResendClient:
+            credentials: ResendCredentials
+
+            def request_executor(self, method: str, url: str, **kwargs: object) -> dict[str, object]:
+                return {"id": "email_123", "method": method, "url": url, "timeout_seconds": kwargs["timeout_seconds"]}
+
+            def prepare_request(
+                self,
+                operation_name: str,
+                *,
+                path_params=None,
+                query=None,
+                payload=None,
+                idempotency_key=None,
+                batch_validation=None,
+            ):
+                del path_params, query, idempotency_key, batch_validation
+                return type(
+                    "PreparedRequest",
+                    (),
+                    {
+                        "operation": type("Operation", (), {"name": operation_name})(),
+                        "method": "POST",
+                        "path": "/emails",
+                        "url": "https://api.resend.com/emails",
+                        "headers": {"Authorization": "Bearer fake"},
+                        "json_body": payload,
+                    },
+                )()
+
+        credentials = ResendCredentials(api_key="re_test_1234567890")
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Send the welcome email.",
+                    tool_calls=(
+                        ToolCall(
+                            tool_key=RESEND_REQUEST,
+                            arguments={
+                                "operation": "send_email",
+                                "payload": {
+                                    "from": "HarnessHub <hello@example.com>",
+                                    "to": ["user@example.com"],
+                                    "subject": "Welcome",
+                                    "html": "<p>Hello</p>",
+                                },
+                            },
+                        ),
+                    ),
+                    should_continue=False,
+                )
+            ]
+        )
+        agent = _TestEmailAgent(
+            model=model,
+            resend_credentials=credentials,
+            resend_client=_FakeResendClient(credentials=credentials),
+        )
+
+        result = agent.run(max_cycles=1)
+
+        self.assertEqual(result.status, "completed")
+        self.assertIn("email_123", agent.transcript[-1].content)
+
     def test_email_agent_injects_masked_credentials_and_resend_tool(self) -> None:
         credentials = ResendCredentials(api_key="re_test_1234567890")
         model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])

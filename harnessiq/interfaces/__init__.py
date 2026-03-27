@@ -19,6 +19,7 @@ from .provider_clients import (
     ProviderClientBuilder,
     RequestExecutor,
     RequestPreparingClient,
+    ResendRequestClient,
     TimeoutConfig,
 )
 
@@ -39,6 +40,7 @@ __all__ = [
     "ProviderClientBuilder",
     "RequestExecutor",
     "RequestPreparingClient",
+    "ResendRequestClient",
     "SupabaseSinkClient",
     "TimeoutConfig",
     "WebhookSinkClient",

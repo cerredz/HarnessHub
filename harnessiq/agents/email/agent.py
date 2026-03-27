@@ -10,6 +10,7 @@ from harnessiq.agents.email.helpers import (
     render_resend_credentials as _render_resend_credentials,
     summarize_tool as _summarize_tool,
 )
+from harnessiq.interfaces import ResendRequestClient
 from harnessiq.shared.agents import merge_agent_runtime_config
 from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.email import DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
@@ -29,7 +30,7 @@ class BaseEmailAgent(BaseAgent, ABC):
         config: EmailAgentConfig,
         email_tools: Iterable[RegisteredTool] = (),
         tools: Sequence[RegisteredTool] | None = None,
-        resend_client: ResendClient | None = None,
+        resend_client: ResendRequestClient | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         if resend_client is not None and resend_client.credentials != config.resend_credentials:
@@ -67,7 +68,7 @@ class BaseEmailAgent(BaseAgent, ABC):
         return self._config
 
     @property
-    def resend_client(self) -> ResendClient:
+    def resend_client(self) -> ResendRequestClient:
         return self._resend_client
 
     def build_system_prompt(self) -> str:

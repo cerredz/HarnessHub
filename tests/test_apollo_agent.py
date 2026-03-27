@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from tempfile import TemporaryDirectory
 import unittest
 
@@ -52,6 +53,64 @@ class _TestApolloAgent(BaseApolloAgent):
 
 
 class BaseApolloAgentTests(unittest.TestCase):
+    def test_apollo_agent_accepts_protocol_compatible_client(self) -> None:
+        @dataclass
+        class _FakeApolloClient:
+            credentials: ApolloCredentials
+
+            def request_executor(self, method: str, url: str, **kwargs: object) -> dict[str, object]:
+                return {"people": [], "method": method, "url": url, "timeout_seconds": kwargs["timeout_seconds"]}
+
+            def prepare_request(
+                self,
+                operation_name: str,
+                *,
+                path_params=None,
+                query=None,
+                payload=None,
+            ):
+                del path_params, query
+                return type(
+                    "PreparedRequest",
+                    (),
+                    {
+                        "operation": type("Operation", (), {"name": operation_name})(),
+                        "method": "POST",
+                        "path": "/mixed_people/api_search",
+                        "url": "https://api.apollo.io/api/v1/mixed_people/api_search",
+                        "headers": {"X-Api-Key": "apollo-secret-key"},
+                        "json_body": payload,
+                    },
+                )()
+
+        with TemporaryDirectory() as temp_repo_root:
+            credentials = ApolloCredentials(api_key="apollo-secret-key")
+            model = _FakeModel(
+                [
+                    AgentModelResponse(
+                        assistant_message="Search Apollo people.",
+                        tool_calls=(
+                            ToolCall(
+                                tool_key=APOLLO_REQUEST,
+                                arguments={"operation": "search_people", "payload": {"person_titles": ["VP Sales"]}},
+                            ),
+                        ),
+                        should_continue=False,
+                    )
+                ]
+            )
+            agent = _TestApolloAgent(
+                model=model,
+                apollo_credentials=credentials,
+                apollo_client=_FakeApolloClient(credentials=credentials),
+                repo_root=temp_repo_root,
+            )
+
+            result = agent.run(max_cycles=1)
+
+            self.assertEqual(result.status, "completed")
+            self.assertIn('"operation": "search_people"', agent.transcript[-1].content)
+
     def test_apollo_agent_injects_masked_credentials_and_default_tooling(self) -> None:
         with TemporaryDirectory() as temp_repo_root:
             credentials = ApolloCredentials(api_key="apollo-secret-key")

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
+from harnessiq.interfaces import ResendRequestClient
 from harnessiq.shared.resend import RESEND_REQUEST, ResendCredentials
 from harnessiq.shared.tools import RegisteredTool, ToolArguments, ToolDefinition
 from harnessiq.tools.resend_catalog import (
@@ -76,7 +77,7 @@ def build_resend_request_tool_definition(
 def create_resend_tools(
     *,
     credentials: ResendCredentials | None = None,
-    client: ResendClient | None = None,
+    client: ResendRequestClient | None = None,
     allowed_operations: Sequence[str] | None = None,
 ) -> tuple[RegisteredTool, ...]:
     """Return the MCP-style Resend request tool backed by the provided client."""
