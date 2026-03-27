@@ -228,10 +228,7 @@ def _handle_prepare(args: argparse.Namespace) -> int:
         incoming_custom=collect_manifest_parameter_values(args, manifest=manifest, scope="custom"),
         persist_profile=True,
     )
-    payload = _base_payload(context)
-    payload["state"] = adapter.show(context)
-    payload["status"] = "prepared"
-    emit_json(payload)
+    emit_json(_base_payload(context).with_state(adapter.show(context)).with_status("prepared").to_dict())
     return 0
 
 
@@ -248,9 +245,7 @@ def _handle_show(args: argparse.Namespace) -> int:
         incoming_custom={},
         persist_profile=False,
     )
-    payload = _base_payload(context)
-    payload["state"] = adapter.show(context)
-    emit_json(payload)
+    emit_json(_base_payload(context).with_state(adapter.show(context)).to_dict())
     return 0
 
 

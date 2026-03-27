@@ -19,6 +19,7 @@ from harnessiq.config import (
     HarnessProfileStore,
     get_provider_credential_spec,
 )
+from harnessiq.shared.dtos import HarnessParameterBundleDTO
 from harnessiq.shared.harness_manifest import HarnessManifest
 
 
@@ -54,13 +55,19 @@ class HarnessCliLifecycleBuilder:
             repo_root=repo_root,
         )
         adapter.prepare(preliminary_context)
-        native_runtime, native_custom = adapter.load_native_parameters(preliminary_context)
+        native_parameters = adapter.load_native_parameters(preliminary_context)
+        if isinstance(native_parameters, tuple):
+            native_runtime, native_custom = native_parameters
+            native_parameters = HarnessParameterBundleDTO(
+                runtime_parameters=dict(native_runtime),
+                custom_parameters=dict(native_custom),
+            )
         profile = self._load_or_seed_profile(
             manifest=manifest,
             agent_name=agent_name,
             memory_path=resolved_memory_path,
-            native_runtime=native_runtime,
-            native_custom=native_custom,
+            native_runtime=dict(native_parameters.runtime_parameters),
+            native_custom=dict(native_parameters.custom_parameters),
         )
         merged_profile = self._merge_profile_parameters(
             profile=profile,

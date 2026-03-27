@@ -27,6 +27,12 @@ from harnessiq.config import (
     HarnessRunSnapshot,
     get_provider_credential_spec,
 )
+from harnessiq.shared.dtos import (
+    HarnessCommandPayloadDTO,
+    HarnessProfileViewDTO,
+    HarnessRunSnapshotDTO,
+    HarnessRunSummaryDTO,
+)
 from harnessiq.shared.harness_manifest import HarnessManifest
 from harnessiq.shared.harness_manifests import get_harness_manifest, list_harness_manifests
 
@@ -401,29 +407,34 @@ def _build_adapter(manifest: HarnessManifest):
     return adapter_factory()
 
 
-def _base_payload(context: HarnessAdapterContext) -> dict[str, Any]:
+def _base_payload(context: HarnessAdapterContext) -> HarnessCommandPayloadDTO:
     binding_name = _binding_name(context.manifest, context.agent_name)
-    return {
-        "agent": context.agent_name,
-        "bound_credential_families": sorted(context.bound_credentials),
-        "credential_binding_name": binding_name,
-        "harness": context.manifest.manifest_id,
-        "memory_path": str(context.memory_path.resolve()),
-        "profile": {
-            "config_path": str((context.memory_path / ".harnessiq-profile.json").resolve()),
-            "custom_parameters": dict(context.profile.custom_parameters),
-            "effective_custom_parameters": dict(context.custom_parameters),
-            "effective_runtime_parameters": dict(context.runtime_parameters),
-            "last_run": (
-                context.profile.last_run.as_dict()
+    return HarnessCommandPayloadDTO(
+        agent=context.agent_name,
+        bound_credential_families=tuple(sorted(context.bound_credentials)),
+        credential_binding_name=binding_name,
+        harness=context.manifest.manifest_id,
+        memory_path=str(context.memory_path.resolve()),
+        profile=HarnessProfileViewDTO(
+            config_path=str((context.memory_path / ".harnessiq-profile.json").resolve()),
+            runtime_parameters=dict(context.profile.runtime_parameters),
+            custom_parameters=dict(context.profile.custom_parameters),
+            effective_runtime_parameters=dict(context.runtime_parameters),
+            effective_custom_parameters=dict(context.custom_parameters),
+            last_run=(
+                HarnessRunSnapshotDTO.from_dict(context.profile.last_run.as_dict())
                 if context.profile.last_run is not None
                 else None
             ),
-            "run_count": len(context.profile.run_history),
-            "run_history": [snapshot.summary for snapshot in context.profile.run_history],
-            "runtime_parameters": dict(context.profile.runtime_parameters),
-        },
-    }
+            run_history=tuple(
+                HarnessRunSummaryDTO(
+                    recorded_at=snapshot.recorded_at,
+                    run_number=snapshot.run_number,
+                )
+                for snapshot in context.profile.run_history
+            ),
+        ),
+    )
 
 
 def _render_parameter_spec(spec) -> dict[str, Any]:

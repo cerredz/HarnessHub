@@ -146,10 +146,12 @@ class HarnessiqPackageTests(unittest.TestCase):
         from harnessiq.providers import ProviderFormatError, ProviderHTTPError
         from harnessiq.providers.arxiv import ArxivConfig
         from harnessiq.providers.arcads import ArcadsOperation
-        from harnessiq.shared.dtos import AgentInstancePayload
+        from harnessiq.shared.dtos import AgentInstancePayload, HarnessCommandPayloadDTO, HarnessRunSnapshotDTO
         from harnessiq.tools import ResendCredentials
 
         self.assertEqual(AgentInstancePayload.__module__, "harnessiq.shared.dtos.agents")
+        self.assertEqual(HarnessCommandPayloadDTO.__module__, "harnessiq.shared.dtos.cli")
+        self.assertEqual(HarnessRunSnapshotDTO.__module__, "harnessiq.shared.dtos.cli")
         self.assertEqual(ApolloAgentRequest.__module__, "harnessiq.shared.dtos.agents")
         self.assertEqual(ApolloAgentConfig.__module__, "harnessiq.shared.apollo_agent")
         self.assertEqual(EmailAgentRequest.__module__, "harnessiq.shared.dtos.agents")

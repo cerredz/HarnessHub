@@ -9,6 +9,7 @@ from harnessiq.config import (
     HarnessProfileStore,
     HarnessRunSnapshot,
 )
+from harnessiq.shared.dtos import HarnessProfileDTO, HarnessRunSnapshotDTO
 
 
 def test_harness_profile_from_dict_remains_backward_compatible() -> None:
@@ -78,6 +79,7 @@ def test_harness_run_snapshot_round_trips_model_spec_selection() -> None:
     assert payload["model"] == "grok:grok-4-1-fast-reasoning"
     assert reloaded.model == "grok:grok-4-1-fast-reasoning"
     assert reloaded.model_factory is None
+    assert snapshot.to_dto() == HarnessRunSnapshotDTO.from_dict(payload)
 
 
 def test_harness_profile_from_legacy_last_run_populates_run_history() -> None:
@@ -163,3 +165,27 @@ def test_harness_profile_index_store_round_trips_paths(tmp_path: Path) -> None:
 
     payload = json.loads(index_store.index_path.read_text(encoding="utf-8"))
     assert payload["records"][0]["memory_path"] == "memory/instagram/creator-a"
+
+
+def test_harness_profile_dto_round_trips_transport_payload() -> None:
+    profile = HarnessProfile(
+        manifest_id="instagram",
+        agent_name="creator-a",
+        runtime_parameters={"max_tokens": 4096},
+        custom_parameters={"segment": "fitness"},
+        last_run=HarnessRunSnapshot(
+            model_factory="tests.test_platform_cli:create_static_model",
+            sink_specs=("jsonl:data/runs.jsonl",),
+            max_cycles=12,
+            adapter_arguments={"search_backend_factory": "tests.test_platform_cli:create_special_instagram_search_backend"},
+            runtime_parameters={"max_tokens": 4096},
+            custom_parameters={"segment": "fitness"},
+            recorded_at="2026-03-24T00:00:00Z",
+        ),
+    )
+
+    dto = profile.to_dto()
+    reloaded = HarnessProfile.from_dict(dto.to_dict())
+
+    assert dto == HarnessProfileDTO.from_dict(dto.to_dict())
+    assert reloaded.as_dict() == dto.to_dict()
