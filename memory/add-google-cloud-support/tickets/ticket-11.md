@@ -1,5 +1,6 @@
 ﻿Title: Add the `harnessiq gcloud` CLI scaffold
 Issue URL: https://github.com/cerredz/HarnessHub/issues/298
+PR URL: https://github.com/cerredz/HarnessHub/pull/316
 
 Intent:
 Create the top-level CLI entry point and shared command-family structure so later tickets can add focused GCP command handlers without repeatedly touching the root parser.
