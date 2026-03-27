@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
 from harnessiq.interfaces import EmbeddingBackend, EmbeddingModelClient
-from harnessiq.providers.openai import OpenAIClient
+from harnessiq.providers import create_provider_embedding_client
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,16 +72,10 @@ def create_provider_embedding_backend(
         raise ValueError(
             f"Provider-backed embeddings currently support only 'openai'. Received '{provider}'."
         )
-    api_key = _require_env(("OPENAI_API_KEY",), provider="openai")
     return ProviderEmbeddingBackend(
         provider=normalized_provider,
         model_name=normalized_model_name,
-        client=OpenAIClient(
-            api_key=api_key,
-            organization=os.environ.get("OPENAI_ORGANIZATION"),
-            project=os.environ.get("OPENAI_PROJECT"),
-            timeout_seconds=timeout_seconds,
-        ),
+        client=create_provider_embedding_client(normalized_provider, timeout_seconds=timeout_seconds),
         dimensions=dimensions,
         encoding_format=encoding_format,
         user=user,
@@ -132,20 +125,6 @@ def _parse_embedding_spec(spec: str) -> tuple[str, str]:
             f"Embedding specs must use the form provider:model_name. Received '{spec}'."
         )
     return normalized_provider, normalized_model_name
-
-
-def _require_env(names: tuple[str, ...], *, provider: str) -> str:
-    for env_name in names:
-        raw = os.environ.get(env_name)
-        if raw is None:
-            continue
-        normalized = raw.strip()
-        if normalized:
-            return normalized
-    rendered_names = ", ".join(names)
-    raise RuntimeError(
-        f"{provider} embedding adapter requires one of the following environment variables: {rendered_names}."
-    )
 
 
 __all__ = [
