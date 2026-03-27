@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Callable, Mapping, Sequence, TypeVar
 
 from harnessiq.shared.agents import (
     AgentContextWindow,
@@ -37,6 +37,8 @@ from harnessiq.utils.agent_instances import AgentInstanceRecord, AgentInstanceSt
 from harnessiq.utils.ledger import new_run_id
 
 from .helpers import BaseAgentHelpersMixin, _resolve_repo_root, _utcnow
+
+FileBackedStoreT = TypeVar("FileBackedStoreT")
 
 
 class BaseAgent(BaseAgentHelpersMixin, ABC):
@@ -198,6 +200,58 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         sections = tuple(self._compose_parameter_sections(tuple(self.load_parameter_sections())))
         self._parameter_sections = sections
         return sections
+
+    def _create_file_backed_store(
+        self,
+        *,
+        store_factory: Callable[[Path], FileBackedStoreT],
+        runtime_parameters: Mapping[str, Any] | None = None,
+        custom_parameters: Mapping[str, Any] | None = None,
+        additional_prompt: str | None = None,
+        sync_callback: Callable[[FileBackedStoreT], None] | None = None,
+    ) -> FileBackedStoreT:
+        """Create one resolved-path file-backed store and persist common config files."""
+        store = store_factory(self.memory_path)
+        return self._sync_file_backed_store(
+            store,
+            runtime_parameters=runtime_parameters,
+            custom_parameters=custom_parameters,
+            additional_prompt=additional_prompt,
+            sync_callback=sync_callback,
+        )
+
+    def _sync_file_backed_store(
+        self,
+        store: FileBackedStoreT,
+        *,
+        runtime_parameters: Mapping[str, Any] | None = None,
+        custom_parameters: Mapping[str, Any] | None = None,
+        additional_prompt: str | None = None,
+        sync_callback: Callable[[FileBackedStoreT], None] | None = None,
+    ) -> FileBackedStoreT:
+        """Prepare a resolved-path file-backed store and persist shared config files."""
+        prepare = getattr(store, "prepare", None)
+        if not callable(prepare):
+            raise TypeError("File-backed stores used with BaseAgent must define prepare().")
+        prepare()
+        if runtime_parameters is not None:
+            writer = getattr(store, "write_runtime_parameters", None)
+            if not callable(writer):
+                raise TypeError("Store is missing write_runtime_parameters().")
+            writer(dict(runtime_parameters))
+        if custom_parameters is not None:
+            writer = getattr(store, "write_custom_parameters", None)
+            if not callable(writer):
+                raise TypeError("Store is missing write_custom_parameters().")
+            writer(dict(custom_parameters))
+        if additional_prompt is not None:
+            writer = getattr(store, "write_additional_prompt", None)
+            if not callable(writer):
+                raise TypeError("Store is missing write_additional_prompt().")
+            writer(additional_prompt)
+        if sync_callback is not None:
+            sync_callback(store)
+        return store
 
     def reset_context(self) -> None:
         """Clear transcript state and rebuild durable parameters."""

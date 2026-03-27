@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
+from contextlib import contextmanager
+from pathlib import Path
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, SpawnSpecializedSubagentsAgent
 from harnessiq.shared.tools import (
@@ -57,14 +60,26 @@ def _runner(system_prompt, sections, label):  # noqa: ANN001
     raise AssertionError(label)
 
 
+@contextmanager
+def _isolated_repo():
+    original_cwd = os.getcwd()
+    with tempfile.TemporaryDirectory() as temp_dir:
+        os.chdir(temp_dir)
+        try:
+            os.mkdir(".git")
+            yield Path(temp_dir)
+        finally:
+            os.chdir(original_cwd)
+
+
 class SpawnSpecializedSubagentsAgentTests(unittest.TestCase):
     def test_prepare_creates_initial_plan(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with _isolated_repo() as repo_root:
             agent = SpawnSpecializedSubagentsAgent(
                 model=_IdleModel(),
                 objective="Implement two reusable harnesses",
                 available_agent_types=("explorer", "worker"),
-                memory_path=temp_dir,
+                memory_path=repo_root / "agent-memory",
                 json_subcall_runner=_runner,
             )
 
@@ -76,12 +91,12 @@ class SpawnSpecializedSubagentsAgentTests(unittest.TestCase):
             self.assertIn(SPAWN_PLAN_ASSIGNMENTS, {tool.key for tool in agent.available_tools()})
 
     def test_run_assignment_and_integrate_results_persist_state(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with _isolated_repo() as repo_root:
             agent = SpawnSpecializedSubagentsAgent(
                 model=_IdleModel(),
                 objective="Implement two reusable harnesses",
                 available_agent_types=("explorer", "worker"),
-                memory_path=temp_dir,
+                memory_path=repo_root / "agent-memory",
                 json_subcall_runner=_runner,
             )
             agent.prepare()

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from harnessiq.agents.base import BaseAgent
-from harnessiq.agents.helpers import find_repo_root, resolve_memory_path, utc_now_z
+from harnessiq.agents.helpers import resolve_memory_path, utc_now_z
 from harnessiq.agents.spawn_specialized_subagents.stages import (
     DelegationPlannerStage,
     IntegrationStage,
@@ -35,11 +35,8 @@ from harnessiq.shared.spawn_specialized_subagents import (
 )
 from harnessiq.shared.tools import (
     RegisteredTool,
-    SPAWN_INTEGRATE_RESULTS,
-    SPAWN_PLAN_ASSIGNMENTS,
-    SPAWN_RUN_ASSIGNMENT,
-    ToolDefinition,
 )
+from harnessiq.tools.spawn_specialized_subagents import create_spawn_specialized_subagents_tools
 from harnessiq.tools.registry import create_tool_registry
 
 _DEFAULT_MEMORY_PATH = Path(SPAWN_SPECIALIZED_SUBAGENTS_HARNESS_MANIFEST.resolved_default_memory_root)
@@ -75,18 +72,14 @@ class SpawnSpecializedSubagentsAgent(BaseAgent):
             reset_threshold=reset_threshold,
         )
         self._json_subcall_runner = json_subcall_runner
-        self._memory_store = SpawnSpecializedSubagentsMemoryStore(memory_path=resolved_memory_path)
-        self._memory_store.prepare()
-        self._memory_store.write_objective(objective)
-        self._memory_store.write_current_context(current_context)
-        self._memory_store.write_additional_prompt(additional_prompt)
-        self._memory_store.write_runtime_parameters(
-            {"max_tokens": max_tokens, "reset_threshold": reset_threshold}
+        tool_registry = create_tool_registry(
+            create_spawn_specialized_subagents_tools(
+                plan_assignments_handler=self._handle_plan_assignments,
+                run_assignment_handler=self._handle_run_assignment,
+                integrate_results_handler=self._handle_integrate_results,
+            ),
+            tuple(tools or ()),
         )
-        self._memory_store.write_custom_parameters(
-            {"objective": objective, "available_agent_types": ",".join(available_agent_types)}
-        )
-        tool_registry = create_tool_registry(self._build_internal_tools(), tuple(tools or ()))
         super().__init__(
             name="spawn_specialized_subagents_agent",
             model=model,
@@ -97,11 +90,24 @@ class SpawnSpecializedSubagentsAgent(BaseAgent):
                 reset_threshold=reset_threshold,
             ),
             memory_path=resolved_memory_path,
-            repo_root=find_repo_root(resolved_memory_path),
             instance_name=instance_name,
         )
-        self._memory_store = SpawnSpecializedSubagentsMemoryStore(memory_path=self.memory_path)
-        self._memory_store.prepare()
+        self._config = SpawnSpecializedSubagentsConfig(
+            memory_path=self.memory_path,
+            objective=objective,
+            available_agent_types=tuple(str(item) for item in available_agent_types),
+            current_context=current_context,
+            additional_prompt=additional_prompt,
+            max_tokens=max_tokens,
+            reset_threshold=reset_threshold,
+        )
+        self._memory_store = self._create_file_backed_store(
+            store_factory=SpawnSpecializedSubagentsMemoryStore,
+            runtime_parameters=self._runtime_parameters_payload(),
+            custom_parameters=self._custom_parameters_payload(),
+            additional_prompt=self._config.additional_prompt,
+            sync_callback=self._sync_spawn_state,
+        )
         self._planner_stage = DelegationPlannerStage(model=model, runner=json_subcall_runner, agent_name=self.name)
         self._worker_stage = WorkerExecutionStage(model=model, runner=json_subcall_runner, agent_name=self.name)
         self._integration_stage = IntegrationStage(model=model, runner=json_subcall_runner, agent_name=self.name)
@@ -169,18 +175,12 @@ class SpawnSpecializedSubagentsAgent(BaseAgent):
         ).to_dict()
 
     def prepare(self) -> None:
-        self._memory_store.prepare()
-        self._memory_store.write_objective(self._config.objective)
-        self._memory_store.write_current_context(self._config.current_context)
-        self._memory_store.write_additional_prompt(self._config.additional_prompt)
-        self._memory_store.write_runtime_parameters(
-            {"max_tokens": self._config.max_tokens, "reset_threshold": self._config.reset_threshold}
-        )
-        self._memory_store.write_custom_parameters(
-            {
-                "objective": self._config.objective,
-                "available_agent_types": ",".join(self._config.available_agent_types),
-            }
+        self._sync_file_backed_store(
+            self._memory_store,
+            runtime_parameters=self._runtime_parameters_payload(),
+            custom_parameters=self._custom_parameters_payload(),
+            additional_prompt=self._config.additional_prompt,
+            sync_callback=self._sync_spawn_state,
         )
         if not self._memory_store.read_plan().get("assignments"):
             self._plan_assignments()
@@ -194,7 +194,7 @@ class SpawnSpecializedSubagentsAgent(BaseAgent):
 
     def load_parameter_sections(self) -> Sequence[AgentParameterSection]:
         return (
-            AgentParameterSection(title="Master Prompt", content=self._planner_stage._master_prompt()),
+            AgentParameterSection(title="Planner Stage Prompt", content=self._planner_stage.system_prompt()),
             AgentParameterSection(title="Objective", content=self._memory_store.read_objective()),
             AgentParameterSection(
                 title="Current Context",
@@ -213,41 +213,21 @@ class SpawnSpecializedSubagentsAgent(BaseAgent):
     def build_ledger_tags(self) -> list[str]:
         return ["delegation", "orchestration", "subagents"]
 
-    def _build_internal_tools(self) -> tuple[RegisteredTool, ...]:
-        return (
-            RegisteredTool(
-                definition=ToolDefinition(
-                    key=SPAWN_PLAN_ASSIGNMENTS,
-                    name="plan_assignments",
-                    description="Create or refresh the current local step and bounded worker assignments.",
-                    input_schema={"type": "object", "properties": {}, "required": [], "additionalProperties": False},
-                ),
-                handler=lambda arguments: self._handle_plan_assignments(arguments),
-            ),
-            RegisteredTool(
-                definition=ToolDefinition(
-                    key=SPAWN_RUN_ASSIGNMENT,
-                    name="run_assignment",
-                    description="Execute one worker assignment by assignment id and persist the structured result.",
-                    input_schema={
-                        "type": "object",
-                        "properties": {"assignment_id": {"type": "string"}},
-                        "required": ["assignment_id"],
-                        "additionalProperties": False,
-                    },
-                ),
-                handler=lambda arguments: self._handle_run_assignment(arguments),
-            ),
-            RegisteredTool(
-                definition=ToolDefinition(
-                    key=SPAWN_INTEGRATE_RESULTS,
-                    name="integrate_results",
-                    description="Integrate collected worker outputs into one coherent final response.",
-                    input_schema={"type": "object", "properties": {}, "required": [], "additionalProperties": False},
-                ),
-                handler=lambda arguments: self._handle_integrate_results(arguments),
-            ),
-        )
+    def _runtime_parameters_payload(self) -> dict[str, Any]:
+        return {
+            "max_tokens": self._config.max_tokens,
+            "reset_threshold": self._config.reset_threshold,
+        }
+
+    def _custom_parameters_payload(self) -> dict[str, Any]:
+        return {
+            "objective": self._config.objective,
+            "available_agent_types": ",".join(self._config.available_agent_types),
+        }
+
+    def _sync_spawn_state(self, store: SpawnSpecializedSubagentsMemoryStore) -> None:
+        store.write_objective(self._config.objective)
+        store.write_current_context(self._config.current_context)
 
     def _plan_assignments(self) -> dict[str, Any]:
         payload = self._planner_stage.run(

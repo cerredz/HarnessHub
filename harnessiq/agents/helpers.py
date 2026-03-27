@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -26,10 +27,21 @@ def read_optional_text(path: Path) -> str:
     return path.read_text(encoding="utf-8").strip()
 
 
-def resolve_memory_path(memory_path: str | Path | None, *, default_path: Path) -> Path:
-    """Return the explicit memory path or the agent package default."""
+def resolve_memory_path(
+    memory_path: str | Path | None,
+    *,
+    default_path: Path,
+    isolate_default: bool = False,
+    default_subdir_prefix: str | None = None,
+) -> Path:
+    """Return the explicit memory path or a resolved default agent path."""
     if memory_path is None:
-        return default_path
+        if not isolate_default:
+            return Path(default_path)
+        return _build_isolated_memory_path(
+            Path(default_path),
+            prefix=default_subdir_prefix or Path(default_path).name,
+        )
     return Path(memory_path)
 
 
@@ -41,6 +53,15 @@ def utc_now_z() -> str:
 def utc_timestamp_for_filename() -> str:
     """Return a compact UTC timestamp suitable for filenames."""
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def _build_isolated_memory_path(default_path: Path, *, prefix: str) -> Path:
+    normalized_prefix = "".join(
+        character if character.isalnum() or character in {"-", "_"} else "-"
+        for character in prefix.strip()
+    ).strip("-") or "run"
+    unique_suffix = secrets.token_hex(3)
+    return default_path / f"{normalized_prefix}-{utc_timestamp_for_filename()}-{unique_suffix}"
 
 
 __all__ = [

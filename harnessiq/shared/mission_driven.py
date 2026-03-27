@@ -25,6 +25,10 @@ ERROR_LOG_FILENAME = "error_log.json"
 FEEDBACK_LOG_FILENAME = "feedback_log.json"
 TEST_RESULTS_FILENAME = "test_results.json"
 ARTIFACTS_FILENAME = "artifacts.json"
+TOOL_CALL_HISTORY_FILENAME = "tool_call_history.json"
+RESEARCH_LOG_FILENAME = "research_log.json"
+NEXT_ACTIONS_FILENAME = "next_actions.json"
+MISSION_STATUS_FILENAME = "mission_status.json"
 PROGRESS_LOG_FILENAME = "progress_log.jsonl"
 README_FILENAME = "README.md"
 CHECKPOINTS_DIRNAME = "checkpoints"
@@ -229,6 +233,22 @@ class MissionDrivenMemoryStore:
         return self.memory_path / ARTIFACTS_FILENAME
 
     @property
+    def tool_call_history_path(self) -> Path:
+        return self.memory_path / TOOL_CALL_HISTORY_FILENAME
+
+    @property
+    def research_log_path(self) -> Path:
+        return self.memory_path / RESEARCH_LOG_FILENAME
+
+    @property
+    def next_actions_path(self) -> Path:
+        return self.memory_path / NEXT_ACTIONS_FILENAME
+
+    @property
+    def mission_status_path(self) -> Path:
+        return self.memory_path / MISSION_STATUS_FILENAME
+
+    @property
     def progress_log_path(self) -> Path:
         return self.memory_path / PROGRESS_LOG_FILENAME
 
@@ -264,6 +284,18 @@ class MissionDrivenMemoryStore:
         _ensure_json_file(self.feedback_log_path, [])
         _ensure_json_file(self.test_results_path, [])
         _ensure_json_file(self.artifacts_path, [])
+        _ensure_json_file(self.tool_call_history_path, [])
+        _ensure_json_file(self.research_log_path, [])
+        _ensure_json_file(self.next_actions_path, [])
+        _ensure_json_file(
+            self.mission_status_path,
+            {
+                "mission_status": None,
+                "current_task_pointer": None,
+                "next_actions": [],
+                "updated_at": "",
+            },
+        )
         _ensure_text_file(self.progress_log_path, "")
         _ensure_text_file(self.readme_path, "")
         _ensure_text_file(self.additional_prompt_path, "")
@@ -300,6 +332,7 @@ class MissionDrivenMemoryStore:
         *,
         definition: MissionDefinition,
         mission_status: str,
+        current_task_pointer: str | None = None,
         next_actions: list[str],
     ) -> Path:
         payload = {
@@ -307,14 +340,60 @@ class MissionDrivenMemoryStore:
             "mission_status": mission_status,
             "next_actions": list(next_actions),
         }
-        return _write_json(self.mission_path, payload)
+        path = _write_json(self.mission_path, payload)
+        self.write_next_actions(next_actions)
+        self.write_mission_status_record(
+            mission_status=mission_status,
+            current_task_pointer=current_task_pointer,
+            next_actions=next_actions,
+        )
+        return path
 
-    def update_mission_status(self, mission_status: str, *, next_actions: list[str] | None = None) -> Path:
+    def update_mission_status(
+        self,
+        mission_status: str,
+        *,
+        current_task_pointer: str | None = None,
+        next_actions: list[str] | None = None,
+    ) -> Path:
         payload = self.read_mission()
         payload["mission_status"] = mission_status
         if next_actions is not None:
             payload["next_actions"] = list(next_actions)
-        return _write_json(self.mission_path, payload)
+            self.write_next_actions(next_actions)
+        path = _write_json(self.mission_path, payload)
+        self.write_mission_status_record(
+            mission_status=mission_status,
+            current_task_pointer=current_task_pointer,
+            next_actions=list(next_actions or payload.get("next_actions", [])),
+        )
+        return path
+
+    def write_next_actions(self, next_actions: list[str]) -> Path:
+        return _write_json(self.next_actions_path, [str(item).strip() for item in next_actions if str(item).strip()])
+
+    def read_next_actions(self) -> list[str]:
+        return _read_json_file(self.next_actions_path, expected_type=list)
+
+    def write_mission_status_record(
+        self,
+        *,
+        mission_status: str,
+        current_task_pointer: str | None,
+        next_actions: list[str],
+    ) -> Path:
+        return _write_json(
+            self.mission_status_path,
+            {
+                "mission_status": mission_status,
+                "current_task_pointer": current_task_pointer,
+                "next_actions": [str(item).strip() for item in next_actions if str(item).strip()],
+                "updated_at": utc_now_z(),
+            },
+        )
+
+    def read_mission_status_record(self) -> dict[str, Any]:
+        return _read_json_file(self.mission_status_path, expected_type=dict)
 
     def read_task_plan(self) -> MissionTaskPlan:
         return MissionTaskPlan.from_dict(_read_json_file(self.task_plan_path, expected_type=dict))
@@ -387,10 +466,40 @@ class MissionDrivenMemoryStore:
         return _read_json_file(self.artifacts_path, expected_type=list)
 
     def write_file_manifest(self, records: list[Mapping[str, Any]]) -> Path:
-        return _write_json(self.file_manifest_path, [dict(record) for record in records])
+        return _write_json(
+            self.file_manifest_path,
+            [self._normalize_file_manifest_record(record) for record in records],
+        )
 
     def read_file_manifest(self) -> list[dict[str, Any]]:
         return _read_json_file(self.file_manifest_path, expected_type=list)
+
+    def merge_file_manifest_records(self, records: list[Mapping[str, Any]]) -> Path:
+        indexed: dict[str, dict[str, Any]] = {}
+        for existing in self.read_file_manifest():
+            key = str(existing.get("path") or existing.get("key") or "").strip()
+            if key:
+                indexed[key] = dict(existing)
+        for record in records:
+            normalized = self._normalize_file_manifest_record(record)
+            key = str(normalized.get("path") or normalized.get("key") or "").strip()
+            if not key:
+                continue
+            indexed[key] = {**indexed.get(key, {}), **normalized}
+        ordered = [indexed[key] for key in sorted(indexed)]
+        return _write_json(self.file_manifest_path, ordered)
+
+    def append_tool_call_records(self, records: list[Mapping[str, Any]]) -> None:
+        self._append_json_records(self.tool_call_history_path, records)
+
+    def read_tool_call_records(self) -> list[dict[str, Any]]:
+        return _read_json_file(self.tool_call_history_path, expected_type=list)
+
+    def append_research_records(self, records: list[Mapping[str, Any]]) -> None:
+        self._append_json_records(self.research_log_path, records)
+
+    def read_research_records(self) -> list[dict[str, Any]]:
+        return _read_json_file(self.research_log_path, expected_type=list)
 
     def initialize_artifact(
         self,
@@ -401,7 +510,12 @@ class MissionDrivenMemoryStore:
         session_id: str,
         next_actions: list[str],
     ) -> None:
-        self.write_mission(definition=definition, mission_status="active", next_actions=next_actions)
+        self.write_mission(
+            definition=definition,
+            mission_status="active",
+            current_task_pointer=task_plan.current_task_pointer,
+            next_actions=next_actions,
+        )
         self.write_task_plan(task_plan)
         self.write_readme(narrative)
         self.append_progress_event(
@@ -427,6 +541,10 @@ class MissionDrivenMemoryStore:
             "feedback_log": self.read_feedback_records(),
             "test_results": self.read_test_results(),
             "artifacts": self.read_artifact_records(),
+            "tool_call_history": self.read_tool_call_records(),
+            "research_log": self.read_research_records(),
+            "next_actions": self.read_next_actions(),
+            "mission_status_record": self.read_mission_status_record(),
             "progress_log": self.read_progress_events(),
             "readme": self.read_readme(),
             "resume_instructions": resume_instructions.strip(),
@@ -441,12 +559,13 @@ class MissionDrivenMemoryStore:
         mission = self.read_mission()
         task_plan = self.read_task_plan()
         tasks = list(task_plan.tasks)
+        mission_status_record = self.read_mission_status_record()
         return {
-            "mission_status": mission.get("mission_status"),
+            "mission_status": mission_status_record.get("mission_status", mission.get("mission_status")),
             "mission_goal": mission.get("definition", {}).get("goal"),
             "mission_type": mission.get("definition", {}).get("mission_type"),
-            "current_task_pointer": task_plan.current_task_pointer,
-            "next_actions": mission.get("next_actions", []),
+            "current_task_pointer": mission_status_record.get("current_task_pointer", task_plan.current_task_pointer),
+            "next_actions": self.read_next_actions() or mission.get("next_actions", []),
             "task_count": len(tasks),
             "completed_task_count": sum(1 for task in tasks if task.status == "complete"),
             "blocked_task_count": sum(1 for task in tasks if task.status == "blocked"),
@@ -454,6 +573,25 @@ class MissionDrivenMemoryStore:
             "memory_fact_count": len(self.read_memory_facts()),
             "test_result_count": len(self.read_test_results()),
             "artifact_count": len(self.read_artifact_records()),
+            "file_record_count": len(self.read_file_manifest()),
+            "research_entry_count": len(self.read_research_records()),
+            "tool_call_count": len(self.read_tool_call_records()),
+        }
+
+    def _normalize_file_manifest_record(self, record: Mapping[str, Any]) -> dict[str, Any]:
+        path_value = str(record.get("path", "")).strip()
+        return {
+            "key": str(record.get("key", "")).strip() or None,
+            "path": path_value,
+            "exists": bool(record.get("exists", True)),
+            "kind": str(record.get("kind", "file")).strip() or "file",
+            "format": str(record.get("format", "other")).strip() or "other",
+            "purpose": str(record.get("purpose", "")).strip(),
+            "change_type": str(record.get("change_type", "updated")).strip() or "updated",
+            "dependencies": _coerce_string_list(record.get("dependencies", [])),
+            "dependents": _coerce_string_list(record.get("dependents", [])),
+            "summary": str(record.get("summary", "")).strip(),
+            "updated_at": str(record.get("updated_at", utc_now_z())).strip() or utc_now_z(),
         }
 
     def _append_json_records(self, path: Path, records: list[Mapping[str, Any]]) -> None:
@@ -502,6 +640,10 @@ MISSION_DRIVEN_HARNESS_MANIFEST = HarnessManifest(
         HarnessMemoryFileSpec("feedback_log", FEEDBACK_LOG_FILENAME, "Human feedback and approval records.", format="json"),
         HarnessMemoryFileSpec("test_results", TEST_RESULTS_FILENAME, "Recorded validation results for mission tasks.", format="json"),
         HarnessMemoryFileSpec("artifacts", ARTIFACTS_FILENAME, "Registered output artifacts and deliverables.", format="json"),
+        HarnessMemoryFileSpec("tool_call_history", TOOL_CALL_HISTORY_FILENAME, "Structured history of mission-tool calls and results.", format="json"),
+        HarnessMemoryFileSpec("research_log", RESEARCH_LOG_FILENAME, "Durable research findings and external references gathered during the mission.", format="json"),
+        HarnessMemoryFileSpec("next_actions", NEXT_ACTIONS_FILENAME, "Prioritized next-action queue for the active mission state.", format="json"),
+        HarnessMemoryFileSpec("mission_status_record", MISSION_STATUS_FILENAME, "Dedicated mission status snapshot and current task pointer.", format="json"),
         HarnessMemoryFileSpec("progress_log", PROGRESS_LOG_FILENAME, "Append-only mission event journal.", format="jsonl"),
         HarnessMemoryFileSpec("readme", README_FILENAME, "Human-readable mission narrative summary.", format="markdown"),
         HarnessMemoryFileSpec("checkpoints", CHECKPOINTS_DIRNAME, "Checkpoint snapshots for resumability and rollback.", kind="directory", format="directory"),
@@ -521,6 +663,9 @@ MISSION_DRIVEN_HARNESS_MANIFEST = HarnessManifest(
             "completed_task_count": {"type": "integer"},
             "blocked_task_count": {"type": "integer"},
             "artifact_count": {"type": "integer"},
+            "file_record_count": {"type": "integer"},
+            "research_entry_count": {"type": "integer"},
+            "tool_call_count": {"type": "integer"},
         },
         "additionalProperties": False,
     },
@@ -597,16 +742,20 @@ __all__ = [
     "MISSION_DRIVEN_HARNESS_MANIFEST",
     "MISSION_DRIVEN_PROMPT_KEY",
     "MISSION_FILENAME",
+    "MISSION_STATUS_FILENAME",
     "MissionDefinition",
     "MissionDrivenAgentConfig",
     "MissionDrivenMemoryStore",
     "MissionTask",
     "MissionTaskPlan",
+    "NEXT_ACTIONS_FILENAME",
     "PROGRESS_LOG_FILENAME",
     "README_FILENAME",
+    "RESEARCH_LOG_FILENAME",
     "RUNTIME_PARAMETERS_FILENAME",
     "TASK_PLAN_FILENAME",
     "TEST_RESULTS_FILENAME",
+    "TOOL_CALL_HISTORY_FILENAME",
     "normalize_mission_driven_custom_parameters",
     "normalize_mission_driven_runtime_parameters",
 ]

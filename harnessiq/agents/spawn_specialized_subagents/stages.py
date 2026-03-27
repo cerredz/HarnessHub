@@ -6,10 +6,8 @@ from dataclasses import dataclass
 from typing import Any, Sequence
 
 from harnessiq.agents.subcalls import JsonSubcallRunner, run_json_subcall
-from harnessiq.master_prompts import MasterPromptRegistry
 from harnessiq.shared.agents import AgentModel, AgentParameterSection, json_parameter_section
 from harnessiq.shared.dtos.prompt_harnesses import SubAgentAssignmentDTO, WorkerExecutionResultDTO
-from harnessiq.shared.spawn_specialized_subagents import SPAWN_SPECIALIZED_SUBAGENTS_PROMPT_KEY
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,12 +38,7 @@ class DelegationPlannerStage:
         payload = run_json_subcall(
             self.model,
             agent_name=self.agent_name,
-            system_prompt=(
-                f"{self._master_prompt()}\n\n"
-                "[STAGE CONTRACT]\n"
-                "Return only JSON with keys: immediate_local_step, assignments, integration_criteria. "
-                "Each assignment must include assignment_id, title, objective, owner, deliverable, completion_condition, write_scope, context_items."
-            ),
+            system_prompt=self.system_prompt(),
             sections=sections,
             label="delegation_plan",
             runner=self.runner,
@@ -74,8 +67,14 @@ class DelegationPlannerStage:
             ],
         }
 
-    def _master_prompt(self) -> str:
-        return MasterPromptRegistry().get_prompt_text(SPAWN_SPECIALIZED_SUBAGENTS_PROMPT_KEY)
+    def system_prompt(self) -> str:
+        return (
+            "You are the delegation planner for SpawnSpecializedSubagentsAgent.\n"
+            "Decide the immediate local step and a bounded set of worker assignments that advance the objective without overlapping ownership.\n"
+            "Assignments must be concrete, reviewable, and integration-ready.\n"
+            "Return only JSON with keys: immediate_local_step, assignments, integration_criteria.\n"
+            "Each assignment must include assignment_id, title, objective, owner, deliverable, completion_condition, write_scope, context_items."
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,13 +96,7 @@ class WorkerExecutionStage:
         payload = run_json_subcall(
             self.model,
             agent_name=self.agent_name,
-            system_prompt=(
-                f"{self._master_prompt()}\n\n"
-                "[STAGE CONTRACT]\n"
-                "Execute exactly one worker assignment. "
-                "Return only JSON with keys: assignment_id, status, summary, artifact, risks. "
-                "status must be completed or blocked."
-            ),
+            system_prompt=self.system_prompt(),
             sections=(
                 AgentParameterSection(title="Primary Objective", content=objective),
                 json_parameter_section("Assignment", assignment.to_dict()),
@@ -121,8 +114,14 @@ class WorkerExecutionStage:
             risks=tuple(str(item).strip() for item in payload.get("risks", []) if str(item).strip()),
         )
 
-    def _master_prompt(self) -> str:
-        return MasterPromptRegistry().get_prompt_text(SPAWN_SPECIALIZED_SUBAGENTS_PROMPT_KEY)
+    def system_prompt(self) -> str:
+        return (
+            "You are the worker-execution stage for SpawnSpecializedSubagentsAgent.\n"
+            "Execute exactly one bounded assignment, stay within the assigned scope, and return a crisp structured result.\n"
+            "Do not replan the entire objective or invent extra work outside the assignment contract.\n"
+            "Return only JSON with keys: assignment_id, status, summary, artifact, risks.\n"
+            "status must be completed or blocked."
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,12 +142,7 @@ class IntegrationStage:
         return run_json_subcall(
             self.model,
             agent_name=self.agent_name,
-            system_prompt=(
-                f"{self._master_prompt()}\n\n"
-                "[STAGE CONTRACT]\n"
-                "Return only JSON with keys: final_response, accepted_assignment_ids, revised_assignment_ids, rejected_assignment_ids, follow_up_assignments. "
-                "follow_up_assignments must use the same assignment schema as the planner stage."
-            ),
+            system_prompt=self.system_prompt(),
             sections=(
                 AgentParameterSection(title="Primary Objective", content=objective),
                 json_parameter_section("Current Plan", plan),
@@ -158,8 +152,14 @@ class IntegrationStage:
             runner=self.runner,
         )
 
-    def _master_prompt(self) -> str:
-        return MasterPromptRegistry().get_prompt_text(SPAWN_SPECIALIZED_SUBAGENTS_PROMPT_KEY)
+    def system_prompt(self) -> str:
+        return (
+            "You are the integration stage for SpawnSpecializedSubagentsAgent.\n"
+            "Review worker outputs against the objective and plan, then integrate the useful work into one coherent response.\n"
+            "Be explicit about what was accepted, revised, rejected, and what follow-up work remains.\n"
+            "Return only JSON with keys: final_response, accepted_assignment_ids, revised_assignment_ids, rejected_assignment_ids, follow_up_assignments.\n"
+            "follow_up_assignments must use the same assignment schema as the planner stage."
+        )
 
 
 __all__ = ["DelegationPlannerStage", "IntegrationStage", "WorkerExecutionStage"]
