@@ -7,6 +7,7 @@ from typing import Any
 
 from harnessiq.agents import AgentModel, AgentRuntimeConfig, LeadsAgent
 from harnessiq.cli.common import load_factory
+from harnessiq.shared.dtos import HarnessAdapterResponseDTO, HarnessStatePayloadDTO
 from harnessiq.shared.leads import (
     LeadsMemoryStore,
     RUNTIME_PARAMETERS_FILENAME as LEADS_RUNTIME_PARAMETERS_FILENAME,
@@ -64,14 +65,16 @@ class LeadsHarnessCliAdapter(StoreBackedHarnessCliAdapter[LeadsMemoryStore]):
         runtime_parameters.update(read_json_object(store.memory_path / LEADS_RUNTIME_PARAMETERS_FILENAME))
         return runtime_parameters
 
-    def show(self, context: HarnessAdapterContext) -> dict[str, object]:
+    def show(self, context: HarnessAdapterContext) -> HarnessStatePayloadDTO:
         store = self.load_store(context)
-        return {
-            "icp_states": [state.as_dict() for state in store.list_icp_states()],
-            "run_config": store.read_run_config().as_dict() if store.run_config_path.exists() else None,
-            "run_state": store.read_run_state().as_dict() if store.run_state_path.exists() else None,
-            "runtime_parameters": read_json_object(store.memory_path / LEADS_RUNTIME_PARAMETERS_FILENAME),
-        }
+        return HarnessStatePayloadDTO(
+            {
+                "icp_states": [state.as_dict() for state in store.list_icp_states()],
+                "run_config": store.read_run_config().as_dict() if store.run_config_path.exists() else None,
+                "run_state": store.read_run_state().as_dict() if store.run_state_path.exists() else None,
+                "runtime_parameters": read_json_object(store.memory_path / LEADS_RUNTIME_PARAMETERS_FILENAME),
+            }
+        )
 
     def run(
         self,
@@ -80,7 +83,7 @@ class LeadsHarnessCliAdapter(StoreBackedHarnessCliAdapter[LeadsMemoryStore]):
         context: HarnessAdapterContext,
         model: AgentModel,
         runtime_config: AgentRuntimeConfig,
-    ) -> dict[str, object]:
+    ) -> HarnessAdapterResponseDTO:
         store = self.load_store(context)
         if not store.run_config_path.exists():
             raise ValueError(
@@ -121,10 +124,10 @@ class LeadsHarnessCliAdapter(StoreBackedHarnessCliAdapter[LeadsMemoryStore]):
             runtime_config=runtime_config,
         )
         result = agent.run(max_cycles=args.max_cycles)
-        return {
-            "result": result_payload(result),
-            "run_state": store.read_run_state().as_dict() if store.run_state_path.exists() else None,
-        }
+        return HarnessAdapterResponseDTO(
+            result=result_payload(result),
+            extra={"run_state": store.read_run_state().as_dict() if store.run_state_path.exists() else None},
+        )
 
 
 __all__ = ["LeadsHarnessCliAdapter"]

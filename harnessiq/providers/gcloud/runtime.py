@@ -110,22 +110,27 @@ def run_runtime(
         )
         runtime_config = build_runtime_config(sink_specs=run_request.sink_specs)
         args = _build_runtime_args(adapter=adapter, run_request=run_request)
-        result_payload = _base_payload(context)
-        result_payload["remote_command"] = list(deploy_spec.remote_command)
-        result_payload["runtime"] = {
-            "memory_uri": ctx.storage.runtime_state_uri(config.memory_path),
-            "synced_from_gcs": synced_from_gcs,
-            "synced_to_gcs": False,
-        }
-        result_payload.update(
-            adapter.run(
-                args=args,
-                context=context,
-                model=model,
-                runtime_config=runtime_config,
+        result_payload = (
+            _base_payload(context)
+            .with_extra(
+                remote_command=list(deploy_spec.remote_command),
+                runtime={
+                    "memory_uri": ctx.storage.runtime_state_uri(config.memory_path),
+                    "synced_from_gcs": synced_from_gcs,
+                    "synced_to_gcs": False,
+                },
             )
+            .merge_response(
+                adapter.run(
+                    args=args,
+                    context=context,
+                    model=model,
+                    runtime_config=runtime_config,
+                )
+            )
+            .with_status("completed")
+            .to_dict()
         )
-        result_payload["status"] = "completed"
     except Exception as exc:  # pragma: no cover - exercised by tests with assertions on side effects
         execution_error = exc
 

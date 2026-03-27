@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import argparse
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Protocol, TypeVar
+from typing import Generic, Protocol, TypeVar
 
 from harnessiq.agents import AgentModel, AgentRuntimeConfig
 from harnessiq.interfaces import PreparedStoreLoader
+from harnessiq.shared.dtos import (
+    HarnessAdapterResponseDTO,
+    HarnessParameterBundleDTO,
+    HarnessStatePayloadDTO,
+)
 
 from .context import HarnessAdapterContext
 
@@ -25,7 +30,7 @@ class HarnessCliAdapter(Protocol):
         """Create or normalize any native harness state before profile resolution."""
         ...
 
-    def load_native_parameters(self, context: HarnessAdapterContext) -> tuple[dict[str, Any], dict[str, Any]]:
+    def load_native_parameters(self, context: HarnessAdapterContext) -> HarnessParameterBundleDTO:
         """Read runtime/custom values from the harness-native storage layout."""
         ...
 
@@ -33,7 +38,7 @@ class HarnessCliAdapter(Protocol):
         """Persist resolved generic profile values back into native harness storage."""
         ...
 
-    def show(self, context: HarnessAdapterContext) -> dict[str, Any]:
+    def show(self, context: HarnessAdapterContext) -> HarnessStatePayloadDTO:
         """Return a JSON-safe summary of the current harness state."""
         ...
 
@@ -44,7 +49,7 @@ class HarnessCliAdapter(Protocol):
         context: HarnessAdapterContext,
         model: AgentModel,
         runtime_config: AgentRuntimeConfig,
-    ) -> dict[str, Any]:
+    ) -> HarnessAdapterResponseDTO:
         """Execute the harness and return a JSON-safe result payload."""
         ...
 
@@ -60,19 +65,19 @@ class BaseHarnessCliAdapter(ABC):
         """Prepare native state before the platform profile is resolved."""
         del context
 
-    def load_native_parameters(self, context: HarnessAdapterContext) -> tuple[dict[str, Any], dict[str, Any]]:
+    def load_native_parameters(self, context: HarnessAdapterContext) -> HarnessParameterBundleDTO:
         """Load native runtime/custom values when a harness persists them itself."""
         del context
-        return {}, {}
+        return HarnessParameterBundleDTO()
 
     def synchronize_profile(self, context: HarnessAdapterContext) -> None:
         """Write resolved profile values back into native storage when needed."""
         del context
 
-    def show(self, context: HarnessAdapterContext) -> dict[str, Any]:
+    def show(self, context: HarnessAdapterContext) -> HarnessStatePayloadDTO:
         """Summarize native state for `prepare`, `show`, or `run` responses."""
         del context
-        return {}
+        return HarnessStatePayloadDTO()
 
     @abstractmethod
     def run(
@@ -82,7 +87,7 @@ class BaseHarnessCliAdapter(ABC):
         context: HarnessAdapterContext,
         model: AgentModel,
         runtime_config: AgentRuntimeConfig,
-    ) -> dict[str, Any]:
+    ) -> HarnessAdapterResponseDTO:
         """Execute the harness and return any adapter-specific response fields."""
 
 
@@ -99,12 +104,12 @@ class StoreBackedHarnessCliAdapter(BaseHarnessCliAdapter, Generic[StoreT], ABC):
         """Ensure the underlying native store exists before profile resolution."""
         self.load_store(context)
 
-    def load_native_parameters(self, context: HarnessAdapterContext) -> tuple[dict[str, Any], dict[str, Any]]:
+    def load_native_parameters(self, context: HarnessAdapterContext) -> HarnessParameterBundleDTO:
         """Read native runtime/custom values from the prepared store."""
         store = self.load_store(context)
-        return (
-            self.read_native_runtime_parameters(store, context),
-            self.read_native_custom_parameters(store, context),
+        return HarnessParameterBundleDTO(
+            runtime_parameters=self.read_native_runtime_parameters(store, context),
+            custom_parameters=self.read_native_custom_parameters(store, context),
         )
 
     def synchronize_profile(self, context: HarnessAdapterContext) -> None:

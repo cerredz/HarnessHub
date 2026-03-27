@@ -7,6 +7,7 @@ from typing import Any
 
 from harnessiq.agents import AgentModel, AgentRuntimeConfig, ExaOutreachAgent
 from harnessiq.cli.common import load_factory
+from harnessiq.shared.dtos import HarnessAdapterResponseDTO, HarnessStatePayloadDTO
 from harnessiq.shared.exa_outreach import EmailTemplate, ExaOutreachMemoryStore
 
 from .base import StoreBackedHarnessCliAdapter
@@ -49,14 +50,16 @@ class ExaOutreachHarnessCliAdapter(StoreBackedHarnessCliAdapter[ExaOutreachMemor
             query_config[key] = value
         store.write_query_config(query_config)
 
-    def show(self, context: HarnessAdapterContext) -> dict[str, object]:
+    def show(self, context: HarnessAdapterContext) -> HarnessStatePayloadDTO:
         store = self.load_store(context)
-        return {
-            "additional_prompt": store.read_additional_prompt(),
-            "agent_identity": store.read_agent_identity(),
-            "query_config": store.read_query_config(),
-            "run_files": [path.name for path in store.list_run_files()],
-        }
+        return HarnessStatePayloadDTO(
+            {
+                "additional_prompt": store.read_additional_prompt(),
+                "agent_identity": store.read_agent_identity(),
+                "query_config": store.read_query_config(),
+                "run_files": [path.name for path in store.list_run_files()],
+            }
+        )
 
     def run(
         self,
@@ -65,7 +68,7 @@ class ExaOutreachHarnessCliAdapter(StoreBackedHarnessCliAdapter[ExaOutreachMemor
         context: HarnessAdapterContext,
         model: AgentModel,
         runtime_config: AgentRuntimeConfig,
-    ) -> dict[str, object]:
+    ) -> HarnessAdapterResponseDTO:
         store = self.load_store(context)
         search_only = bool(args.search_only)
         exa_credentials = context.bound_credentials.get("exa")
@@ -101,14 +104,16 @@ class ExaOutreachHarnessCliAdapter(StoreBackedHarnessCliAdapter[ExaOutreachMemor
         )
         result = agent.run(max_cycles=args.max_cycles)
         run_id = agent._current_run_id or "unknown"
-        return {
-            "instance_id": optional_string(getattr(agent, "instance_id", None)),
-            "instance_name": optional_string(getattr(agent, "instance_name", None)),
-            "ledger_run_id": optional_string(getattr(agent, "last_run_id", None)),
-            "result": result_payload(result),
-            "run_id": str(run_id),
-            "state": self.show(context),
-        }
+        return HarnessAdapterResponseDTO(
+            result=result_payload(result),
+            state=self.show(context),
+            extra={
+                "instance_id": optional_string(getattr(agent, "instance_id", None)),
+                "instance_name": optional_string(getattr(agent, "instance_name", None)),
+                "ledger_run_id": optional_string(getattr(agent, "last_run_id", None)),
+                "run_id": str(run_id),
+            },
+        )
 
 
 __all__ = ["ExaOutreachHarnessCliAdapter"]

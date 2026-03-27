@@ -17,6 +17,20 @@ from .agents import (
     ResearchSweepAgentInstancePayload,
     StatelessAgentInstancePayload,
 )
+from .cli import (
+    HarnessAdapterResponseDTO,
+    HarnessCommandPayloadDTO,
+    HarnessParameterBundleDTO,
+    HarnessProfileDTO,
+    HarnessProfileIndexDTO,
+    HarnessProfileIndexRecordDTO,
+    HarnessProfileViewDTO,
+    HarnessResumePayloadDTO,
+    HarnessRunResultDTO,
+    HarnessRunSnapshotDTO,
+    HarnessRunSummaryDTO,
+    HarnessStatePayloadDTO,
+)
 from .base import SerializableDTO, coerce_serializable_mapping
 
 __all__ = [
@@ -27,6 +41,18 @@ __all__ = [
     "ExaAgentRequest",
     "InstagramAgentInstancePayload",
     "InstantlyAgentRequest",
+    "HarnessAdapterResponseDTO",
+    "HarnessCommandPayloadDTO",
+    "HarnessParameterBundleDTO",
+    "HarnessProfileDTO",
+    "HarnessProfileIndexDTO",
+    "HarnessProfileIndexRecordDTO",
+    "HarnessProfileViewDTO",
+    "HarnessResumePayloadDTO",
+    "HarnessRunResultDTO",
+    "HarnessRunSnapshotDTO",
+    "HarnessRunSummaryDTO",
+    "HarnessStatePayloadDTO",
     "KnowtAgentInstancePayload",
     "LeadsAgentInstancePayload",
     "LinkedInAgentInstancePayload",

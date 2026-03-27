@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 
 from harnessiq.agents import AgentModel, AgentRuntimeConfig, KnowtAgent
+from harnessiq.shared.dtos import HarnessAdapterResponseDTO, HarnessStatePayloadDTO
 from harnessiq.shared.knowt import KnowtMemoryStore
 
 from .base import StoreBackedHarnessCliAdapter
@@ -17,15 +18,17 @@ class KnowtHarnessCliAdapter(StoreBackedHarnessCliAdapter[KnowtMemoryStore]):
 
     store_loader = staticmethod(load_knowt_store)
 
-    def show(self, context: HarnessAdapterContext) -> dict[str, object]:
+    def show(self, context: HarnessAdapterContext) -> HarnessStatePayloadDTO:
         store = self.load_store(context)
         creation_log = store.read_creation_log()
-        return {
-            "avatar_description": store.read_avatar_description(),
-            "creation_log_count": len(creation_log),
-            "recent_creation_log": [entry.as_dict() for entry in creation_log[-5:]],
-            "script": store.read_script(),
-        }
+        return HarnessStatePayloadDTO(
+            {
+                "avatar_description": store.read_avatar_description(),
+                "creation_log_count": len(creation_log),
+                "recent_creation_log": [entry.as_dict() for entry in creation_log[-5:]],
+                "script": store.read_script(),
+            }
+        )
 
     def run(
         self,
@@ -34,7 +37,7 @@ class KnowtHarnessCliAdapter(StoreBackedHarnessCliAdapter[KnowtMemoryStore]):
         context: HarnessAdapterContext,
         model: AgentModel,
         runtime_config: AgentRuntimeConfig,
-    ) -> dict[str, object]:
+    ) -> HarnessAdapterResponseDTO:
         self.load_store(context)
         agent = KnowtAgent(
             model=model,
@@ -45,10 +48,10 @@ class KnowtHarnessCliAdapter(StoreBackedHarnessCliAdapter[KnowtMemoryStore]):
             runtime_config=runtime_config,
         )
         result = agent.run(max_cycles=args.max_cycles)
-        return {
-            "result": result_payload(result),
-            "state": self.show(context),
-        }
+        return HarnessAdapterResponseDTO(
+            result=result_payload(result),
+            state=self.show(context),
+        )
 
 
 __all__ = ["KnowtHarnessCliAdapter"]

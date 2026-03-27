@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 
 from harnessiq.agents import AgentModel, AgentRuntimeConfig, GoogleMapsProspectingAgent
+from harnessiq.shared.dtos import HarnessAdapterResponseDTO, HarnessStatePayloadDTO
 from harnessiq.shared.prospecting import ProspectingMemoryStore
 
 from .base import StoreBackedHarnessCliAdapter
@@ -56,20 +57,22 @@ class ProspectingHarnessCliAdapter(StoreBackedHarnessCliAdapter[ProspectingMemor
     def write_custom_parameters(self, store: ProspectingMemoryStore, context: HarnessAdapterContext) -> None:
         store.write_custom_parameters(context.profile.custom_parameters)
 
-    def show(self, context: HarnessAdapterContext) -> dict[str, object]:
+    def show(self, context: HarnessAdapterContext) -> HarnessStatePayloadDTO:
         store = self.load_store(context)
         state = store.read_state()
         qualified_leads = store.read_qualified_leads()
-        return {
-            "additional_prompt": store.read_additional_prompt(),
-            "agent_identity": store.read_agent_identity(),
-            "company_description": store.read_company_description(),
-            "custom_parameters": store.read_custom_parameters(),
-            "qualified_lead_count": len(qualified_leads),
-            "recent_qualified_leads": [record.as_dict() for record in qualified_leads[-5:]],
-            "run_state": state.as_dict(),
-            "runtime_parameters": store.read_runtime_parameters(),
-        }
+        return HarnessStatePayloadDTO(
+            {
+                "additional_prompt": store.read_additional_prompt(),
+                "agent_identity": store.read_agent_identity(),
+                "company_description": store.read_company_description(),
+                "custom_parameters": store.read_custom_parameters(),
+                "qualified_lead_count": len(qualified_leads),
+                "recent_qualified_leads": [record.as_dict() for record in qualified_leads[-5:]],
+                "run_state": state.as_dict(),
+                "runtime_parameters": store.read_runtime_parameters(),
+            }
+        )
 
     def run(
         self,
@@ -78,7 +81,7 @@ class ProspectingHarnessCliAdapter(StoreBackedHarnessCliAdapter[ProspectingMemor
         context: HarnessAdapterContext,
         model: AgentModel,
         runtime_config: AgentRuntimeConfig,
-    ) -> dict[str, object]:
+    ) -> HarnessAdapterResponseDTO:
         store = self.load_store(context)
         set_env_path_if_missing("HARNESSIQ_PROSPECTING_SESSION_DIR", store.browser_data_dir)
         browser_tools = load_optional_iterable_factory(args.browser_tools_factory)
@@ -91,14 +94,11 @@ class ProspectingHarnessCliAdapter(StoreBackedHarnessCliAdapter[ProspectingMemor
             runtime_config=runtime_config,
         )
         result = agent.run(max_cycles=args.max_cycles)
-        payload = self.show(context)
-        payload.update(
-            {
-                "ledger_run_id": agent.last_run_id,
-                "result": result_payload(result),
-            }
+        return HarnessAdapterResponseDTO(
+            result=result_payload(result),
+            state=self.show(context),
+            extra={"ledger_run_id": agent.last_run_id},
         )
-        return payload
 
 
 __all__ = ["ProspectingHarnessCliAdapter"]

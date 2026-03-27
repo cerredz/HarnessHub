@@ -11,6 +11,7 @@ from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.adapters.context import HarnessAdapterContext
 from harnessiq.cli.common import emit_json, parse_allowed_tool_values, resolve_agent_model
 from harnessiq.config import HarnessProfile, HarnessRunSnapshot
+from harnessiq.shared.dtos import HarnessAdapterResponseDTO, HarnessCommandPayloadDTO, HarnessResumePayloadDTO
 from harnessiq.shared.hooks import DEFAULT_APPROVAL_POLICY
 from harnessiq.utils import ConnectionsConfigStore, build_output_sinks
 
@@ -175,7 +176,7 @@ class HarnessCliLifecycleRunner:
         args: argparse.Namespace,
         context: HarnessAdapterContext,
         run_request: ResolvedRunRequest,
-        base_payload: dict[str, Any],
+        base_payload: HarnessCommandPayloadDTO,
         source_snapshot: HarnessRunSnapshot | None = None,
     ) -> int:
         seed_cli_environment(context.repo_root)
@@ -189,9 +190,9 @@ class HarnessCliLifecycleRunner:
             approval_policy=getattr(args, "approval_policy", None),
             allowed_tools=getattr(args, "allowed_tools", ()),
         )
-        payload = dict(base_payload)
-        payload["resume"] = self._resume_payload(run_request=run_request, source_snapshot=source_snapshot)
-        payload.update(
+        payload = base_payload.with_resume(
+            self._resume_payload(run_request=run_request, source_snapshot=source_snapshot)
+        ).merge_response(
             adapter.run(
                 args=args,
                 context=context,
@@ -199,7 +200,7 @@ class HarnessCliLifecycleRunner:
                 runtime_config=runtime_config,
             )
         )
-        emit_json(payload)
+        emit_json(payload.to_dict())
         return 0
 
     def build_runtime_config(
@@ -221,22 +222,17 @@ class HarnessCliLifecycleRunner:
         *,
         run_request: ResolvedRunRequest,
         source_snapshot: HarnessRunSnapshot | None,
-    ) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "adapter_arguments": dict(run_request.adapter_arguments),
-            "max_cycles": run_request.max_cycles,
-            "sink_specs": list(run_request.sink_specs),
-        }
-        if run_request.model_factory is not None:
-            payload["model_factory"] = run_request.model_factory
-        if run_request.model is not None:
-            payload["model"] = run_request.model
-        if run_request.model_profile is not None:
-            payload["profile"] = run_request.model_profile
-        if source_snapshot is not None:
-            payload["source_recorded_at"] = source_snapshot.recorded_at
-            payload["source_run_number"] = source_snapshot.run_number
-        return payload
+    ) -> HarnessResumePayloadDTO:
+        return HarnessResumePayloadDTO(
+            adapter_arguments=dict(run_request.adapter_arguments),
+            max_cycles=run_request.max_cycles,
+            sink_specs=tuple(run_request.sink_specs),
+            model_factory=run_request.model_factory,
+            model=run_request.model,
+            model_profile=run_request.model_profile,
+            source_recorded_at=(source_snapshot.recorded_at if source_snapshot is not None else None),
+            source_run_number=(source_snapshot.run_number if source_snapshot is not None else None),
+        )
 
     def _collect_model_selection(
         self,

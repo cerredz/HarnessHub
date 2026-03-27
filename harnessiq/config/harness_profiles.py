@@ -8,6 +8,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
+from harnessiq.shared.dtos import (
+    HarnessProfileDTO,
+    HarnessProfileIndexDTO,
+    HarnessProfileIndexRecordDTO,
+    HarnessRunSnapshotDTO,
+)
 from harnessiq.utils.path_serialization import deserialize_repo_path, serialize_repo_path
 
 DEFAULT_HARNESS_PROFILE_FILENAME = ".harnessiq-profile.json"
@@ -65,23 +71,21 @@ class HarnessRunSnapshot:
             raise ValueError("run_number must be greater than or equal to 1 when present.")
 
     def as_dict(self) -> dict[str, Any]:
-        payload = {
-            "adapter_arguments": dict(self.adapter_arguments or {}),
-            "custom_parameters": dict(self.custom_parameters or {}),
-            "max_cycles": self.max_cycles,
-            "recorded_at": self.recorded_at,
-            "runtime_parameters": dict(self.runtime_parameters or {}),
-            "sink_specs": list(self.sink_specs),
-        }
-        if self.model_factory is not None:
-            payload["model_factory"] = self.model_factory
-        if self.model is not None:
-            payload["model"] = self.model
-        if self.model_profile is not None:
-            payload["model_profile"] = self.model_profile
-        if self.run_number is not None:
-            payload["run_number"] = self.run_number
-        return payload
+        return self.to_dto().to_dict()
+
+    def to_dto(self) -> HarnessRunSnapshotDTO:
+        return HarnessRunSnapshotDTO(
+            model_factory=self.model_factory,
+            model=self.model,
+            model_profile=self.model_profile,
+            sink_specs=self.sink_specs,
+            max_cycles=self.max_cycles,
+            adapter_arguments=dict(self.adapter_arguments or {}),
+            runtime_parameters=dict(self.runtime_parameters or {}),
+            custom_parameters=dict(self.custom_parameters or {}),
+            recorded_at=self.recorded_at,
+            run_number=self.run_number,
+        )
 
     def with_run_number(self, run_number: int) -> "HarnessRunSnapshot":
         return HarnessRunSnapshot(
@@ -106,41 +110,21 @@ class HarnessRunSnapshot:
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "HarnessRunSnapshot":
-        sink_specs = payload.get("sink_specs", ())
-        adapter_arguments = payload.get("adapter_arguments", {})
-        model_factory = _normalize_optional_string(payload.get("model_factory"))
-        model = _normalize_optional_string(payload.get("model"))
-        model_profile = _normalize_optional_string(payload.get("model_profile"))
-        runtime_parameters = payload.get("runtime_parameters", {})
-        custom_parameters = payload.get("custom_parameters", {})
-        if not isinstance(sink_specs, (list, tuple)):
-            raise ValueError("Harness run snapshot 'sink_specs' must be a JSON array.")
-        if not isinstance(adapter_arguments, dict):
-            raise ValueError("Harness run snapshot 'adapter_arguments' must be a JSON object.")
-        if not isinstance(runtime_parameters, dict):
-            raise ValueError("Harness run snapshot 'runtime_parameters' must be a JSON object.")
-        if not isinstance(custom_parameters, dict):
-            raise ValueError("Harness run snapshot 'custom_parameters' must be a JSON object.")
-        max_cycles = payload.get("max_cycles")
-        if max_cycles is not None and not isinstance(max_cycles, int):
-            raise ValueError("Harness run snapshot 'max_cycles' must be an integer or null.")
-        recorded_at = payload.get("recorded_at")
-        if recorded_at is not None and not isinstance(recorded_at, str):
-            raise ValueError("Harness run snapshot 'recorded_at' must be a string when present.")
-        run_number = payload.get("run_number")
-        if run_number is not None and not isinstance(run_number, int):
-            raise ValueError("Harness run snapshot 'run_number' must be an integer when present.")
+        return cls.from_dto(HarnessRunSnapshotDTO.from_dict(payload))
+
+    @classmethod
+    def from_dto(cls, payload: HarnessRunSnapshotDTO) -> "HarnessRunSnapshot":
         return cls(
-            model_factory=model_factory,
-            model=model,
-            model_profile=model_profile,
-            sink_specs=tuple(str(spec) for spec in sink_specs),
-            max_cycles=max_cycles,
-            adapter_arguments=dict(adapter_arguments),
-            runtime_parameters=dict(runtime_parameters),
-            custom_parameters=dict(custom_parameters),
-            recorded_at=recorded_at,
-            run_number=run_number,
+            model_factory=payload.model_factory,
+            model=payload.model,
+            model_profile=payload.model_profile,
+            sink_specs=payload.sink_specs,
+            max_cycles=payload.max_cycles,
+            adapter_arguments=dict(payload.adapter_arguments),
+            runtime_parameters=dict(payload.runtime_parameters),
+            custom_parameters=dict(payload.custom_parameters),
+            recorded_at=payload.recorded_at,
+            run_number=payload.run_number,
         )
 
 
@@ -201,36 +185,29 @@ class HarnessProfile:
         )
 
     def as_dict(self) -> dict[str, Any]:
-        payload = {
-            "agent_name": self.agent_name,
-            "custom_parameters": dict(self.custom_parameters or {}),
-            "manifest_id": self.manifest_id,
-            "runtime_parameters": dict(self.runtime_parameters or {}),
-        }
-        if self.last_run is not None:
-            payload["last_run"] = self.last_run.as_dict()
-        if self.run_history:
-            payload["run_history"] = [snapshot.as_dict() for snapshot in self.run_history]
-        return payload
+        return self.to_dto().to_dict()
+
+    def to_dto(self) -> HarnessProfileDTO:
+        return HarnessProfileDTO(
+            manifest_id=self.manifest_id,
+            agent_name=self.agent_name,
+            runtime_parameters=dict(self.runtime_parameters or {}),
+            custom_parameters=dict(self.custom_parameters or {}),
+            last_run=(self.last_run.to_dto() if self.last_run is not None else None),
+            run_history=tuple(snapshot.to_dto() for snapshot in self.run_history),
+        )
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "HarnessProfile":
         runtime_parameters = payload.get("runtime_parameters", {})
         custom_parameters = payload.get("custom_parameters", {})
-        run_history_payload = payload.get("run_history", [])
-        if not isinstance(runtime_parameters, dict):
-            raise ValueError("Harness profile 'runtime_parameters' must be a JSON object.")
-        if not isinstance(custom_parameters, dict):
-            raise ValueError("Harness profile 'custom_parameters' must be a JSON object.")
-        if not isinstance(run_history_payload, list):
-            raise ValueError("Harness profile 'run_history' must be a JSON array when present.")
         last_run_payload = payload.get("last_run")
-        if last_run_payload is not None and not isinstance(last_run_payload, dict):
-            raise ValueError("Harness profile 'last_run' must be a JSON object when present.")
+        parsed = HarnessProfileDTO.from_dict(payload)
         last_run = None
-        if last_run_payload is not None:
-            last_run = HarnessRunSnapshot.from_dict(last_run_payload)
-            if "runtime_parameters" not in last_run_payload:
+        if parsed.last_run is not None:
+            last_run_payload = payload.get("last_run", {})
+            last_run = HarnessRunSnapshot.from_dto(parsed.last_run)
+            if isinstance(last_run_payload, Mapping) and "runtime_parameters" not in last_run_payload:
                 last_run = HarnessRunSnapshot(
                     model_factory=last_run.model_factory,
                     model=last_run.model,
@@ -243,7 +220,7 @@ class HarnessProfile:
                     recorded_at=last_run.recorded_at,
                     run_number=last_run.run_number,
                 )
-            if "custom_parameters" not in last_run_payload:
+            if isinstance(last_run_payload, Mapping) and "custom_parameters" not in last_run_payload:
                 last_run = HarnessRunSnapshot(
                     model_factory=last_run.model_factory,
                     model=last_run.model,
@@ -257,12 +234,12 @@ class HarnessProfile:
                     run_number=last_run.run_number,
                 )
         return cls(
-            manifest_id=str(payload["manifest_id"]),
-            agent_name=str(payload["agent_name"]),
-            runtime_parameters=dict(runtime_parameters),
-            custom_parameters=dict(custom_parameters),
+            manifest_id=parsed.manifest_id,
+            agent_name=parsed.agent_name,
+            runtime_parameters=dict(parsed.runtime_parameters),
+            custom_parameters=dict(parsed.custom_parameters),
             last_run=last_run,
-            run_history=tuple(HarnessRunSnapshot.from_dict(item) for item in run_history_payload),
+            run_history=tuple(HarnessRunSnapshot.from_dto(item) for item in parsed.run_history),
         )
 
 
@@ -299,20 +276,21 @@ class HarnessProfileIndexRecord:
         )
 
     def to_dict(self, *, repo_root: Path) -> dict[str, Any]:
-        return {
-            "agent_name": self.agent_name,
-            "manifest_id": self.manifest_id,
-            "memory_path": serialize_repo_path(self.memory_path, repo_root=repo_root),
-            "updated_at": self.updated_at,
-        }
+        return HarnessProfileIndexRecordDTO(
+            manifest_id=self.manifest_id,
+            agent_name=self.agent_name,
+            memory_path=serialize_repo_path(self.memory_path, repo_root=repo_root),
+            updated_at=self.updated_at,
+        ).to_dict()
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any], *, repo_root: Path) -> "HarnessProfileIndexRecord":
+        parsed = HarnessProfileIndexRecordDTO.from_dict(payload)
         return cls(
-            manifest_id=str(payload["manifest_id"]),
-            agent_name=str(payload["agent_name"]),
-            memory_path=deserialize_repo_path(str(payload["memory_path"]), repo_root=repo_root),
-            updated_at=str(payload["updated_at"]),
+            manifest_id=parsed.manifest_id,
+            agent_name=parsed.agent_name,
+            memory_path=deserialize_repo_path(parsed.memory_path, repo_root=repo_root),
+            updated_at=parsed.updated_at,
         )
 
 
@@ -362,19 +340,22 @@ class HarnessProfileIndex:
         return HarnessProfileIndex(records=tuple(indexed.values()))
 
     def to_dict(self, *, repo_root: Path) -> dict[str, Any]:
-        return {"records": [record.to_dict(repo_root=repo_root) for record in self.records]}
+        return HarnessProfileIndexDTO(
+            records=tuple(
+                HarnessProfileIndexRecordDTO(
+                    manifest_id=record.manifest_id,
+                    agent_name=record.agent_name,
+                    memory_path=serialize_repo_path(record.memory_path, repo_root=repo_root),
+                    updated_at=record.updated_at,
+                )
+                for record in self.records
+            )
+        ).to_dict()
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any], *, repo_root: Path) -> "HarnessProfileIndex":
-        raw_records = payload.get("records", [])
-        if not isinstance(raw_records, list):
-            raise ValueError("Harness profile index payload must define 'records' as a list.")
-        return cls(
-            records=tuple(
-                HarnessProfileIndexRecord.from_dict(item, repo_root=repo_root)
-                for item in raw_records
-            )
-        )
+        parsed = HarnessProfileIndexDTO.from_dict(payload)
+        return cls(records=tuple(HarnessProfileIndexRecord.from_dict(item.to_dict(), repo_root=repo_root) for item in parsed.records))
 
 
 @dataclass(slots=True)

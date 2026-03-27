@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from harnessiq.shared.dtos import HarnessRunResultDTO
+
 
 def read_json_object(path: Path) -> dict[str, Any]:
     """Load a JSON object file into a mutable dict while tolerating missing or blank files."""
@@ -25,14 +27,9 @@ def optional_string(value: Any) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def result_payload(result: Any) -> dict[str, Any]:
+def result_payload(result: Any) -> HarnessRunResultDTO:
     """Project the common run-result fields adapters expose in CLI JSON output."""
-    return {
-        "cycles_completed": getattr(result, "cycles_completed", None),
-        "pause_reason": getattr(result, "pause_reason", None),
-        "resets": getattr(result, "resets", None),
-        "status": getattr(result, "status", None),
-    }
+    return HarnessRunResultDTO.from_result(result)
 
 
 __all__ = [

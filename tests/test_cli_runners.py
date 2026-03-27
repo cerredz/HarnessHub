@@ -18,6 +18,12 @@ from harnessiq.cli.runners import (
     ResolvedRunRequest,
 )
 from harnessiq.config import HarnessProfile, HarnessRunSnapshot
+from harnessiq.shared.dtos import (
+    HarnessAdapterResponseDTO,
+    HarnessCommandPayloadDTO,
+    HarnessProfileViewDTO,
+    HarnessRunResultDTO,
+)
 from harnessiq.shared.harness_manifest import HarnessManifest
 
 
@@ -157,7 +163,7 @@ def test_lifecycle_runner_execute_run_emits_expected_payload(monkeypatch: pytest
             del args, context
             assert model == "resolved-model"
             assert runtime_config == "runtime-config"
-            return {"result": {"status": "completed"}}
+            return HarnessAdapterResponseDTO(result=HarnessRunResultDTO(status="completed"))
 
     class _StubRunner(HarnessCliLifecycleRunner):
         def build_runtime_config(self, *args, **kwargs):  # type: ignore[override]
@@ -192,23 +198,43 @@ def test_lifecycle_runner_execute_run_emits_expected_payload(monkeypatch: pytest
             max_cycles=1,
             adapter_arguments={"search_backend_factory": "factory.path"},
         ),
-        base_payload={"agent": "alpha"},
+        base_payload=HarnessCommandPayloadDTO(
+            agent="alpha",
+            harness="demo",
+            memory_path=str((tmp_path / "memory").resolve()),
+            credential_binding_name="harness::demo::alpha",
+            bound_credential_families=(),
+            profile=HarnessProfileViewDTO(
+                config_path=str((tmp_path / "memory" / ".harnessiq-profile.json").resolve()),
+                runtime_parameters={},
+                custom_parameters={},
+                effective_runtime_parameters={},
+                effective_custom_parameters={},
+            ),
+        ),
         source_snapshot=None,
     )
 
     assert exit_code == 0
-    assert captured == [
-        {
-            "agent": "alpha",
-            "resume": {
-                "adapter_arguments": {"search_backend_factory": "factory.path"},
-                "max_cycles": 1,
-                "model_factory": "tests.test_platform_cli:create_static_model",
-                "sink_specs": [],
-            },
-            "result": {"status": "completed"},
-        }
-    ]
+    assert len(captured) == 1
+    payload = captured[0]
+    assert payload["agent"] == "alpha"
+    assert payload["harness"] == "demo"
+    assert payload["credential_binding_name"] == "harness::demo::alpha"
+    assert payload["bound_credential_families"] == []
+    assert payload["profile"]["run_count"] == 0
+    assert payload["resume"] == {
+        "adapter_arguments": {"search_backend_factory": "factory.path"},
+        "max_cycles": 1,
+        "model_factory": "tests.test_platform_cli:create_static_model",
+        "sink_specs": [],
+    }
+    assert payload["result"] == {
+        "cycles_completed": None,
+        "pause_reason": None,
+        "resets": None,
+        "status": "completed",
+    }
 
 
 def test_linkedin_runner_run_uses_saved_browser_session_dir(

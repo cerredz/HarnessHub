@@ -8,6 +8,7 @@ from pathlib import Path
 
 from harnessiq.agents import AgentModel, AgentRuntimeConfig, InstagramKeywordDiscoveryAgent
 from harnessiq.cli.common import load_factory
+from harnessiq.shared.dtos import HarnessAdapterResponseDTO, HarnessStatePayloadDTO
 from harnessiq.shared.instagram import InstagramMemoryStore, resolve_instagram_icp_profiles
 
 from .base import StoreBackedHarnessCliAdapter
@@ -64,25 +65,27 @@ class InstagramHarnessCliAdapter(StoreBackedHarnessCliAdapter[InstagramMemorySto
     def write_custom_parameters(self, store: InstagramMemoryStore, context: HarnessAdapterContext) -> None:
         store.write_custom_parameters(dict(context.profile.custom_parameters))
 
-    def show(self, context: HarnessAdapterContext) -> dict[str, object]:
+    def show(self, context: HarnessAdapterContext) -> HarnessStatePayloadDTO:
         store = self.load_store(context)
         search_history = store.read_search_history()
         lead_database = store.read_lead_database()
         custom_parameters = store.read_custom_parameters()
         run_state = store.read_run_state().as_dict() if store.run_state_path.exists() else None
-        return {
-            "additional_prompt": store.read_additional_prompt(),
-            "agent_identity": store.read_agent_identity(),
-            "custom_parameters": custom_parameters,
-            "email_count": len(lead_database.emails),
-            "icp_profiles": resolve_instagram_icp_profiles(store.read_icp_profiles(), custom_parameters),
-            "lead_count": len(lead_database.leads),
-            "recent_searches": [record.as_dict() for record in search_history[-5:]],
-            "recent_searches_by_icp": store.read_recent_searches_by_icp(5),
-            "run_state": run_state,
-            "runtime_parameters": store.read_runtime_parameters(),
-            "search_count": len(search_history),
-        }
+        return HarnessStatePayloadDTO(
+            {
+                "additional_prompt": store.read_additional_prompt(),
+                "agent_identity": store.read_agent_identity(),
+                "custom_parameters": custom_parameters,
+                "email_count": len(lead_database.emails),
+                "icp_profiles": resolve_instagram_icp_profiles(store.read_icp_profiles(), custom_parameters),
+                "lead_count": len(lead_database.leads),
+                "recent_searches": [record.as_dict() for record in search_history[-5:]],
+                "recent_searches_by_icp": store.read_recent_searches_by_icp(5),
+                "run_state": run_state,
+                "runtime_parameters": store.read_runtime_parameters(),
+                "search_count": len(search_history),
+            }
+        )
 
     def run(
         self,
@@ -91,7 +94,7 @@ class InstagramHarnessCliAdapter(StoreBackedHarnessCliAdapter[InstagramMemorySto
         context: HarnessAdapterContext,
         model: AgentModel,
         runtime_config: AgentRuntimeConfig,
-    ) -> dict[str, object]:
+    ) -> HarnessAdapterResponseDTO:
         store = self.load_store(context)
         set_env_path_if_missing("HARNESSIQ_INSTAGRAM_SESSION_DIR", store.memory_path / "browser-data")
         search_backend = load_factory(args.search_backend_factory)()
@@ -108,10 +111,10 @@ class InstagramHarnessCliAdapter(StoreBackedHarnessCliAdapter[InstagramMemorySto
             runtime_config=runtime_config,
         )
         result = agent.run(max_cycles=args.max_cycles)
-        return {
-            "email_count": len(agent.get_emails()),
-            "result": result_payload(result),
-        }
+        return HarnessAdapterResponseDTO(
+            result=result_payload(result),
+            extra={"email_count": len(agent.get_emails())},
+        )
 
 
 def _resolve_icp_input(inline_values: list[str], file_value: str | None) -> list[str] | None:

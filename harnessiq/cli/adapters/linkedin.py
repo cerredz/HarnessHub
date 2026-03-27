@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 
 from harnessiq.agents import AgentModel, AgentRuntimeConfig, LinkedInJobApplierAgent
+from harnessiq.shared.dtos import HarnessAdapterResponseDTO, HarnessStatePayloadDTO
 from harnessiq.shared.linkedin import LinkedInMemoryStore
 
 from .base import StoreBackedHarnessCliAdapter
@@ -51,9 +52,10 @@ class LinkedInHarnessCliAdapter(StoreBackedHarnessCliAdapter[LinkedInMemoryStore
     def write_custom_parameters(self, store: LinkedInMemoryStore, context: HarnessAdapterContext) -> None:
         store.write_custom_parameters(context.profile.custom_parameters)
 
-    def show(self, context: HarnessAdapterContext) -> dict[str, object]:
+    def show(self, context: HarnessAdapterContext) -> HarnessStatePayloadDTO:
         store = self.load_store(context)
-        return {
+        return HarnessStatePayloadDTO(
+            {
             "additional_prompt": store.read_additional_prompt(),
             "agent_identity": store.read_agent_identity(),
             "custom_parameters": store.read_custom_parameters(),
@@ -61,7 +63,8 @@ class LinkedInHarnessCliAdapter(StoreBackedHarnessCliAdapter[LinkedInMemoryStore
             "managed_files": [record.as_dict() for record in store.read_managed_files()],
             "runtime_parameters": store.read_runtime_parameters(),
             "user_profile": store.read_user_profile(),
-        }
+            }
+        )
 
     def run(
         self,
@@ -70,7 +73,7 @@ class LinkedInHarnessCliAdapter(StoreBackedHarnessCliAdapter[LinkedInMemoryStore
         context: HarnessAdapterContext,
         model: AgentModel,
         runtime_config: AgentRuntimeConfig,
-    ) -> dict[str, object]:
+    ) -> HarnessAdapterResponseDTO:
         store = self.load_store(context)
         set_env_path_if_missing(
             "HARNESSIQ_BROWSER_SESSION_DIR",
@@ -86,13 +89,15 @@ class LinkedInHarnessCliAdapter(StoreBackedHarnessCliAdapter[LinkedInMemoryStore
             runtime_config=runtime_config,
         )
         result = agent.run(max_cycles=args.max_cycles)
-        return {
-            "applied_jobs_file": str(store.applied_jobs_path.resolve()),
-            "instance_id": optional_string(getattr(agent, "instance_id", None)),
-            "instance_name": optional_string(getattr(agent, "instance_name", None)),
-            "ledger_run_id": agent.last_run_id,
-            "result": result_payload(result),
-        }
+        return HarnessAdapterResponseDTO(
+            result=result_payload(result),
+            extra={
+                "applied_jobs_file": str(store.applied_jobs_path.resolve()),
+                "instance_id": optional_string(getattr(agent, "instance_id", None)),
+                "instance_name": optional_string(getattr(agent, "instance_name", None)),
+                "ledger_run_id": agent.last_run_id,
+            },
+        )
 
 
 __all__ = ["LinkedInHarnessCliAdapter"]
