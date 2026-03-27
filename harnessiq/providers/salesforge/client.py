@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from harnessiq.providers.http import RequestExecutor, request_json
+from harnessiq.providers.salesforge.operations import get_salesforge_operation
 from harnessiq.providers.salesforge.api import (
     DEFAULT_BASE_URL,
     build_headers,
@@ -32,6 +33,8 @@ from harnessiq.providers.salesforge.requests import (
     build_update_contact_request,
     build_update_sequence_request,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
+from harnessiq.shared.provider_payloads import execute_payload_operation
 
 
 @dataclass(frozen=True, slots=True)
@@ -238,6 +241,12 @@ class SalesforgeClient:
         """Remove an email from the unsubscribe list."""
         payload = build_remove_unsubscribe_request(email)
         return self._request("DELETE", unsubscribe_url(self.base_url), json_body=payload)
+
+    def execute_operation(self, request: ProviderPayloadRequestDTO) -> ProviderPayloadResultDTO:
+        """Execute one Salesforge operation from a DTO envelope."""
+
+        get_salesforge_operation(request.operation)
+        return execute_payload_operation(self, request)
 
     # --- Internal ---
 

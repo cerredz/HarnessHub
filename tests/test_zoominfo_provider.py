@@ -9,6 +9,7 @@ from harnessiq.providers.zoominfo.operations import (
     build_zoominfo_operation_catalog,
     get_zoominfo_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
 from harnessiq.shared.tools import ZOOMINFO_REQUEST
 from harnessiq.tools.zoominfo import create_zoominfo_tools
 from harnessiq.tools.registry import ToolRegistry
@@ -43,6 +44,24 @@ class ZoomInfoOperationCatalogTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             get_zoominfo_operation("nonexistent_op")
         self.assertIn("nonexistent_op", str(ctx.exception))
+
+
+class ZoomInfoClientTests(unittest.TestCase):
+    def test_execute_operation_accepts_payload_request_dto(self) -> None:
+        from harnessiq.providers.zoominfo.client import ZoomInfoClient
+
+        client = ZoomInfoClient(
+            username="user",
+            password="pass",
+            request_executor=lambda m, u, **kw: {"usage": {}},
+        )
+
+        result = client.execute_operation(
+            ProviderPayloadRequestDTO(operation="get_usage", payload={"jwt": "testjwt"})
+        )
+
+        self.assertIsInstance(result, ProviderPayloadResultDTO)
+        self.assertEqual(result.operation, "get_usage")
 
 
 class ZoomInfoToolsTests(unittest.TestCase):

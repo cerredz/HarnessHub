@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+from harnessiq.providers.zoominfo.operations import get_zoominfo_operation
 from harnessiq.providers.zoominfo.api import (
     DEFAULT_BASE_URL,
     authenticate_url,
@@ -34,6 +35,8 @@ from harnessiq.providers.zoominfo.requests import (
     build_search_scoop_request,
 )
 from harnessiq.providers.http import RequestExecutor, request_json
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
+from harnessiq.shared.provider_payloads import execute_payload_operation
 
 
 @dataclass(frozen=True, slots=True)
@@ -272,6 +275,12 @@ class ZoomInfoClient:
     def get_usage(self, jwt: str) -> Any:
         """Retrieve API usage and quota information."""
         return self._request(jwt, "GET", usage_url(self.base_url))
+
+    def execute_operation(self, request: ProviderPayloadRequestDTO) -> ProviderPayloadResultDTO:
+        """Execute one ZoomInfo operation from a DTO envelope."""
+
+        get_zoominfo_operation(request.operation)
+        return execute_payload_operation(self, request)
 
     # ------------------------------------------------------------------
     # Internal helpers

@@ -10,6 +10,7 @@ from harnessiq.providers.zoominfo.operations import (
     build_zoominfo_operation_catalog,
     get_zoominfo_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO
 from harnessiq.shared.tools import (
     ZOOMINFO_REQUEST,
     RegisteredTool,
@@ -91,14 +92,16 @@ def create_zoominfo_tools(
     )
 
     def handler(arguments: ToolArguments) -> dict[str, Any]:
-        operation_name = _require_operation_name(arguments, allowed_names)
         payload: dict[str, Any] = dict(_optional_mapping(arguments, "payload") or {})
 
         # Obtain a fresh JWT via two-step authentication.
         jwt: str = zoominfo_client.authenticate()
 
-        result = getattr(zoominfo_client, operation_name)(jwt, **payload)
-        return {"operation": operation_name, "result": result}
+        request = ProviderPayloadRequestDTO(
+            operation=_require_operation_name(arguments, allowed_names),
+            payload={"jwt": jwt, **payload},
+        )
+        return zoominfo_client.execute_operation(request).to_dict()
 
     return (RegisteredTool(definition=definition, handler=handler),)
 

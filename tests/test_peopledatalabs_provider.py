@@ -9,6 +9,7 @@ from harnessiq.providers.peopledatalabs.operations import (
     build_peopledatalabs_operation_catalog,
     get_peopledatalabs_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
 from harnessiq.shared.tools import PEOPLEDATALABS_REQUEST
 from harnessiq.tools.peopledatalabs import create_peopledatalabs_tools
 from harnessiq.tools.registry import ToolRegistry
@@ -40,6 +41,23 @@ class PeopleDataLabsOperationCatalogTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             get_peopledatalabs_operation("nonexistent_op")
         self.assertIn("nonexistent_op", str(ctx.exception))
+
+
+class PeopleDataLabsClientTests(unittest.TestCase):
+    def test_execute_operation_accepts_payload_request_dto(self) -> None:
+        from harnessiq.providers.peopledatalabs.client import PeopleDataLabsClient
+
+        client = PeopleDataLabsClient(
+            api_key="testkey",
+            request_executor=lambda m, u, **kw: {"status": "ok"},
+        )
+
+        result = client.execute_operation(
+            ProviderPayloadRequestDTO(operation="clean_location", payload={"location": "New York, NY"})
+        )
+
+        self.assertIsInstance(result, ProviderPayloadResultDTO)
+        self.assertEqual(result.operation, "clean_location")
 
 
 class PeopleDataLabsToolsTests(unittest.TestCase):

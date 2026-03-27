@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from harnessiq.providers.http import RequestExecutor, request_json
+from harnessiq.providers.phantombuster.operations import get_phantombuster_operation
 from harnessiq.providers.phantombuster.api import (
     DEFAULT_BASE_URL,
     agent_fetch_output_url,
@@ -32,6 +33,8 @@ from harnessiq.providers.phantombuster.requests import (
     build_launch_agent_request,
     build_save_agent_argument_request,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
+from harnessiq.shared.provider_payloads import execute_payload_operation
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +153,12 @@ class PhantomBusterClient:
     def get_script(self, script_id: str | int) -> Any:
         """Fetch a single script by ID."""
         return self._request("GET", script_fetch_url(script_id, self.base_url))
+
+    def execute_operation(self, request: ProviderPayloadRequestDTO) -> ProviderPayloadResultDTO:
+        """Execute one PhantomBuster operation from a DTO envelope."""
+
+        get_phantombuster_operation(request.operation)
+        return execute_payload_operation(self, request)
 
     # --- Internal ---
 

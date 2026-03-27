@@ -10,6 +10,7 @@ from harnessiq.providers.leadiq.operations import (
     build_leadiq_operation_catalog,
     get_leadiq_operation,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO
 from harnessiq.shared.tools import LEADIQ_REQUEST, RegisteredTool, ToolArguments, ToolDefinition
 
 if TYPE_CHECKING:
@@ -76,10 +77,11 @@ def create_leadiq_tools(
     )
 
     def handler(arguments: ToolArguments) -> dict[str, Any]:
-        operation_name = _require_operation_name(arguments, allowed_names)
-        payload: dict[str, Any] = dict(_optional_mapping(arguments, "payload") or {})
-        result = getattr(leadiq_client, operation_name)(**payload)
-        return {"operation": operation_name, "result": result}
+        request = ProviderPayloadRequestDTO(
+            operation=_require_operation_name(arguments, allowed_names),
+            payload=dict(_optional_mapping(arguments, "payload") or {}),
+        )
+        return leadiq_client.execute_operation(request).to_dict()
 
     return (RegisteredTool(definition=definition, handler=handler),)
 

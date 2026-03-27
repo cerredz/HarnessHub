@@ -29,6 +29,7 @@ from harnessiq.providers.snovio import (
     build_url_search_request,
     build_user_info_params,
 )
+from harnessiq.shared.dtos import ProviderPayloadRequestDTO, ProviderPayloadResultDTO
 
 
 class SnovioCredentialsTests(unittest.TestCase):
@@ -226,6 +227,17 @@ class SnovioClientTests(unittest.TestCase):
         client.get_user_info("tok")
         self.assertEqual(captured[0]["method"], "GET")
         self.assertIn("/v2/me", captured[0]["url"])
+
+    def test_execute_operation_accepts_payload_request_dto(self) -> None:
+        captured: list[dict] = []
+        client = self._make_client(captured)
+
+        result = client.execute_operation(
+            ProviderPayloadRequestDTO(operation="get_user_info", payload={"access_token": "tok"})
+        )
+
+        self.assertIsInstance(result, ProviderPayloadResultDTO)
+        self.assertEqual(result.operation, "get_user_info")
 
 
 class SnovioOperationCatalogTests(unittest.TestCase):
