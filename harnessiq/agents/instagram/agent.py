@@ -32,6 +32,7 @@ from harnessiq.shared.agents import (
     json_parameter_section,
     merge_agent_runtime_config,
 )
+from harnessiq.shared.exceptions import ConfigurationError, ResourceNotFoundError
 from harnessiq.shared.instagram import (
     DEFAULT_AGENT_IDENTITY,
     DEFAULT_RECENT_RESULT_WINDOW,
@@ -77,7 +78,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         if search_backend is None:
-            raise ValueError("InstagramKeywordDiscoveryAgent requires a search_backend.")
+            raise ConfigurationError("InstagramKeywordDiscoveryAgent requires a search_backend.")
 
         self._candidate_memory_path = Path(memory_path) if memory_path is not None else None
         normalized_icps = _normalize_icp_descriptions(icp_descriptions)
@@ -232,7 +233,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
 
     def build_system_prompt(self) -> str:
         if not _MASTER_PROMPT_PATH.exists():
-            raise FileNotFoundError(
+            raise ResourceNotFoundError(
                 f"Instagram master prompt not found at '{_MASTER_PROMPT_PATH}'. "
                 "Ensure the prompt file exists."
             )

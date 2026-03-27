@@ -9,6 +9,7 @@ from typing import Sequence
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig
 from harnessiq.agents.provider_base import BaseProviderToolAgent
 from harnessiq.providers.outreach import OutreachClient
+from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.outreach_agent import (
     DEFAULT_OUTREACH_AGENT_IDENTITY,
     OutreachAgentConfig,
@@ -36,7 +37,7 @@ class BaseOutreachAgent(BaseProviderToolAgent, ABC):
         instance_name: str | None = None,
     ) -> None:
         if outreach_client is not None and outreach_client.credentials != config.outreach_credentials:
-            raise ValueError(
+            raise ConfigurationError(
                 "outreach_client credentials must match OutreachAgentConfig.outreach_credentials."
             )
 

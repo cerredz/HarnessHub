@@ -9,6 +9,7 @@ from typing import Sequence
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig
 from harnessiq.agents.provider_base import BaseProviderToolAgent
 from harnessiq.providers.exa import ExaClient
+from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.exa_agent import DEFAULT_EXA_AGENT_IDENTITY, ExaAgentConfig, resolve_exa_operation_names
 from harnessiq.shared.provider_agents import render_redacted_provider_credentials
 from harnessiq.shared.tools import RegisteredTool
@@ -32,7 +33,7 @@ class BaseExaAgent(BaseProviderToolAgent, ABC):
         instance_name: str | None = None,
     ) -> None:
         if exa_client is not None and exa_client.credentials != config.exa_credentials:
-            raise ValueError("exa_client credentials must match ExaAgentConfig.exa_credentials.")
+            raise ConfigurationError("exa_client credentials must match ExaAgentConfig.exa_credentials.")
 
         self._config = config
         self._exa_client = exa_client or ExaClient(credentials=config.exa_credentials)

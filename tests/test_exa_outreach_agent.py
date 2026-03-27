@@ -11,6 +11,7 @@ import pytest
 from harnessiq.agents import ExaOutreachAgent, ExaOutreachMemoryStore
 from harnessiq.agents.exa_outreach.agent import ExaOutreachAgentConfig
 from harnessiq.shared.agents import AgentModelResponse
+from harnessiq.shared.exceptions import ConfigurationError, NotFoundError, ResourceNotFoundError, StateError
 from harnessiq.shared.exa_outreach import EmailTemplate, FileSystemStorageBackend
 from harnessiq.shared.tools import (
     EXA_OUTREACH_CHECK_CONTACTED,
@@ -94,13 +95,14 @@ class TestExaOutreachAgentConstruction:
         assert agent.name == "exa_outreach"
 
     def test_empty_email_data_raises_when_search_only_is_false(self, tmp_path):
-        with pytest.raises(ValueError, match="at least one email template"):
+        with pytest.raises(ConfigurationError, match="at least one email template") as raised:
             ExaOutreachAgent(
                 model=_make_model(),
                 email_data=[],
                 memory_path=tmp_path / "outreach",
                 exa_client=_make_exa_client(),
             )
+        assert isinstance(raised.value, ValueError)
 
     def test_search_only_allows_empty_email_data(self, tmp_path):
         agent = ExaOutreachAgent(
@@ -217,8 +219,9 @@ class TestBuildSystemPrompt:
         agent.prepare()
         with patch("harnessiq.agents.exa_outreach.agent._MASTER_PROMPT_PATH") as mock_path:
             mock_path.exists.return_value = False
-            with pytest.raises(FileNotFoundError, match="master_prompt.md"):
+            with pytest.raises(ResourceNotFoundError, match="master_prompt.md") as raised:
                 agent.build_system_prompt()
+        assert isinstance(raised.value, FileNotFoundError)
 
     def test_additional_prompt_appended(self, tmp_path):
         agent = _make_agent(tmp_path)
@@ -308,6 +311,14 @@ class TestInternalToolHandlers:
         assert result.output["id"] == "t1"
         assert "actual_email" in result.output
 
+    def test_get_template_raises_shared_not_found_error_for_unknown_template(self, tmp_path):
+        agent = _make_agent(tmp_path)
+
+        with pytest.raises(NotFoundError, match="Template 'missing' not found") as raised:
+            agent.tool_executor.execute(EXA_OUTREACH_GET_TEMPLATE, {"template_id": "missing"})
+
+        assert isinstance(raised.value, LookupError)
+
     def test_check_contacted_returns_false_for_new_url(self, tmp_path):
         agent = _make_agent(tmp_path)
         agent.prepare()
@@ -356,6 +367,23 @@ class TestInternalToolHandlers:
         assert len(lead_events) == 1
         assert lead_events[0]["data"]["url"] == "https://example.com/bob"
 
+    def test_log_lead_raises_shared_state_error_before_prepare(self, tmp_path):
+        agent = ExaOutreachAgent(
+            model=_make_model(),
+            email_data=[],
+            search_only=True,
+            memory_path=tmp_path / "outreach",
+            exa_client=_make_exa_client(),
+        )
+
+        with pytest.raises(StateError, match="before prepare") as raised:
+            agent.tool_executor.execute(
+                EXA_OUTREACH_LOG_LEAD,
+                {"url": "https://example.com/bob", "name": "Bob"},
+            )
+
+        assert isinstance(raised.value, RuntimeError)
+
     def test_log_email_sent_writes_event_to_run_file(self, tmp_path):
         agent = _make_agent(tmp_path, resend_client=_make_resend_client())
         agent.prepare()
@@ -374,6 +402,22 @@ class TestInternalToolHandlers:
         email_events = [event for event in data["events"] if event["type"] == "email_sent"]
         assert len(email_events) == 1
         assert email_events[0]["data"]["template_id"] == "t1"
+
+    def test_log_email_sent_raises_shared_state_error_before_prepare(self, tmp_path):
+        agent = _make_agent(tmp_path, resend_client=_make_resend_client())
+
+        with pytest.raises(StateError, match="before prepare") as raised:
+            agent.tool_executor.execute(
+                EXA_OUTREACH_LOG_EMAIL_SENT,
+                {
+                    "to_email": "alice@example.com",
+                    "to_name": "Alice",
+                    "subject": "Quick intro",
+                    "template_id": "t1",
+                },
+            )
+
+        assert isinstance(raised.value, RuntimeError)
 
 
 class TestPrepareAndRunOutputs:

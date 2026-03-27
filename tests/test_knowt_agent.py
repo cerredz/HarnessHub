@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 
 from harnessiq.agents import KnowtAgent, KnowtMemoryStore
 from harnessiq.shared.agents import AgentModelResponse, AgentParameterSection, AgentRuntimeConfig
+from harnessiq.shared.exceptions import ResourceNotFoundError
 from harnessiq.shared.knowt import KnowtAgentConfig
 from harnessiq.shared.tools import (
     KNOWT_CREATE_SCRIPT,
@@ -130,8 +131,9 @@ class TestKnowtAgentSystemPrompt(unittest.TestCase):
         try:
             agent_module._MASTER_PROMPT_PATH = Path(self.tmp) / "nonexistent.md"
             knowt = KnowtAgent(model=self.model, memory_path=self.tmp)
-            with self.assertRaises(FileNotFoundError):
+            with self.assertRaises(ResourceNotFoundError) as raised:
                 knowt.build_system_prompt()
+            self.assertIsInstance(raised.exception, FileNotFoundError)
         finally:
             agent_module._MASTER_PROMPT_PATH = original
 

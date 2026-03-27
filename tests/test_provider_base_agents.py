@@ -8,6 +8,7 @@ import unittest
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, AgentParameterSection
 from harnessiq.agents.provider_base import BaseProviderToolAgent
+from harnessiq.shared.exceptions import ValidationError
 from harnessiq.shared.provider_agents import (
     extract_operation_names,
     render_redacted_provider_credentials,
@@ -168,21 +169,23 @@ class BaseProviderToolAgentTests(unittest.TestCase):
         with TemporaryDirectory() as temp_repo_root:
             model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
 
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ValidationError) as missing_tools:
                 _TestProviderAgent(
                     model=model,
                     provider_tools=(),
                     provider_name="Example Provider",
                     repo_root=temp_repo_root,
                 )
+            self.assertIsInstance(missing_tools.exception, ValueError)
 
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ValidationError) as blank_name:
                 _TestProviderAgent(
                     model=model,
                     provider_tools=(_make_provider_tool(),),
                     provider_name="   ",
                     repo_root=temp_repo_root,
                 )
+            self.assertIsInstance(blank_name.exception, ValueError)
 
 
 def _make_provider_tool(

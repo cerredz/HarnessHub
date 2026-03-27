@@ -20,6 +20,7 @@ from harnessiq.shared.agents import (
     json_parameter_section,
     merge_agent_runtime_config,
 )
+from harnessiq.shared.exceptions import ResourceNotFoundError, ValidationError
 from harnessiq.shared.research_sweep import (
     CANONICAL_RESEARCH_SWEEP_SITES,
     DEFAULT_RESEARCH_SWEEP_RESET_THRESHOLD,
@@ -380,7 +381,7 @@ class ResearchSweepAgent(BaseAgent):
             if isinstance(completed_sites, bool) or (
                 completed_sites is not None and not isinstance(completed_sites, int)
             ):
-                raise ValueError("The 'completed_sites' argument must be an integer when provided.")
+                raise ValidationError("The 'completed_sites' argument must be an integer when provided.")
             if completed_sites is None:
                 if isinstance(sites_remaining, list):
                     completed_sites = max(0, len(CANONICAL_RESEARCH_SWEEP_SITES) - len(sites_remaining))
@@ -391,12 +392,12 @@ class ResearchSweepAgent(BaseAgent):
             if query is None:
                 query = memory.get("query") or self._config.query
             if not isinstance(query, str) or not query.strip():
-                raise ValueError("The 'query' argument must resolve to a non-empty string.")
+                raise ValidationError("The 'query' argument must resolve to a non-empty string.")
             next_site = arguments.get("next_site")
             if next_site is None:
                 next_site = memory.get("continuation_pointer") or "(not set)"
             if not isinstance(next_site, str) or not next_site.strip():
-                raise ValueError("The 'next_site' argument must resolve to a non-empty string.")
+                raise ValidationError("The 'next_site' argument must resolve to a non-empty string.")
             entry = {
                 "kind": "context",
                 "label": "HANDOFF BRIEF",
@@ -412,7 +413,7 @@ class ResearchSweepAgent(BaseAgent):
 
     def _load_master_prompt(self) -> str:
         if not _MASTER_PROMPT_PATH.exists():
-            raise FileNotFoundError(
+            raise ResourceNotFoundError(
                 f"Research sweep master prompt not found at '{_MASTER_PROMPT_PATH}'."
             )
         return _MASTER_PROMPT_PATH.read_text(encoding="utf-8")

@@ -9,6 +9,7 @@ from typing import Sequence
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig
 from harnessiq.agents.provider_base import BaseProviderToolAgent
 from harnessiq.providers.instantly import InstantlyClient
+from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.instantly_agent import (
     DEFAULT_INSTANTLY_AGENT_IDENTITY,
     InstantlyAgentConfig,
@@ -36,7 +37,7 @@ class BaseInstantlyAgent(BaseProviderToolAgent, ABC):
         instance_name: str | None = None,
     ) -> None:
         if instantly_client is not None and instantly_client.credentials != config.instantly_credentials:
-            raise ValueError(
+            raise ConfigurationError(
                 "instantly_client credentials must match InstantlyAgentConfig.instantly_credentials."
             )
 

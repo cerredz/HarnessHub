@@ -25,6 +25,7 @@ from harnessiq.shared.agents import (
     json_parameter_section,
     merge_agent_runtime_config,
 )
+from harnessiq.shared.exceptions import ResourceNotFoundError
 from harnessiq.shared.leads import (
     DEFAULT_LEADS_SEARCH_SUMMARY_EVERY,
     DEFAULT_LEADS_SEARCH_TAIL_SIZE,
@@ -168,7 +169,7 @@ class LeadsAgent(BaseAgent):
 
     def build_system_prompt(self) -> str:
         if not _MASTER_PROMPT_PATH.exists():
-            raise FileNotFoundError(
+            raise ResourceNotFoundError(
                 f"Leads master prompt not found at '{_MASTER_PROMPT_PATH}'. "
                 "Ensure harnessiq/agents/leads/prompts/master_prompt.md exists."
             )

@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
 
+from harnessiq.shared.exceptions import ExternalServiceError
+
 
 class RequestExecutor(Protocol):
     """Callable contract for executing JSON HTTP requests."""
@@ -22,7 +24,7 @@ class RequestExecutor(Protocol):
 
 
 @dataclass
-class ProviderHTTPError(RuntimeError):
+class ProviderHTTPError(ExternalServiceError):
     """Raised when a provider HTTP request fails.
 
     Exceptions must remain mutable enough for Python's runtime to attach

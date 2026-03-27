@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import Any, Literal, TypedDict
 
+from harnessiq.shared.exceptions import ValidationError
+
 ProviderName = Literal["anthropic", "openai", "grok", "gemini"]
 ProviderMessageRole = Literal["system", "user", "assistant"]
 RequestPayload = dict[str, Any]
 
 
-class ProviderFormatError(ValueError):
+class ProviderFormatError(ValidationError):
     """Raised when a request cannot be translated into provider format."""
 
 

@@ -11,6 +11,7 @@ from harnessiq.agents.email.helpers import (
     summarize_tool as _summarize_tool,
 )
 from harnessiq.shared.agents import merge_agent_runtime_config
+from harnessiq.shared.exceptions import ConfigurationError
 from harnessiq.shared.email import DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
 from harnessiq.tools.registry import create_tool_registry
@@ -32,7 +33,9 @@ class BaseEmailAgent(BaseAgent, ABC):
         runtime_config: AgentRuntimeConfig | None = None,
     ) -> None:
         if resend_client is not None and resend_client.credentials != config.resend_credentials:
-            raise ValueError("resend_client credentials must match EmailAgentConfig.resend_credentials.")
+            raise ConfigurationError(
+                "resend_client credentials must match EmailAgentConfig.resend_credentials."
+            )
 
         self._config = config
         self._resend_client = resend_client or ResendClient(credentials=config.resend_credentials)

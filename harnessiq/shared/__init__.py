@@ -1,5 +1,14 @@
 """Shared constants, configs, and reusable data-model definitions for Harnessiq."""
 
+from .exceptions import (
+    AppError,
+    ConfigurationError,
+    ExternalServiceError,
+    NotFoundError,
+    ResourceNotFoundError,
+    StateError,
+    ValidationError,
+)
 from .harness_manifest import (
     HarnessManifest,
     HarnessMemoryEntryFormat,
@@ -26,7 +35,10 @@ from .harness_manifests import (
 )
 
 __all__ = [
+    "AppError",
+    "ConfigurationError",
     "EXA_OUTREACH_HARNESS_MANIFEST",
+    "ExternalServiceError",
     "HARNESS_MANIFESTS",
     "HARNESS_MANIFESTS_BY_AGENT_NAME",
     "HARNESS_MANIFESTS_BY_CLI_COMMAND",
@@ -40,8 +52,12 @@ __all__ = [
     "KNOWT_HARNESS_MANIFEST",
     "LEADS_HARNESS_MANIFEST",
     "LINKEDIN_HARNESS_MANIFEST",
+    "NotFoundError",
     "PROSPECTING_HARNESS_MANIFEST",
     "RESEARCH_SWEEP_HARNESS_MANIFEST",
+    "ResourceNotFoundError",
+    "StateError",
+    "ValidationError",
     "get_harness_manifest",
     "list_harness_manifests",
     "register_harness_manifest",

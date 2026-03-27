@@ -13,6 +13,7 @@ from harnessiq.agents import (
     LinkedInJobApplierAgent,
     build_linkedin_browser_tool_definitions,
 )
+from harnessiq.shared.exceptions import StateError
 from harnessiq.shared.agents import AgentRuntimeConfig
 from harnessiq.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW, LinkedInAgentConfig
 from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
@@ -193,6 +194,33 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
             self.assertEqual(len(agent.memory_store.read_applied_jobs()), 3)
             self.assertEqual(agent.memory_store.current_jobs()["job-1"].status, "failed")
             self.assertEqual(agent.memory_store.current_jobs()["job-2"].status, "skipped")
+
+    def test_save_screenshot_requires_configured_persistor(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = LinkedInJobApplierAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                memory_path=temp_dir,
+            )
+            agent.prepare()
+
+            with self.assertRaises(StateError) as raised:
+                agent.tool_executor.execute("linkedin.save_screenshot_to_memory", {"label": "missing"})
+
+            self.assertIsInstance(raised.exception, RuntimeError)
+
+    def test_save_screenshot_requires_persistor_to_create_output(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = LinkedInJobApplierAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                memory_path=temp_dir,
+                screenshot_persistor=lambda output_path, label: None,
+            )
+            agent.prepare()
+
+            with self.assertRaises(StateError) as raised:
+                agent.tool_executor.execute("linkedin.save_screenshot_to_memory", {"label": "missing"})
+
+            self.assertIsInstance(raised.exception, RuntimeError)
 
     def test_context_reset_reloads_recent_actions_from_memory(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

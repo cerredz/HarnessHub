@@ -16,6 +16,7 @@ from harnessiq.shared.agents import (
     AgentRuntimeConfig,
     merge_agent_runtime_config,
 )
+from harnessiq.shared.exceptions import ResourceNotFoundError
 from harnessiq.shared.knowt import (
     KnowtAgentConfig,
     KnowtMemoryStore,
@@ -118,7 +119,7 @@ class KnowtAgent(BaseAgent):
     def build_system_prompt(self) -> str:
         """Load and return the master prompt from the prompts directory."""
         if not _MASTER_PROMPT_PATH.exists():
-            raise FileNotFoundError(
+            raise ResourceNotFoundError(
                 f"Knowt master prompt not found at '{_MASTER_PROMPT_PATH}'. "
                 "Ensure harnessiq/agents/knowt/prompts/master_prompt.md exists."
             )

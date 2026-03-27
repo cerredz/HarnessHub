@@ -27,6 +27,7 @@ from harnessiq.shared.agents import (
     json_parameter_section,
     merge_agent_runtime_config,
 )
+from harnessiq.shared.exceptions import ResourceNotFoundError, StateError, ValidationError
 from harnessiq.shared.prospecting import (
     DEFAULT_AGENT_IDENTITY,
     DEFAULT_COMPANY_DESCRIPTION,
@@ -253,7 +254,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
 
     def build_system_prompt(self) -> str:
         if not _MASTER_PROMPT_PATH.exists():
-            raise FileNotFoundError(f"Prospecting master prompt not found at '{_MASTER_PROMPT_PATH}'.")
+            raise ResourceNotFoundError(f"Prospecting master prompt not found at '{_MASTER_PROMPT_PATH}'.")
         prompt = _MASTER_PROMPT_PATH.read_text(encoding="utf-8")
         company_description = self._memory_store.read_company_description() or DEFAULT_COMPANY_DESCRIPTION
         identity = self._memory_store.read_agent_identity() or DEFAULT_AGENT_IDENTITY
@@ -472,7 +473,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
             label="evaluate_company",
         )
         if not isinstance(payload, dict):
-            raise ValueError("EVALUATE_COMPANY must return a JSON object.")
+            raise ValidationError("EVALUATE_COMPANY must return a JSON object.")
         return payload
 
     def _handle_search_or_summarize(self, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -587,7 +588,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
         state = self._memory_store.read_state()
         progress = state.current_search_in_progress
         if progress is None or progress.index != int(arguments["search_index"]):
-            raise ValueError("record_listing_result requires an active matching search.")
+            raise StateError("record_listing_result requires an active matching search.")
         disqualified_count = state.disqualified_leads_count
         if str(arguments["verdict"]).upper() == "DISQUALIFIED":
             disqualified_count += 1
@@ -678,7 +679,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
         if self._json_subcall_runner is not None:
             payload = self._json_subcall_runner(system_prompt, sections, label)
             if not isinstance(payload, dict):
-                raise ValueError(f"{label} runner must return a dict.")
+                raise ValidationError(f"{label} runner must return a dict.")
             return payload
         response = self._model.generate_turn(
             AgentModelRequest(
@@ -690,7 +691,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
             )
         )
         if not response.assistant_message.strip():
-            raise ValueError(f"{label} returned empty assistant content.")
+            raise ValidationError(f"{label} returned empty assistant content.")
         return _parse_json_object(response.assistant_message)
 __all__ = [
     "GoogleMapsProspectingAgent",
