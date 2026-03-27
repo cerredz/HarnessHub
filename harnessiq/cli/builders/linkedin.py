@@ -129,14 +129,6 @@ class LinkedInCliBuilder:
             "user_profile": store.read_user_profile(),
         }
 
-    def load_store(
-        self,
-        *,
-        agent_name: str,
-        memory_root: str,
-    ) -> LinkedInMemoryStore:
-        return self._load_store(agent_name=agent_name, memory_root=memory_root)
-
     def _load_store(
         self,
         *,
