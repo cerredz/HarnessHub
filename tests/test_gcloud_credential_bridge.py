@@ -135,6 +135,29 @@ def test_bridge_non_interactive_sync_skips_rotation_for_existing_gcp_secret(tmp_
     ]
 
 
+def test_bridge_dry_run_keeps_config_and_secret_manager_unchanged(tmp_path: Path, monkeypatch) -> None:
+    tmp_path.joinpath(".env").write_text(
+        "ANTHROPIC_API_KEY=sk-ant-test\nSERPER_API_KEY=serper-test\n",
+        encoding="utf-8",
+    )
+    _write_binding(
+        tmp_path,
+        references=(CredentialEnvReference(field_name="serper.api_key", env_var="SERPER_API_KEY"),),
+    )
+
+    monkeypatch.setattr(GcpAgentConfig, "save", lambda self, home_dir=None: Path(tmp_path, "saved.json"))
+
+    secret_manager = Mock()
+    secret_manager.secret_exists.return_value = False
+    bridge = CredentialBridge(Mock(), _config(), repo_root=tmp_path, secret_manager=secret_manager)
+
+    entries = bridge.sync(interactive=False, dry_run=True)
+
+    assert [entry.in_gcp for entry in entries] == [False, False]
+    assert bridge.config.secrets == []
+    secret_manager.set_secret.assert_not_called()
+
+
 def test_bridge_interactive_sync_can_rotate_existing_secret(tmp_path: Path, monkeypatch) -> None:
     tmp_path.joinpath(".env").write_text(
         "ANTHROPIC_API_KEY=sk-ant-test\nSERPER_API_KEY=serper-test\n",

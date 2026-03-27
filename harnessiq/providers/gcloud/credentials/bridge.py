@@ -135,8 +135,8 @@ class CredentialBridge(BaseGcpProvider):
             if entry.local_value and not entry.in_gcp:
                 if not dry_run:
                     self._secret_manager.set_secret(entry.secret_name, entry.local_value)
-                entry.in_gcp = True
-                needs_save = True
+                    entry.in_gcp = True
+                    needs_save = True
             elif entry.local_value and entry.in_gcp:
                 if interactive:
                     overwrite = input(
@@ -149,7 +149,7 @@ class CredentialBridge(BaseGcpProvider):
                 else:
                     pass
 
-            if entry.in_gcp and entry.env_var and self._register_secret_reference(entry):
+            if not dry_run and entry.in_gcp and entry.env_var and self._register_secret_reference(entry):
                 needs_save = True
 
         if needs_save and not dry_run:
