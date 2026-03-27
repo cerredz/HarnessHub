@@ -12,6 +12,7 @@ from harnessiq.agents.leads.agent import (
     LEADS_LOG_SEARCH,
     LEADS_SAVE_LEADS,
 )
+from harnessiq.shared.dtos import LeadsAgentInstancePayload
 from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
 
 
@@ -73,6 +74,18 @@ class LeadsAgentTests(unittest.TestCase):
         from harnessiq.agents import LeadsAgent as ImportedLeadsAgent
 
         self.assertIs(ImportedLeadsAgent, LeadsAgent)
+
+    def test_build_instance_payload_returns_explicit_dto(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent, _ = self._make_agent(
+                temp_dir=temp_dir,
+                responses=[AgentModelResponse(assistant_message="done", should_continue=False)],
+            )
+
+            payload = agent.build_instance_payload()
+
+            self.assertIsInstance(payload, LeadsAgentInstancePayload)
+            self.assertEqual(payload.to_dict()["run_config"]["company_background"], agent.config.run_config.company_background)
 
     def test_custom_tools_are_added_alongside_internal_tools(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

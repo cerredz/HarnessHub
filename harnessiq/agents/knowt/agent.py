@@ -16,6 +16,7 @@ from harnessiq.shared.agents import (
     AgentRuntimeConfig,
     merge_agent_runtime_config,
 )
+from harnessiq.shared.dtos import KnowtAgentInstancePayload
 from harnessiq.shared.exceptions import ResourceNotFoundError
 from harnessiq.shared.knowt import (
     KnowtAgentConfig,
@@ -98,7 +99,7 @@ class KnowtAgent(BaseAgent):
         self._memory_store = KnowtMemoryStore(memory_path=resolved_memory_path)
         self._memory_store.prepare()
 
-    def build_instance_payload(self) -> dict[str, Any]:
+    def build_instance_payload(self) -> KnowtAgentInstancePayload:
         return _build_knowt_instance_payload(
             memory_path=Path(self._config.memory_path),
             max_tokens=self._config.max_tokens,

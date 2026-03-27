@@ -60,6 +60,188 @@ class StatelessAgentInstancePayload(SerializableDTO):
 
 
 @dataclass(frozen=True, slots=True)
+class LinkedInAgentInstancePayload(SerializableDTO):
+    """Explicit DTO for the LinkedIn durable-memory agent boundary."""
+
+    runtime: Mapping[str, Any]
+    memory_path: Path | None = None
+    job_preferences: str | None = None
+    user_profile: str | None = None
+    agent_identity: str | None = None
+    additional_prompt: str | None = None
+    custom: Mapping[str, Any] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {"runtime": _normalize_value(self.runtime)}
+        if self.memory_path is not None:
+            payload["memory_path"] = self.memory_path.as_posix()
+        if self.job_preferences is not None:
+            payload["job_preferences"] = self.job_preferences
+        if self.user_profile is not None:
+            payload["user_profile"] = self.user_profile
+        if self.agent_identity is not None:
+            payload["agent_identity"] = self.agent_identity
+        if self.additional_prompt is not None:
+            payload["additional_prompt"] = self.additional_prompt
+        if self.custom:
+            payload["custom"] = _normalize_value(self.custom)
+        return payload
+
+
+@dataclass(frozen=True, slots=True)
+class ExaOutreachAgentInstancePayload(SerializableDTO):
+    """Explicit DTO for the ExaOutreach durable-memory agent boundary."""
+
+    email_data: tuple[Mapping[str, Any], ...]
+    search_query: str
+    max_tokens: int
+    reset_threshold: float
+    allowed_resend_operations: tuple[str, ...] | None = None
+    allowed_exa_operations: tuple[str, ...] | None = None
+    memory_path: Path | None = None
+    agent_identity: str | None = None
+    additional_prompt: str | None = None
+    query_config: Mapping[str, Any] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "allowed_exa_operations": (
+                list(self.allowed_exa_operations) if self.allowed_exa_operations is not None else None
+            ),
+            "allowed_resend_operations": (
+                list(self.allowed_resend_operations) if self.allowed_resend_operations is not None else None
+            ),
+            "email_data": _normalize_value(self.email_data),
+            "max_tokens": self.max_tokens,
+            "reset_threshold": self.reset_threshold,
+            "search_query": self.search_query,
+        }
+        if self.memory_path is not None:
+            payload["memory_path"] = self.memory_path.as_posix()
+        if self.agent_identity is not None:
+            payload["agent_identity"] = self.agent_identity
+        if self.additional_prompt is not None:
+            payload["additional_prompt"] = self.additional_prompt
+        if self.query_config:
+            payload["query_config"] = _normalize_value(self.query_config)
+        return payload
+
+
+@dataclass(frozen=True, slots=True)
+class KnowtAgentInstancePayload(SerializableDTO):
+    """Explicit DTO for the Knowt durable-memory agent boundary."""
+
+    memory_path: Path
+    runtime: Mapping[str, Any]
+    files: Mapping[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "files": _normalize_value(self.files),
+            "memory_path": self.memory_path.as_posix(),
+            "runtime": _normalize_value(self.runtime),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class InstagramAgentInstancePayload(SerializableDTO):
+    """Explicit DTO for the Instagram durable-memory agent boundary."""
+
+    icp_descriptions: tuple[str, ...]
+    runtime: Mapping[str, Any]
+    memory_path: Path | None = None
+    custom_parameters: Mapping[str, Any] | None = None
+    agent_identity: str | None = None
+    additional_prompt: str | None = None
+    run_state: Mapping[str, Any] | None = None
+    icp_progress: tuple[Mapping[str, Any], ...] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "icp_descriptions": list(self.icp_descriptions),
+            "runtime": _normalize_value(self.runtime),
+        }
+        if self.memory_path is not None:
+            payload["memory_path"] = self.memory_path.as_posix()
+        if self.custom_parameters:
+            payload["custom_parameters"] = _normalize_value(self.custom_parameters)
+        if self.agent_identity is not None:
+            payload["agent_identity"] = self.agent_identity
+        if self.additional_prompt is not None:
+            payload["additional_prompt"] = self.additional_prompt
+        if self.run_state is not None:
+            payload["run_state"] = _normalize_value(self.run_state)
+        if self.icp_progress:
+            payload["icp_progress"] = _normalize_value(self.icp_progress)
+        return payload
+
+
+@dataclass(frozen=True, slots=True)
+class LeadsAgentInstancePayload(SerializableDTO):
+    """Explicit DTO for the Leads durable-memory agent boundary."""
+
+    memory_path: Path
+    run_config: Mapping[str, Any]
+    runtime: Mapping[str, Any]
+    run_state: Mapping[str, Any] | None = None
+    icp_progress: tuple[Mapping[str, Any], ...] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "memory_path": self.memory_path.as_posix(),
+            "run_config": _normalize_value(self.run_config),
+            "runtime": _normalize_value(self.runtime),
+        }
+        if self.run_state is not None:
+            payload["run_state"] = _normalize_value(self.run_state)
+        if self.icp_progress:
+            payload["icp_progress"] = _normalize_value(self.icp_progress)
+        return payload
+
+
+@dataclass(frozen=True, slots=True)
+class ProspectingAgentInstancePayload(SerializableDTO):
+    """Explicit DTO for the prospecting durable-memory agent boundary."""
+
+    company_description: str
+    runtime: Mapping[str, Any]
+    custom: Mapping[str, Any]
+    memory_path: Path | None = None
+    agent_identity: str | None = None
+    additional_prompt: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "company_description": self.company_description,
+            "custom": _normalize_value(self.custom),
+            "runtime": _normalize_value(self.runtime),
+        }
+        if self.memory_path is not None:
+            payload["memory_path"] = self.memory_path.as_posix()
+        if self.agent_identity is not None:
+            payload["agent_identity"] = self.agent_identity
+        if self.additional_prompt is not None:
+            payload["additional_prompt"] = self.additional_prompt
+        return payload
+
+
+@dataclass(frozen=True, slots=True)
+class ResearchSweepAgentInstancePayload(SerializableDTO):
+    """Explicit DTO for the Research Sweep durable-memory agent boundary."""
+
+    memory_path: Path
+    config: Mapping[str, Any]
+    runtime: Mapping[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "config": _normalize_value(self.config),
+            "memory_path": self.memory_path.as_posix(),
+            "runtime": _normalize_value(self.runtime),
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ProviderToolAgentRequest:
     """Typed request for the shared provider-backed agent scaffold."""
 
@@ -272,9 +454,16 @@ __all__ = [
     "AgentInstancePayload",
     "ApolloAgentRequest",
     "EmailAgentRequest",
+    "ExaOutreachAgentInstancePayload",
     "ExaAgentRequest",
+    "InstagramAgentInstancePayload",
     "InstantlyAgentRequest",
+    "KnowtAgentInstancePayload",
+    "LeadsAgentInstancePayload",
+    "LinkedInAgentInstancePayload",
     "OutreachAgentRequest",
+    "ProspectingAgentInstancePayload",
     "ProviderToolAgentRequest",
+    "ResearchSweepAgentInstancePayload",
     "StatelessAgentInstancePayload",
 ]

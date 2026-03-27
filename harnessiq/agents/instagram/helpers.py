@@ -7,6 +7,7 @@ from typing import Any, Iterable, Mapping
 
 from harnessiq.agents.helpers import read_optional_text
 from harnessiq.shared.agents import AgentModelResponse
+from harnessiq.shared.dtos import InstagramAgentInstancePayload
 from harnessiq.shared.instagram import InstagramMemoryStore, resolve_instagram_icp_profiles
 from harnessiq.shared.tools import INSTAGRAM_SEARCH_KEYWORD
 
@@ -60,22 +61,21 @@ def build_instagram_instance_payload(
     recent_result_window: int,
     search_result_limit: int,
     custom_parameters: Mapping[str, Any] | None = None,
-) -> dict[str, Any]:
+) -> InstagramAgentInstancePayload:
     """Build the Instagram agent instance payload from config and persisted state."""
-    payload: dict[str, Any] = {
-        "icp_descriptions": list(icp_descriptions),
-        "runtime": {
-            "max_tokens": max_tokens,
-            "recent_result_window": recent_result_window,
-            "recent_search_window": recent_search_window,
-            "reset_threshold": reset_threshold,
-            "search_result_limit": search_result_limit,
-        },
+    runtime = {
+        "max_tokens": max_tokens,
+        "recent_result_window": recent_result_window,
+        "recent_search_window": recent_search_window,
+        "reset_threshold": reset_threshold,
+        "search_result_limit": search_result_limit,
     }
-    if custom_parameters:
-        payload["custom_parameters"] = dict(custom_parameters)
-    if memory_path is not None:
-        payload["memory_path"] = str(memory_path)
+    payload = InstagramAgentInstancePayload(
+        custom_parameters=dict(custom_parameters) if custom_parameters else None,
+        icp_descriptions=tuple(icp_descriptions),
+        memory_path=memory_path,
+        runtime=runtime,
+    )
     if memory_path is None or not memory_path.exists():
         return payload
 
@@ -83,28 +83,33 @@ def build_instagram_instance_payload(
     resolved_custom_parameters = (
         dict(custom_parameters) if custom_parameters is not None else store.read_custom_parameters()
     )
-    payload["icp_descriptions"] = resolve_instagram_icp_profiles(
-        store.read_icp_profiles(),
-        resolved_custom_parameters,
-    )
-    payload["agent_identity"] = read_optional_text(store.agent_identity_path)
-    payload["additional_prompt"] = read_optional_text(store.additional_prompt_path)
-    if resolved_custom_parameters:
-        payload["custom_parameters"] = resolved_custom_parameters
-    if store.run_state_path.exists():
-        payload["run_state"] = store.read_run_state().as_dict()
     icp_states = store.list_icp_states(current_only=True, custom_parameters=resolved_custom_parameters)
-    if icp_states:
-        payload["icp_progress"] = [
-            {
-                "completed_at": state.completed_at,
-                "icp": state.icp.as_dict(),
-                "search_count": len(state.searches),
-                "status": state.status,
-            }
-            for state in icp_states
-        ]
-    return payload
+    return InstagramAgentInstancePayload(
+        custom_parameters=resolved_custom_parameters or None,
+        icp_descriptions=tuple(
+            resolve_instagram_icp_profiles(
+                store.read_icp_profiles(),
+                resolved_custom_parameters,
+            )
+        ),
+        memory_path=memory_path,
+        runtime=runtime,
+        agent_identity=read_optional_text(store.agent_identity_path),
+        additional_prompt=read_optional_text(store.additional_prompt_path),
+        run_state=store.read_run_state().as_dict() if store.run_state_path.exists() else None,
+        icp_progress=(
+            tuple(
+                {
+                    "completed_at": state.completed_at,
+                    "icp": state.icp.as_dict(),
+                    "search_count": len(state.searches),
+                    "status": state.status,
+                }
+                for state in icp_states
+            )
+            or None
+        ),
+    )
 
 
 __all__ = [

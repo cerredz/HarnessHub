@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
+from harnessiq.shared.dtos import ProspectingAgentInstancePayload
 from harnessiq.shared.prospecting import ProspectingMemoryStore
 from harnessiq.shared.tools import RegisteredTool, ToolDefinition
 from harnessiq.tools import build_browser_tool_definitions
@@ -81,36 +82,39 @@ def build_instance_payload(
     website_inspect_enabled: bool,
     sink_record_type: str,
     eval_system_prompt: str,
-) -> dict[str, Any]:
+) -> ProspectingAgentInstancePayload:
     """Build the prospecting agent instance payload from config and persisted state."""
-    payload: dict[str, Any] = {
-        "company_description": company_description or "",
-        "runtime": {
-            "max_tokens": max_tokens,
-            "reset_threshold": reset_threshold,
-        },
-        "custom": {
-            "qualification_threshold": qualification_threshold,
-            "summarize_at_x": summarize_at_x,
-            "max_searches_per_run": max_searches_per_run,
-            "max_listings_per_search": max_listings_per_search,
-            "website_inspect_enabled": website_inspect_enabled,
-            "sink_record_type": sink_record_type,
-            "eval_system_prompt": eval_system_prompt,
-        },
+    runtime = {
+        "max_tokens": max_tokens,
+        "reset_threshold": reset_threshold,
     }
-    if memory_path is not None:
-        payload["memory_path"] = str(memory_path)
+    custom = {
+        "qualification_threshold": qualification_threshold,
+        "summarize_at_x": summarize_at_x,
+        "max_searches_per_run": max_searches_per_run,
+        "max_listings_per_search": max_listings_per_search,
+        "website_inspect_enabled": website_inspect_enabled,
+        "sink_record_type": sink_record_type,
+        "eval_system_prompt": eval_system_prompt,
+    }
+    payload = ProspectingAgentInstancePayload(
+        company_description=company_description or "",
+        custom=custom,
+        memory_path=memory_path,
+        runtime=runtime,
+    )
     if memory_path is None or not memory_path.exists():
         return payload
     store = ProspectingMemoryStore(memory_path=memory_path)
     store.prepare()
-    payload["company_description"] = store.read_company_description()
-    payload["agent_identity"] = store.read_agent_identity()
-    payload["additional_prompt"] = store.read_additional_prompt()
-    payload["runtime"] = store.read_runtime_parameters() or payload["runtime"]
-    payload["custom"] = store.read_custom_parameters() or payload["custom"]
-    return payload
+    return ProspectingAgentInstancePayload(
+        company_description=store.read_company_description(),
+        custom=store.read_custom_parameters() or custom,
+        memory_path=memory_path,
+        runtime=store.read_runtime_parameters() or runtime,
+        agent_identity=store.read_agent_identity(),
+        additional_prompt=store.read_additional_prompt(),
+    )
 
 
 __all__ = [

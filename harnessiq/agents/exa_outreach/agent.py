@@ -25,6 +25,7 @@ from harnessiq.shared.agents import (
     merge_agent_runtime_config,
     json_parameter_section,
 )
+from harnessiq.shared.dtos import ExaOutreachAgentInstancePayload
 from harnessiq.shared.exceptions import (
     ConfigurationError,
     NotFoundError,
@@ -153,7 +154,7 @@ class ExaOutreachAgent(BaseAgent):
     # BaseAgent overrides
     # ------------------------------------------------------------------
 
-    def build_instance_payload(self) -> dict[str, Any]:
+    def build_instance_payload(self) -> ExaOutreachAgentInstancePayload:
         return _build_exa_outreach_instance_payload(
             memory_path=self._candidate_memory_path,
             email_data=self._payload_email_data,

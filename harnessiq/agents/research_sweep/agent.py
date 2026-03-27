@@ -20,6 +20,7 @@ from harnessiq.shared.agents import (
     json_parameter_section,
     merge_agent_runtime_config,
 )
+from harnessiq.shared.dtos import ResearchSweepAgentInstancePayload
 from harnessiq.shared.exceptions import ResourceNotFoundError, ValidationError
 from harnessiq.shared.research_sweep import (
     CANONICAL_RESEARCH_SWEEP_SITES,
@@ -229,19 +230,19 @@ class ResearchSweepAgent(BaseAgent):
             instance_name=instance_name,
         )
 
-    def build_instance_payload(self) -> dict[str, Any]:
-        return {
-            "config": {
+    def build_instance_payload(self) -> ResearchSweepAgentInstancePayload:
+        return ResearchSweepAgentInstancePayload(
+            config={
                 "additional_prompt": self._payload_additional_prompt,
                 "allowed_serper_operations": list(self._payload_allowed_serper_operations),
                 "query": self._payload_query,
             },
-            "memory_path": str(self._memory_store.memory_path),
-            "runtime": {
+            memory_path=self._memory_store.memory_path,
+            runtime={
                 "max_tokens": self._payload_max_tokens,
                 "reset_threshold": self._payload_reset_threshold,
             },
-        }
+        )
 
     def prepare(self) -> None:
         self._memory_store.prepare()

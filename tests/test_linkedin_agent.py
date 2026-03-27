@@ -15,6 +15,7 @@ from harnessiq.agents import (
 )
 from harnessiq.shared.exceptions import StateError
 from harnessiq.shared.agents import AgentRuntimeConfig
+from harnessiq.shared.dtos import LinkedInAgentInstancePayload
 from harnessiq.shared.linkedin import DEFAULT_LINKEDIN_ACTION_LOG_WINDOW, LinkedInAgentConfig
 from harnessiq.shared.tools import RegisteredTool, ToolCall, ToolDefinition
 
@@ -265,10 +266,13 @@ class LinkedInJobApplierAgentTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
             agent = LinkedInJobApplierAgent(model=model, memory_path=temp_dir)
+            payload = agent.build_instance_payload()
 
             self.assertTrue(agent.instance_id.startswith("linkedin_job_applier::"))
             self.assertEqual(agent.instance_record.memory_path, Path(temp_dir))
             self.assertEqual(agent.memory_path, Path(temp_dir))
+            self.assertIsInstance(payload, LinkedInAgentInstancePayload)
+            self.assertEqual(payload.to_dict()["memory_path"], Path(temp_dir).as_posix())
 
     def test_runtime_config_preserves_langsmith_settings(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

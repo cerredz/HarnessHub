@@ -25,6 +25,7 @@ from harnessiq.shared.agents import (
     json_parameter_section,
     merge_agent_runtime_config,
 )
+from harnessiq.shared.dtos import LeadsAgentInstancePayload
 from harnessiq.shared.exceptions import ResourceNotFoundError
 from harnessiq.shared.leads import (
     DEFAULT_LEADS_SEARCH_SUMMARY_EVERY,
@@ -130,7 +131,7 @@ class LeadsAgent(BaseAgent):
     def memory_store(self) -> LeadsMemoryStore:
         return self._memory_store
 
-    def build_instance_payload(self) -> dict[str, Any]:
+    def build_instance_payload(self) -> LeadsAgentInstancePayload:
         return _build_leads_instance_payload(config=self._config)
 
     def prepare(self) -> None:

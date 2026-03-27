@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from harnessiq.agents.helpers import read_optional_text
+from harnessiq.shared.dtos import LinkedInAgentInstancePayload
 from harnessiq.shared.linkedin import LinkedInMemoryStore
 from harnessiq.shared.tools import ToolDefinition
 
@@ -20,35 +21,35 @@ def build_linkedin_instance_payload(
     linkedin_start_url: str,
     notify_on_pause: bool,
     pause_webhook: str | None,
-) -> dict[str, Any]:
+) -> LinkedInAgentInstancePayload:
     """Build the LinkedIn agent instance payload from config and persisted state."""
-    payload: dict[str, Any] = {
-        "runtime": {
-            "action_log_window": action_log_window,
-            "linkedin_start_url": linkedin_start_url,
-            "max_tokens": max_tokens,
-            "notify_on_pause": notify_on_pause,
-            "pause_webhook": pause_webhook,
-            "reset_threshold": reset_threshold,
-        }
+    runtime: dict[str, Any] = {
+        "action_log_window": action_log_window,
+        "linkedin_start_url": linkedin_start_url,
+        "max_tokens": max_tokens,
+        "notify_on_pause": notify_on_pause,
+        "pause_webhook": pause_webhook,
+        "reset_threshold": reset_threshold,
     }
-    if memory_path is not None:
-        payload["memory_path"] = str(memory_path)
+    payload = LinkedInAgentInstancePayload(
+        memory_path=memory_path,
+        runtime=runtime,
+    )
     if memory_path is None or not memory_path.exists():
         return payload
 
     store = LinkedInMemoryStore(memory_path=memory_path)
-    payload["job_preferences"] = read_optional_text(store.job_preferences_path)
-    payload["user_profile"] = read_optional_text(store.user_profile_path)
-    payload["agent_identity"] = read_optional_text(store.agent_identity_path)
-    payload["additional_prompt"] = read_optional_text(store.additional_prompt_path)
     runtime_parameters = store.read_runtime_parameters() if store.runtime_parameters_path.exists() else {}
     custom_parameters = store.read_custom_parameters() if store.custom_parameters_path.exists() else {}
-    if runtime_parameters:
-        payload["runtime"] = runtime_parameters
-    if custom_parameters:
-        payload["custom"] = custom_parameters
-    return payload
+    return LinkedInAgentInstancePayload(
+        memory_path=memory_path,
+        runtime=runtime_parameters or runtime,
+        job_preferences=read_optional_text(store.job_preferences_path),
+        user_profile=read_optional_text(store.user_profile_path),
+        agent_identity=read_optional_text(store.agent_identity_path),
+        additional_prompt=read_optional_text(store.additional_prompt_path),
+        custom=custom_parameters or None,
+    )
 
 
 def unavailable_browser_handler(tool_name: str):
