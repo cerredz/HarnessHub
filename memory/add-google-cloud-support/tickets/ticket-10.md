@@ -1,5 +1,6 @@
 ﻿Title: Implement a binding-aware credential bridge
 Issue URL: https://github.com/cerredz/HarnessHub/issues/297
+PR URL: https://github.com/cerredz/HarnessHub/pull/315
 
 Intent:
 Connect the existing repo-local HarnessIQ credential system to GCP Secret Manager so deployed jobs can inherit the same logical credential bindings that local harness runs already use.
