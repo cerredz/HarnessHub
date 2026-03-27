@@ -77,6 +77,9 @@
    Dependency: Ticket 5, Ticket 6, Ticket 7, Ticket 8
    Issue: #296
    URL: https://github.com/cerredz/HarnessHub/issues/296
+   PR: #314
+   PR URL: https://github.com/cerredz/HarnessHub/pull/314
+   Status: implemented, awaiting merge into `main`
 
 10. Ticket 10: Implement a binding-aware credential bridge
    Description: Reuse the existing repo-local credential binding system to discover harness secrets and sync them into Secret Manager.
