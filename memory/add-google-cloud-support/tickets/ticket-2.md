@@ -1,5 +1,6 @@
 ﻿Title: Add core GCP command parameters and flag fragments
 Issue URL: https://github.com/cerredz/HarnessHub/issues/289
+PR URL: https://github.com/cerredz/HarnessHub/pull/306
 
 Intent:
 Centralize the typed command inputs and the smallest reusable flag fragments so every later command module can build on one consistent command vocabulary.
