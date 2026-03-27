@@ -21,8 +21,7 @@ from harnessiq.shared.prospecting import (
     normalize_prospecting_custom_parameters,
     normalize_prospecting_runtime_parameters,
 )
-
-from harnessiq.cli.runners.prospecting import _DEFAULT_BROWSER_TOOLS_FACTORY
+from harnessiq.cli.runners.prospecting import DEFAULT_BROWSER_TOOLS_FACTORY
 
 
 def register_prospecting_commands(
@@ -108,10 +107,10 @@ def register_prospecting_commands(
     add_model_selection_options(run_parser)
     run_parser.add_argument(
         "--browser-tools-factory",
-        default=_DEFAULT_BROWSER_TOOLS_FACTORY,
+        default=DEFAULT_BROWSER_TOOLS_FACTORY,
         help=(
             "Import path in the form module:callable that returns an iterable of browser tools. "
-            f"Defaults to {_DEFAULT_BROWSER_TOOLS_FACTORY}."
+            f"Defaults to {DEFAULT_BROWSER_TOOLS_FACTORY}."
         ),
     )
     run_parser.add_argument(

@@ -19,7 +19,7 @@ from harnessiq.cli.common import (
 from harnessiq.cli.runners.lifecycle import HarnessCliLifecycleRunner
 from harnessiq.shared.prospecting import PROSPECTING_HARNESS_MANIFEST, slugify_agent_name, validate_company_description_for_run
 
-_DEFAULT_BROWSER_TOOLS_FACTORY = "harnessiq.integrations.google_maps_playwright:create_browser_tools"
+DEFAULT_BROWSER_TOOLS_FACTORY = "harnessiq.integrations.google_maps_playwright:create_browser_tools"
 
 
 class ProspectingCliRunner:
@@ -152,4 +152,4 @@ class ProspectingCliRunner:
         return tuple(created_tools)
 
 
-__all__ = ["ProspectingCliRunner", "_DEFAULT_BROWSER_TOOLS_FACTORY"]
+__all__ = ["DEFAULT_BROWSER_TOOLS_FACTORY", "ProspectingCliRunner"]
