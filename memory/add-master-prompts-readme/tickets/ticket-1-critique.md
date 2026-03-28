@@ -5,6 +5,7 @@ Initial review found one documentation gap: the first README draft listed every 
 Improvement applied:
 
 - Added a sentence under `## Bundled Prompt Catalog` clarifying that the table combines the live title and description metadata from every bundled prompt JSON file.
+- While rebasing the change onto the latest `origin/main` for PR creation, updated the README catalog to include the newly added `competitor_researcher` prompt after the drift-guard test exposed the omission.
 
 Additional review outcomes:
 
@@ -15,4 +16,4 @@ Additional review outcomes:
 Post-critique verification:
 
 - Re-ran `python -m pytest tests/test_master_prompts.py tests/test_master_prompts_cli.py tests/test_master_prompt_session_injection.py`.
-- Result: 67 passed.
+- Result: 71 passed.

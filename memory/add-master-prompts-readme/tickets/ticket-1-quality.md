@@ -25,10 +25,12 @@ Command:
 
 Observed result:
 
-- 67 tests collected.
-- 67 tests passed.
+- 71 tests collected.
+- 71 tests passed.
 
 Result: pass.
+
+Note: while preparing the PR from the latest `origin/main`, the focused suite surfaced a new bundled prompt already added on `main` (`competitor_researcher`). The README was updated in the PR worktree to include that prompt's title and description before the final passing run above.
 
 ## Stage 4 - Integration & Contract Tests
 
