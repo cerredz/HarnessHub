@@ -55,7 +55,7 @@ Harnessiq ships a dedicated Google Cloud deployment surface for running manifest
 | Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-| Test modules | 123 |
+| Test modules | 124 |
 
 ## Agent Matrix
 

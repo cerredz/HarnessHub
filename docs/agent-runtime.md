@@ -61,6 +61,8 @@ harnessiq models add --name work --model grok:grok-4-1-fast-reasoning --reasonin
 harnessiq models list
 ```
 
+Non-reasoning Grok variants such as `grok:grok-4.1-fast` are also supported. `reasoning_effort` is forwarded only for Grok models whose names indicate reasoning support.
+
 `BaseAgent` runtime behavior is configured with `AgentRuntimeConfig`:
 
 ```python

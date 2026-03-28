@@ -1,0 +1,1 @@
+No material ambiguities remained after Phase 1. Direct reproduction showed the durable `Recent Searches` parameter already updates correctly; the missing behavior is transcript/context-window visibility for Instagram search progress.

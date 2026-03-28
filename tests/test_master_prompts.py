@@ -20,8 +20,8 @@ from harnessiq.master_prompts import (
 EXPECTED_PROMPT_KEYS = {
     "answer_with_notable_web_sources",
     "autonomous_execution_loop",
-    "competitor_researcher",
     "cognitive_multiplexer",
+    "competitor_researcher",
     "create_github_execution_issues",
     "create_jira_execution_tickets",
     "create_linear_execution_tickets",
@@ -31,6 +31,7 @@ EXPECTED_PROMPT_KEYS = {
     "highest_form_of_leverage",
     "hybrid_academic_and_web_research",
     "implement_and_critique_solutions",
+    "linkedin_job_applier",
     "mission_driven",
     "never_stop",
     "orchestrator_master_prompt",
@@ -44,7 +45,6 @@ EXPECTED_PROMPT_KEYS = {
     "surgical_bugfix",
 }
 STANDARD_STRUCTURE_PROMPT_KEYS = EXPECTED_PROMPT_KEYS - {
-    "competitor_researcher",
     "cognitive_multiplexer",
     "handshake_autonomous_job_applier",
     "mission_driven",
@@ -199,7 +199,7 @@ class BundledMasterPromptStructureTests(unittest.TestCase):
                 continue
             with self.subTest(prompt=prompt.key):
                 for section_name in REQUIRED_PROMPT_SECTIONS:
-                    self.assertIn(section_name, prompt.prompt)
+                    _section_position(prompt.prompt, section_name)
 
     def test_all_bundled_prompts_list_sections_in_order(self) -> None:
         registry = MasterPromptRegistry()
@@ -208,7 +208,7 @@ class BundledMasterPromptStructureTests(unittest.TestCase):
             if prompt.key not in STANDARD_STRUCTURE_PROMPT_KEYS:
                 continue
             with self.subTest(prompt=prompt.key):
-                positions = [prompt.prompt.index(section_name) for section_name in REQUIRED_PROMPT_SECTIONS]
+                positions = [_section_position(prompt.prompt, section_name) for section_name in REQUIRED_PROMPT_SECTIONS]
                 self.assertEqual(positions, sorted(positions))
 
     def test_master_prompt_readme_documents_every_bundled_prompt_title_and_description(self) -> None:
@@ -268,13 +268,8 @@ class BundledPromptStructureTests(unittest.TestCase):
         for key in STANDARD_STRUCTURE_PROMPT_KEYS:
             with self.subTest(key=key):
                 text = registry.get(key).prompt
-                self.assertIn("Identity", text)
-                self.assertIn("Goal", text)
-                self.assertIn("Checklist", text)
-                self.assertIn("Things Not To Do", text)
-                self.assertIn("Success Criteria", text)
-                self.assertIn("Artifacts", text)
-                self.assertIn("Inputs", text)
+                for section_name in REQUIRED_PROMPT_SECTIONS:
+                    _section_position(text, section_name)
 
 
 class MissionDrivenPromptTests(unittest.TestCase):
@@ -284,10 +279,10 @@ class MissionDrivenPromptTests(unittest.TestCase):
     def test_mission_driven_contains_expected_sections(self) -> None:
         for section_name in MISSION_DRIVEN_REQUIRED_SECTIONS:
             with self.subTest(section=section_name):
-                self.assertIn(section_name, self.prompt.prompt)
+                _section_position(self.prompt.prompt, section_name)
 
     def test_mission_driven_sections_appear_in_order(self) -> None:
-        positions = [self.prompt.prompt.index(section_name) for section_name in MISSION_DRIVEN_REQUIRED_SECTIONS]
+        positions = [_section_position(self.prompt.prompt, section_name) for section_name in MISSION_DRIVEN_REQUIRED_SECTIONS]
         self.assertEqual(positions, sorted(positions))
 
 
@@ -298,10 +293,10 @@ class CognitiveMultiplexerPromptTests(unittest.TestCase):
     def test_cognitive_multiplexer_contains_expected_sections(self) -> None:
         for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS:
             with self.subTest(section=section_name):
-                self.assertIn(section_name, self.prompt.prompt)
+                _section_position(self.prompt.prompt, section_name)
 
     def test_cognitive_multiplexer_sections_appear_in_order(self) -> None:
-        positions = [self.prompt.prompt.index(section_name) for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS]
+        positions = [_section_position(self.prompt.prompt, section_name) for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS]
         self.assertEqual(positions, sorted(positions))
 
     def test_cognitive_multiplexer_contains_requested_persona_language(self) -> None:
@@ -321,10 +316,10 @@ class OrchestratorMasterPromptTests(unittest.TestCase):
     def test_orchestrator_master_prompt_contains_expected_sections(self) -> None:
         for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS:
             with self.subTest(section=section_name):
-                self.assertIn(section_name, self.prompt.prompt)
+                _section_position(self.prompt.prompt, section_name)
 
     def test_orchestrator_master_prompt_sections_appear_in_order(self) -> None:
-        positions = [self.prompt.prompt.index(section_name) for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS]
+        positions = [_section_position(self.prompt.prompt, section_name) for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS]
         self.assertEqual(positions, sorted(positions))
 
     def test_orchestrator_master_prompt_contains_requested_persona_language(self) -> None:
@@ -337,27 +332,27 @@ class OrchestratorMasterPromptTests(unittest.TestCase):
         self.assertEqual(self.prompt.key, "orchestrator_master_prompt")
 
 
-class CompetitorResearcherPromptTests(unittest.TestCase):
+class LinkedInJobApplierPromptTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.prompt = MasterPromptRegistry().get("competitor_researcher")
+        self.prompt = MasterPromptRegistry().get("linkedin_job_applier")
 
-    def test_competitor_researcher_contains_expected_sections(self) -> None:
+    def test_linkedin_job_applier_contains_expected_sections(self) -> None:
         for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS:
             with self.subTest(section=section_name):
-                self.assertIn(section_name, self.prompt.prompt)
+                _section_position(self.prompt.prompt, section_name)
 
-    def test_competitor_researcher_sections_appear_in_order(self) -> None:
-        positions = [self.prompt.prompt.index(section_name) for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS]
+    def test_linkedin_job_applier_sections_appear_in_order(self) -> None:
+        positions = [_section_position(self.prompt.prompt, section_name) for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS]
         self.assertEqual(positions, sorted(positions))
 
-    def test_competitor_researcher_contains_requested_persona_language(self) -> None:
-        self.assertIn("shallow research is worse than no research", self.prompt.prompt)
-        self.assertIn("You treat each competitor as a territory to be mapped fully", self.prompt.prompt)
-        self.assertIn("Use at minimum eight distinct query strategies per competitor per platform.", self.prompt.prompt)
-        self.assertIn("The dossier is not a summary. It is a primary source", self.prompt.prompt)
+    def test_linkedin_job_applier_contains_requested_persona_language(self) -> None:
+        self.assertIn("You are a relentless, methodical job application agent", self.prompt.prompt)
+        self.assertIn("You do not apply indiscriminately; you apply precisely.", self.prompt.prompt)
+        self.assertIn("You treat the Q&A bank as a first-class input, not a fallback.", self.prompt.prompt)
+        self.assertIn("memory/linkedin/applied_jobs.md", self.prompt.prompt)
 
-    def test_competitor_researcher_key_matches_filename_convention(self) -> None:
-        self.assertEqual(self.prompt.key, "competitor_researcher")
+    def test_linkedin_job_applier_key_matches_filename_convention(self) -> None:
+        self.assertEqual(self.prompt.key, "linkedin_job_applier")
 
 
 class HandshakeAutonomousJobApplierPromptTests(unittest.TestCase):

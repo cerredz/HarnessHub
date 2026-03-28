@@ -87,6 +87,18 @@ class GrokProviderTests(unittest.TestCase):
         self.assertTrue(request["search_parameters"]["return_citations"])
         self.assertEqual(request["reasoning_effort"], "medium")
 
+    def test_build_chat_completion_request_omits_reasoning_effort_when_not_provided(self) -> None:
+        request = build_chat_completion_request(
+            GrokChatCompletionRequestDTO(
+                model_name="grok-4.1-fast",
+                system_prompt="Be precise.",
+                messages=tuple(self.messages),
+                tools=tuple(self.tools),
+            )
+        )
+
+        self.assertNotIn("reasoning_effort", request)
+
     def test_built_in_tool_builders_cover_search_collections_and_mcp(self) -> None:
         search_parameters = build_search_parameters(mode="on", sources=["web"])
         web_tool = build_web_search_tool(search_parameters=search_parameters)

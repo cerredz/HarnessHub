@@ -68,7 +68,12 @@ class ProviderAgentModel:
         self._client = client
         self._temperature = float(temperature) if temperature is not None else None
         self._max_output_tokens = int(max_output_tokens) if max_output_tokens is not None else None
-        self._reasoning_effort = reasoning_effort.strip() if isinstance(reasoning_effort, str) and reasoning_effort.strip() else None
+        self._requested_reasoning_effort = _normalize_reasoning_effort(reasoning_effort)
+        self._reasoning_effort = _resolve_provider_reasoning_effort(
+            provider=normalized_provider,
+            model_name=normalized_model_name,
+            reasoning_effort=self._requested_reasoning_effort,
+        )
         self._project_name = project_name.strip() if isinstance(project_name, str) and project_name.strip() else None
         self._tracing_enabled = tracing_enabled
         self._name_to_key: dict[str, str] = {}
@@ -510,7 +515,7 @@ class GrokAgentModel(ProviderAgentModel):
             model_name=model_name,
             temperature=self._temperature,
             max_output_tokens=self._max_output_tokens,
-            reasoning_effort=self._reasoning_effort,
+            reasoning_effort=self._requested_reasoning_effort,
             project_name=self._project_name,
             tracing_enabled=self._tracing_enabled,
         )
@@ -767,6 +772,31 @@ def _normalize_optional_string(value: str | None) -> str | None:
         return None
     normalized = value.strip()
     return normalized or None
+
+
+def _normalize_reasoning_effort(value: str | None) -> str | None:
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _resolve_provider_reasoning_effort(
+    *,
+    provider: str,
+    model_name: str,
+    reasoning_effort: str | None,
+) -> str | None:
+    normalized_reasoning_effort = _normalize_reasoning_effort(reasoning_effort)
+    if normalized_reasoning_effort is None:
+        return None
+    if provider == "grok" and not _grok_model_supports_reasoning_effort(model_name):
+        return None
+    return normalized_reasoning_effort
+
+
+def _grok_model_supports_reasoning_effort(model_name: str) -> bool:
+    normalized_model_name = model_name.strip().lower()
+    if not normalized_model_name:
+        return False
+    return "reasoning" in normalized_model_name
 
 
 def _require_secret(value: str, *, provider: str) -> str:
