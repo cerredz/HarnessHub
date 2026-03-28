@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
+from contextlib import contextmanager
+from pathlib import Path
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse, MissionDrivenAgent
 from harnessiq.shared.tools import (
@@ -72,14 +75,26 @@ def _runner_factory(*, completion_mode: bool = False):
     return runner
 
 
+@contextmanager
+def _isolated_repo():
+    original_cwd = os.getcwd()
+    with tempfile.TemporaryDirectory() as temp_dir:
+        os.chdir(temp_dir)
+        try:
+            os.mkdir(".git")
+            yield Path(temp_dir)
+        finally:
+            os.chdir(original_cwd)
+
+
 class MissionDrivenAgentTests(unittest.TestCase):
     def test_prepare_initializes_full_artifact_layout(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with _isolated_repo() as repo_root:
             agent = MissionDrivenAgent(
                 model=_IdleModel(),
                 mission_goal="Ship reusable mission orchestration harness",
                 mission_type="app_build",
-                memory_path=temp_dir,
+                memory_path=repo_root / "agent-memory",
                 json_subcall_runner=_runner_factory(),
             )
 
@@ -87,6 +102,10 @@ class MissionDrivenAgentTests(unittest.TestCase):
 
             self.assertTrue((agent.memory_path / "mission.json").exists())
             self.assertTrue((agent.memory_path / "task_plan.json").exists())
+            self.assertTrue((agent.memory_path / "tool_call_history.json").exists())
+            self.assertTrue((agent.memory_path / "research_log.json").exists())
+            self.assertTrue((agent.memory_path / "next_actions.json").exists())
+            self.assertTrue((agent.memory_path / "mission_status.json").exists())
             self.assertTrue((agent.memory_path / "progress_log.jsonl").exists())
             self.assertTrue((agent.memory_path / "README.md").exists())
             self.assertEqual(agent.build_ledger_outputs()["mission_status"], "active")
@@ -94,12 +113,12 @@ class MissionDrivenAgentTests(unittest.TestCase):
             self.assertIn(MISSION_RECORD_UPDATES, {tool.key for tool in agent.available_tools()})
 
     def test_record_updates_persists_task_and_log_changes(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with _isolated_repo() as repo_root:
             agent = MissionDrivenAgent(
                 model=_IdleModel(),
                 mission_goal="Ship reusable mission orchestration harness",
                 mission_type="app_build",
-                memory_path=temp_dir,
+                memory_path=repo_root / "agent-memory",
                 json_subcall_runner=_runner_factory(completion_mode=True),
             )
             agent.prepare()
@@ -128,21 +147,44 @@ class MissionDrivenAgentTests(unittest.TestCase):
                         }
                     ],
                     "memory_facts": [{"key": "pattern", "value": "use manifests", "confidence": "confirmed"}],
+                    "decisions": [
+                        {
+                            "decision": "Use manifests",
+                            "rationale": "Keeps agent wiring consistent.",
+                            "rejected_alternatives": ["Hard-code parameters per agent"],
+                        }
+                    ],
+                    "file_records": [
+                        {
+                            "path": "harnessiq/agents/mission_driven/agent.py",
+                            "purpose": "Mission harness orchestration.",
+                            "dependencies": ["harnessiq/shared/mission_driven.py"],
+                        }
+                    ],
+                    "research_entries": [
+                        {
+                            "source": "PR #382 review",
+                            "summary": "Review requires richer durable records.",
+                        }
+                    ],
                 },
             )
 
             self.assertEqual(result.output["mission_status"], "complete")
             self.assertEqual(agent.memory_store.read_task_plan().tasks[0].status, "complete")
             self.assertEqual(len(agent.memory_store.read_memory_facts()), 1)
+            self.assertEqual(len(agent.memory_store.read_research_records()), 1)
+            self.assertGreaterEqual(len(agent.memory_store.read_tool_call_records()), 2)
+            self.assertGreaterEqual(len(agent.memory_store.read_file_manifest()), 19)
             self.assertIn("Mission", agent.memory_store.read_readme())
 
     def test_create_checkpoint_writes_snapshot_file(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with _isolated_repo() as repo_root:
             agent = MissionDrivenAgent(
                 model=_IdleModel(),
                 mission_goal="Ship reusable mission orchestration harness",
                 mission_type="app_build",
-                memory_path=temp_dir,
+                memory_path=repo_root / "agent-memory",
                 json_subcall_runner=_runner_factory(),
             )
             agent.prepare()
@@ -157,6 +199,47 @@ class MissionDrivenAgentTests(unittest.TestCase):
 
             self.assertIn("checkpoint_path", result.output)
             self.assertTrue(agent.memory_path.joinpath("checkpoints").exists())
+            self.assertGreaterEqual(len(agent.memory_store.read_tool_call_records()), 2)
+
+    def test_record_updates_can_explicitly_clear_next_actions(self) -> None:
+        with _isolated_repo() as repo_root:
+            agent = MissionDrivenAgent(
+                model=_IdleModel(),
+                mission_goal="Ship reusable mission orchestration harness",
+                mission_type="app_build",
+                memory_path=repo_root / "agent-memory",
+                json_subcall_runner=_runner_factory(),
+            )
+            agent.prepare()
+
+            result = agent.tool_executor.execute(
+                MISSION_RECORD_UPDATES,
+                {
+                    "next_actions": [],
+                },
+            )
+
+            self.assertEqual(result.output["next_actions"], [])
+            self.assertEqual(agent.memory_store.read_next_actions(), [])
+
+    def test_default_memory_path_creates_isolated_subfolders(self) -> None:
+        with _isolated_repo():
+            first = MissionDrivenAgent(
+                model=_IdleModel(),
+                mission_goal="Ship reusable mission orchestration harness",
+                mission_type="app_build",
+                json_subcall_runner=_runner_factory(),
+            )
+            second = MissionDrivenAgent(
+                model=_IdleModel(),
+                mission_goal="Ship reusable mission orchestration harness",
+                mission_type="app_build",
+                json_subcall_runner=_runner_factory(),
+            )
+
+        self.assertNotEqual(first.memory_path, second.memory_path)
+        self.assertEqual(first.memory_path.parent.name, "mission_driven")
+        self.assertEqual(second.memory_path.parent.name, "mission_driven")
 
 
 if __name__ == "__main__":

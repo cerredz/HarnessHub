@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from harnessiq.agents.base import BaseAgent
-from harnessiq.agents.helpers import find_repo_root, resolve_memory_path, utc_now_z
+from harnessiq.agents.helpers import resolve_memory_path, utc_now_z
 from harnessiq.agents.mission_driven.stages import (
     MissionDefinitionStage,
     MissionNarrativeStage,
@@ -26,7 +26,6 @@ from harnessiq.shared.exceptions import ValidationError
 from harnessiq.shared.mission_driven import (
     DEFAULT_MISSION_DRIVEN_RESET_THRESHOLD,
     MISSION_DRIVEN_HARNESS_MANIFEST,
-    MissionDefinition,
     MissionDrivenAgentConfig,
     MissionDrivenMemoryStore,
     MissionTask,
@@ -39,8 +38,8 @@ from harnessiq.shared.tools import (
     MISSION_INITIALIZE_ARTIFACT,
     MISSION_RECORD_UPDATES,
     RegisteredTool,
-    ToolDefinition,
 )
+from harnessiq.tools.mission_driven import create_mission_driven_tools
 from harnessiq.tools.registry import create_tool_registry
 
 _DEFAULT_MEMORY_PATH = Path(MISSION_DRIVEN_HARNESS_MANIFEST.resolved_default_memory_root)
@@ -64,7 +63,11 @@ class MissionDrivenAgent(BaseAgent):
         json_subcall_runner: JsonSubcallRunner | None = None,
         instance_name: str | None = None,
     ) -> None:
-        resolved_memory_path = resolve_memory_path(memory_path, default_path=_DEFAULT_MEMORY_PATH)
+        resolved_memory_path = resolve_memory_path(
+            memory_path,
+            default_path=_DEFAULT_MEMORY_PATH,
+            isolate_default=True,
+        )
         self._config = MissionDrivenAgentConfig(
             memory_path=resolved_memory_path,
             mission_goal=mission_goal,
@@ -74,16 +77,14 @@ class MissionDrivenAgent(BaseAgent):
             reset_threshold=reset_threshold,
         )
         self._json_subcall_runner = json_subcall_runner
-        self._memory_store = MissionDrivenMemoryStore(memory_path=resolved_memory_path)
-        self._memory_store.prepare()
-        self._memory_store.write_runtime_parameters(
-            {"max_tokens": max_tokens, "reset_threshold": reset_threshold}
+        tool_registry = create_tool_registry(
+            create_mission_driven_tools(
+                initialize_artifact_handler=self._handle_initialize_artifact,
+                record_updates_handler=self._handle_record_updates,
+                create_checkpoint_handler=self._handle_create_checkpoint,
+            ),
+            tuple(tools or ()),
         )
-        self._memory_store.write_custom_parameters(
-            {"mission_goal": mission_goal, "mission_type": mission_type}
-        )
-        self._memory_store.write_additional_prompt(additional_prompt)
-        tool_registry = create_tool_registry(self._build_internal_tools(), tuple(tools or ()))
         super().__init__(
             name="mission_driven_agent",
             model=model,
@@ -94,11 +95,22 @@ class MissionDrivenAgent(BaseAgent):
                 reset_threshold=reset_threshold,
             ),
             memory_path=resolved_memory_path,
-            repo_root=find_repo_root(resolved_memory_path),
             instance_name=instance_name,
         )
-        self._memory_store = MissionDrivenMemoryStore(memory_path=self.memory_path)
-        self._memory_store.prepare()
+        self._config = MissionDrivenAgentConfig(
+            memory_path=self.memory_path,
+            mission_goal=mission_goal,
+            mission_type=mission_type,  # type: ignore[arg-type]
+            additional_prompt=additional_prompt,
+            max_tokens=max_tokens,
+            reset_threshold=reset_threshold,
+        )
+        self._memory_store = self._create_file_backed_store(
+            store_factory=MissionDrivenMemoryStore,
+            runtime_parameters=self._runtime_parameters_payload(),
+            custom_parameters=self._custom_parameters_payload(),
+            additional_prompt=self._config.additional_prompt,
+        )
         self._definition_stage = MissionDefinitionStage(
             model=model,
             runner=json_subcall_runner,
@@ -176,16 +188,19 @@ class MissionDrivenAgent(BaseAgent):
         ).to_dict()
 
     def prepare(self) -> None:
-        self._memory_store.prepare()
-        self._memory_store.write_runtime_parameters(
-            {"max_tokens": self._config.max_tokens, "reset_threshold": self._config.reset_threshold}
+        self._sync_file_backed_store(
+            self._memory_store,
+            runtime_parameters=self._runtime_parameters_payload(),
+            custom_parameters=self._custom_parameters_payload(),
+            additional_prompt=self._config.additional_prompt,
         )
-        self._memory_store.write_custom_parameters(
-            {"mission_goal": self._config.mission_goal, "mission_type": self._config.mission_type}
-        )
-        self._memory_store.write_additional_prompt(self._config.additional_prompt)
         if not self._memory_store.is_initialized():
-            self._initialize_artifact()
+            snapshot = self._initialize_artifact()
+            self._record_tool_call(
+                tool_key=MISSION_INITIALIZE_ARTIFACT,
+                arguments={"source": "prepare"},
+                result=snapshot,
+            )
         self._sync_file_manifest()
 
     def build_system_prompt(self) -> str:
@@ -199,7 +214,7 @@ class MissionDrivenAgent(BaseAgent):
         mission = self._memory_store.read_mission()
         task_plan = self._memory_store.read_task_plan()
         sections: list[AgentParameterSection] = [
-            AgentParameterSection(title="Master Prompt", content=self._definition_stage._master_prompt()),
+            AgentParameterSection(title="Definition Stage Prompt", content=self._definition_stage.system_prompt()),
             json_parameter_section(
                 "Mission Configuration",
                 {
@@ -210,6 +225,9 @@ class MissionDrivenAgent(BaseAgent):
             json_parameter_section("Mission Artifact Snapshot", self._memory_store.build_state_snapshot()),
             json_parameter_section("Mission", mission),
             json_parameter_section("Task Plan", task_plan.to_dict()),
+            json_parameter_section("Next Actions Queue", self._memory_store.read_next_actions()),
+            json_parameter_section("Research Log", self._memory_store.read_research_records()),
+            json_parameter_section("Recent Tool Calls", self._memory_store.read_tool_call_records()[-10:]),
         ]
         additional_prompt = self._memory_store.read_additional_prompt()
         if additional_prompt:
@@ -222,58 +240,17 @@ class MissionDrivenAgent(BaseAgent):
     def build_ledger_tags(self) -> list[str]:
         return ["mission", "durable-state", self._config.mission_type]
 
-    def _build_internal_tools(self) -> tuple[RegisteredTool, ...]:
-        return (
-            RegisteredTool(
-                definition=ToolDefinition(
-                    key=MISSION_INITIALIZE_ARTIFACT,
-                    name="initialize_artifact",
-                    description="Initialize the full mission artifact from the configured mission goal and type.",
-                    input_schema={"type": "object", "properties": {}, "required": [], "additionalProperties": False},
-                ),
-                handler=lambda arguments: self._handle_initialize_artifact(arguments),
-            ),
-            RegisteredTool(
-                definition=ToolDefinition(
-                    key=MISSION_RECORD_UPDATES,
-                    name="record_updates",
-                    description="Persist task, progress, fact, decision, test, feedback, and artifact updates into the mission artifact.",
-                    input_schema={
-                        "type": "object",
-                        "properties": {
-                            "task_updates": {"type": "array", "items": {"type": "object"}},
-                            "progress_events": {"type": "array", "items": {"type": "object"}},
-                            "memory_facts": {"type": "array", "items": {"type": "object"}},
-                            "decisions": {"type": "array", "items": {"type": "object"}},
-                            "errors": {"type": "array", "items": {"type": "object"}},
-                            "feedback": {"type": "array", "items": {"type": "object"}},
-                            "test_results": {"type": "array", "items": {"type": "object"}},
-                            "artifacts": {"type": "array", "items": {"type": "object"}},
-                        },
-                        "required": [],
-                        "additionalProperties": False,
-                    },
-                ),
-                handler=lambda arguments: self._handle_record_updates(arguments),
-            ),
-            RegisteredTool(
-                definition=ToolDefinition(
-                    key=MISSION_CREATE_CHECKPOINT,
-                    name="create_checkpoint",
-                    description="Create a checkpoint snapshot of the current mission artifact with resume instructions.",
-                    input_schema={
-                        "type": "object",
-                        "properties": {
-                            "checkpoint_name": {"type": "string"},
-                            "resume_instructions": {"type": "string"},
-                        },
-                        "required": ["checkpoint_name", "resume_instructions"],
-                        "additionalProperties": False,
-                    },
-                ),
-                handler=lambda arguments: self._handle_create_checkpoint(arguments),
-            ),
-        )
+    def _runtime_parameters_payload(self) -> dict[str, Any]:
+        return {
+            "max_tokens": self._config.max_tokens,
+            "reset_threshold": self._config.reset_threshold,
+        }
+
+    def _custom_parameters_payload(self) -> dict[str, Any]:
+        return {
+            "mission_goal": self._config.mission_goal,
+            "mission_type": self._config.mission_type,
+        }
 
     def _initialize_artifact(self) -> dict[str, Any]:
         definition = self._definition_stage.run(
@@ -312,6 +289,7 @@ class MissionDrivenAgent(BaseAgent):
             session_id=self.instance_id,
             next_actions=self._coerce_string_list(mission["next_actions"]),
         )
+        self._sync_file_manifest()
         return self._memory_store.build_state_snapshot()
 
     def _handle_initialize_artifact(self, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -319,8 +297,13 @@ class MissionDrivenAgent(BaseAgent):
         if self._memory_store.is_initialized():
             return self._memory_store.build_state_snapshot()
         snapshot = self._initialize_artifact()
+        self._record_tool_call(
+            tool_key=MISSION_INITIALIZE_ARTIFACT,
+            arguments={},
+            result=snapshot,
+        )
+        snapshot = self._memory_store.build_state_snapshot()
         self.refresh_parameters()
-        self._sync_file_manifest()
         return snapshot
 
     def _handle_record_updates(self, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -332,6 +315,19 @@ class MissionDrivenAgent(BaseAgent):
         feedback = self._coerce_mapping_list(arguments.get("feedback", []))
         test_results = self._coerce_mapping_list(arguments.get("test_results", []))
         artifacts = self._coerce_mapping_list(arguments.get("artifacts", []))
+        file_records = self._coerce_mapping_list(arguments.get("file_records", []))
+        research_entries = self._coerce_mapping_list(arguments.get("research_entries", []))
+        tool_calls = self._coerce_mapping_list(arguments.get("tool_calls", []))
+        requested_next_actions = (
+            self._coerce_string_list(arguments["next_actions"])
+            if "next_actions" in arguments
+            else None
+        )
+        requested_mission_status = None
+        if "mission_status" in arguments:
+            requested_mission_status = str(arguments["mission_status"]).strip()
+            if not requested_mission_status:
+                raise ValidationError("mission_status must not be blank when provided.")
 
         for event in progress_events:
             self._memory_store.append_progress_event(event)
@@ -352,9 +348,23 @@ class MissionDrivenAgent(BaseAgent):
             self._memory_store.append_test_results(test_results)
         if artifacts:
             self._memory_store.append_artifact_records(artifacts)
+        if file_records:
+            self._memory_store.merge_file_manifest_records(file_records)
+        if research_entries:
+            self._memory_store.append_research_records(research_entries)
+        if tool_calls:
+            self._memory_store.append_tool_call_records(tool_calls)
 
         mission = self._memory_store.read_mission()
         status_payload = self._status_stage.run(mission=mission, task_plan=updated_plan)
+        resolved_next_actions = (
+            requested_next_actions
+            if requested_next_actions is not None
+            else self._coerce_string_list(status_payload.get("next_actions", []))
+        )
+        resolved_mission_status = requested_mission_status or str(
+            status_payload.get("mission_status", mission.get("mission_status", "active"))
+        )
         reconciled_plan = MissionTaskPlan(
             tasks=updated_plan.tasks,
             current_task_pointer=str(
@@ -364,8 +374,9 @@ class MissionDrivenAgent(BaseAgent):
         )
         self._memory_store.write_task_plan(reconciled_plan)
         self._memory_store.update_mission_status(
-            str(status_payload.get("mission_status", mission.get("mission_status", "active"))),
-            next_actions=self._coerce_string_list(status_payload.get("next_actions", [])),
+            resolved_mission_status,
+            current_task_pointer=reconciled_plan.current_task_pointer,
+            next_actions=resolved_next_actions,
         )
         narrative = self._narrative_stage.run(
             mission=self._memory_store.read_mission(),
@@ -374,8 +385,29 @@ class MissionDrivenAgent(BaseAgent):
         )
         self._memory_store.write_readme(narrative)
         self._sync_file_manifest()
+        snapshot = self._memory_store.build_state_snapshot()
+        self._record_tool_call(
+            tool_key=MISSION_RECORD_UPDATES,
+            arguments={
+                "task_update_count": len(task_updates),
+                "progress_event_count": len(progress_events),
+                "memory_fact_count": len(memory_facts),
+                "decision_count": len(decisions),
+                "error_count": len(errors),
+                "feedback_count": len(feedback),
+                "test_result_count": len(test_results),
+                "artifact_count": len(artifacts),
+                "file_record_count": len(file_records),
+                "research_entry_count": len(research_entries),
+                "tool_call_count": len(tool_calls),
+                "mission_status": requested_mission_status,
+                "next_actions": requested_next_actions,
+            },
+            result=snapshot,
+        )
+        snapshot = self._memory_store.build_state_snapshot()
         self.refresh_parameters()
-        return self._memory_store.build_state_snapshot()
+        return snapshot
 
     def _handle_create_checkpoint(self, arguments: dict[str, Any]) -> dict[str, Any]:
         checkpoint_name = str(arguments["checkpoint_name"]).strip()
@@ -398,8 +430,18 @@ class MissionDrivenAgent(BaseAgent):
             }
         )
         self._sync_file_manifest()
+        snapshot = {"checkpoint_path": checkpoint_path.as_posix(), **self._memory_store.build_state_snapshot()}
+        self._record_tool_call(
+            tool_key=MISSION_CREATE_CHECKPOINT,
+            arguments={
+                "checkpoint_name": checkpoint_name,
+                "resume_instructions": resume_instructions,
+            },
+            result=snapshot,
+        )
+        snapshot = {"checkpoint_path": checkpoint_path.as_posix(), **self._memory_store.build_state_snapshot()}
         self.refresh_parameters()
-        return {"checkpoint_path": checkpoint_path.as_posix(), **self._memory_store.build_state_snapshot()}
+        return snapshot
 
     def _apply_task_updates(self, current_plan: MissionTaskPlan, updates: list[Mapping[str, Any]]) -> MissionTaskPlan:
         task_index = {task.task_id: task for task in current_plan.tasks}
@@ -437,9 +479,29 @@ class MissionDrivenAgent(BaseAgent):
                     "exists": path.exists(),
                     "kind": entry.kind,
                     "format": entry.format,
+                    "purpose": entry.description,
+                    "change_type": "managed_memory_entry",
+                    "dependencies": [],
+                    "dependents": [],
                 }
             )
-        self._memory_store.write_file_manifest(records)
+        self._memory_store.merge_file_manifest_records(records)
+
+    def _record_tool_call(self, *, tool_key: str, arguments: Mapping[str, Any], result: Mapping[str, Any]) -> None:
+        self._memory_store.append_tool_call_records(
+            [
+                {
+                    "timestamp": utc_now_z(),
+                    "tool_key": tool_key,
+                    "arguments": dict(arguments),
+                    "result_summary": {
+                        "keys": sorted(result.keys()),
+                        "mission_status": result.get("mission_status"),
+                        "current_task_pointer": result.get("current_task_pointer"),
+                    },
+                }
+            ]
+        )
 
     def _first_open_task_id(self, tasks: Sequence[MissionTask]) -> str | None:
         for task in tasks:

@@ -7,13 +7,8 @@ from typing import Any
 
 from harnessiq.agents.helpers import utc_now_z
 from harnessiq.agents.subcalls import JsonSubcallRunner, run_json_subcall
-from harnessiq.master_prompts import MasterPromptRegistry
 from harnessiq.shared.agents import AgentModel, AgentParameterSection, json_parameter_section
-from harnessiq.shared.mission_driven import (
-    MISSION_DRIVEN_PROMPT_KEY,
-    MissionDefinition,
-    MissionTaskPlan,
-)
+from harnessiq.shared.mission_driven import MissionDefinition, MissionTaskPlan
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,21 +29,23 @@ class MissionDefinitionStage:
         payload = run_json_subcall(
             self.model,
             agent_name=self.agent_name,
-            system_prompt=(
-                f"{self._master_prompt()}\n\n"
-                "[STAGE CONTRACT]\n"
-                "Generate only the mission definition artifact as JSON. "
-                "Return keys: goal, mission_type, success_criteria, scope, constraints, authorization_level, human_contact. "
-                "The scope object must contain in_scope and out_of_scope arrays."
-            ),
+            system_prompt=self.system_prompt(),
             sections=sections,
             label="mission_definition",
             runner=self.runner,
         )
         return MissionDefinition.from_dict(payload)
 
-    def _master_prompt(self) -> str:
-        return MasterPromptRegistry().get_prompt_text(MISSION_DRIVEN_PROMPT_KEY)
+    def system_prompt(self) -> str:
+        return (
+            "You are the mission definition author for MissionDrivenAgent.\n"
+            "Your only job is to write the immutable mission definition artifact that anchors scope and authority.\n"
+            "Translate the provided mission goal and mission type into a precise contract with success criteria, "
+            "explicit in-scope and out-of-scope boundaries, operating constraints, authorization level, and human contact.\n"
+            "Do not create tasks, status updates, progress history, or README prose.\n"
+            "Return only JSON with keys: goal, mission_type, success_criteria, scope, constraints, authorization_level, human_contact.\n"
+            "The scope object must contain in_scope and out_of_scope arrays."
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,14 +60,7 @@ class MissionTaskPlanStage:
         payload = run_json_subcall(
             self.model,
             agent_name=self.agent_name,
-            system_prompt=(
-                f"{self._master_prompt()}\n\n"
-                "[STAGE CONTRACT]\n"
-                "Generate only the task plan JSON. "
-                "Return keys: tasks, current_task_pointer, last_updated. "
-                "Each task requires id, title, description, status, prerequisites, complexity, assigned_to_session, completed_at, blocked_reason. "
-                "Use pending/in_progress/complete/blocked/skipped only."
-            ),
+            system_prompt=self.system_prompt(),
             sections=(json_parameter_section("Mission Definition", definition.to_dict()),),
             label="task_plan",
             runner=self.runner,
@@ -81,11 +71,18 @@ class MissionTaskPlanStage:
                 tasks=plan.tasks,
                 current_task_pointer=plan.current_task_pointer,
                 last_updated=utc_now_z(),
-            )
+        )
         return plan
 
-    def _master_prompt(self) -> str:
-        return MasterPromptRegistry().get_prompt_text(MISSION_DRIVEN_PROMPT_KEY)
+    def system_prompt(self) -> str:
+        return (
+            "You are the task-plan decomposer for MissionDrivenAgent.\n"
+            "Break the mission definition into a concrete, dependency-aware execution plan that a cold-start agent can follow without guessing.\n"
+            "Produce only the task hierarchy, task metadata, and current task pointer. Do not write narrative summaries or decision rationale.\n"
+            "Return only JSON with keys: tasks, current_task_pointer, last_updated.\n"
+            "Each task must include id, title, description, status, prerequisites, complexity, assigned_to_session, completed_at, blocked_reason.\n"
+            "Use only these statuses: pending, in_progress, complete, blocked, skipped."
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,13 +97,7 @@ class MissionStatusStage:
         return run_json_subcall(
             self.model,
             agent_name=self.agent_name,
-            system_prompt=(
-                f"{self._master_prompt()}\n\n"
-                "[STAGE CONTRACT]\n"
-                "Return only JSON with keys: mission_status, current_task_pointer, next_actions. "
-                "mission_status must be one of active, blocked, awaiting_input, paused, complete, failed. "
-                "next_actions must be a non-empty array unless the mission is complete."
-            ),
+            system_prompt=self.system_prompt(),
             sections=(
                 json_parameter_section("Mission", mission),
                 json_parameter_section("Task Plan", task_plan.to_dict()),
@@ -115,8 +106,16 @@ class MissionStatusStage:
             runner=self.runner,
         )
 
-    def _master_prompt(self) -> str:
-        return MasterPromptRegistry().get_prompt_text(MISSION_DRIVEN_PROMPT_KEY)
+    def system_prompt(self) -> str:
+        return (
+            "You are the mission status reconciler for MissionDrivenAgent.\n"
+            "Inspect the current mission record and task plan, then determine the aggregate mission status, "
+            "the correct current task pointer, and the next executable action queue.\n"
+            "Favor explicit, operational next actions over vague summaries.\n"
+            "Return only JSON with keys: mission_status, current_task_pointer, next_actions.\n"
+            "mission_status must be one of active, blocked, awaiting_input, paused, complete, failed.\n"
+            "next_actions must be a non-empty array unless the mission is complete."
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,12 +130,7 @@ class MissionNarrativeStage:
         payload = run_json_subcall(
             self.model,
             agent_name=self.agent_name,
-            system_prompt=(
-                f"{self._master_prompt()}\n\n"
-                "[STAGE CONTRACT]\n"
-                "Return only JSON with one key named readme_markdown. "
-                "Produce a concise, human-readable README that states the goal, current status, key progress, current work, next actions, and blockers."
-            ),
+            system_prompt=self.system_prompt(),
             sections=(
                 json_parameter_section("Mission", mission),
                 json_parameter_section("Task Plan", task_plan.to_dict()),
@@ -147,8 +141,14 @@ class MissionNarrativeStage:
         )
         return str(payload.get("readme_markdown", "")).strip()
 
-    def _master_prompt(self) -> str:
-        return MasterPromptRegistry().get_prompt_text(MISSION_DRIVEN_PROMPT_KEY)
+    def system_prompt(self) -> str:
+        return (
+            "You are the narrative summarizer for MissionDrivenAgent.\n"
+            "Translate the structured mission state into a concise, operator-facing README that a new engineer can skim to orient quickly.\n"
+            "Summarize the goal, current status, progress, current work, next actions, blockers, and the most important durable findings.\n"
+            "Do not invent state that is not present in the structured inputs.\n"
+            "Return only JSON with one key named readme_markdown."
+        )
 
 
 __all__ = [
