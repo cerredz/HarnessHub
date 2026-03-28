@@ -7,10 +7,13 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig
+from harnessiq.agents.sdk_helpers import merge_profile_parameters, resolve_profile_memory_path
+from harnessiq.config import HarnessProfile
 from harnessiq.shared.agents import json_parameter_section, merge_agent_runtime_config
 from harnessiq.shared.dtos import EmailAgentRequest, EmailCampaignAgentInstancePayload
 from harnessiq.shared.email import DEFAULT_EMAIL_AGENT_IDENTITY
 from harnessiq.shared.email_campaign import (
+    EMAIL_HARNESS_MANIFEST,
     EmailCampaignMemoryStore,
     EmailSendRecord,
     build_resend_batch_payload,
@@ -66,14 +69,19 @@ class EmailCampaignAgent(BaseEmailAgent):
         *,
         model: AgentModel,
         resend_credentials,
-        memory_path: str | Path,
+        memory_path: str | Path | None = None,
         runtime_overrides: Mapping[str, Any] | None = None,
         custom_overrides: Mapping[str, Any] | None = None,
         resend_client=None,
         runtime_config: AgentRuntimeConfig | None = None,
         instance_name: str | None = None,
     ) -> "EmailCampaignAgent":
-        store = EmailCampaignMemoryStore(memory_path=Path(memory_path))
+        resolved_memory_path = (
+            Path(memory_path)
+            if memory_path is not None
+            else Path(EMAIL_HARNESS_MANIFEST.resolved_default_memory_root)
+        )
+        store = EmailCampaignMemoryStore(memory_path=resolved_memory_path)
         store.prepare()
         runtime_parameters = dict(store.read_runtime_parameters())
         if runtime_overrides:
@@ -97,6 +105,41 @@ class EmailCampaignAgent(BaseEmailAgent):
             resend_client=resend_client,
             runtime_config=runtime_config,
             instance_name=instance_name,
+        )
+
+    @classmethod
+    def from_profile(
+        cls,
+        *,
+        profile: HarnessProfile,
+        model: AgentModel,
+        resend_credentials,
+        memory_path: str | Path | None = None,
+        resend_client=None,
+        runtime_config: AgentRuntimeConfig | None = None,
+        runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
+        instance_name: str | None = None,
+    ) -> "EmailCampaignAgent":
+        resolved_memory_path = resolve_profile_memory_path(
+            profile=profile,
+            manifest=EMAIL_HARNESS_MANIFEST,
+            memory_path=memory_path,
+        )
+        resolved_runtime, resolved_custom = merge_profile_parameters(
+            profile=profile,
+            runtime_overrides=runtime_overrides,
+            custom_overrides=custom_overrides,
+        )
+        return cls.from_memory(
+            model=model,
+            resend_credentials=resend_credentials,
+            memory_path=resolved_memory_path,
+            runtime_overrides=resolved_runtime,
+            custom_overrides=resolved_custom,
+            resend_client=resend_client,
+            runtime_config=runtime_config,
+            instance_name=instance_name or profile.agent_name,
         )
 
     @property

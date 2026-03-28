@@ -234,6 +234,24 @@ class BaseAgentTests(unittest.TestCase):
         assert agent.last_tool_selection_result is not None
         self.assertEqual(agent.last_tool_selection_result.selected_keys, ("session.write", "filesystem.read"))
 
+    def test_snapshot_prepares_and_returns_assembled_runtime_state(self) -> None:
+        registry = ToolRegistry([_constant_tool("session.echo", "echo", _echo_handler)])
+        agent = _InspectableAgent(
+            model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+            tool_executor=registry,
+            parameter_versions=["snapshot-state"],
+        )
+
+        snapshot = agent.snapshot()
+
+        self.assertEqual(snapshot.system_prompt, "System prompt")
+        self.assertEqual(snapshot.parameter_sections[0].title, "State")
+        self.assertEqual(snapshot.parameter_sections[0].content, "snapshot-state")
+        self.assertEqual([tool.key for tool in snapshot.tools], ["session.echo"])
+        self.assertEqual(snapshot.memory_path, agent.memory_path)
+        self.assertEqual(snapshot.instance_id, agent.instance_id)
+        self.assertEqual(snapshot.instance_name, agent.instance_name)
+
     def test_run_records_tool_results_and_passes_transcript_to_next_turn(self) -> None:
         registry = ToolRegistry(
             [

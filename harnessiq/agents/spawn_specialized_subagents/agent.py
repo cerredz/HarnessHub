@@ -7,11 +7,13 @@ from typing import Any, Mapping, Sequence
 
 from harnessiq.agents.base import BaseAgent
 from harnessiq.agents.helpers import resolve_memory_path, utc_now_z
+from harnessiq.agents.sdk_helpers import merge_profile_parameters, resolve_profile_memory_path
 from harnessiq.agents.spawn_specialized_subagents.stages import (
     DelegationPlannerStage,
     IntegrationStage,
     WorkerExecutionStage,
 )
+from harnessiq.config import HarnessProfile
 from harnessiq.agents.subcalls import JsonSubcallRunner
 from harnessiq.shared.agents import (
     AgentModel,
@@ -161,6 +163,41 @@ class SpawnSpecializedSubagentsAgent(BaseAgent):
             json_subcall_runner=json_subcall_runner,
             instance_name=instance_name,
             **normalized_runtime,
+        )
+
+    @classmethod
+    def from_profile(
+        cls,
+        *,
+        profile: HarnessProfile,
+        model: AgentModel,
+        memory_path: str | Path | None = None,
+        tools: Sequence[RegisteredTool] | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
+        runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
+        json_subcall_runner: JsonSubcallRunner | None = None,
+        instance_name: str | None = None,
+    ) -> "SpawnSpecializedSubagentsAgent":
+        resolved_path = resolve_profile_memory_path(
+            profile=profile,
+            manifest=SPAWN_SPECIALIZED_SUBAGENTS_HARNESS_MANIFEST,
+            memory_path=memory_path,
+        )
+        resolved_runtime, resolved_custom = merge_profile_parameters(
+            profile=profile,
+            runtime_overrides=runtime_overrides,
+            custom_overrides=custom_overrides,
+        )
+        return cls.from_memory(
+            model=model,
+            memory_path=resolved_path,
+            runtime_overrides=resolved_runtime,
+            custom_overrides=resolved_custom,
+            tools=tools,
+            runtime_config=runtime_config,
+            json_subcall_runner=json_subcall_runner,
+            instance_name=instance_name or profile.agent_name,
         )
 
     def build_instance_payload(self) -> dict[str, Any]:
