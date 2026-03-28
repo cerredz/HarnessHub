@@ -18,6 +18,8 @@ from harnessiq.config import (
     HarnessProfileIndexStore,
     HarnessProfileStore,
     get_provider_credential_spec,
+    parse_dotenv_file,
+    MissingEnvironmentVariableError,
 )
 from harnessiq.shared.dtos import HarnessParameterBundleDTO
 from harnessiq.shared.harness_manifest import HarnessManifest
@@ -267,6 +269,40 @@ class HarnessCliLifecycleBuilder:
             "status": "resolved",
         }
 
+    def verify_provider_credentials(
+        self,
+        *,
+        family: str,
+        assignments: list[str],
+        repo_root: Path | str,
+    ) -> dict[str, Any]:
+        resolved_repo_root = Path(repo_root).expanduser().resolve()
+        spec = get_provider_credential_spec(family)
+        env_mapping = self._parse_provider_verify_assignments(assignments)
+        validated_mapping = spec.validate_fields(env_mapping)
+        env_path = CredentialsConfigStore(repo_root=resolved_repo_root).env_path
+        env_values = parse_dotenv_file(env_path)
+        resolved_values: dict[str, str] = {}
+        for field_name, env_var in validated_mapping.items():
+            value = env_values.get(env_var)
+            if value is None or not value.strip():
+                raise MissingEnvironmentVariableError(
+                    f"Provider family '{spec.family}' requires env var '{env_var}' for field '{field_name}' to be set to a non-empty value."
+                )
+            resolved_values[field_name] = value
+        credential_object = spec.build_credentials(resolved_values)
+        if hasattr(credential_object, "as_redacted_dict"):
+            credential_payload = credential_object.as_redacted_dict()  # type: ignore[assignment]
+        else:
+            credential_payload = spec.redact_values(resolved_values)
+        return {
+            "credential": credential_payload,
+            "env_mappings": dict(validated_mapping),
+            "env_path": str(env_path),
+            "family": spec.family,
+            "status": "resolved",
+        }
+
     def _resolve_memory_context(
         self,
         *,
@@ -427,6 +463,19 @@ class HarnessCliLifecycleBuilder:
                 f"Credential bindings must use FAMILY.FIELD=ENV_VAR syntax. Received '{assignment}'."
             )
         return normalized_field_name, normalized_env_var
+
+    def _parse_provider_verify_assignments(self, assignments: list[str]) -> dict[str, str]:
+        mapping: dict[str, str] = {}
+        for assignment in assignments:
+            field_name, env_var = assignment.split("=", 1) if "=" in assignment else (assignment, "")
+            normalized_field_name = field_name.strip()
+            normalized_env_var = env_var.strip()
+            if not normalized_field_name or not normalized_env_var:
+                raise ValueError(
+                    f"Provider verification assignments must use FIELD=ENV_VAR syntax. Received '{assignment}'."
+                )
+            mapping[normalized_field_name] = normalized_env_var
+        return mapping
 
     def _group_reference_mapping(self, mapping: dict[str, str]) -> dict[str, dict[str, str]]:
         grouped: dict[str, dict[str, str]] = defaultdict(dict)
