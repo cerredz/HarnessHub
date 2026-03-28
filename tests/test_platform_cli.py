@@ -544,6 +544,48 @@ def test_run_generic_instagram_accepts_custom_params_and_icp_override(tmp_path: 
     }
 
 
+def test_run_generic_instagram_accepts_non_reasoning_grok_model_spec(tmp_path: Path) -> None:
+    (tmp_path / "local.env").write_text("XAI_API_KEY=local-xai-key\n", encoding="utf-8")
+    _run(["prepare", "instagram", "--agent", "creator-grok", "--memory-root", str(tmp_path)])
+
+    mock_agent = MagicMock()
+    mock_agent.get_emails.return_value = ("creator@example.com",)
+    mock_agent.run.return_value = SimpleNamespace(
+        cycles_completed=1,
+        pause_reason=None,
+        resets=0,
+        status="completed",
+    )
+
+    with (
+        patch.dict("os.environ", {}, clear=True),
+        patch("harnessiq.cli.common.create_model_from_spec", side_effect=create_model_from_spec_recording_provider_env),
+        patch(
+            "harnessiq.cli.adapters.instagram.InstagramKeywordDiscoveryAgent.from_memory",
+            return_value=mock_agent,
+        ),
+    ):
+        exit_code, payload = _run(
+            [
+                "run",
+                "instagram",
+                "--agent",
+                "creator-grok",
+                "--memory-root",
+                str(tmp_path),
+                "--model",
+                "grok:grok-4.1-fast",
+                "--search-backend-factory",
+                "tests.test_platform_cli:create_instagram_search_backend",
+            ]
+        )
+
+    assert exit_code == 0
+    assert payload["result"]["status"] == "completed"
+    assert _LAST_MODEL_SELECTION["model_spec"] == "grok:grok-4.1-fast"
+    assert _LAST_MODEL_SELECTION["XAI_API_KEY"] == "local-xai-key"
+
+
 def test_run_generic_email_uses_bound_resend_credentials(tmp_path: Path) -> None:
     (tmp_path / ".env").write_text("RESEND_API_KEY=re_test_123\n", encoding="utf-8")
     _run(["prepare", "email", "--agent", "campaign-a", "--memory-root", str(tmp_path)])

@@ -241,6 +241,23 @@ def test_provider_agent_model_accepts_grok_openai_style_contract_client() -> Non
     assert client.calls[0]["reasoning_effort"] == "high"
 
 
+def test_provider_agent_model_omits_reasoning_effort_for_non_reasoning_grok_models() -> None:
+    client = _FakeOpenAIStyleClient(assistant_message="Grok response.")
+    model = ProviderAgentModel(
+        provider="grok",
+        model_name="grok-4.1-fast",
+        client=client,
+        reasoning_effort="high",
+        tracing_enabled=False,
+    )
+
+    response = model.generate_turn(_build_request())
+
+    assert response.assistant_message == "Grok response."
+    assert response.should_continue is False
+    assert client.calls[0]["reasoning_effort"] is None
+
+
 def test_gemini_agent_model_parses_text_and_function_calls() -> None:
     model = GeminiAgentModel(api_key="test-key", model_name="gemini-2.5-pro")
     model._name_to_key = {"browser_extract": "browser.extract"}  # type: ignore[attr-defined]
@@ -289,6 +306,36 @@ def test_create_model_from_profile_uses_profile_settings() -> None:
     assert model.model_name == "grok-4-1-fast-reasoning"
     assert model._max_output_tokens == 4096  # type: ignore[attr-defined]
     assert model._reasoning_effort == "high"  # type: ignore[attr-defined]
+
+
+def test_create_model_from_profile_suppresses_reasoning_effort_for_non_reasoning_grok_models() -> None:
+    profile = ModelProfile(
+        name="fast",
+        provider="grok",
+        model_name="grok-4.1-fast",
+        reasoning_effort="high",
+    )
+    with patch.dict("os.environ", {"XAI_API_KEY": "xai-test-key"}):
+        model = create_model_from_profile(profile, tracing_enabled=False)
+    assert isinstance(model, GrokAgentModel)
+    assert model.model_name == "grok-4.1-fast"
+    assert model._requested_reasoning_effort == "high"  # type: ignore[attr-defined]
+    assert model._reasoning_effort is None  # type: ignore[attr-defined]
+
+
+def test_grok_agent_model_with_reasoning_override_restores_reasoning_effort() -> None:
+    base_model = GrokAgentModel(
+        api_key="test-key",
+        model_name="grok-4.1-fast",
+        reasoning_effort="medium",
+        tracing_enabled=False,
+    )
+
+    overridden = base_model.with_model_override("grok-4-1-fast-reasoning")
+
+    assert overridden.model_name == "grok-4-1-fast-reasoning"
+    assert overridden._requested_reasoning_effort == "medium"  # type: ignore[attr-defined]
+    assert overridden._reasoning_effort == "medium"  # type: ignore[attr-defined]
 
 
 def test_grok_agent_model_salvages_pseudo_tool_calls_from_content() -> None:
