@@ -11,10 +11,12 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command")
     parser.set_defaults(command_handler=lambda args: _print_help(parser))
 
+    from harnessiq.cli.agents import register_agents_commands
     from harnessiq.cli.linkedin import register_linkedin_commands
     from harnessiq.cli.leads import register_leads_commands
     from harnessiq.cli.master_prompts import register_master_prompt_commands
     from harnessiq.cli.models import register_model_commands
+    from harnessiq.cli.providers import register_providers_commands
     from harnessiq.cli.email import register_email_commands
     from harnessiq.cli.exa_outreach import register_exa_outreach_commands
     from harnessiq.cli.instagram import register_instagram_commands
@@ -24,6 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     from harnessiq.cli.prospecting import register_prospecting_commands
     from harnessiq.cli.research_sweep import register_research_sweep_commands
     from harnessiq.cli.stats import register_stats_commands
+    from harnessiq.cli.tools import register_tools_commands
 
     register_gcloud_commands(subparsers)
     register_platform_commands(subparsers)
@@ -31,6 +34,9 @@ def build_parser() -> argparse.ArgumentParser:
     register_stats_commands(subparsers)
     register_master_prompt_commands(subparsers)
     register_model_commands(subparsers)
+    register_tools_commands(subparsers)
+    register_providers_commands(subparsers)
+    register_agents_commands(subparsers)
     register_email_commands(subparsers)
     register_linkedin_commands(subparsers)
     register_leads_commands(subparsers)
