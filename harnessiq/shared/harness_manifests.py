@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from types import MappingProxyType
 
 from harnessiq.shared.exa_outreach import EXA_OUTREACH_HARNESS_MANIFEST
+from harnessiq.shared.email_campaign import EMAIL_HARNESS_MANIFEST
 from harnessiq.shared.instagram import INSTAGRAM_HARNESS_MANIFEST
 from harnessiq.shared.knowt import KNOWT_HARNESS_MANIFEST
 from harnessiq.shared.leads import LEADS_HARNESS_MANIFEST
@@ -24,6 +25,7 @@ from .harness_manifest import HarnessManifest
 
 _BUILTIN_HARNESS_MANIFESTS: tuple[HarnessManifest, ...] = (
     EXA_OUTREACH_HARNESS_MANIFEST,
+    EMAIL_HARNESS_MANIFEST,
     INSTAGRAM_HARNESS_MANIFEST,
     KNOWT_HARNESS_MANIFEST,
     LEADS_HARNESS_MANIFEST,
@@ -95,6 +97,7 @@ def get_harness_manifest(query: str) -> HarnessManifest:
 
 __all__ = [
     "EXA_OUTREACH_HARNESS_MANIFEST",
+    "EMAIL_HARNESS_MANIFEST",
     "HARNESS_MANIFESTS",
     "HARNESS_MANIFESTS_BY_AGENT_NAME",
     "HARNESS_MANIFESTS_BY_CLI_COMMAND",

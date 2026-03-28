@@ -4,6 +4,7 @@ from .environment import set_env_path_if_missing
 from .factories import load_factory_assignment_map, load_optional_iterable_factory
 from .payloads import optional_string, read_json_object, result_payload
 from .stores import (
+    load_email_store,
     load_exa_store,
     load_instagram_store,
     load_knowt_store,
@@ -17,6 +18,7 @@ from .stores import (
 
 __all__ = [
     "load_exa_store",
+    "load_email_store",
     "load_factory_assignment_map",
     "load_instagram_store",
     "load_knowt_store",

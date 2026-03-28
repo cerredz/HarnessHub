@@ -2,6 +2,7 @@
 
 from .base import BaseHarnessCliAdapter, HarnessCliAdapter, StoreBackedHarnessCliAdapter
 from .context import HarnessAdapterContext
+from .email import EmailHarnessCliAdapter
 from .exa_outreach import ExaOutreachHarnessCliAdapter
 from .instagram import InstagramHarnessCliAdapter
 from .knowt import KnowtHarnessCliAdapter
@@ -12,6 +13,7 @@ from .research_sweep import ResearchSweepHarnessCliAdapter
 
 __all__ = [
     "BaseHarnessCliAdapter",
+    "EmailHarnessCliAdapter",
     "ExaOutreachHarnessCliAdapter",
     "HarnessAdapterContext",
     "HarnessCliAdapter",

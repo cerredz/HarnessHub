@@ -19,6 +19,7 @@ from .harness_manifest import (
     HarnessParameterType,
 )
 from .harness_manifests import (
+    EMAIL_HARNESS_MANIFEST,
     EXA_OUTREACH_HARNESS_MANIFEST,
     HARNESS_MANIFESTS,
     HARNESS_MANIFESTS_BY_AGENT_NAME,
@@ -71,6 +72,7 @@ __all__ = [
     "ConfigurationError",
     "dtos",
     "EnvVarName",
+    "EMAIL_HARNESS_MANIFEST",
     "EXA_OUTREACH_HARNESS_MANIFEST",
     "ExternalServiceError",
     "HARNESS_MANIFESTS",

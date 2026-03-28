@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from harnessiq.shared.exa_outreach import ExaOutreachMemoryStore
+from harnessiq.shared.email_campaign import EmailCampaignMemoryStore
 from harnessiq.shared.instagram import InstagramMemoryStore
 from harnessiq.shared.knowt import KnowtMemoryStore
 from harnessiq.shared.leads import LeadsMemoryStore
@@ -57,6 +58,13 @@ def load_exa_store(memory_path: Path) -> ExaOutreachMemoryStore:
     return store
 
 
+def load_email_store(memory_path: Path) -> EmailCampaignMemoryStore:
+    """Build and prepare the email campaign memory store for one adapter operation."""
+    store = EmailCampaignMemoryStore(memory_path=memory_path)
+    store.prepare()
+    return store
+
+
 def load_research_sweep_store(memory_path: Path) -> ResearchSweepMemoryStore:
     """Build and prepare the research sweep memory store for one adapter operation."""
     store = ResearchSweepMemoryStore(memory_path=memory_path)
@@ -80,6 +88,7 @@ def load_spawn_specialized_subagents_store(memory_path: Path) -> SpawnSpecialize
 
 __all__ = [
     "load_exa_store",
+    "load_email_store",
     "load_instagram_store",
     "load_knowt_store",
     "load_leads_store",

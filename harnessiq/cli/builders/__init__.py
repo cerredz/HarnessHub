@@ -1,5 +1,6 @@
 """Shared lifecycle builders for CLI command modules."""
 
+from .email import EmailCliBuilder
 from .exa_outreach import ExaOutreachCliBuilder
 from .instagram import InstagramCliBuilder
 from .leads import LeadsCliBuilder
@@ -9,6 +10,7 @@ from .prospecting import ProspectingCliBuilder
 from .research_sweep import ResearchSweepCliBuilder
 
 __all__ = [
+    "EmailCliBuilder",
     "ExaOutreachCliBuilder",
     "HarnessCliLifecycleBuilder",
     "InstagramCliBuilder",

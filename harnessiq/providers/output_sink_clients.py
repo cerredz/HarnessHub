@@ -282,7 +282,7 @@ class GoogleSheetsClient:
 
 @dataclass(slots=True)
 class MongoDBClient:
-    """Minimal MongoDB client wrapper for inserting ledger documents."""
+    """Minimal MongoDB client wrapper for inserting and reading documents."""
 
     connection_uri: str
     database: str
@@ -306,6 +306,26 @@ class MongoDBClient:
                 if callable(closer):
                     closer()
 
+    def find_documents(
+        self,
+        *,
+        filter: Mapping[str, Any] | None = None,
+        projection: Mapping[str, Any] | Sequence[str] | None = None,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
+        collection, managed_client = self._resolve_collection()
+        try:
+            resolved_projection = _normalize_mongo_projection(projection)
+            cursor = collection.find(filter=dict(filter or {}), projection=resolved_projection)
+            if limit is not None:
+                cursor = cursor.limit(int(limit))
+            return [dict(document) for document in cursor]
+        finally:
+            if managed_client is not None:
+                closer = getattr(managed_client, "close", None)
+                if callable(closer):
+                    closer()
+
     def _resolve_collection(self) -> tuple[Any, Any | None]:
         if self.collection_handle is not None:
             return self.collection_handle, None
@@ -322,6 +342,18 @@ def _build_pymongo_client(connection_uri: str, **kwargs: Any) -> Any:
             "MongoDB support requires the 'pymongo' package. Install it with 'pip install pymongo'."
         ) from exc
     return MongoClient(connection_uri, **kwargs)
+
+
+def _normalize_mongo_projection(
+    projection: Mapping[str, Any] | Sequence[str] | None,
+) -> Mapping[str, Any] | None:
+    if projection is None:
+        return None
+    if isinstance(projection, Mapping):
+        return dict(projection)
+    if isinstance(projection, Sequence) and not isinstance(projection, (str, bytes, bytearray)):
+        return {str(field): 1 for field in projection}
+    raise TypeError("MongoDB projection must be a mapping, sequence of field names, or None.")
 
 
 def _google_sheets_values_url(

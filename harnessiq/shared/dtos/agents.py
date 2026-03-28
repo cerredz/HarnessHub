@@ -177,6 +177,34 @@ class InstagramAgentInstancePayload(SerializableDTO):
 
 
 @dataclass(frozen=True, slots=True)
+class EmailCampaignAgentInstancePayload(SerializableDTO):
+    """Explicit DTO for the email campaign durable-memory agent boundary."""
+
+    memory_path: Path
+    runtime: Mapping[str, Any]
+    source_config: Mapping[str, Any]
+    campaign_config: Mapping[str, Any]
+    custom_parameters: Mapping[str, Any] | None = None
+    agent_identity: str | None = None
+    additional_prompt: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "campaign_config": _normalize_value(self.campaign_config),
+            "memory_path": self.memory_path.as_posix(),
+            "runtime": _normalize_value(self.runtime),
+            "source_config": _normalize_value(self.source_config),
+        }
+        if self.custom_parameters:
+            payload["custom_parameters"] = _normalize_value(self.custom_parameters)
+        if self.agent_identity is not None:
+            payload["agent_identity"] = self.agent_identity
+        if self.additional_prompt is not None:
+            payload["additional_prompt"] = self.additional_prompt
+        return payload
+
+
+@dataclass(frozen=True, slots=True)
 class LeadsAgentInstancePayload(SerializableDTO):
     """Explicit DTO for the Leads durable-memory agent boundary."""
 
@@ -453,6 +481,7 @@ def _normalize_optional_operations(
 __all__ = [
     "AgentInstancePayload",
     "ApolloAgentRequest",
+    "EmailCampaignAgentInstancePayload",
     "EmailAgentRequest",
     "ExaOutreachAgentInstancePayload",
     "ExaAgentRequest",

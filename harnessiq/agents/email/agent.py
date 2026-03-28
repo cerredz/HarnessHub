@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Iterable, Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig, BaseAgent
@@ -33,6 +34,9 @@ class BaseEmailAgent(BaseAgent, ABC):
         tools: Sequence[RegisteredTool] | None = None,
         resend_client: ResendRequestClient | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
+        memory_path: Path | None = None,
+        repo_root: str | Path | None = None,
+        instance_name: str | None = None,
     ) -> None:
         config = request.to_config()
         if resend_client is not None and resend_client.credentials != config.resend_credentials:
@@ -61,6 +65,9 @@ class BaseEmailAgent(BaseAgent, ABC):
                 max_tokens=self._config.max_tokens,
                 reset_threshold=self._config.reset_threshold,
             ),
+            memory_path=memory_path,
+            repo_root=repo_root,
+            instance_name=instance_name,
         )
 
     @property

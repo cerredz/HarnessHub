@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import time
 from contextlib import redirect_stdout
 from pathlib import Path
 from types import SimpleNamespace
@@ -72,7 +73,14 @@ def _run(argv: list[str]) -> tuple[int, dict[str, object]]:
 def _clear_repo_resume_index() -> None:
     index_path = Path("memory") / "harness_profiles.json"
     if index_path.exists():
-        index_path.unlink()
+        for _ in range(5):
+            try:
+                index_path.unlink()
+                break
+            except PermissionError:
+                time.sleep(0.05)
+        else:
+            index_path.unlink()
 
 
 def test_prepare_show_and_inspect_generic_linkedin(tmp_path: Path) -> None:
@@ -165,6 +173,44 @@ def test_prepare_show_and_inspect_generic_research_sweep(tmp_path: Path) -> None
     assert runtime_index["max_tokens"]["default"] == 80000
     assert inspected["default_memory_root"] == "memory/research_sweep"
     assert inspected["provider_credential_fields"]["serper"][0]["name"] == "api_key"
+
+
+def test_prepare_show_and_inspect_generic_email(tmp_path: Path) -> None:
+    exit_code, prepared = _run(
+        [
+            "prepare",
+            "email",
+            "--agent",
+            "campaign-a",
+            "--memory-root",
+            str(tmp_path),
+            "--batch-size",
+            "25",
+        ]
+    )
+    assert exit_code == 0
+    assert prepared["status"] == "prepared"
+    assert prepared["profile"]["runtime_parameters"]["batch_size"] == 25
+
+    exit_code, shown = _run(
+        [
+            "show",
+            "email",
+            "--agent",
+            "campaign-a",
+            "--memory-root",
+            str(tmp_path),
+        ]
+    )
+    assert exit_code == 0
+    assert shown["state"]["ready"] is False
+    assert shown["state"]["runtime_parameters"]["batch_size"] == 25
+
+    exit_code, inspected = _run(["inspect", "email"])
+    assert exit_code == 0
+    runtime_index = {entry["key"]: entry for entry in inspected["runtime_parameters"]}
+    assert runtime_index["batch_size"]["default"] == 100
+    assert inspected["provider_credential_fields"]["resend"][0]["name"] == "api_key"
 
 
 def test_generic_show_seeds_profile_from_existing_native_linkedin_state(tmp_path: Path) -> None:
@@ -496,6 +542,59 @@ def test_run_generic_instagram_accepts_custom_params_and_icp_override(tmp_path: 
         "icp_profiles": ["fitness creators"],
         "target_segment": "micro-creators",
     }
+
+
+def test_run_generic_email_uses_bound_resend_credentials(tmp_path: Path) -> None:
+    (tmp_path / ".env").write_text("RESEND_API_KEY=re_test_123\n", encoding="utf-8")
+    _run(["prepare", "email", "--agent", "campaign-a", "--memory-root", str(tmp_path)])
+    _run(
+        [
+            "credentials",
+            "bind",
+            "email",
+            "--agent",
+            "campaign-a",
+            "--memory-root",
+            str(tmp_path),
+            "--env",
+            "resend.api_key=RESEND_API_KEY",
+        ]
+    )
+
+    mock_agent = MagicMock()
+    mock_agent.last_run_id = "run-email-1"
+    mock_agent.run.return_value = SimpleNamespace(
+        cycles_completed=1,
+        pause_reason=None,
+        resets=0,
+        status="completed",
+    )
+    mock_agent.build_ledger_outputs.return_value = {
+        "delivery_records": [{"email_address": "creator@example.com"}],
+        "recipient_batch": [{"email_address": "creator@example.com"}],
+    }
+
+    with patch(
+        "harnessiq.cli.adapters.email.EmailCampaignAgent.from_memory",
+        return_value=mock_agent,
+    ) as patched_from_memory:
+        exit_code, payload = _run(
+            [
+                "run",
+                "email",
+                "--agent",
+                "campaign-a",
+                "--memory-root",
+                str(tmp_path),
+                "--model-factory",
+                "tests.test_platform_cli:create_static_model",
+            ]
+        )
+
+    assert exit_code == 0
+    assert payload["result"]["status"] == "completed"
+    assert payload["delivery_count"] == 1
+    assert patched_from_memory.call_args.kwargs["resend_credentials"].api_key == "re_test_123"
 
 
 def test_run_resume_reuses_persisted_adapter_arguments(tmp_path: Path) -> None:
