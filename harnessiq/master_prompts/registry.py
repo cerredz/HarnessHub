@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
-from typing import Iterator
+from typing import Callable, Iterator
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,8 +30,9 @@ class MasterPromptRegistry:
     """Load and retrieve master prompts bundled with the harnessiq package.
 
     Prompts are stored as JSON files under ``harnessiq/master_prompts/prompts/``.
-    Each file must contain ``title``, ``description``, and ``prompt`` fields.
-    The prompt key is the filename without the ``.json`` extension.
+    Each file must contain ``title`` and ``description`` plus either an inline
+    ``prompt`` field or a sibling-file ``prompt_path`` field. The prompt key is
+    the filename without the ``.json`` extension.
 
     Example::
 
@@ -99,6 +100,15 @@ def _iter_prompt_files() -> Iterator[tuple[str, dict]]:
             if item.name.endswith(".json"):
                 key = item.name[: -len(".json")]
                 data = json.loads(item.read_text(encoding="utf-8"))
+                prompt_path = data.get("prompt_path")
+                data = _resolve_prompt_payload(
+                    data,
+                    prompt_reader=(
+                        None
+                        if not prompt_path
+                        else lambda prompt_path=str(prompt_path): item.parent.joinpath(prompt_path).read_text(encoding="utf-8")
+                    ),
+                )
                 yield key, data
     except (TypeError, FileNotFoundError):
         # Fallback for environments where importlib.resources.files is unavailable
@@ -106,7 +116,27 @@ def _iter_prompt_files() -> Iterator[tuple[str, dict]]:
         for json_path in sorted(prompts_dir.glob("*.json")):
             key = json_path.stem
             data = json.loads(json_path.read_text(encoding="utf-8"))
+            prompt_path = data.get("prompt_path")
+            data = _resolve_prompt_payload(
+                data,
+                prompt_reader=(
+                    None
+                    if not prompt_path
+                    else lambda path=json_path.parent, prompt_path=str(prompt_path): (path / prompt_path).read_text(encoding="utf-8")
+                ),
+            )
             yield key, data
+
+
+def _resolve_prompt_payload(data: dict, *, prompt_reader: Callable[[], str] | None) -> dict:
+    if "prompt" in data:
+        return data
+    prompt_path = data.get("prompt_path")
+    if not prompt_path or prompt_reader is None:
+        raise KeyError("Bundled master prompt JSON must define either 'prompt' or 'prompt_path'.")
+    resolved = dict(data)
+    resolved["prompt"] = prompt_reader()
+    return resolved
 
 
 __all__ = [
