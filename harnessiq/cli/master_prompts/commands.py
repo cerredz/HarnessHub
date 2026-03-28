@@ -21,6 +21,10 @@ def register_master_prompt_commands(subparsers: argparse._SubParsersAction[argpa
     list_parser = prompts_subparsers.add_parser("list", help="List bundled master prompts")
     list_parser.set_defaults(command_handler=_handle_list)
 
+    search_parser = prompts_subparsers.add_parser("search", help="Search bundled master prompts")
+    search_parser.add_argument("query", help="Case-insensitive substring matched against key, title, and description.")
+    search_parser.set_defaults(command_handler=_handle_search)
+
     show_parser = prompts_subparsers.add_parser("show", help="Render one bundled master prompt as JSON")
     show_parser.add_argument("key", help="Prompt key, derived from the prompt filename.")
     show_parser.set_defaults(command_handler=_handle_show)
@@ -71,14 +75,27 @@ def _handle_list(args: argparse.Namespace) -> int:
         {
             "count": len(prompts),
             "keys": list_prompt_keys(),
-            "prompts": [
-                {
-                    "key": prompt.key,
-                    "title": prompt.title,
-                    "description": prompt.description,
-                }
-                for prompt in prompts
-            ],
+            "prompts": [_prompt_payload(prompt) for prompt in prompts],
+        }
+    )
+    return 0
+
+
+def _handle_search(args: argparse.Namespace) -> int:
+    needle = args.query.strip().lower()
+    prompts = [
+        prompt
+        for prompt in list_prompts()
+        if needle in prompt.key.lower()
+        or needle in prompt.title.lower()
+        or needle in prompt.description.lower()
+    ]
+    emit_json(
+        {
+            "count": len(prompts),
+            "keys": [prompt.key for prompt in prompts],
+            "prompts": [_prompt_payload(prompt) for prompt in prompts],
+            "query": args.query,
         }
     )
     return 0
@@ -138,6 +155,14 @@ def _handle_clear(args: argparse.Namespace) -> int:
 def _print_help(parser: argparse.ArgumentParser) -> int:
     parser.print_help()
     return 0
+
+
+def _prompt_payload(prompt) -> dict[str, str]:
+    return {
+        "key": prompt.key,
+        "title": prompt.title,
+        "description": prompt.description,
+    }
 
 
 __all__ = ["register_master_prompt_commands"]

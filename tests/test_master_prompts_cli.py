@@ -31,6 +31,11 @@ class TestMasterPromptParserRegistration:
         args, _ = parser.parse_known_args(["prompts", "show", "create_master_prompts"])
         assert args.prompts_command == "show"
 
+    def test_prompts_search_subcommand_registered(self) -> None:
+        parser = build_parser()
+        args, _ = parser.parse_known_args(["prompts", "search", "master"])
+        assert args.prompts_command == "search"
+
     def test_prompts_text_subcommand_registered(self) -> None:
         parser = build_parser()
         args, _ = parser.parse_known_args(["prompts", "text", "create_master_prompts"])
@@ -83,6 +88,19 @@ class TestMasterPromptCommands:
     def test_show_unknown_prompt_raises_key_error(self) -> None:
         with pytest.raises(KeyError):
             _run(["prompts", "show", "does_not_exist"])
+
+    def test_search_filters_prompt_catalog(self, capsys: pytest.CaptureFixture[str]) -> None:
+        result = _run(["prompts", "search", "master"])
+        assert result == 0
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["count"] >= 1
+        assert all(
+            "master" in prompt["key"].lower()
+            or "master" in prompt["title"].lower()
+            or "master" in prompt["description"].lower()
+            for prompt in payload["prompts"]
+        )
 
     def test_activate_emits_active_prompt_payload_and_writes_files(
         self,
