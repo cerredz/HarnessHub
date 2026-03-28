@@ -22,6 +22,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 - Treat `harnessiq/` as the only authoritative runtime source tree. `build/`, `src/`, caches, and packaging metadata are generated or residue directories.
 - Concrete harness metadata belongs in the shared manifest layer under `harnessiq/shared/`, and CLI behavior should consume that metadata instead of duplicating typed parameter rules.
 - Agents orchestrate. Tools execute deterministic operations. Providers wrap external systems. Utilities own cross-cutting runtime infrastructure like the ledger and output sinks.
+- Evaluation scaffolding belongs under `harnessiq/evaluations/` and should stay pytest-first, lightweight, and behavior-oriented.
 - Durable memory is a first-class design constraint: harnesses are expected to persist state that survives resets and restarts.
 - Provider-backed integrations should flow through `harnessiq/providers/` and `harnessiq/tools/`, not through ad hoc HTTP logic embedded in harness modules.
 - Output sinks are post-run exports only. They do not participate in the model loop or mutate the transcript.
@@ -48,6 +49,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | `harnessiq/agents/` | apollo, base, email, exa, exa_outreach, instagram, instantly, knowt, leads, linkedin, mission_driven, outreach, prospecting, provider_base, research_sweep, spawn_specialized_subagents | Shared runtime bases plus the concrete harness packages exported by the SDK. |
 | `harnessiq/cli/` | adapters, builders, commands, exa_outreach, gcloud, instagram, leads, ledger, linkedin, master_prompts, models, prospecting, research_sweep, runners, stats | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
 | `harnessiq/config/` | provider_credentials | Environment loading, credential binding, and provider-credential spec models. |
+| `harnessiq/evaluations/` | - | Pytest-first evaluation helpers, lightweight scoring helpers, and plugin support for tagged eval runs. |
 | `harnessiq/integrations/` | - | Concrete external runtime adapters such as Playwright backends and model factories. |
 | `harnessiq/master_prompts/` | prompts | Packaged prompt assets and prompt registry helpers. |
 | `harnessiq/providers/` | anthropic, apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, gcloud, gemini, google_drive, grok, hunter, inboxapp, instantly, leadiq, lemlist, lusha, openai, outreach, paperclip, peopledatalabs, phantombuster, playwright, proxycurl, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | Model-provider adapters, external service clients, output-sink transport clients, and Playwright runtime support. |
@@ -63,6 +65,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | `harnessiq/cli/adapters/` | Manifest-driven platform CLI adapter package with one module per harness plus shared adapter primitives. |
 | `harnessiq/cli/adapters/utils/` | Shared helper modules for adapter store loading, payload shaping, factory resolution, and session-directory setup. |
 | `harnessiq/config/provider_credentials/` | Focused provider-credential spec package split into catalog, models, builders, and masking helpers. |
+| `harnessiq/evaluations/` | Minimal eval helpers plus the pytest integration used for category filtering and model selection. |
 | `harnessiq/utils/harness_manifest/` | Manifest coercion, validation, and registry helpers extracted from the public shared manifest modules. |
 | `harnessiq/providers/gcloud/` | Google Cloud deployment provider package with command builders, credential sync, manifest-backed deploy specs, and the Cloud Run runtime wrapper. |
 
@@ -75,6 +78,9 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | `harnessiq/cli/main.py` | Root argparse entrypoint that wires every top-level command family into `harnessiq`. |
 | `harnessiq/cli/platform_commands.py` | Platform-first CLI roots that synthesize manifest-driven prepare/show/run/inspect and credential management commands. |
 | `harnessiq/cli/adapters/base.py` | Abstract adapter hooks and shared store-backed adapter behavior for the platform-first CLI. |
+| `harnessiq/evaluations/__init__.py` | Public pytest-first evaluation helper exports for repo-side evals. |
+| `harnessiq/evaluations/scoring.py` | Generic run-introspection, efficiency scoring, and LLM-judge helper functions for eval tests. |
+| `harnessiq/evaluations/pytest_plugin.py` | Pytest option and fixture wiring for eval categories and model selection. |
 | `harnessiq/toolset/catalog_provider.py` | Provider-tool catalog metadata used by the toolset lookup layer. |
 | `harnessiq/tools/builtin.py` | Built-in tool registry composition for the base runtime surface. |
 | `harnessiq/utils/ledger_sinks.py` | Built-in output sink registration plus sink-construction helpers. |

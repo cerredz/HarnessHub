@@ -45,6 +45,7 @@ class HarnessiqPackageTests(unittest.TestCase):
         self.assertTrue(hasattr(harnessiq, "agents"))
         self.assertTrue(hasattr(harnessiq, "cli"))
         self.assertTrue(hasattr(harnessiq, "config"))
+        self.assertTrue(hasattr(harnessiq, "evaluations"))
         self.assertTrue(hasattr(harnessiq, "integrations"))
         self.assertTrue(hasattr(harnessiq, "tools"))
         self.assertTrue(hasattr(harnessiq, "providers"))
@@ -78,6 +79,9 @@ class HarnessiqPackageTests(unittest.TestCase):
                         "from harnessiq.providers.openai import OpenAIResponseRequestDTO; "
                         "from harnessiq.cli.main import main as cli_main; "
                         "assert harnessiq.__version__ == '0.1.0'; "
+                        "assert hasattr(harnessiq, 'evaluations'); "
+                        "assert hasattr(harnessiq.evaluations, 'score_efficiency'); "
+                        "assert hasattr(harnessiq.evaluations, 'llm_judge'); "
                         "assert hasattr(harnessiq.shared, 'dtos'); "
                         "assert AgentInstancePayload.__module__ == 'harnessiq.shared.dtos.agents'; "
                         "assert OpenAIChatCompletionRequestDTO.__module__ == 'harnessiq.shared.dtos.providers'; "
