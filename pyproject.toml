@@ -37,8 +37,7 @@ include-package-data = true
 include = ["harnessiq*"]
 
 [tool.setuptools.package-data]
-"harnessiq.cli.skills" = ["*.md"]
-"harnessiq.master_prompts.prompts" = ["*.json"]
+"harnessiq.master_prompts.prompts" = ["*.json", "*.md"]
 "harnessiq.agents.exa_outreach" = ["prompts/*.md"]
 "harnessiq.agents.instagram" = ["prompts/*.md"]
 "harnessiq.agents.knowt" = ["prompts/*.md"]

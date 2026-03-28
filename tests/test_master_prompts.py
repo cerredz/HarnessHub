@@ -27,6 +27,7 @@ EXPECTED_PROMPT_KEYS = {
     "create_linear_execution_tickets",
     "create_master_prompts",
     "create_tickets",
+    "handshake_autonomous_job_applier",
     "highest_form_of_leverage",
     "hybrid_academic_and_web_research",
     "implement_and_critique_solutions",
@@ -45,6 +46,7 @@ EXPECTED_PROMPT_KEYS = {
 }
 STANDARD_STRUCTURE_PROMPT_KEYS = EXPECTED_PROMPT_KEYS - {
     "cognitive_multiplexer",
+    "handshake_autonomous_job_applier",
     "mission_driven",
     "orchestrator_master_prompt",
 }
@@ -79,24 +81,12 @@ PERSONA_PROMPT_REQUIRED_SECTIONS = (
 MASTER_PROMPTS_README = Path(__file__).resolve().parents[1] / "harnessiq" / "master_prompts" / "README.md"
 
 
-def _section_heading_pattern(section_name: str) -> re.Pattern[str]:
-    escaped = re.escape(section_name)
-    if section_name == "Identity":
-        variants = (escaped, re.escape("Identity / Persona"))
-    else:
-        variants = (escaped,)
-    body = "|".join(variants)
-    return re.compile(rf"^(?:##\s+)?(?:{body})\s*$", re.MULTILINE)
-
-
 def _section_position(prompt_text: str, section_name: str) -> int:
-    match = _section_heading_pattern(section_name).search(prompt_text)
-    if match is not None:
-        return match.start()
-    try:
-        return prompt_text.index(section_name)
-    except ValueError as exc:
-        raise AssertionError(f"Missing section heading for {section_name!r}") from exc
+    pattern = re.compile(rf"^##\s+{re.escape(section_name)}\s*$", re.MULTILINE)
+    match = pattern.search(prompt_text)
+    if match is None:
+        raise AssertionError(f"Missing section heading for {section_name!r}")
+    return match.start()
 
 
 class MasterPromptDataclassTests(unittest.TestCase):
@@ -363,6 +353,29 @@ class LinkedInJobApplierPromptTests(unittest.TestCase):
 
     def test_linkedin_job_applier_key_matches_filename_convention(self) -> None:
         self.assertEqual(self.prompt.key, "linkedin_job_applier")
+
+
+class HandshakeAutonomousJobApplierPromptTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.prompt = MasterPromptRegistry().get("handshake_autonomous_job_applier")
+
+    def test_handshake_prompt_contains_expected_sections(self) -> None:
+        for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS:
+            with self.subTest(section=section_name):
+                _section_position(self.prompt.prompt, section_name)
+
+    def test_handshake_prompt_sections_appear_in_order(self) -> None:
+        positions = [_section_position(self.prompt.prompt, section_name) for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_handshake_prompt_contains_requested_persona_language(self) -> None:
+        self.assertIn("You are a relentless, methodical job application agent", self.prompt.prompt)
+        self.assertIn("https://app.joinhandshake.com/jobs", self.prompt.prompt)
+        self.assertIn("Expired / Closing Imminently", self.prompt.prompt)
+        self.assertIn("memory/handshake/applied_jobs.md", self.prompt.prompt)
+
+    def test_handshake_prompt_key_matches_filename_convention(self) -> None:
+        self.assertEqual(self.prompt.key, "handshake_autonomous_job_applier")
 
 
 class ModuleLevelAPITests(unittest.TestCase):

@@ -1,0 +1,5 @@
+{
+  "title": "Handshake Autonomous Job Applier",
+  "description": "A browser-native Handshake job application prompt that applies only to eligible Apply with Handshake roles, verifies deadlines and eligibility before opening the application modal, uses a candidate-maintained Q&A bank as the authoritative answer source, and maintains an append-only tracker of every applied, skipped, blocked, expired, or external listing.",
+  "prompt_path": "handshake_autonomous_job_applier.md"
+}
