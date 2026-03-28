@@ -18,6 +18,7 @@ from harnessiq.master_prompts import (
 EXPECTED_PROMPT_KEYS = {
     "answer_with_notable_web_sources",
     "autonomous_execution_loop",
+    "competitor_researcher",
     "cognitive_multiplexer",
     "create_github_execution_issues",
     "create_jira_execution_tickets",
@@ -40,6 +41,7 @@ EXPECTED_PROMPT_KEYS = {
     "surgical_bugfix",
 }
 STANDARD_STRUCTURE_PROMPT_KEYS = EXPECTED_PROMPT_KEYS - {
+    "competitor_researcher",
     "cognitive_multiplexer",
     "mission_driven",
     "orchestrator_master_prompt",
@@ -309,6 +311,29 @@ class OrchestratorMasterPromptTests(unittest.TestCase):
 
     def test_orchestrator_master_prompt_key_matches_filename_convention(self) -> None:
         self.assertEqual(self.prompt.key, "orchestrator_master_prompt")
+
+
+class CompetitorResearcherPromptTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.prompt = MasterPromptRegistry().get("competitor_researcher")
+
+    def test_competitor_researcher_contains_expected_sections(self) -> None:
+        for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS:
+            with self.subTest(section=section_name):
+                self.assertIn(section_name, self.prompt.prompt)
+
+    def test_competitor_researcher_sections_appear_in_order(self) -> None:
+        positions = [self.prompt.prompt.index(section_name) for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_competitor_researcher_contains_requested_persona_language(self) -> None:
+        self.assertIn("shallow research is worse than no research", self.prompt.prompt)
+        self.assertIn("You treat each competitor as a territory to be mapped fully", self.prompt.prompt)
+        self.assertIn("Use at minimum eight distinct query strategies per competitor per platform.", self.prompt.prompt)
+        self.assertIn("The dossier is not a summary. It is a primary source", self.prompt.prompt)
+
+    def test_competitor_researcher_key_matches_filename_convention(self) -> None:
+        self.assertEqual(self.prompt.key, "competitor_researcher")
 
 
 class ModuleLevelAPITests(unittest.TestCase):
