@@ -60,7 +60,7 @@ def _provider_payload(family: str, entries: list) -> dict[str, object]:
     return {
         "credential_fields": fields,
         "description": description,
-        "example_verify_command": (_build_example_verify_command(family, fields) if requires_credentials else None),
+        "example_env_assignments": _build_example_env_assignments(family, fields),
         "family": family,
         "factory": {
             "function": PROVIDER_FACTORY_MAP[family][1],
@@ -71,12 +71,11 @@ def _provider_payload(family: str, entries: list) -> dict[str, object]:
     }
 
 
-def _build_example_verify_command(family: str, fields: list[dict[str, str]]) -> str:
-    assignments = " ".join(
-        f"--env {field['name']}={family.upper()}_{field['name'].upper()}"
+def _build_example_env_assignments(family: str, fields: list[dict[str, str]]) -> list[str]:
+    return [
+        f"{field['name']}={family.upper()}_{field['name'].upper()}"
         for field in fields
-    )
-    return f"harnessiq credentials verify {family} {assignments}".strip()
+    ]
 
 
 def _print_help(parser: argparse.ArgumentParser) -> int:

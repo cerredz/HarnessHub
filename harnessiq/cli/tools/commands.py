@@ -14,7 +14,7 @@ from harnessiq.cli.common import emit_json
 from harnessiq.config import get_provider_credential_spec
 from harnessiq.shared.tools import RegisteredTool
 from harnessiq.toolset import ToolsetRegistry, define_tool, list_tools
-from harnessiq.toolset.catalog import PROVIDER_ENTRIES, PROVIDER_FACTORY_MAP
+from harnessiq.toolset.catalog import PROVIDER_ENTRIES, PROVIDER_ENTRY_INDEX, PROVIDER_FACTORY_MAP
 
 
 def register_tools_commands(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -133,8 +133,7 @@ def _handle_validate(args: argparse.Namespace) -> int:
 
 
 def _handle_import(args: argparse.Namespace) -> int:
-    payload = _load_tool_spec_payload(args.source)
-    validated, error = _validate_tool_spec_payload(payload)
+    validated, error = _load_and_validate_tool_spec(args.source)
     emit_json(
         {
             "source": args.source,
@@ -155,8 +154,7 @@ def _handle_import(args: argparse.Namespace) -> int:
 
 
 def _emit_validation_result(source: str) -> int:
-    payload = _load_tool_spec_payload(source)
-    validated, error = _validate_tool_spec_payload(payload)
+    validated, error = _load_and_validate_tool_spec(source)
     emit_json(
         {
             "source": source,
@@ -167,6 +165,14 @@ def _emit_validation_result(source: str) -> int:
         }
     )
     return 0 if validated is not None else 1
+
+
+def _load_and_validate_tool_spec(source: str) -> tuple[RegisteredTool | None, str | None]:
+    try:
+        payload = _load_tool_spec_payload(source)
+    except Exception as exc:  # pragma: no cover - exercised by CLI tests
+        return None, str(exc)
+    return _validate_tool_spec_payload(payload)
 
 
 def _tool_entry_payload(entry) -> dict[str, Any]:
@@ -214,7 +220,7 @@ def _validate_tool_spec_payload(payload: dict[str, Any]) -> tuple[RegisteredTool
 
 
 def _resolve_tool_for_inspection(key: str) -> RegisteredTool:
-    if key in {entry.key for entry in PROVIDER_ENTRIES}:
+    if key in PROVIDER_ENTRY_INDEX:
         family = key.split(".", 1)[0]
         return _resolve_provider_tool_for_inspection(family, key)
     return ToolsetRegistry().get(key)

@@ -14,7 +14,7 @@
 ```bash
 pytest tests/test_tools_cli.py tests/test_providers_cli.py tests/test_agents_cli.py
 ```
-- Result: `13 passed`.
+- Result: `14 passed`.
 
 ## Stage 4: Integration & Contract Tests
 
@@ -30,10 +30,10 @@ pytest tests/test_platform_cli.py tests/test_model_profiles.py tests/test_master
 - Ran:
 ```bash
 python -m harnessiq.cli tools show creatify.request
-python -m harnessiq.cli providers list
+python -m harnessiq.cli providers show creatify
 python -m harnessiq.cli agents show linkedin
 ```
 - Observed:
   - `tools show creatify.request` returned the full runtime schema and handler metadata without requiring user credentials.
-  - `providers list` included both credentialed and non-credentialed provider families, including `arxiv`.
+  - `providers show creatify` returned the family metadata plus example env assignments without referencing unavailable commands.
   - `agents show linkedin` matched the manifest inspection payload shape used by the existing `inspect` surface.

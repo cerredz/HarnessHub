@@ -98,3 +98,15 @@ def test_tools_import_validate_only_reports_not_registered(tmp_path, capsys: pyt
     payload = json.loads(capsys.readouterr().out)
     assert payload["valid"] is True
     assert payload["registered"] is False
+
+
+def test_tools_validate_reports_json_error_for_invalid_input(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    path = tmp_path / "tool.json"
+    path.write_text("{not-json", encoding="utf-8")
+
+    result = _run(["tools", "validate", str(path)])
+    assert result == 1
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["valid"] is False
+    assert payload["error"]

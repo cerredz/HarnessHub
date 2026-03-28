@@ -36,3 +36,4 @@ def test_providers_show_emits_family_details(capsys) -> None:
     assert provider["family"] == "creatify"
     assert "creatify.request" in provider["tool_keys"]
     assert any(field["name"] == "api_key" for field in provider["credential_fields"])
+    assert "api_key=CREATIFY_API_KEY" in provider["example_env_assignments"]
