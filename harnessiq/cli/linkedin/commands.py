@@ -186,6 +186,10 @@ def _handle_run(args: argparse.Namespace) -> int:
             max_cycles=args.max_cycles,
             approval_policy=args.approval_policy,
             allowed_tools=args.allowed_tools,
+            dynamic_tools=args.dynamic_tools,
+            dynamic_tool_candidates=args.dynamic_tool_candidates,
+            dynamic_tool_top_k=args.dynamic_tool_top_k,
+            dynamic_tool_embedding_model=args.dynamic_tool_embedding_model,
         )
     )
     return 0

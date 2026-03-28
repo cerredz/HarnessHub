@@ -30,6 +30,7 @@
 
 7. Ticket 7: Convert model-provider SDK surfaces to DTO-first request contracts and export them publicly
    Issue: #332 - https://github.com/cerredz/HarnessHub/issues/332
+   PR: #395 - https://github.com/cerredz/HarnessHub/pull/395
    Finishes the rollout by making model-provider SDK APIs and exports DTO-first.
 
 Phase 3 complete

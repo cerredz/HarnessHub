@@ -10,7 +10,6 @@ from typing import Any, Literal
 
 from harnessiq.shared.agents import AgentPauseSignal
 from harnessiq.shared.tools import (
-    CONTROL_PAUSE_FOR_HUMAN,
     RECORDS_COUNT_BY_FIELD,
     RECORDS_FILTER_RECORDS,
     RECORDS_LIMIT_RECORDS,
@@ -19,7 +18,6 @@ from harnessiq.shared.tools import (
     RECORDS_UNIQUE_RECORDS,
     RegisteredTool,
     TEXT_NORMALIZE_WHITESPACE,
-    TEXT_REGEX_EXTRACT,
     TEXT_TRUNCATE_TEXT,
     ToolArguments,
     ToolDefinition,
@@ -242,27 +240,6 @@ def create_general_purpose_tools() -> tuple[RegisteredTool, ...]:
         ),
         RegisteredTool(
             definition=_tool_definition(
-                key=TEXT_REGEX_EXTRACT,
-                name="regex_extract",
-                description="Extract structured regex matches from text.",
-                properties={
-                    "text": {"type": "string", "description": "The text to search."},
-                    "pattern": {"type": "string", "description": "The regex pattern to apply."},
-                    "ignore_case": {
-                        "type": "boolean",
-                        "description": "Whether to compile the pattern case-insensitively.",
-                    },
-                    "multiline": {
-                        "type": "boolean",
-                        "description": "Whether ^ and $ should match line boundaries.",
-                    },
-                },
-                required=("text", "pattern"),
-            ),
-            handler=_regex_extract_tool,
-        ),
-        RegisteredTool(
-            definition=_tool_definition(
                 key=TEXT_TRUNCATE_TEXT,
                 name="truncate_text",
                 description="Trim text to a maximum length with a deterministic truncation strategy.",
@@ -393,22 +370,6 @@ def create_general_purpose_tools() -> tuple[RegisteredTool, ...]:
                 required=("records", "field"),
             ),
             handler=_count_by_field_tool,
-        ),
-        RegisteredTool(
-            definition=_tool_definition(
-                key=CONTROL_PAUSE_FOR_HUMAN,
-                name="pause_for_human",
-                description="Return a structured pause signal so a human can review or unblock the workflow.",
-                properties={
-                    "reason": {"type": "string", "description": "Why human intervention is required."},
-                    "details": {
-                        "type": "object",
-                        "description": "Optional structured context for the person reviewing the pause.",
-                    },
-                },
-                required=("reason",),
-            ),
-            handler=_pause_for_human_tool,
         ),
     )
 

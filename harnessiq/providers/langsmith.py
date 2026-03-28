@@ -8,6 +8,7 @@ from functools import wraps
 from typing import Any, ParamSpec, TypeVar, overload
 
 from harnessiq.providers.base import normalize_messages
+from harnessiq.shared.dtos import ProviderMessageDTO
 from harnessiq.shared.langsmith import (
     LANGSMITH_API_KEY_ENV_VARS,
     LANGSMITH_API_URL_ENV_VARS,
@@ -172,14 +173,14 @@ def _serialize_model_inputs(
     serialized_messages = _serialize_messages(messages)
     if system_prompt.strip():
         serialized_messages = [
-            {"role": "system", "content": system_prompt},
+            ProviderMessageDTO(role="system", content=system_prompt),
             *serialized_messages,
         ]
     inputs: dict[str, Any] = {
         "provider": provider,
         "model_name": model_name,
         "system_prompt": system_prompt,
-        "messages": serialized_messages,
+        "messages": [message.to_dict() for message in serialized_messages],
         "tools": _serialize_tools(tools),
     }
     if request_payload is not None:

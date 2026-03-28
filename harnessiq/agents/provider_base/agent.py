@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Sequence
 
 from harnessiq.agents.base import AgentModel, AgentParameterSection, AgentRuntimeConfig, BaseAgent
+from harnessiq.interfaces.tool_selection import DynamicToolSelector
 from harnessiq.shared.agents import merge_agent_runtime_config
 from harnessiq.shared.dtos import ProviderToolAgentRequest, StatelessAgentInstancePayload
 from harnessiq.shared.exceptions import ValidationError
@@ -30,6 +31,7 @@ class BaseProviderToolAgent(BaseAgent, ABC):
         request: ProviderToolAgentRequest,
         tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
+        dynamic_tool_selector: DynamicToolSelector | None = None,
         memory_path: str | Path | None = None,
         repo_root: str | Path | None = None,
         instance_name: str | None = None,
@@ -60,6 +62,7 @@ class BaseProviderToolAgent(BaseAgent, ABC):
                 max_tokens=request.max_tokens,
                 reset_threshold=request.reset_threshold,
             ),
+            dynamic_tool_selector=dynamic_tool_selector,
             memory_path=memory_path,
             repo_root=repo_root,
             instance_name=instance_name,

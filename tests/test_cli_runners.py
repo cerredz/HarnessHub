@@ -162,6 +162,7 @@ def test_lifecycle_runner_resolve_resume_request_from_snapshot() -> None:
 
 def test_lifecycle_runner_execute_run_emits_expected_payload(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     captured: list[dict[str, object]] = []
+    captured_runtime_kwargs: dict[str, object] = {}
 
     class _StubAdapter:
         def run(self, *, args, context, model, runtime_config):
@@ -172,7 +173,8 @@ def test_lifecycle_runner_execute_run_emits_expected_payload(monkeypatch: pytest
 
     class _StubRunner(HarnessCliLifecycleRunner):
         def build_runtime_config(self, *args, **kwargs):  # type: ignore[override]
-            del args, kwargs
+            del args
+            captured_runtime_kwargs.update(kwargs)
             return "runtime-config"
 
     monkeypatch.setattr("harnessiq.cli.runners.lifecycle.resolve_agent_model", lambda **_: "resolved-model")
@@ -193,7 +195,14 @@ def test_lifecycle_runner_execute_run_emits_expected_payload(monkeypatch: pytest
 
     exit_code = runner.execute_run(
         adapter=_StubAdapter(),
-        args=argparse.Namespace(approval_policy=None, allowed_tools=()),
+        args=argparse.Namespace(
+            approval_policy=None,
+            allowed_tools=(),
+            dynamic_tools=True,
+            dynamic_tool_candidates=("filesystem.*",),
+            dynamic_tool_top_k=2,
+            dynamic_tool_embedding_model="openai:text-embedding-3-small",
+        ),
         context=context,
         run_request=ResolvedRunRequest(
             model_factory="tests.test_platform_cli:create_static_model",
@@ -239,6 +248,14 @@ def test_lifecycle_runner_execute_run_emits_expected_payload(monkeypatch: pytest
         "pause_reason": None,
         "resets": None,
         "status": "completed",
+    }
+    assert captured_runtime_kwargs == {
+        "approval_policy": None,
+        "allowed_tools": (),
+        "dynamic_tools_enabled": True,
+        "dynamic_tool_candidates": ("filesystem.*",),
+        "dynamic_tool_top_k": 2,
+        "dynamic_tool_embedding_model": "openai:text-embedding-3-small",
     }
 
 

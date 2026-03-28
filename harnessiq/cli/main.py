@@ -22,10 +22,12 @@ def build_parser() -> argparse.ArgumentParser:
     from harnessiq.cli.gcloud import register_gcloud_commands
     from harnessiq.cli.prospecting import register_prospecting_commands
     from harnessiq.cli.research_sweep import register_research_sweep_commands
+    from harnessiq.cli.stats import register_stats_commands
 
     register_gcloud_commands(subparsers)
     register_platform_commands(subparsers)
     register_ledger_commands(subparsers)
+    register_stats_commands(subparsers)
     register_master_prompt_commands(subparsers)
     register_model_commands(subparsers)
     register_linkedin_commands(subparsers)

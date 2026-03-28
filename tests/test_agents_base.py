@@ -18,6 +18,7 @@ from harnessiq.agents import (
     json_parameter_section,
 )
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
+from harnessiq.shared.tool_selection import ToolSelectionConfig, ToolSelectionResult
 from harnessiq.shared.tools import (
     CONTEXT_INJECT_ASSISTANT_NOTE,
     CONTEXT_PARAM_INJECT_SECTION,
@@ -29,7 +30,7 @@ from harnessiq.shared.tools import (
 )
 from harnessiq.tools import create_context_compaction_tools, create_general_purpose_tools
 from harnessiq.tools.registry import ToolRegistry
-from harnessiq.utils import LedgerEntry, build_agent_instance_dirname
+from harnessiq.utils import JSONLLedgerSink, LedgerEntry, build_agent_instance_dirname, load_ledger_entries
 
 _LANGSMITH_CLIENT_PATCHER = patch("harnessiq.agents.base.agent_helpers.build_langsmith_client", return_value=None)
 
@@ -62,6 +63,7 @@ class _InspectableAgent(BaseAgent):
         progress_step: int | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
         payload: dict | None = None,
+        dynamic_tool_selector=None,
         repo_root: str | Path | None = None,
     ) -> None:
         self._parameter_versions = parameter_versions or ["initial"]
@@ -74,6 +76,7 @@ class _InspectableAgent(BaseAgent):
             model=model,
             tool_executor=tool_executor,
             runtime_config=runtime_config or AgentRuntimeConfig(include_default_output_sink=False),
+            dynamic_tool_selector=dynamic_tool_selector,
             repo_root=repo_root,
         )
 
@@ -137,6 +140,31 @@ def _echo_handler(arguments: dict[str, object]) -> dict[str, object]:
     return {"echoed": arguments["text"]}
 
 
+class _FakeDynamicToolSelector:
+    def __init__(self, *, selected_keys: tuple[str, ...]) -> None:
+        self._selected_keys = selected_keys
+        self.calls: list[tuple[tuple[str, ...], str]] = []
+
+    @property
+    def config(self) -> ToolSelectionConfig:
+        top_k = max(1, len(self._selected_keys))
+        return ToolSelectionConfig(enabled=True, top_k=top_k)
+
+    def index(self, profiles) -> None:
+        self._indexed = tuple(profile.key for profile in profiles)
+
+    def select(self, *, context_window, candidate_profiles, metadata=None) -> ToolSelectionResult:
+        del context_window, metadata
+        candidate_keys = tuple(profile.key for profile in candidate_profiles)
+        selected_keys = tuple(key for key in self._selected_keys if key in candidate_keys)
+        self.calls.append((candidate_keys, "select"))
+        return ToolSelectionResult(
+            selected_keys=selected_keys,
+            retrieval_query="test-query",
+            rejected_keys=tuple(key for key in candidate_keys if key not in selected_keys),
+        )
+
+
 class BaseAgentTests(unittest.TestCase):
     def test_runtime_config_defaults_align_with_shared_constants(self) -> None:
         runtime_config = AgentRuntimeConfig()
@@ -145,6 +173,66 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(runtime_config.reset_threshold, DEFAULT_AGENT_RESET_THRESHOLD)
         self.assertIsNone(runtime_config.prune_progress_interval)
         self.assertIsNone(runtime_config.prune_token_limit)
+        self.assertFalse(runtime_config.tool_selection.enabled)
+
+    def test_build_model_request_preserves_static_tool_surface_when_dynamic_selection_is_disabled(self) -> None:
+        registry = ToolRegistry(
+            [
+                _constant_tool("session.echo", "echo", _echo_handler),
+                _constant_tool("session.write", "write", lambda arguments: {"written": arguments}),
+            ]
+        )
+        selector = _FakeDynamicToolSelector(selected_keys=("session.echo",))
+        agent = _InspectableAgent(
+            model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+            tool_executor=registry,
+            runtime_config=AgentRuntimeConfig(
+                include_default_output_sink=False,
+                tool_selection=ToolSelectionConfig(enabled=False),
+            ),
+            dynamic_tool_selector=selector,
+        )
+
+        request = agent.build_model_request()
+
+        self.assertEqual([tool.key for tool in request.tools], ["session.echo", "session.write"])
+        self.assertEqual(selector.calls, [])
+        self.assertIsNone(agent.last_tool_selection_result)
+
+    def test_build_model_request_uses_selected_dynamic_tool_subset_when_enabled(self) -> None:
+        registry = ToolRegistry(
+            [
+                _constant_tool("session.echo", "echo", _echo_handler),
+                _constant_tool("session.write", "write", lambda arguments: {"written": arguments}),
+                _constant_tool("filesystem.read", "read", lambda arguments: {"read": arguments}),
+            ]
+        )
+        selector = _FakeDynamicToolSelector(selected_keys=("session.write", "filesystem.read"))
+        agent = _InspectableAgent(
+            model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+            tool_executor=registry,
+            runtime_config=AgentRuntimeConfig(
+                include_default_output_sink=False,
+                allowed_tools=("session.*", "filesystem.read"),
+                tool_selection=ToolSelectionConfig(
+                    enabled=True,
+                    top_k=2,
+                    candidate_tool_keys=("session.write", "filesystem.read"),
+                ),
+            ),
+            dynamic_tool_selector=selector,
+        )
+
+        request = agent.build_model_request()
+
+        self.assertEqual([tool.key for tool in request.tools], ["session.write", "filesystem.read"])
+        self.assertEqual(
+            selector.calls,
+            [(("session.write", "filesystem.read"), "select")],
+        )
+        self.assertIsNotNone(agent.last_tool_selection_result)
+        assert agent.last_tool_selection_result is not None
+        self.assertEqual(agent.last_tool_selection_result.selected_keys, ("session.write", "filesystem.read"))
 
     def test_run_records_tool_results_and_passes_transcript_to_next_turn(self) -> None:
         registry = ToolRegistry(
@@ -523,6 +611,16 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(sink.entries[0].agent_name, "inspectable_agent")
         self.assertEqual(sink.entries[0].outputs["parameter_state"], "initial")
         self.assertEqual(sink.entries[0].tags, ["inspectable"])
+        stats = sink.entries[0].metadata["stats"]
+        self.assertEqual(stats["version"], 1)
+        self.assertEqual(stats["instance_id"], agent.instance_id)
+        self.assertTrue(stats["session_id"].startswith("sess_"))
+        self.assertEqual(stats["model_provider"], "custom")
+        self.assertEqual(stats["model_name"], "_FakeModel")
+        self.assertEqual(stats["token_usage"]["source"], "estimated")
+        self.assertEqual(stats["counters"]["tool_calls"], 0)
+        self.assertEqual(stats["counters"]["distinct_tools"], 0)
+        self.assertEqual(stats["counters"]["tool_call_breakdown"], {})
 
     def test_sink_failures_are_swallowed_and_later_sinks_still_run(self) -> None:
         registry = ToolRegistry([])
@@ -558,6 +656,88 @@ class BaseAgentTests(unittest.TestCase):
                 ledger_path = Path(temp_dir, "runs.jsonl")
                 self.assertTrue(ledger_path.exists())
                 self.assertIn("inspectable_agent", ledger_path.read_text(encoding="utf-8"))
+
+    def test_stats_metadata_tracks_tool_counters(self) -> None:
+        registry = ToolRegistry(
+            [
+                _constant_tool("session.echo", "echo", _echo_handler),
+            ]
+        )
+        sink = _CollectingSink()
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Use the echo tool.",
+                    tool_calls=(ToolCall(tool_key="session.echo", arguments={"text": "hello"}),),
+                    should_continue=True,
+                ),
+                AgentModelResponse(assistant_message="done", should_continue=False),
+            ]
+        )
+        agent = _InspectableAgent(
+            model=model,
+            tool_executor=registry,
+            runtime_config=AgentRuntimeConfig(output_sinks=(sink,), include_default_output_sink=False),
+        )
+
+        result = agent.run(max_cycles=3)
+
+        self.assertEqual(result.status, "completed")
+        stats = sink.entries[0].metadata["stats"]
+        self.assertEqual(stats["counters"]["tool_calls"], 1)
+        self.assertEqual(stats["counters"]["distinct_tools"], 1)
+        self.assertEqual(stats["counters"]["tool_call_breakdown"], {"session.echo": 1})
+
+    def test_session_id_reuses_latest_paused_run_for_same_instance(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo_root = Path(temp_dir, "repo")
+            repo_root.mkdir()
+            ledger_path = Path(temp_dir, "runs.jsonl")
+            sink = JSONLLedgerSink(path=ledger_path)
+            runtime_config = AgentRuntimeConfig(
+                output_sinks=(sink,),
+                include_default_output_sink=False,
+            )
+            registry = ToolRegistry([])
+            first = _InspectableAgent(
+                model=_FakeModel(
+                    [AgentModelResponse(assistant_message="pause", pause_reason="needs review")]
+                ),
+                tool_executor=registry,
+                runtime_config=runtime_config,
+                repo_root=repo_root,
+                payload={"segment": "platform"},
+            )
+
+            paused_result = first.run(max_cycles=1)
+            self.assertEqual(paused_result.status, "paused")
+            first_entry = load_ledger_entries(ledger_path)[0]
+            first_session_id = first_entry.metadata["stats"]["session_id"]
+
+            second = _InspectableAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                tool_executor=registry,
+                runtime_config=runtime_config,
+                repo_root=repo_root,
+                payload={"segment": "platform"},
+            )
+
+            completed_result = second.run(max_cycles=1)
+            self.assertEqual(completed_result.status, "completed")
+            entries = load_ledger_entries(ledger_path)
+            self.assertEqual(entries[1].metadata["stats"]["session_id"], first_session_id)
+
+            third = _InspectableAgent(
+                model=_FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)]),
+                tool_executor=registry,
+                runtime_config=runtime_config,
+                repo_root=repo_root,
+                payload={"segment": "platform"},
+            )
+
+            third.run(max_cycles=1)
+            entries = load_ledger_entries(ledger_path)
+            self.assertNotEqual(entries[2].metadata["stats"]["session_id"], first_session_id)
     def test_runtime_config_rejects_invalid_prune_values(self) -> None:
         with self.assertRaises(ValueError):
             AgentRuntimeConfig(prune_progress_interval=0)

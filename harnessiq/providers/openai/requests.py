@@ -7,50 +7,36 @@ from typing import Any, Literal, Sequence
 
 from harnessiq.providers.base import build_openai_style_messages, omit_none_values
 from harnessiq.providers.openai.tools import build_function_tool, format_tool_definition
-from harnessiq.shared.providers import ProviderMessage
+from harnessiq.shared.dtos import (
+    OpenAIChatCompletionRequestDTO,
+    OpenAIEmbeddingRequestDTO,
+    OpenAIResponseInputMessageDTO,
+    OpenAIResponseRequestDTO,
+)
 from harnessiq.shared.tools import ToolDefinition
 
 ResponseRole = Literal["user", "assistant", "system", "developer"]
 
 
 def build_request(
-    model_name: str,
-    system_prompt: str,
-    messages: list[ProviderMessage],
-    tools: list[ToolDefinition],
+    request: OpenAIChatCompletionRequestDTO,
 ) -> dict[str, object]:
     """Build an OpenAI-style chat request body from canonical primitives."""
-    return build_chat_completion_request(
-        model_name=model_name,
-        system_prompt=system_prompt,
-        messages=messages,
-        tools=tools,
-    )
+    return build_chat_completion_request(request)
 
 
-def build_chat_completion_request(
-    *,
-    model_name: str,
-    system_prompt: str,
-    messages: list[ProviderMessage],
-    tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
-    tool_choice: str | dict[str, Any] | None = None,
-    response_format: dict[str, Any] | None = None,
-    max_tokens: int | None = None,
-    temperature: float | None = None,
-    parallel_tool_calls: bool | None = None,
-) -> dict[str, object]:
+def build_chat_completion_request(request: OpenAIChatCompletionRequestDTO) -> dict[str, object]:
     """Build a Chat Completions request body."""
     return omit_none_values(
         {
-            "model": model_name,
-            "messages": build_openai_style_messages(system_prompt, messages),
-            "tools": _coerce_tool_payloads(tools, default_strict=False),
-            "tool_choice": deepcopy(tool_choice) if isinstance(tool_choice, dict) else tool_choice,
-            "response_format": deepcopy(response_format) if response_format is not None else None,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "parallel_tool_calls": parallel_tool_calls,
+            "model": request.model_name,
+            "messages": [message.to_dict() for message in build_openai_style_messages(request.system_prompt, request.messages)],
+            "tools": _coerce_tool_payloads(request.tools, default_strict=False),
+            "tool_choice": deepcopy(request.tool_choice) if isinstance(request.tool_choice, dict) else request.tool_choice,
+            "response_format": _serialize_optional_payload(request.response_format),
+            "max_tokens": request.max_tokens,
+            "temperature": request.temperature,
+            "parallel_tool_calls": request.parallel_tool_calls,
         }
     )
 
@@ -95,16 +81,13 @@ def build_response_input_file(
 def build_response_input_message(
     role: ResponseRole,
     content: str | Sequence[dict[str, Any]],
-) -> dict[str, object]:
+) -> OpenAIResponseInputMessageDTO:
     """Build a Responses API input message."""
     if isinstance(content, str):
         normalized_content: list[dict[str, Any]] = [build_response_input_text(content)]
     else:
         normalized_content = [deepcopy(part) for part in content]
-    return {
-        "role": role,
-        "content": normalized_content,
-    }
+    return OpenAIResponseInputMessageDTO(role=role, content=tuple(normalized_content))
 
 
 def build_json_schema_output(
@@ -164,62 +147,57 @@ def build_chat_response_format_json_object() -> dict[str, str]:
     return {"type": "json_object"}
 
 
-def build_response_request(
-    *,
-    model_name: str,
-    input_items: str | Sequence[dict[str, Any]],
-    instructions: str | None = None,
-    tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
-    tool_choice: str | dict[str, Any] | None = None,
-    text: dict[str, Any] | None = None,
-    metadata: dict[str, str] | None = None,
-    temperature: float | None = None,
-    max_output_tokens: int | None = None,
-    parallel_tool_calls: bool | None = None,
-) -> dict[str, object]:
+def build_response_request(request: OpenAIResponseRequestDTO) -> dict[str, object]:
     """Build a Responses API request body."""
-    if isinstance(input_items, str):
-        normalized_input: str | list[dict[str, Any]] = input_items
+    if isinstance(request.input_items, str):
+        normalized_input: str | list[dict[str, Any]] = request.input_items
     else:
-        normalized_input = [deepcopy(item) for item in input_items]
+        normalized_input = [_serialize_input_item(item) for item in request.input_items]
     return omit_none_values(
         {
-            "model": model_name,
+            "model": request.model_name,
             "input": normalized_input,
-            "instructions": instructions,
-            "tools": _coerce_tool_payloads(tools),
-            "tool_choice": deepcopy(tool_choice) if isinstance(tool_choice, dict) else tool_choice,
-            "text": deepcopy(text) if text is not None else None,
-            "metadata": deepcopy(metadata) if metadata is not None else None,
-            "temperature": temperature,
-            "max_output_tokens": max_output_tokens,
-            "parallel_tool_calls": parallel_tool_calls,
+            "instructions": request.instructions,
+            "tools": _coerce_tool_payloads(request.tools),
+            "tool_choice": deepcopy(request.tool_choice) if isinstance(request.tool_choice, dict) else request.tool_choice,
+            "text": _serialize_optional_payload(request.text),
+            "metadata": deepcopy(request.metadata) if request.metadata is not None else None,
+            "temperature": request.temperature,
+            "max_output_tokens": request.max_output_tokens,
+            "parallel_tool_calls": request.parallel_tool_calls,
         }
     )
 
 
-def build_embedding_request(
-    *,
-    model_name: str,
-    input_value: str | Sequence[str] | Sequence[int] | Sequence[Sequence[int]],
-    dimensions: int | None = None,
-    encoding_format: Literal["float", "base64"] | None = None,
-    user: str | None = None,
-) -> dict[str, object]:
+def build_embedding_request(request: OpenAIEmbeddingRequestDTO) -> dict[str, object]:
     """Build an embeddings request body."""
-    if isinstance(input_value, str):
-        normalized_input: str | list[Any] = input_value
+    if isinstance(request.input_value, str):
+        normalized_input: str | list[Any] = request.input_value
     else:
-        normalized_input = deepcopy(list(input_value))
+        normalized_input = deepcopy(list(request.input_value))
     return omit_none_values(
         {
-            "model": model_name,
+            "model": request.model_name,
             "input": normalized_input,
-            "dimensions": dimensions,
-            "encoding_format": encoding_format,
-            "user": user,
+            "dimensions": request.dimensions,
+            "encoding_format": request.encoding_format,
+            "user": request.user,
         }
     )
+
+
+def _serialize_input_item(item: Any) -> dict[str, Any]:
+    if isinstance(item, OpenAIResponseInputMessageDTO):
+        return item.to_dict()
+    return deepcopy(item)
+
+
+def _serialize_optional_payload(payload: Any) -> Any:
+    if payload is None:
+        return None
+    if hasattr(payload, "to_dict"):
+        return payload.to_dict()
+    return deepcopy(payload)
 
 
 def _coerce_tool_payloads(

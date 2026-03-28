@@ -7,25 +7,17 @@ from typing import Any, Literal, Sequence
 
 from harnessiq.providers.base import ProviderFormatError, normalize_messages, omit_none_values
 from harnessiq.providers.anthropic.tools import format_tool_definition
-from harnessiq.shared.providers import ProviderMessage
+from harnessiq.shared.dtos import AnthropicCountTokensRequestDTO, AnthropicMessageDTO, AnthropicMessageRequestDTO
 from harnessiq.shared.tools import ToolDefinition
 
 MessageRole = Literal["user", "assistant"]
 
 
 def build_request(
-    model_name: str,
-    system_prompt: str,
-    messages: list[ProviderMessage],
-    tools: list[ToolDefinition],
+    request: AnthropicCountTokensRequestDTO,
 ) -> dict[str, object]:
     """Build an Anthropic-style request body from canonical primitives."""
-    return {
-        "model": model_name,
-        "system": system_prompt,
-        "messages": normalize_messages(messages, allow_system=False),
-        "tools": [format_tool_definition(tool) for tool in tools],
-    }
+    return build_count_tokens_request(request)
 
 
 def build_text_block(
@@ -99,17 +91,16 @@ def build_document_block(
 def build_message(
     role: MessageRole,
     content: str | Sequence[dict[str, Any]],
-) -> dict[str, object]:
+) -> AnthropicMessageDTO:
     """Build an Anthropic message item."""
     normalized_content: str | list[dict[str, Any]]
     if isinstance(content, str):
         normalized_content = content
     else:
         normalized_content = [deepcopy(part) for part in content]
-    return {
-        "role": role,
-        "content": normalized_content,
-    }
+    if isinstance(normalized_content, str):
+        return AnthropicMessageDTO(role=role, content=normalized_content)
+    return AnthropicMessageDTO(role=role, content=tuple(normalized_content))
 
 
 def build_thinking_config(budget_tokens: int) -> dict[str, object]:
@@ -120,66 +111,47 @@ def build_thinking_config(budget_tokens: int) -> dict[str, object]:
     }
 
 
-def build_message_request(
-    *,
-    model_name: str,
-    messages: Sequence[ProviderMessage | dict[str, Any]],
-    max_tokens: int,
-    system_prompt: str | Sequence[dict[str, Any]] | None = None,
-    tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
-    tool_choice: dict[str, Any] | None = None,
-    thinking: dict[str, Any] | None = None,
-    metadata: dict[str, str] | None = None,
-    stop_sequences: Sequence[str] | None = None,
-    temperature: float | None = None,
-    mcp_servers: Sequence[dict[str, Any]] | None = None,
-) -> dict[str, object]:
+def build_message_request(request: AnthropicMessageRequestDTO) -> dict[str, object]:
     """Build an Anthropic Messages API request body."""
-    if system_prompt is None:
+    if request.system_prompt is None:
         normalized_system: str | list[dict[str, Any]] | None = None
-    elif isinstance(system_prompt, str):
-        normalized_system = system_prompt
+    elif isinstance(request.system_prompt, str):
+        normalized_system = request.system_prompt
     else:
-        normalized_system = [deepcopy(part) for part in system_prompt]
+        normalized_system = [deepcopy(part) for part in request.system_prompt]
 
     return omit_none_values(
         {
-            "model": model_name,
+            "model": request.model_name,
             "system": normalized_system,
-            "messages": _normalize_message_items(messages),
-            "max_tokens": max_tokens,
-            "tools": _coerce_tool_payloads(tools),
-            "tool_choice": deepcopy(tool_choice) if tool_choice is not None else None,
-            "thinking": deepcopy(thinking) if thinking is not None else None,
-            "metadata": deepcopy(metadata) if metadata is not None else None,
-            "stop_sequences": list(stop_sequences) if stop_sequences is not None else None,
-            "temperature": temperature,
-            "mcp_servers": [deepcopy(server) for server in mcp_servers] if mcp_servers is not None else None,
+            "messages": [message.to_dict() for message in request.messages],
+            "max_tokens": request.max_tokens,
+            "tools": _coerce_tool_payloads(request.tools),
+            "tool_choice": deepcopy(request.tool_choice) if request.tool_choice is not None else None,
+            "thinking": _serialize_optional_payload(request.thinking),
+            "metadata": deepcopy(request.metadata) if request.metadata is not None else None,
+            "stop_sequences": list(request.stop_sequences) if request.stop_sequences else None,
+            "temperature": request.temperature,
+            "mcp_servers": [deepcopy(server) for server in request.mcp_servers] if request.mcp_servers else None,
         }
     )
 
 
-def build_count_tokens_request(
-    *,
-    model_name: str,
-    messages: Sequence[ProviderMessage | dict[str, Any]],
-    system_prompt: str | Sequence[dict[str, Any]] | None = None,
-    tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
-) -> dict[str, object]:
+def build_count_tokens_request(request: AnthropicCountTokensRequestDTO) -> dict[str, object]:
     """Build an Anthropic token-count request body."""
-    if system_prompt is None:
+    if request.system_prompt is None:
         normalized_system: str | list[dict[str, Any]] | None = None
-    elif isinstance(system_prompt, str):
-        normalized_system = system_prompt
+    elif isinstance(request.system_prompt, str):
+        normalized_system = request.system_prompt
     else:
-        normalized_system = [deepcopy(part) for part in system_prompt]
+        normalized_system = [deepcopy(part) for part in request.system_prompt]
 
     return omit_none_values(
         {
-            "model": model_name,
+            "model": request.model_name,
             "system": normalized_system,
-            "messages": _normalize_message_items(messages),
-            "tools": _coerce_tool_payloads(tools),
+            "messages": [message.to_dict() for message in request.messages],
+            "tools": _coerce_tool_payloads(request.tools),
         }
     )
 
@@ -198,21 +170,13 @@ def _coerce_tool_payloads(
     return payloads
 
 
-def _normalize_message_items(
-    messages: Sequence[ProviderMessage | dict[str, Any]],
-) -> list[dict[str, Any]]:
-    normalized: list[dict[str, Any]] = []
-    for message in messages:
-        role = message.get("role")
-        content = message.get("content")
-        if role not in {"user", "assistant"}:
-            raise ProviderFormatError(f"Unsupported Anthropic message role '{role}'.")
-        if isinstance(content, str):
-            normalized.append({"role": role, "content": content})
-            continue
-        if not isinstance(content, list):
-            raise ProviderFormatError(
-                f"Anthropic message content for role '{role}' must be a string or block list."
-            )
-        normalized.append({"role": role, "content": [deepcopy(part) for part in content]})
-    return normalized
+def _normalize_message_items(messages: Sequence[AnthropicMessageDTO]) -> list[dict[str, Any]]:
+    return [message.to_dict() for message in messages]
+
+
+def _serialize_optional_payload(payload: Any) -> Any:
+    if payload is None:
+        return None
+    if hasattr(payload, "to_dict"):
+        return payload.to_dict()
+    return deepcopy(payload)

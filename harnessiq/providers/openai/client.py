@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 from harnessiq.providers.http import RequestExecutor, request_json
 from harnessiq.providers.openai.api import (
@@ -19,7 +19,11 @@ from harnessiq.providers.openai.requests import (
     build_embedding_request,
     build_response_request,
 )
-from harnessiq.shared.tools import ToolDefinition
+from harnessiq.shared.dtos import (
+    OpenAIChatCompletionRequestDTO,
+    OpenAIEmbeddingRequestDTO,
+    OpenAIResponseRequestDTO,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,77 +39,26 @@ class OpenAIClient:
 
     def create_response(
         self,
-        *,
-        model_name: str,
-        input_items: str | Sequence[dict[str, Any]],
-        instructions: str | None = None,
-        tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
-        tool_choice: str | dict[str, Any] | None = None,
-        text: dict[str, Any] | None = None,
-        metadata: dict[str, str] | None = None,
-        temperature: float | None = None,
-        max_output_tokens: int | None = None,
-        parallel_tool_calls: bool | None = None,
+        request: OpenAIResponseRequestDTO,
     ) -> Any:
         """Create a Responses API request."""
-        payload = build_response_request(
-            model_name=model_name,
-            input_items=input_items,
-            instructions=instructions,
-            tools=tools,
-            tool_choice=tool_choice,
-            text=text,
-            metadata=metadata,
-            temperature=temperature,
-            max_output_tokens=max_output_tokens,
-            parallel_tool_calls=parallel_tool_calls,
-        )
+        payload = build_response_request(request)
         return self._request("POST", responses_url(self.base_url), json_body=payload)
 
     def create_chat_completion(
         self,
-        *,
-        model_name: str,
-        system_prompt: str,
-        messages: list[dict[str, str]],
-        tools: Sequence[ToolDefinition | dict[str, Any]] | None = None,
-        tool_choice: str | dict[str, Any] | None = None,
-        response_format: dict[str, Any] | None = None,
-        max_tokens: int | None = None,
-        temperature: float | None = None,
-        parallel_tool_calls: bool | None = None,
+        request: OpenAIChatCompletionRequestDTO,
     ) -> Any:
         """Create a Chat Completions API request."""
-        payload = build_chat_completion_request(
-            model_name=model_name,
-            system_prompt=system_prompt,
-            messages=messages,
-            tools=tools,
-            tool_choice=tool_choice,
-            response_format=response_format,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            parallel_tool_calls=parallel_tool_calls,
-        )
+        payload = build_chat_completion_request(request)
         return self._request("POST", chat_completions_url(self.base_url), json_body=payload)
 
     def create_embedding(
         self,
-        *,
-        model_name: str,
-        input_value: str | Sequence[str] | Sequence[int] | Sequence[Sequence[int]],
-        dimensions: int | None = None,
-        encoding_format: str | None = None,
-        user: str | None = None,
+        request: OpenAIEmbeddingRequestDTO,
     ) -> Any:
         """Create an embeddings request."""
-        payload = build_embedding_request(
-            model_name=model_name,
-            input_value=input_value,
-            dimensions=dimensions,
-            encoding_format=encoding_format,
-            user=user,
-        )
+        payload = build_embedding_request(request)
         return self._request("POST", embeddings_url(self.base_url), json_body=payload)
 
     def list_models(self) -> Any:

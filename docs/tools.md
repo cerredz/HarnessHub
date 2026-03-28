@@ -78,3 +78,15 @@ browser_use_tools = create_browser_use_tools(
 ```
 
 This returns a `RegisteredTool` keyed as `browser_use.request`. Inject it through an agent's additive `tools=` surface when you want coarse-grained Browser Use Cloud automation. It is not a drop-in replacement for the selector-driven `browser_tools` factories used by the current Playwright-backed LinkedIn and prospecting harnesses.
+
+## Dynamic Selection
+
+Harnessiq now supports an optional dynamic tool-selection layer on top of the existing static tool surface. The feature narrows what the model sees per turn; it does not replace the tool catalog or expand execution authority.
+
+- static path: the agent exposes its normal runtime tool surface
+- dynamic path: the agent exposes a per-turn subset selected from that existing surface
+- `allowed_tools`: still acts as the execution ceiling when configured
+
+This means you do not rewrite the tool catalog to use dynamic selection. Existing built-in tools, provider-backed request tools, and additive custom tools all continue to be registered the same way. The selector works from the live tool definitions already attached to the agent runtime.
+
+For configuration examples and the CLI surface, see [docs/dynamic-tool-selection.md](./dynamic-tool-selection.md).

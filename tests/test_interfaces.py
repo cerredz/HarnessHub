@@ -13,6 +13,7 @@ from harnessiq.interfaces import (
     EmbeddingBackend,
     EmbeddingModelClient,
     FactoryLoader,
+    GeminiModelClient,
     GoogleSheetsSinkClient,
     IterableFactoryLoader,
     OpenAIStyleModelClient,
@@ -120,48 +121,41 @@ class _FakeIterableFactoryLoader:
 class _FakeOpenAIStyleClient:
     def create_chat_completion(
         self,
-        *,
-        model_name: str,
-        system_prompt: str,
-        messages,
-        tools=None,
-        max_tokens=None,
-        temperature=None,
-        parallel_tool_calls=None,
-        reasoning_effort=None,
+        request: OpenAIChatCompletionRequestDTO,
     ):
         return {
-            "model_name": model_name,
-            "system_prompt": system_prompt,
-            "messages": messages,
-            "tools": tools,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "parallel_tool_calls": parallel_tool_calls,
-            "reasoning_effort": reasoning_effort,
+            "model_name": request.model_name,
+            "system_prompt": request.system_prompt,
+            "messages": [message.to_dict() for message in request.messages],
+            "tools": request.tools,
+            "max_tokens": request.max_tokens,
+            "temperature": request.temperature,
+            "parallel_tool_calls": request.parallel_tool_calls,
         }
 
 
 class _FakeAnthropicClient:
     def create_message(
         self,
-        *,
-        model_name: str,
-        messages,
-        max_tokens: int,
-        system_prompt: str | None = None,
-        tools=None,
-        tool_choice=None,
-        temperature=None,
+        request: AnthropicMessageRequestDTO,
     ):
         return {
-            "model_name": model_name,
-            "messages": messages,
-            "max_tokens": max_tokens,
-            "system_prompt": system_prompt,
-            "tools": tools,
-            "tool_choice": tool_choice,
-            "temperature": temperature,
+            "model_name": request.model_name,
+            "messages": [message.to_dict() for message in request.messages],
+            "max_tokens": request.max_tokens,
+            "system_prompt": request.system_prompt,
+            "tools": request.tools,
+            "tool_choice": request.tool_choice,
+            "temperature": request.temperature,
+        }
+
+
+class _FakeGeminiClient:
+    def generate_content(self, request: GeminiGenerateContentRequestDTO):
+        return {
+            "model_name": request.model_name,
+            "contents": [content.to_dict() for content in request.contents],
+            "system_instruction": request.system_instruction.to_dict() if request.system_instruction else None,
         }
 
 
