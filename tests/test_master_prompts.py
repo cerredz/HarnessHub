@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from harnessiq.master_prompts import (
     MasterPrompt,
@@ -74,6 +75,7 @@ PERSONA_PROMPT_REQUIRED_SECTIONS = (
     "Artifacts",
     "Inputs",
 )
+MASTER_PROMPTS_README = Path(__file__).resolve().parents[1] / "harnessiq" / "master_prompts" / "README.md"
 
 
 class MasterPromptDataclassTests(unittest.TestCase):
@@ -197,6 +199,17 @@ class BundledMasterPromptStructureTests(unittest.TestCase):
             with self.subTest(prompt=prompt.key):
                 positions = [prompt.prompt.index(section_name) for section_name in REQUIRED_PROMPT_SECTIONS]
                 self.assertEqual(positions, sorted(positions))
+
+    def test_master_prompt_readme_documents_every_bundled_prompt_title_and_description(self) -> None:
+        registry = MasterPromptRegistry()
+        readme_text = MASTER_PROMPTS_README.read_text(encoding="utf-8")
+
+        self.assertIn("contains all of our master plans for HarnessIQ", readme_text)
+
+        for prompt in registry.list():
+            with self.subTest(prompt=prompt.key):
+                self.assertIn(prompt.title, readme_text)
+                self.assertIn(prompt.description, readme_text)
 
 
 class CreateMasterPromptsPromptTests(unittest.TestCase):
