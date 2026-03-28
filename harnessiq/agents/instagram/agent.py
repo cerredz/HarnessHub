@@ -51,6 +51,8 @@ from harnessiq.shared.tools import INSTAGRAM_SEARCH_KEYWORD, RegisteredTool, Too
 from harnessiq.toolset import get_tool
 from harnessiq.tools.instagram import create_instagram_tools
 from harnessiq.tools.registry import create_tool_registry
+from harnessiq.utils.ledger import new_run_id
+
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
 _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
@@ -462,6 +464,10 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         result = super()._execute_tool(tool_call)
         if tool_call.tool_key == INSTAGRAM_SEARCH_KEYWORD:
             self.refresh_parameters()
+            self._append_recent_search_context_entry(
+                keyword=tool_call.arguments.get("keyword"),
+                result=result,
+            )
         return result
 
     def _record_assistant_response(self, response: AgentModelResponse) -> None:
@@ -527,6 +533,33 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             self._attempted_search_keywords = self._attempted_search_keywords[
                 -self._config.recent_search_window :
             ]
+
+    def _append_recent_search_context_entry(
+        self,
+        *,
+        keyword: Any,
+        result: ToolResult,
+    ) -> None:
+        cleaned_keyword = keyword.strip() if isinstance(keyword, str) else ""
+        recent_searches = self._recent_search_keywords_for_context()
+        if not recent_searches and not cleaned_keyword:
+            return
+        output = result.output if isinstance(result.output, Mapping) else {}
+        payload = {
+            "active_icp": self._current_icp_description(),
+            "keyword": cleaned_keyword,
+            "recent_searches": list(recent_searches),
+            "status": str(output.get("status", "unknown")),
+        }
+        if "error" in output:
+            payload["error"] = str(output["error"])
+        self._transcript.append(
+            AgentTranscriptEntry(
+                entry_type="context",
+                label="Recent Searches",
+                content=json.dumps(payload, indent=2, sort_keys=True),
+            )
+        )
 
     def _activate_icp(self, icp_index: int) -> None:
         self._active_icp_index = icp_index

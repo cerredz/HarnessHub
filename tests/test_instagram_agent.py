@@ -172,11 +172,65 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
             self.assertEqual(backend.calls, [("fitness coach", 5)])
             self.assertEqual(model.requests[1].parameter_sections[0].content, "fitness creators")
             self.assertEqual(model.requests[1].parameter_sections[2].content, "fitness coach")
-            self.assertEqual(model.requests[1].transcript, ())
+            self.assertEqual(len(model.requests[1].transcript), 1)
+            self.assertEqual(model.requests[1].transcript[0].entry_type, "context")
+            self.assertEqual(model.requests[1].transcript[0].label, "Recent Searches")
+            self.assertEqual(
+                json.loads(model.requests[1].transcript[0].content),
+                {
+                    "active_icp": "fitness creators",
+                    "keyword": "fitness coach",
+                    "recent_searches": ["fitness coach"],
+                    "status": "searched",
+                },
+            )
             self.assertFalse(any(entry.entry_type == "tool_call" for entry in agent.transcript))
             self.assertFalse(any(entry.entry_type == "tool_result" for entry in agent.transcript))
             database = json.loads(Path(temp_dir, "lead_database.json").read_text(encoding="utf-8"))
             self.assertEqual(database["emails"], ["creator@example.com"])
+
+    def test_sequential_searches_append_recent_search_context_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model = _FakeModel(
+                [
+                    AgentModelResponse(
+                        assistant_message="Search fitness coach.",
+                        tool_calls=(ToolCall(tool_key="instagram.search_keyword", arguments={"keyword": "fitness coach"}),),
+                        should_continue=True,
+                    ),
+                    AgentModelResponse(
+                        assistant_message="Search pilates creator.",
+                        tool_calls=(ToolCall(tool_key="instagram.search_keyword", arguments={"keyword": "pilates creator"}),),
+                        should_continue=True,
+                    ),
+                    AgentModelResponse(assistant_message="done", should_continue=False),
+                ]
+            )
+            backend = _FakeSearchBackend(_build_execution())
+            agent = InstagramKeywordDiscoveryAgent(
+                model=model,
+                search_backend=backend,
+                memory_path=temp_dir,
+                icp_descriptions=("fitness creators",),
+            )
+
+            result = agent.run(max_cycles=3)
+
+            self.assertEqual(result.status, "completed")
+            self.assertEqual(model.requests[1].parameter_sections[2].content, "fitness coach")
+            self.assertEqual(model.requests[2].parameter_sections[2].content, "fitness coach, pilates creator")
+            self.assertEqual(len(model.requests[1].transcript), 1)
+            self.assertEqual(len(model.requests[2].transcript), 2)
+            self.assertEqual(
+                json.loads(model.requests[1].transcript[0].content)["recent_searches"],
+                ["fitness coach"],
+            )
+            self.assertEqual(
+                json.loads(model.requests[2].transcript[-1].content)["recent_searches"],
+                ["fitness coach", "pilates creator"],
+            )
+            self.assertFalse(any(entry.entry_type == "tool_call" for entry in model.requests[2].transcript))
+            self.assertFalse(any(entry.entry_type == "tool_result" for entry in model.requests[2].transcript))
 
     def test_failed_search_attempt_still_updates_recent_searches_without_persisted_history(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
