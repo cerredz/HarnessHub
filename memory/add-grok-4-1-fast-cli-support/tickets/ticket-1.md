@@ -2,6 +2,8 @@ Title: Add capability-aware Grok model handling for non-reasoning CLI runs
 
 Issue URL: https://github.com/cerredz/HarnessHub/issues/405
 
+PR URL: https://github.com/cerredz/HarnessHub/pull/407
+
 Intent:
 Enable `harnessiq run ... --model grok:grok-4.1-fast` to work across manifest-backed agents by teaching the shared Grok model adapter and request builder to distinguish reasoning-capable and non-reasoning model variants. This preserves existing reasoning Grok support while unblocking the user’s target Instagram command and any other harness using the same model-selection path.
 
