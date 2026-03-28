@@ -6,8 +6,8 @@ This artifact is generated from the live `harnessiq/cli/` source tree by `python
 
 | Metric | Count |
 | --- | --- |
-| Top-level commands | 19 |
-| Registered command paths | 153 |
+| Top-level commands | 20 |
+| Registered command paths | 168 |
 
 Alias paths are included in the registered command total. Canonical commands list aliases where they exist.
 
@@ -19,6 +19,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections | `harnessiq/cli/ledger/commands.py` |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings | `harnessiq/cli/platform_commands.py` |
 | harnessiq export | - | Export ledger entries in a structured format | `harnessiq/cli/ledger/commands.py` |
+| harnessiq gcloud | build, cost, credentials, deploy, execute, health, init, logs, schedule | Manage Google Cloud deployment configuration and operations | `harnessiq/cli/gcloud/commands.py` |
 | harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Inspect one harness manifest and generated CLI surface | `harnessiq/cli/platform_commands.py` |
 | harnessiq instagram | configure, get-emails, prepare, run, show | Manage and run the Instagram keyword discovery agent | `harnessiq/cli/instagram/commands.py` |
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent | `harnessiq/cli/leads/commands.py` |
@@ -91,6 +92,25 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq credentials test prospecting | - | test Google Maps Prospecting | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials test research_sweep | research-sweep | test Research Sweep | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials test spawn_specialized_subagents | - | test Spawn Specialized Subagents | `harnessiq/cli/platform_commands.py` |
+
+## `harnessiq gcloud`
+
+| Command | Description | Source |
+| --- | --- | --- |
+| harnessiq gcloud build | Build and publish the configured container image | `harnessiq/cli/gcloud/commands.py` |
+| harnessiq gcloud cost | Estimate the configured monthly GCP deployment cost | `harnessiq/cli/gcloud/commands.py` |
+| harnessiq gcloud credentials | Manage repo-local to GCP credential synchronization | `harnessiq/cli/gcloud/commands.py` |
+| harnessiq gcloud credentials check | Check local GCP authentication prerequisites | `harnessiq/cli/gcloud/commands.py` |
+| harnessiq gcloud credentials remove | Remove one registered credential from the GCP config | `harnessiq/cli/gcloud/commands.py` |
+| harnessiq gcloud credentials set | Register one custom credential in GCP Secret Manager | `harnessiq/cli/gcloud/commands.py` |
+| harnessiq gcloud credentials status | Show credential sync status for one GCP config | `harnessiq/cli/gcloud/commands.py` |
+| harnessiq gcloud credentials sync | Sync repo-local credentials into GCP Secret Manager | `harnessiq/cli/gcloud/commands.py` |
+| harnessiq gcloud deploy | Deploy or update the configured Cloud Run job | `harnessiq/cli/gcloud/commands.py` |
+| harnessiq gcloud execute | Trigger an immediate Cloud Run job execution | `harnessiq/cli/gcloud/commands.py` |
+| harnessiq gcloud health | Inspect GCP deployment prerequisites | `harnessiq/cli/gcloud/commands.py` |
+| harnessiq gcloud init | Initialize or refresh one GCP deployment config | `harnessiq/cli/gcloud/commands.py` |
+| harnessiq gcloud logs | Read Cloud Run execution logs | `harnessiq/cli/gcloud/commands.py` |
+| harnessiq gcloud schedule | Create or update the configured scheduler job | `harnessiq/cli/gcloud/commands.py` |
 
 ## `harnessiq inspect`
 
