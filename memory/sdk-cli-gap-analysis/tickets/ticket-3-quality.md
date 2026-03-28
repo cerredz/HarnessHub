@@ -14,12 +14,12 @@
 ```bash
 pytest tests/test_platform_cli.py tests/test_credentials_config.py
 ```
-- Result: `28 passed`.
+- Result: `29 passed`.
 
 ## Stage 4: Integration & Contract Tests
 
 - Reused the same test run above because this ticket only extends the platform credential command path and the credential-config support layer.
-- Result: `28 passed`.
+- Result: `29 passed`.
 
 ## Stage 5: Smoke & Manual Verification
 
@@ -29,3 +29,4 @@ python -m harnessiq.cli credentials verify creatify --repo-root <temp-dir> --env
 ```
 - Observed:
   - The command resolved the external temp-dir `.env`, validated the field mapping, built the typed `CreatifyCredentials` object, and emitted a redacted JSON payload without requiring any harness manifest.
+  - The final rerun confirmed `--repo-root` is honored exactly rather than walking upward to an enclosing repository root.

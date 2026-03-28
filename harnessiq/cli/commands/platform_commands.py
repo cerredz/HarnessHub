@@ -449,7 +449,7 @@ def _handle_credentials_verify(args: argparse.Namespace) -> int:
         HarnessCliLifecycleBuilder().verify_provider_credentials(
             family=args.family,
             assignments=list(args.env),
-            repo_root=resolve_repo_root(args.repo_root),
+            repo_root=Path(args.repo_root).expanduser().resolve(),
         )
     )
     return 0

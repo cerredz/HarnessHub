@@ -356,6 +356,32 @@ def test_credentials_verify_requires_non_empty_env_values(tmp_path: Path) -> Non
     assert "CREATIFY_API_KEY" in str(exc_info.value)
 
 
+def test_credentials_verify_honors_explicit_repo_root_path(tmp_path: Path) -> None:
+    repo_root = tmp_path / "custom-root"
+    repo_root.mkdir()
+    (repo_root / ".env").write_text(
+        "CREATIFY_API_ID=cid_123\nCREATIFY_API_KEY=key_456\n",
+        encoding="utf-8",
+    )
+
+    exit_code, verified = _run(
+        [
+            "credentials",
+            "verify",
+            "creatify",
+            "--repo-root",
+            str(repo_root),
+            "--env",
+            "api_id=CREATIFY_API_ID",
+            "--env",
+            "api_key=CREATIFY_API_KEY",
+        ]
+    )
+
+    assert exit_code == 0
+    assert Path(str(verified["env_path"])).parent == repo_root
+
+
 def test_run_generic_knowt_uses_bound_creatify_credentials(tmp_path: Path) -> None:
     (tmp_path / ".env").write_text(
         "CREATIFY_API_ID=cid_123\nCREATIFY_API_KEY=key_456\n",
