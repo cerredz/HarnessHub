@@ -82,6 +82,11 @@ class DocsSyncTests(unittest.TestCase):
             }.issubset(top_level_commands)
         )
 
+    def test_inventory_includes_gcloud_command_family(self) -> None:
+        inventory = self.sync_repo_docs.build_inventory()
+        top_level_commands = {entry["command"] for entry in inventory["cli"]["top_level"]}
+        self.assertIn("harnessiq gcloud", top_level_commands)
+
     def test_inventory_matches_live_harness_manifests(self) -> None:
         inventory = self.sync_repo_docs.build_inventory()
         inventory_harnesses = {entry["manifest_id"]: entry for entry in inventory["harnesses"]}

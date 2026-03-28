@@ -9,8 +9,8 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Metric | Count |
 | --- | --- |
 | Concrete harness manifests | 9 |
-| Top-level CLI commands | 19 |
-| Registered CLI command paths | 153 |
+| Top-level CLI commands | 20 |
+| Registered CLI command paths | 168 |
 | Model providers | 4 |
 | Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
@@ -33,6 +33,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Path | Kind | Responsibility |
 | --- | --- | --- |
 | `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
+| `.worktrees/` | local state | Git worktree checkouts used for isolated implementation branches; local-only and not part of the shipped package. |
 | `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
 | `build/` | generated/cache | Setuptools build output; generated, not part of the live source tree. |
 | `docs/` | repo docs | Focused usage and architecture notes for the package. |
@@ -40,6 +41,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | `harnessiq.egg-info/` | generated/cache | Packaging metadata emitted by local builds. |
 | `memory/` | local state | Task artifacts plus durable agent runtime state; not part of the shipped package. |
 | `scripts/` | repo tooling | Repository maintenance and generation scripts. |
+| `src/` | generated/cache | Legacy or generated residue in this checkout; not the authoritative package source. |
 | `tests/` | source | unittest coverage for runtime, CLI, providers, and tools. |
 
 ## Package Layout
@@ -108,6 +110,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections | `harnessiq/cli/ledger/commands.py` |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings | `harnessiq/cli/platform_commands.py` |
 | harnessiq export | - | Export ledger entries in a structured format | `harnessiq/cli/ledger/commands.py` |
+| harnessiq gcloud | build, cost, credentials, deploy, execute, health, init, logs, schedule | Manage Google Cloud deployment configuration and operations | `harnessiq/cli/gcloud/commands.py` |
 | harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Inspect one harness manifest and generated CLI surface | `harnessiq/cli/platform_commands.py` |
 | harnessiq instagram | configure, get-emails, prepare, run, show | Manage and run the Instagram keyword discovery agent | `harnessiq/cli/instagram/commands.py` |
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent | `harnessiq/cli/leads/commands.py` |

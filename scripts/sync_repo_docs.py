@@ -832,13 +832,22 @@ def parse_cli_commands(harnesses: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 if isinstance(inner, ast.Assign) and len(inner.targets) == 1 and isinstance(inner.targets[0], ast.Name) and isinstance(inner.value, ast.Call):
                     target_name = inner.targets[0].id
                     call = inner.value
-                    if isinstance(call.func, ast.Attribute) and call.func.attr == "add_parser":
-                        base_name = get_name(call.func.value)
+                    if (
+                        isinstance(call.func, ast.Attribute)
+                        and call.func.attr == "add_parser"
+                    ) or get_name(call.func) == "_add_help_parser":
+                        if isinstance(call.func, ast.Attribute) and call.func.attr == "add_parser":
+                            base_name = get_name(call.func.value)
+                            parser_name = get_call_arg(call, 0, "name")
+                            help_value = get_call_keyword(call, "help")
+                            aliases_value = get_call_keyword(call, "aliases")
+                        else:
+                            base_name = get_name(call.args[0]) if call.args else None
+                            parser_name = get_call_arg(call, 1, "name")
+                            help_value = get_call_keyword(call, "help_text")
+                            aliases_value = None
                         if base_name not in subparser_paths:
                             continue
-                        parser_name = get_call_arg(call, 0, "name")
-                        help_value = get_call_keyword(call, "help")
-                        aliases_value = get_call_keyword(call, "aliases")
                         if parser_name is None:
                             continue
                         segment = str(eval_simple(parser_name, constants))
@@ -1101,6 +1110,18 @@ def render_readme(inventory: dict[str, Any]) -> str:
         "",
         "See `docs/dynamic-tool-selection.md` for the runtime contract, CLI flags, embedding-model configuration, and the boundary between existing tool keys and Python-only custom callables.",
         "",
+        "## Google Cloud Integration",
+        "",
+        "Harnessiq ships a dedicated Google Cloud deployment surface for running manifest-backed harnesses as Cloud Run jobs without introducing a second runtime model.",
+        "",
+        "- `harnessiq gcloud init` saves one JSON deploy config per logical agent under `~/.harnessiq/gcloud/<agent>.json`, including region, Artifact Registry, Cloud Run, Scheduler, model-selection, sink, and parameter settings.",
+        "- `harnessiq gcloud health` and `harnessiq gcloud credentials check` validate operator prerequisites such as the `gcloud` CLI, active auth, ADC, required APIs, and Secret Manager access.",
+        "- `harnessiq gcloud credentials ...` reuses repo-local harness credential bindings and syncs runtime secrets into Secret Manager through `status`, `sync`, `set`, and `remove` flows.",
+        "- Manifest-backed deploy specs are derived from the harness manifest plus saved profile state, so remote runs preserve model selection, runtime/custom parameters, adapter arguments, sink specs, provider families, and declared durable memory files.",
+        "- `build`, `deploy`, `schedule`, and `execute` cover the Cloud Build, Cloud Run Jobs, and Cloud Scheduler lifecycle, while `logs` and `cost` provide runtime observability and monthly cost estimation.",
+        "- The Cloud Run runtime wrapper syncs the harness memory directory to GCS before and after execution, preserving harness-native durable state rather than flattening everything into one blob.",
+        "- The GCloud command family emits JSON and supports `--dry-run` on the mutating operations, so it stays scriptable in CI and operator tooling.",
+        "",
         "## Live Snapshot",
         "",
         render_counts_table(inventory),
@@ -1360,8 +1381,34 @@ def expected_outputs() -> dict[Path, str]:
     }
 
 
-def write_outputs(outputs: dict[Path, str]) -> None:
+def existing_legacy_outputs() -> list[Path]:
+    detected: list[Path] = []
+    seen: set[Path] = set()
+
     for legacy_path in LEGACY_OUTPUTS:
+        for candidate in (legacy_path, legacy_path.resolve(strict=False)):
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            if candidate.exists():
+                detected.append(candidate)
+
+    legacy_names = {path.name for path in LEGACY_OUTPUTS}
+    if ARTIFACTS_DIR.exists():
+        for candidate in ARTIFACTS_DIR.iterdir():
+            if candidate.name not in legacy_names:
+                continue
+            resolved = candidate.resolve(strict=False)
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            detected.append(candidate)
+
+    return detected
+
+
+def write_outputs(outputs: dict[Path, str]) -> None:
+    for legacy_path in {path.resolve(strict=False) for path in (*LEGACY_OUTPUTS, *existing_legacy_outputs())}:
         legacy_path.unlink(missing_ok=True)
     for path, content in outputs.items():
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -1373,7 +1420,7 @@ def check_outputs(outputs: dict[Path, str]) -> list[str]:
     for path, content in outputs.items():
         if not path.exists() or path.read_text(encoding="utf-8") != content:
             drifted.append(relative_path(path))
-    for legacy_path in LEGACY_OUTPUTS:
+    for legacy_path in existing_legacy_outputs():
         if legacy_path.exists():
             drifted.append(relative_path(legacy_path))
     return drifted

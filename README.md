@@ -32,13 +32,25 @@ Harnessiq keeps the static tool path by default. When you need to narrow a large
 
 See `docs/dynamic-tool-selection.md` for the runtime contract, CLI flags, embedding-model configuration, and the boundary between existing tool keys and Python-only custom callables.
 
+## Google Cloud Integration
+
+Harnessiq ships a dedicated Google Cloud deployment surface for running manifest-backed harnesses as Cloud Run jobs without introducing a second runtime model.
+
+- `harnessiq gcloud init` saves one JSON deploy config per logical agent under `~/.harnessiq/gcloud/<agent>.json`, including region, Artifact Registry, Cloud Run, Scheduler, model-selection, sink, and parameter settings.
+- `harnessiq gcloud health` and `harnessiq gcloud credentials check` validate operator prerequisites such as the `gcloud` CLI, active auth, ADC, required APIs, and Secret Manager access.
+- `harnessiq gcloud credentials ...` reuses repo-local harness credential bindings and syncs runtime secrets into Secret Manager through `status`, `sync`, `set`, and `remove` flows.
+- Manifest-backed deploy specs are derived from the harness manifest plus saved profile state, so remote runs preserve model selection, runtime/custom parameters, adapter arguments, sink specs, provider families, and declared durable memory files.
+- `build`, `deploy`, `schedule`, and `execute` cover the Cloud Build, Cloud Run Jobs, and Cloud Scheduler lifecycle, while `logs` and `cost` provide runtime observability and monthly cost estimation.
+- The Cloud Run runtime wrapper syncs the harness memory directory to GCS before and after execution, preserving harness-native durable state rather than flattening everything into one blob.
+- The GCloud command family emits JSON and supports `--dry-run` on the mutating operations, so it stays scriptable in CI and operator tooling.
+
 ## Live Snapshot
 
 | Metric | Count |
 | --- | --- |
 | Concrete harness manifests | 9 |
-| Top-level CLI commands | 19 |
-| Registered CLI command paths | 153 |
+| Top-level CLI commands | 20 |
+| Registered CLI command paths | 168 |
 | Model providers | 4 |
 | Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
@@ -120,6 +132,7 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings |
 | harnessiq export | - | Export ledger entries in a structured format |
+| harnessiq gcloud | build, cost, credentials, deploy, execute, health, init, logs, schedule | Manage Google Cloud deployment configuration and operations |
 | harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Inspect one harness manifest and generated CLI surface |
 | harnessiq instagram | configure, get-emails, prepare, run, show | Manage and run the Instagram keyword discovery agent |
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent |
