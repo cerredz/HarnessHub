@@ -193,6 +193,17 @@ class _FakeMongoCollectionClient:
         self.calls.append({"documents": [dict(document) for document in documents]})
 
 
+class _FakeMongoCursor:
+    def __init__(self, documents: Sequence[Mapping[str, object]]) -> None:
+        self._documents = [dict(document) for document in documents]
+
+    def limit(self, value: int) -> "_FakeMongoCursor":
+        return _FakeMongoCursor(self._documents[:value])
+
+    def __iter__(self):
+        return iter(self._documents)
+
+
 def _entry() -> LedgerEntry:
     return LedgerEntry(
         run_id="run-123",
@@ -362,6 +373,36 @@ class OutputSinkTests(unittest.TestCase):
 
         self.assertTrue(collection.insert_one.called)
         self.assertFalse(collection.insert_many.called)
+
+    def test_mongodb_client_can_find_documents_with_projection_and_limit(self) -> None:
+        collection = MagicMock()
+        collection.find.return_value = _FakeMongoCursor(
+            [
+                {"run_id": "run-1", "status": "new"},
+                {"run_id": "run-2", "status": "new"},
+            ]
+        )
+        client = MongoDBClient(
+            connection_uri="mongodb://localhost:27017",
+            database="harnessiq",
+            collection="agent_runs",
+            collection_handle=collection,
+        )
+
+        documents = client.find_documents(
+            filter={"status": "new"},
+            projection=("run_id",),
+            limit=1,
+        )
+
+        self.assertEqual(documents, [{"run_id": "run-1", "status": "new"}])
+        self.assertEqual(
+            collection.find.call_args.kwargs,
+            {
+                "filter": {"status": "new"},
+                "projection": {"run_id": 1},
+            },
+        )
 
     def test_mongodb_sink_persists_full_entry_without_explode_field(self) -> None:
         client = MagicMock()

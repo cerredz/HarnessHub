@@ -3,6 +3,7 @@
 from .agents import (
     AgentInstancePayload,
     ApolloAgentRequest,
+    EmailCampaignAgentInstancePayload,
     EmailAgentRequest,
     ExaOutreachAgentInstancePayload,
     ExaAgentRequest,
@@ -65,6 +66,7 @@ from .prompt_harnesses import (
 __all__ = [
     "AgentInstancePayload",
     "ApolloAgentRequest",
+    "EmailCampaignAgentInstancePayload",
     "EmailAgentRequest",
     "ExaOutreachAgentInstancePayload",
     "ExaAgentRequest",

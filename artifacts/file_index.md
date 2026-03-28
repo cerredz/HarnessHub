@@ -8,14 +8,14 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Metric | Count |
 | --- | --- |
-| Concrete harness manifests | 9 |
-| Top-level CLI commands | 20 |
-| Registered CLI command paths | 168 |
+| Concrete harness manifests | 10 |
+| Top-level CLI commands | 21 |
+| Registered CLI command paths | 181 |
 | Model providers | 4 |
 | Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-| Test modules | 119 |
+| Test modules | 122 |
 
 ## Codebase Standards
 
@@ -49,7 +49,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Path | Live Subpackages | Responsibility |
 | --- | --- | --- |
 | `harnessiq/agents/` | apollo, base, email, exa, exa_outreach, instagram, instantly, knowt, leads, linkedin, mission_driven, outreach, prospecting, provider_base, research_sweep, spawn_specialized_subagents | Shared runtime bases plus the concrete harness packages exported by the SDK. |
-| `harnessiq/cli/` | adapters, builders, commands, exa_outreach, gcloud, instagram, leads, ledger, linkedin, master_prompts, models, prospecting, research_sweep, runners, stats | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
+| `harnessiq/cli/` | adapters, builders, commands, email, exa_outreach, gcloud, instagram, leads, ledger, linkedin, master_prompts, models, prospecting, research_sweep, runners, stats | Argparse entrypoints and command-family modules for harness management plus ledger/output-sink operations. |
 | `harnessiq/config/` | provider_credentials | Environment loading, credential binding, and provider-credential spec models. |
 | `harnessiq/evaluations/` | - | Pytest-first evaluation helpers, lightweight scoring helpers, and plugin support for tagged eval runs. |
 | `harnessiq/integrations/` | - | Concrete external runtime adapters such as Playwright backends and model factories. |
@@ -93,6 +93,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Manifest | Display Name | Import | Memory Root | Runtime Params | Custom Params | Memory Entries | Providers | Output Fields |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | exa_outreach | Exa Outreach | `harnessiq.agents.exa_outreach:ExaOutreachAgent` | `memory/outreach` | max_tokens, reset_threshold | - | query_config.json, agent_identity.txt, additional_prompt.txt, runs | exa, resend | emails_sent, leads_found, search_query |
+| email | Email Campaign | `harnessiq.agents.email:EmailCampaignAgent` | `memory/email` | max_tokens, reset_threshold, batch_size, recipient_limit | open-ended | source_config.json, campaign_config.json, sent_history.json, runtime_parameters.json, custom_parameters.json, agent_identity.txt, additional_prompt.txt | resend | campaign, delivery_records, recipient_batch |
 | instagram | Instagram Keyword Discovery | `harnessiq.agents.instagram:InstagramKeywordDiscoveryAgent` | `memory/instagram` | max_tokens, recent_result_window, recent_search_window, reset_threshold, search_result_limit | open-ended | icp_profiles.json, search_history.json, run_state.json, icps/*.json, lead_database.json, runtime_parameters.json, custom_parameters.json, agent_identity.txt, additional_prompt.txt | playwright | emails, leads, search_history |
 | knowt | Knowt Content Creator | `harnessiq.agents.knowt:KnowtAgent` | `memory/knowt` | max_tokens, reset_threshold | - | current_script.md, current_avatar_description.md, creation_log.jsonl | creatify | avatar_description, creation_log, script |
 | leads | Leads Agent | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | run_config.json, run_state.json, runtime_parameters.json, icps/*.json, lead_storage, lead_storage/saved_leads.json | apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, hunter, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | icp_states, run_config, run_state, saved_leads |
@@ -109,22 +110,23 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | harnessiq connect | confluence, discord, google_sheets, linear, mongodb, notion, obsidian, slack, supabase | Configure a global output sink connection | `harnessiq/cli/ledger/commands.py` |
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections | `harnessiq/cli/ledger/commands.py` |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings | `harnessiq/cli/platform_commands.py` |
+| harnessiq email | configure, get-recipients, prepare, run, show | Manage and run the email campaign agent | `harnessiq/cli/email/commands.py` |
 | harnessiq export | - | Export ledger entries in a structured format | `harnessiq/cli/ledger/commands.py` |
 | harnessiq gcloud | build, cost, credentials, deploy, execute, health, init, logs, schedule | Manage Google Cloud deployment configuration and operations | `harnessiq/cli/gcloud/commands.py` |
-| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Inspect one harness manifest and generated CLI surface | `harnessiq/cli/platform_commands.py` |
+| harnessiq inspect | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Inspect one harness manifest and generated CLI surface | `harnessiq/cli/platform_commands.py` |
 | harnessiq instagram | configure, get-emails, prepare, run, show | Manage and run the Instagram keyword discovery agent | `harnessiq/cli/instagram/commands.py` |
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent | `harnessiq/cli/leads/commands.py` |
 | harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent | `harnessiq/cli/linkedin/commands.py` |
 | harnessiq logs | - | Inspect the local audit ledger | `harnessiq/cli/ledger/commands.py` |
 | harnessiq models | add, list | Manage reusable provider-backed model profiles | `harnessiq/cli/models/commands.py` |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent | `harnessiq/cli/exa_outreach/commands.py` |
-| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
+| harnessiq prepare | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
 | harnessiq prompts | activate, clear, current, list, show, text | Inspect bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent | `harnessiq/cli/prospecting/commands.py` |
 | harnessiq report | - | Build a cross-agent report from the local ledger | `harnessiq/cli/ledger/commands.py` |
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness | `harnessiq/cli/research_sweep/commands.py` |
-| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
-| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
+| harnessiq run | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
+| harnessiq show | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
 | harnessiq stats | agent, export, instance, rebuild, session, summary | Inspect local stats and analytics snapshots | `harnessiq/cli/stats/commands.py` |
 
 ## Provider Surfaces
@@ -193,13 +195,13 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 ## Test Surface
 
-`tests/` currently contains 119 test modules. The table below groups them by dominant responsibility.
+`tests/` currently contains 122 test modules. The table below groups them by dominant responsibility.
 
 | Area | Count | Examples |
 | --- | --- | --- |
-| agents | 20 | `tests/test_agent_instances.py`, `tests/test_agent_models.py`, `tests/test_agents_base.py` |
-| cli | 11 | `tests/test_exa_outreach_cli.py`, `tests/test_gcloud_cli.py`, `tests/test_instagram_cli.py` |
+| agents | 21 | `tests/test_agent_instances.py`, `tests/test_agent_models.py`, `tests/test_agents_base.py` |
+| cli | 12 | `tests/test_email_cli.py`, `tests/test_exa_outreach_cli.py`, `tests/test_gcloud_cli.py` |
 | ledger | 1 | `tests/test_output_sinks.py` |
 | providers | 32 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
-| support | 39 | `tests/test_cli_builders.py`, `tests/test_cli_common.py`, `tests/test_cli_environment.py` |
+| support | 40 | `tests/test_cli_builders.py`, `tests/test_cli_common.py`, `tests/test_cli_environment.py` |
 | tools | 16 | `tests/test_context_compaction_tools.py`, `tests/test_context_window_tools.py`, `tests/test_general_tools.py` |

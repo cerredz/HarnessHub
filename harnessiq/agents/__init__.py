@@ -61,7 +61,7 @@ from .base import BaseAgent
 from .provider_base import BaseProviderToolAgent
 from .apollo import BaseApolloAgent
 from harnessiq.shared.apollo_agent import ApolloAgentConfig, DEFAULT_APOLLO_AGENT_IDENTITY
-from .email import BaseEmailAgent
+from .email import BaseEmailAgent, EmailCampaignAgent
 from harnessiq.shared.knowt import KnowtMemoryStore
 from harnessiq.shared.email import DEFAULT_EMAIL_AGENT_IDENTITY, EmailAgentConfig
 from .exa import BaseExaAgent
@@ -134,6 +134,7 @@ __all__ = [
     "ExaOutreachMemoryStore",
     "DEFAULT_EXA_AGENT_IDENTITY",
     "DEFAULT_EMAIL_AGENT_IDENTITY",
+    "EmailCampaignAgent",
     "HARNESS_MANIFESTS",
     "DEFAULT_INSTANTLY_AGENT_IDENTITY",
     "DEFAULT_OUTREACH_AGENT_IDENTITY",

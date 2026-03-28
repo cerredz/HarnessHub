@@ -6,8 +6,8 @@ This artifact is generated from the live `harnessiq/cli/` source tree by `python
 
 | Metric | Count |
 | --- | --- |
-| Top-level commands | 20 |
-| Registered command paths | 168 |
+| Top-level commands | 21 |
+| Registered command paths | 181 |
 
 Alias paths are included in the registered command total. Canonical commands list aliases where they exist.
 
@@ -18,22 +18,23 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq connect | confluence, discord, google_sheets, linear, mongodb, notion, obsidian, slack, supabase | Configure a global output sink connection | `harnessiq/cli/ledger/commands.py` |
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections | `harnessiq/cli/ledger/commands.py` |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings | `harnessiq/cli/platform_commands.py` |
+| harnessiq email | configure, get-recipients, prepare, run, show | Manage and run the email campaign agent | `harnessiq/cli/email/commands.py` |
 | harnessiq export | - | Export ledger entries in a structured format | `harnessiq/cli/ledger/commands.py` |
 | harnessiq gcloud | build, cost, credentials, deploy, execute, health, init, logs, schedule | Manage Google Cloud deployment configuration and operations | `harnessiq/cli/gcloud/commands.py` |
-| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Inspect one harness manifest and generated CLI surface | `harnessiq/cli/platform_commands.py` |
+| harnessiq inspect | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Inspect one harness manifest and generated CLI surface | `harnessiq/cli/platform_commands.py` |
 | harnessiq instagram | configure, get-emails, prepare, run, show | Manage and run the Instagram keyword discovery agent | `harnessiq/cli/instagram/commands.py` |
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent | `harnessiq/cli/leads/commands.py` |
 | harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent | `harnessiq/cli/linkedin/commands.py` |
 | harnessiq logs | - | Inspect the local audit ledger | `harnessiq/cli/ledger/commands.py` |
 | harnessiq models | add, list | Manage reusable provider-backed model profiles | `harnessiq/cli/models/commands.py` |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent | `harnessiq/cli/exa_outreach/commands.py` |
-| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
+| harnessiq prepare | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Prepare and persist generic config for a harness | `harnessiq/cli/platform_commands.py` |
 | harnessiq prompts | activate, clear, current, list, show, text | Inspect bundled master prompts | `harnessiq/cli/master_prompts/commands.py` |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent | `harnessiq/cli/prospecting/commands.py` |
 | harnessiq report | - | Build a cross-agent report from the local ledger | `harnessiq/cli/ledger/commands.py` |
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness | `harnessiq/cli/research_sweep/commands.py` |
-| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
-| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
+| harnessiq run | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI | `harnessiq/cli/platform_commands.py` |
+| harnessiq show | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state | `harnessiq/cli/platform_commands.py` |
 | harnessiq stats | agent, export, instance, rebuild, session, summary | Inspect local stats and analytics snapshots | `harnessiq/cli/stats/commands.py` |
 
 ## `harnessiq connect`
@@ -63,6 +64,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | Command | Aliases | Description | Source |
 | --- | --- | --- | --- |
 | harnessiq credentials bind | - | Bind harness credentials | `harnessiq/cli/platform_commands.py` |
+| harnessiq credentials bind email | - | bind Email Campaign | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials bind exa_outreach | outreach | bind Exa Outreach | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials bind instagram | - | bind Instagram Keyword Discovery | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials bind knowt | - | bind Knowt Content Creator | `harnessiq/cli/platform_commands.py` |
@@ -73,6 +75,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq credentials bind research_sweep | research-sweep | bind Research Sweep | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials bind spawn_specialized_subagents | - | bind Spawn Specialized Subagents | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials show | - | Show harness credentials | `harnessiq/cli/platform_commands.py` |
+| harnessiq credentials show email | - | show Email Campaign | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials show exa_outreach | outreach | show Exa Outreach | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials show instagram | - | show Instagram Keyword Discovery | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials show knowt | - | show Knowt Content Creator | `harnessiq/cli/platform_commands.py` |
@@ -83,6 +86,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq credentials show research_sweep | research-sweep | show Research Sweep | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials show spawn_specialized_subagents | - | show Spawn Specialized Subagents | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials test | - | Test harness credentials | `harnessiq/cli/platform_commands.py` |
+| harnessiq credentials test email | - | test Email Campaign | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials test exa_outreach | outreach | test Exa Outreach | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials test instagram | - | test Instagram Keyword Discovery | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials test knowt | - | test Knowt Content Creator | `harnessiq/cli/platform_commands.py` |
@@ -92,6 +96,16 @@ Alias paths are included in the registered command total. Canonical commands lis
 | harnessiq credentials test prospecting | - | test Google Maps Prospecting | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials test research_sweep | research-sweep | test Research Sweep | `harnessiq/cli/platform_commands.py` |
 | harnessiq credentials test spawn_specialized_subagents | - | test Spawn Specialized Subagents | `harnessiq/cli/platform_commands.py` |
+
+## `harnessiq email`
+
+| Command | Description | Source |
+| --- | --- | --- |
+| harnessiq email configure | Persist Mongo recipient source, campaign content, and runtime parameters for the email agent | `harnessiq/cli/email/commands.py` |
+| harnessiq email get-recipients | Return the current deduplicated unsent recipient preview for the configured email agent | `harnessiq/cli/email/commands.py` |
+| harnessiq email prepare | Create or refresh an email campaign memory folder | `harnessiq/cli/email/commands.py` |
+| harnessiq email run | Run the email campaign agent from persisted memory | `harnessiq/cli/email/commands.py` |
+| harnessiq email show | Render the current email campaign state as JSON | `harnessiq/cli/email/commands.py` |
 
 ## `harnessiq gcloud`
 
@@ -116,6 +130,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 
 | Command | Aliases | Description | Source |
 | --- | --- | --- | --- |
+| harnessiq inspect email | - | inspect Email Campaign | `harnessiq/cli/platform_commands.py` |
 | harnessiq inspect exa_outreach | outreach | inspect Exa Outreach | `harnessiq/cli/platform_commands.py` |
 | harnessiq inspect instagram | - | inspect Instagram Keyword Discovery | `harnessiq/cli/platform_commands.py` |
 | harnessiq inspect knowt | - | inspect Knowt Content Creator | `harnessiq/cli/platform_commands.py` |
@@ -175,6 +190,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 
 | Command | Aliases | Description | Source |
 | --- | --- | --- | --- |
+| harnessiq prepare email | - | prepare Email Campaign | `harnessiq/cli/platform_commands.py` |
 | harnessiq prepare exa_outreach | outreach | prepare Exa Outreach | `harnessiq/cli/platform_commands.py` |
 | harnessiq prepare instagram | - | prepare Instagram Keyword Discovery | `harnessiq/cli/platform_commands.py` |
 | harnessiq prepare knowt | - | prepare Knowt Content Creator | `harnessiq/cli/platform_commands.py` |
@@ -219,6 +235,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 
 | Command | Aliases | Description | Source |
 | --- | --- | --- | --- |
+| harnessiq run email | - | run Email Campaign | `harnessiq/cli/platform_commands.py` |
 | harnessiq run exa_outreach | outreach | run Exa Outreach | `harnessiq/cli/platform_commands.py` |
 | harnessiq run instagram | - | run Instagram Keyword Discovery | `harnessiq/cli/platform_commands.py` |
 | harnessiq run knowt | - | run Knowt Content Creator | `harnessiq/cli/platform_commands.py` |
@@ -233,6 +250,7 @@ Alias paths are included in the registered command total. Canonical commands lis
 
 | Command | Aliases | Description | Source |
 | --- | --- | --- | --- |
+| harnessiq show email | - | show Email Campaign | `harnessiq/cli/platform_commands.py` |
 | harnessiq show exa_outreach | outreach | show Exa Outreach | `harnessiq/cli/platform_commands.py` |
 | harnessiq show instagram | - | show Instagram Keyword Discovery | `harnessiq/cli/platform_commands.py` |
 | harnessiq show knowt | - | show Knowt Content Creator | `harnessiq/cli/platform_commands.py` |

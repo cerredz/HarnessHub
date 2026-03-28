@@ -48,20 +48,21 @@ Harnessiq ships a dedicated Google Cloud deployment surface for running manifest
 
 | Metric | Count |
 | --- | --- |
-| Concrete harness manifests | 9 |
-| Top-level CLI commands | 20 |
-| Registered CLI command paths | 168 |
+| Concrete harness manifests | 10 |
+| Top-level CLI commands | 21 |
+| Registered CLI command paths | 181 |
 | Model providers | 4 |
 | Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-| Test modules | 119 |
+| Test modules | 122 |
 
 ## Agent Matrix
 
 | Harness | CLI | Import | Memory Root | Runtime Params | Custom Params | Providers |
 | --- | --- | --- | --- | --- | --- | --- |
 | Exa Outreach | `outreach` | `harnessiq.agents.exa_outreach:ExaOutreachAgent` | `memory/outreach` | max_tokens, reset_threshold | - | exa, resend |
+| Email Campaign | `email` | `harnessiq.agents.email:EmailCampaignAgent` | `memory/email` | max_tokens, reset_threshold, batch_size, recipient_limit | open-ended | resend |
 | Instagram Keyword Discovery | `instagram` | `harnessiq.agents.instagram:InstagramKeywordDiscoveryAgent` | `memory/instagram` | max_tokens, recent_result_window, recent_search_window, reset_threshold, search_result_limit | open-ended | playwright |
 | Knowt Content Creator | - | `harnessiq.agents.knowt:KnowtAgent` | `memory/knowt` | max_tokens, reset_threshold | - | creatify |
 | Leads Agent | `leads` | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, hunter, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo |
@@ -131,22 +132,23 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 | harnessiq connect | confluence, discord, google_sheets, linear, mongodb, notion, obsidian, slack, supabase | Configure a global output sink connection |
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings |
+| harnessiq email | configure, get-recipients, prepare, run, show | Manage and run the email campaign agent |
 | harnessiq export | - | Export ledger entries in a structured format |
 | harnessiq gcloud | build, cost, credentials, deploy, execute, health, init, logs, schedule | Manage Google Cloud deployment configuration and operations |
-| harnessiq inspect | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Inspect one harness manifest and generated CLI surface |
+| harnessiq inspect | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Inspect one harness manifest and generated CLI surface |
 | harnessiq instagram | configure, get-emails, prepare, run, show | Manage and run the Instagram keyword discovery agent |
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent |
 | harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent |
 | harnessiq logs | - | Inspect the local audit ledger |
 | harnessiq models | add, list | Manage reusable provider-backed model profiles |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent |
-| harnessiq prepare | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Prepare and persist generic config for a harness |
+| harnessiq prepare | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Prepare and persist generic config for a harness |
 | harnessiq prompts | activate, clear, current, list, show, text | Inspect bundled master prompts |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent |
 | harnessiq report | - | Build a cross-agent report from the local ledger |
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness |
-| harnessiq run | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI |
-| harnessiq show | exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state |
+| harnessiq run | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI |
+| harnessiq show | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state |
 | harnessiq stats | agent, export, instance, rebuild, session, summary | Inspect local stats and analytics snapshots |
 
 ## Repo Docs

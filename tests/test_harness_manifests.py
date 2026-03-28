@@ -6,6 +6,7 @@ import unittest
 
 from harnessiq.cli.common import parse_manifest_parameter_assignments
 from harnessiq.shared import HARNESS_MANIFESTS, get_harness_manifest
+from harnessiq.shared.email_campaign import EMAIL_HARNESS_MANIFEST
 from harnessiq.shared.exa_outreach import EXA_OUTREACH_HARNESS_MANIFEST
 from harnessiq.shared.instagram import INSTAGRAM_HARNESS_MANIFEST
 from harnessiq.shared.leads import LEADS_HARNESS_MANIFEST
@@ -19,6 +20,7 @@ class HarnessManifestRegistryTests(unittest.TestCase):
     def test_registry_resolves_by_manifest_id_agent_name_and_cli_command(self) -> None:
         self.assertIs(get_harness_manifest("linkedin"), LINKEDIN_HARNESS_MANIFEST)
         self.assertIs(get_harness_manifest("linkedin_job_applier"), LINKEDIN_HARNESS_MANIFEST)
+        self.assertIs(get_harness_manifest("email"), EMAIL_HARNESS_MANIFEST)
         self.assertIs(get_harness_manifest("mission_driven"), MISSION_DRIVEN_HARNESS_MANIFEST)
         self.assertIs(get_harness_manifest("outreach"), EXA_OUTREACH_HARNESS_MANIFEST)
         self.assertIs(get_harness_manifest("research-sweep"), RESEARCH_SWEEP_HARNESS_MANIFEST)
@@ -32,6 +34,7 @@ class HarnessManifestRegistryTests(unittest.TestCase):
             set(HARNESS_MANIFESTS),
             {
                 "exa_outreach",
+                "email",
                 "instagram",
                 "knowt",
                 "leads",
