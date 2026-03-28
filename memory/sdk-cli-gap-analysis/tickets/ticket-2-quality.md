@@ -14,7 +14,7 @@
 ```bash
 pytest tests/test_model_profiles.py tests/test_master_prompts_cli.py
 ```
-- Result: `24 passed`.
+- Result: `25 passed`.
 
 ## Stage 4: Integration & Contract Tests
 

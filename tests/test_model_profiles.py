@@ -165,3 +165,33 @@ def test_models_remove_requires_confirm(tmp_path: Path) -> None:
                 assert "--confirm" in str(exc)
             else:  # pragma: no cover - defensive
                 raise AssertionError("Expected remove without --confirm to fail.")
+
+
+def test_models_import_rejects_duplicate_profile_names(tmp_path: Path) -> None:
+    import_path = tmp_path / "profiles.json"
+    import_path.write_text(
+        json.dumps(
+            [
+                {
+                    "name": "team",
+                    "provider": "openai",
+                    "model_name": "gpt-5.4",
+                },
+                {
+                    "name": "team",
+                    "provider": "anthropic",
+                    "model_name": "claude-sonnet-4-5",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with patch.dict(os.environ, {"HARNESSIQ_HOME": str(tmp_path)}):
+        with patch("sys.stdout", new=io.StringIO()):
+            try:
+                main(["models", "import", str(import_path)])
+            except ValueError as exc:
+                assert "duplicate profile names" in str(exc)
+            else:  # pragma: no cover - defensive
+                raise AssertionError("Expected duplicate import names to fail.")

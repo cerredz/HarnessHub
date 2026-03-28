@@ -198,7 +198,17 @@ def _load_profiles_file(path: str) -> tuple[ModelProfile, ...]:
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(payload, list):
         raise ValueError("Model profile import files must contain a JSON array.")
-    return tuple(ModelProfile.from_dict(item) for item in payload)
+    profiles = tuple(ModelProfile.from_dict(item) for item in payload)
+    seen: set[str] = set()
+    duplicates: list[str] = []
+    for profile in profiles:
+        if profile.name in seen and profile.name not in duplicates:
+            duplicates.append(profile.name)
+        seen.add(profile.name)
+    if duplicates:
+        rendered = ", ".join(sorted(duplicates))
+        raise ValueError(f"Model profile import files must not contain duplicate profile names: {rendered}.")
+    return profiles
 
 
 def _merge_catalogs(
