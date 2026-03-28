@@ -40,6 +40,7 @@ from .model_profiles import (
 )
 from .loader import CredentialLoader
 from .models import ProviderCredentialConfig
+from .sdk import resolve_harness_credentials, seed_environment
 
 __all__ = [
     "AgentCredentialBinding",
@@ -76,6 +77,8 @@ __all__ = [
     "get_provider_credential_spec",
     "list_provider_credential_specs",
     "parse_dotenv_file",
+    "resolve_harness_credentials",
+    "seed_environment",
 ]
 
 _LAZY_PROVIDER_CREDENTIAL_EXPORTS = {

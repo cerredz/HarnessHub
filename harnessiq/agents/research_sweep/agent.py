@@ -7,6 +7,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
 from harnessiq.agents.base import BaseAgent
+from harnessiq.agents.sdk_helpers import (
+    load_master_prompt_text,
+    merge_profile_parameters,
+    resolve_profile_memory_path,
+)
+from harnessiq.config import HarnessProfile
 from harnessiq.agents.research_sweep.helpers import (
     append_transcript_entry as _append_transcript_entry,
     utc_today as _utc_today,
@@ -67,6 +73,8 @@ _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
 class ResearchSweepAgent(BaseAgent):
     """Run a fixed-order nine-site academic research sweep with durable reset-safe memory."""
 
+    master_prompt_path = _MASTER_PROMPT_PATH
+
     _allowed_context_tool_keys = frozenset(
         {
             CONTEXT_PARAM_WRITE_ONCE_MEMORY_FIELD,
@@ -94,6 +102,7 @@ class ResearchSweepAgent(BaseAgent):
         runtime_config: AgentRuntimeConfig | None = None,
         tools: Sequence[RegisteredTool] | None = None,
         instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
     ) -> None:
         candidate_memory_path = (
             Path(memory_path)
@@ -107,6 +116,7 @@ class ResearchSweepAgent(BaseAgent):
         )
         self._payload_max_tokens = max_tokens
         self._payload_reset_threshold = reset_threshold
+        self._master_prompt_override = master_prompt_override
         self._memory_store = ResearchSweepMemoryStore(memory_path=candidate_memory_path)
         self._memory_store.prepare()
         self._write_native_config_files(
@@ -193,6 +203,7 @@ class ResearchSweepAgent(BaseAgent):
         runtime_config: AgentRuntimeConfig | None = None,
         tools: Sequence[RegisteredTool] | None = None,
         instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
     ) -> "ResearchSweepAgent":
         resolved_memory_path = (
             Path(memory_path)
@@ -228,6 +239,46 @@ class ResearchSweepAgent(BaseAgent):
             runtime_config=runtime_config,
             tools=tools,
             instance_name=instance_name,
+            master_prompt_override=master_prompt_override,
+        )
+
+    @classmethod
+    def from_profile(
+        cls,
+        *,
+        profile: HarnessProfile,
+        model: AgentModel,
+        memory_path: str | Path | None = None,
+        serper_client: "SerperClient | None" = None,
+        serper_credentials: "SerperCredentials | None" = None,
+        runtime_config: AgentRuntimeConfig | None = None,
+        runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
+        tools: Sequence[RegisteredTool] | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
+    ) -> "ResearchSweepAgent":
+        resolved_path = resolve_profile_memory_path(
+            profile=profile,
+            manifest=RESEARCH_SWEEP_HARNESS_MANIFEST,
+            memory_path=memory_path,
+        )
+        resolved_runtime, resolved_custom = merge_profile_parameters(
+            profile=profile,
+            runtime_overrides=runtime_overrides,
+            custom_overrides=custom_overrides,
+        )
+        return cls.from_memory(
+            model=model,
+            memory_path=resolved_path,
+            serper_client=serper_client,
+            serper_credentials=serper_credentials,
+            runtime_overrides=resolved_runtime,
+            custom_overrides=resolved_custom,
+            runtime_config=runtime_config,
+            tools=tools,
+            instance_name=instance_name or profile.agent_name,
+            master_prompt_override=master_prompt_override,
         )
 
     def build_instance_payload(self) -> ResearchSweepAgentInstancePayload:
@@ -413,11 +464,11 @@ class ResearchSweepAgent(BaseAgent):
         return RegisteredTool(definition=definition, handler=handler)
 
     def _load_master_prompt(self) -> str:
-        if not _MASTER_PROMPT_PATH.exists():
-            raise ResourceNotFoundError(
-                f"Research sweep master prompt not found at '{_MASTER_PROMPT_PATH}'."
-            )
-        return _MASTER_PROMPT_PATH.read_text(encoding="utf-8")
+        return load_master_prompt_text(
+            default_path=_MASTER_PROMPT_PATH,
+            override=self._master_prompt_override,
+            missing_message=f"Research sweep master prompt not found at '{_MASTER_PROMPT_PATH}'.",
+        )
 
     def _render_research_memory_payload(self) -> dict[str, Any]:
         raw_memory_fields = self._context_runtime_state.memory_fields

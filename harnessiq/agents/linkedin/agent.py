@@ -14,6 +14,12 @@ from harnessiq.agents.helpers import (
     utc_now_z as _utcnow,
     utc_timestamp_for_filename as _timestamp_for_filename,
 )
+from harnessiq.agents.sdk_helpers import (
+    load_master_prompt_text,
+    merge_profile_parameters,
+    resolve_profile_memory_path,
+)
+from harnessiq.config import HarnessProfile
 from harnessiq.agents.linkedin.helpers import (
     build_linkedin_instance_payload as _build_linkedin_instance_payload,
     or_placeholder as _or_placeholder,
@@ -39,6 +45,7 @@ from harnessiq.shared.linkedin import (
     DEFAULT_LINKEDIN_ACTION_LOG_WINDOW,
     DEFAULT_LINKEDIN_NOTIFY_ON_PAUSE,
     DEFAULT_LINKEDIN_START_URL,
+    LINKEDIN_HARNESS_MANIFEST,
     LinkedInMemoryStore,
     SUPPORTED_LINKEDIN_RUNTIME_PARAMETERS,
     ActionLogEntry,
@@ -62,6 +69,8 @@ _MASTER_PROMPT_PATH = Path(__file__).parent / "prompts" / "master_prompt.md"
 class LinkedInJobApplierAgent(BaseAgent):
     """Concrete agent harness matching the LinkedIn job application specification."""
 
+    master_prompt_path = _MASTER_PROMPT_PATH
+
     def __init__(
         self,
         *,
@@ -77,6 +86,8 @@ class LinkedInJobApplierAgent(BaseAgent):
         notify_on_pause: bool = DEFAULT_LINKEDIN_NOTIFY_ON_PAUSE,
         pause_webhook: str | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
     ) -> None:
         # Store all params needed by build_instance_payload() before calling super().__init__().
         self._candidate_memory_path = Path(memory_path) if memory_path is not None else None
@@ -87,6 +98,7 @@ class LinkedInJobApplierAgent(BaseAgent):
         self._payload_notify_on_pause = notify_on_pause
         self._payload_pause_webhook = pause_webhook
         self._screenshot_persistor = screenshot_persistor
+        self._master_prompt_override = master_prompt_override
 
         super().__init__(
             name="linkedin_job_applier",
@@ -99,6 +111,7 @@ class LinkedInJobApplierAgent(BaseAgent):
             ),
             memory_path=self._candidate_memory_path,
             repo_root=_find_repo_root(self._candidate_memory_path),
+            instance_name=instance_name,
         )
         resolved_memory_path = self.memory_path
         self._config = LinkedInAgentConfig(
@@ -150,7 +163,10 @@ class LinkedInJobApplierAgent(BaseAgent):
         tools: Sequence[RegisteredTool] | None = None,
         screenshot_persistor: ScreenshotPersistor | None = None,
         runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
     ) -> "LinkedInJobApplierAgent":
         resolved_path = _resolve_memory_path(memory_path, default_path=_DEFAULT_MEMORY_PATH)
         memory_store = LinkedInMemoryStore(memory_path=resolved_path)
@@ -158,6 +174,10 @@ class LinkedInJobApplierAgent(BaseAgent):
         runtime_parameters = memory_store.read_runtime_parameters()
         if runtime_overrides:
             runtime_parameters.update(runtime_overrides)
+        if custom_overrides:
+            merged_custom = memory_store.read_custom_parameters()
+            merged_custom.update(custom_overrides)
+            memory_store.write_custom_parameters(merged_custom)
         return cls(
             model=model,
             memory_path=resolved_path,
@@ -165,14 +185,62 @@ class LinkedInJobApplierAgent(BaseAgent):
             tools=tools,
             screenshot_persistor=screenshot_persistor,
             runtime_config=runtime_config,
+            instance_name=instance_name,
+            master_prompt_override=master_prompt_override,
             **normalize_linkedin_runtime_parameters(runtime_parameters),
+        )
+
+    @classmethod
+    def from_profile(
+        cls,
+        *,
+        profile: HarnessProfile,
+        model: AgentModel,
+        memory_path: str | Path | None = None,
+        browser_tools: Iterable[RegisteredTool] = (),
+        tools: Sequence[RegisteredTool] | None = None,
+        screenshot_persistor: ScreenshotPersistor | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
+        runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
+    ) -> "LinkedInJobApplierAgent":
+        resolved_path = resolve_profile_memory_path(
+            profile=profile,
+            manifest=LINKEDIN_HARNESS_MANIFEST,
+            memory_path=memory_path,
+        )
+        resolved_runtime, resolved_custom = merge_profile_parameters(
+            profile=profile,
+            runtime_overrides=runtime_overrides,
+            custom_overrides=custom_overrides,
+        )
+        return cls.from_memory(
+            model=model,
+            memory_path=resolved_path,
+            browser_tools=browser_tools,
+            tools=tools,
+            screenshot_persistor=screenshot_persistor,
+            runtime_overrides=resolved_runtime,
+            custom_overrides=resolved_custom,
+            runtime_config=runtime_config,
+            instance_name=instance_name or profile.agent_name,
+            master_prompt_override=master_prompt_override,
         )
 
     def prepare(self) -> None:
         self._memory_store.prepare()
 
     def build_system_prompt(self) -> str:
-        template = _MASTER_PROMPT_PATH.read_text(encoding="utf-8")
+        template = load_master_prompt_text(
+            default_path=_MASTER_PROMPT_PATH,
+            override=self._master_prompt_override,
+            missing_message=(
+                f"LinkedIn master prompt not found at '{_MASTER_PROMPT_PATH}'. "
+                "Ensure harnessiq/agents/linkedin/prompts/master_prompt.md exists."
+            ),
+        )
         identity = self._memory_store.read_agent_identity() or DEFAULT_AGENT_IDENTITY
         tool_lines = "\n".join(f"- {tool.name}: {tool.description}" for tool in self.available_tools())
         return (

@@ -7,6 +7,14 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from harnessiq.agents.base import BaseAgent
+from harnessiq.agents.helpers import find_repo_root as _find_repo_root
+from harnessiq.agents.helpers import resolve_memory_path as _resolve_memory_path
+from harnessiq.agents.sdk_helpers import (
+    load_master_prompt_text,
+    load_persisted_profile,
+    merge_profile_parameters,
+    resolve_profile_memory_path,
+)
 from harnessiq.interfaces.tool_selection import DynamicToolSelector
 from harnessiq.agents.leads.helpers import (
     build_leads_instance_payload as _build_leads_instance_payload,
@@ -35,9 +43,11 @@ from harnessiq.shared.leads import (
     LeadICPState,
     LeadsAgentConfig,
     LeadRunState,
+    LEADS_HARNESS_MANIFEST,
     LeadsMemoryStore,
     LeadsStorageBackend,
 )
+from harnessiq.config import HarnessProfile
 from harnessiq.shared.tools import (
     LEADS_CHECK_SEEN,
     LEADS_COMPACT_SEARCH_HISTORY,
@@ -54,6 +64,8 @@ _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
 
 class LeadsAgent(BaseAgent):
     """Concrete leads harness that rotates one agent instance across multiple ICPs."""
+
+    master_prompt_path = _MASTER_PROMPT_PATH
 
     def __init__(
         self,
@@ -77,7 +89,10 @@ class LeadsAgent(BaseAgent):
         tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
         dynamic_tool_selector: DynamicToolSelector | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
     ) -> None:
+        self._master_prompt_override = master_prompt_override
         self._config = LeadsAgentConfig.from_inputs(
             company_background=company_background,
             icps=icps,
@@ -122,6 +137,8 @@ class LeadsAgent(BaseAgent):
             ),
             dynamic_tool_selector=dynamic_tool_selector,
             memory_path=self._config.memory_path,
+            repo_root=_find_repo_root(self._config.memory_path),
+            instance_name=instance_name,
         )
 
     @property
@@ -131,6 +148,117 @@ class LeadsAgent(BaseAgent):
     @property
     def memory_store(self) -> LeadsMemoryStore:
         return self._memory_store
+
+    @classmethod
+    def from_memory(
+        cls,
+        *,
+        model: AgentModel,
+        memory_path: str | Path | None = None,
+        storage_backend: LeadsStorageBackend | None = None,
+        runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
+        provider_credentials: Mapping[str, Any] | None = None,
+        provider_clients: Mapping[str, Any] | None = None,
+        allowed_provider_operations: Mapping[str, Sequence[str] | None] | None = None,
+        tools: Sequence[RegisteredTool] | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
+        dynamic_tool_selector: DynamicToolSelector | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
+    ) -> "LeadsAgent":
+        resolved_path = _resolve_memory_path(memory_path, default_path=_DEFAULT_MEMORY_PATH)
+        store = LeadsMemoryStore(memory_path=resolved_path)
+        store.prepare()
+        profile = load_persisted_profile(
+            manifest_id=LEADS_HARNESS_MANIFEST.manifest_id,
+            memory_path=resolved_path,
+        )
+        profile_runtime, _ = merge_profile_parameters(
+            profile=profile,
+            runtime_overrides=runtime_overrides,
+            custom_overrides=custom_overrides,
+        )
+        runtime_parameters = store.read_runtime_parameters()
+        runtime_parameters.update(profile_runtime)
+        run_config = store.read_run_config()
+        return cls(
+            model=model,
+            company_background=run_config.company_background,
+            icps=run_config.icps,
+            platforms=run_config.platforms,
+            memory_path=resolved_path,
+            storage_backend=storage_backend,
+            max_tokens=int(runtime_parameters.get("max_tokens", DEFAULT_AGENT_MAX_TOKENS)),
+            reset_threshold=float(runtime_parameters.get("reset_threshold", DEFAULT_AGENT_RESET_THRESHOLD)),
+            prune_search_interval=(
+                int(runtime_parameters["prune_search_interval"])
+                if runtime_parameters.get("prune_search_interval") is not None
+                else None
+            ),
+            prune_token_limit=(
+                int(runtime_parameters["prune_token_limit"])
+                if runtime_parameters.get("prune_token_limit") is not None
+                else None
+            ),
+            search_summary_every=int(
+                runtime_parameters.get("search_summary_every", run_config.search_summary_every)
+            ),
+            search_tail_size=int(runtime_parameters.get("search_tail_size", run_config.search_tail_size)),
+            max_leads_per_icp=(
+                int(runtime_parameters["max_leads_per_icp"])
+                if runtime_parameters.get("max_leads_per_icp") is not None
+                else run_config.max_leads_per_icp
+            ),
+            provider_credentials=provider_credentials,
+            provider_clients=provider_clients,
+            allowed_provider_operations=allowed_provider_operations,
+            tools=tools,
+            runtime_config=runtime_config,
+            dynamic_tool_selector=dynamic_tool_selector,
+            instance_name=instance_name,
+            master_prompt_override=master_prompt_override,
+        )
+
+    @classmethod
+    def from_profile(
+        cls,
+        *,
+        profile: HarnessProfile,
+        model: AgentModel,
+        memory_path: str | Path | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
+        runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
+        storage_backend: LeadsStorageBackend | None = None,
+        provider_credentials: Mapping[str, Any] | None = None,
+        provider_clients: Mapping[str, Any] | None = None,
+        allowed_provider_operations: Mapping[str, Sequence[str] | None] | None = None,
+        tools: Sequence[RegisteredTool] | None = None,
+        dynamic_tool_selector: DynamicToolSelector | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
+    ) -> "LeadsAgent":
+        resolved_path = resolve_profile_memory_path(
+            profile=profile,
+            manifest=LEADS_HARNESS_MANIFEST,
+            memory_path=memory_path,
+        )
+        return cls.from_memory(
+            model=model,
+            memory_path=resolved_path,
+            storage_backend=storage_backend,
+            runtime_overrides=profile.runtime_parameters | dict(runtime_overrides or {}),
+            custom_overrides=profile.custom_parameters | dict(custom_overrides or {}),
+            provider_credentials=provider_credentials,
+            provider_clients=provider_clients,
+            allowed_provider_operations=allowed_provider_operations,
+            tools=tools,
+            runtime_config=runtime_config,
+            dynamic_tool_selector=dynamic_tool_selector,
+            instance_name=instance_name or profile.agent_name,
+            master_prompt_override=master_prompt_override,
+        )
 
     def build_instance_payload(self) -> LeadsAgentInstancePayload:
         return _build_leads_instance_payload(config=self._config)
@@ -170,12 +298,14 @@ class LeadsAgent(BaseAgent):
         )
 
     def build_system_prompt(self) -> str:
-        if not _MASTER_PROMPT_PATH.exists():
-            raise ResourceNotFoundError(
+        template = load_master_prompt_text(
+            default_path=_MASTER_PROMPT_PATH,
+            override=self._master_prompt_override,
+            missing_message=(
                 f"Leads master prompt not found at '{_MASTER_PROMPT_PATH}'. "
                 "Ensure harnessiq/agents/leads/prompts/master_prompt.md exists."
-            )
-        template = _MASTER_PROMPT_PATH.read_text(encoding="utf-8")
+            ),
+        )
         tool_lines = "\n".join(f"- {tool.name}: {tool.description}" for tool in self.available_tools())
         return (
             template.replace("{{TOOL_LIST}}", tool_lines)

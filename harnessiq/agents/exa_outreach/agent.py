@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 from harnessiq.agents.base import BaseAgent
 from harnessiq.agents.exa_outreach.helpers import (
@@ -16,6 +16,14 @@ from harnessiq.agents.exa_outreach.helpers import (
 )
 from harnessiq.agents.helpers import find_repo_root as _find_repo_root
 from harnessiq.agents.helpers import utc_now_z as _utcnow
+from harnessiq.agents.sdk_helpers import (
+    load_master_prompt_text,
+    load_persisted_profile,
+    merge_profile_parameters,
+    resolve_profile_memory_path,
+)
+from harnessiq.cli.common import load_factory
+from harnessiq.config import HarnessProfile
 from harnessiq.shared.agents import (
     DEFAULT_AGENT_MAX_TOKENS,
     DEFAULT_AGENT_RESET_THRESHOLD,
@@ -35,6 +43,7 @@ from harnessiq.shared.exceptions import (
 from harnessiq.shared.exa_outreach import (
     DEFAULT_AGENT_IDENTITY,
     DEFAULT_SEARCH_QUERY,
+    EXA_OUTREACH_HARNESS_MANIFEST,
     EmailSentRecord,
     EmailTemplate,
     ExaOutreachAgentConfig,
@@ -62,6 +71,8 @@ _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
 class ExaOutreachAgent(BaseAgent):
     """Concrete agent harness for Exa-driven prospect discovery and optional outreach."""
 
+    master_prompt_path = _MASTER_PROMPT_PATH
+
     def __init__(
         self,
         *,
@@ -81,6 +92,8 @@ class ExaOutreachAgent(BaseAgent):
         allowed_exa_operations: tuple[str, ...] | None = None,
         tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
     ) -> None:
         # Store all params needed by build_instance_payload() before calling super().__init__().
         self._candidate_memory_path = Path(memory_path) if memory_path is not None else None
@@ -95,6 +108,7 @@ class ExaOutreachAgent(BaseAgent):
         self._payload_reset_threshold = reset_threshold
         self._payload_allowed_resend_operations = allowed_resend_operations
         self._payload_allowed_exa_operations = allowed_exa_operations
+        self._master_prompt_override = master_prompt_override
 
         # Current run ID - assigned in prepare() before the loop starts.
         self._current_run_id: str | None = None
@@ -126,6 +140,7 @@ class ExaOutreachAgent(BaseAgent):
             ),
             memory_path=self._candidate_memory_path,
             repo_root=_find_repo_root(self._candidate_memory_path),
+            instance_name=instance_name,
         )
         resolved_memory_path = self.memory_path
         self._memory_store = ExaOutreachMemoryStore(memory_path=resolved_memory_path)
@@ -149,6 +164,127 @@ class ExaOutreachAgent(BaseAgent):
     @property
     def memory_store(self) -> ExaOutreachMemoryStore:
         return self._memory_store
+
+    @classmethod
+    def from_memory(
+        cls,
+        *,
+        model: AgentModel,
+        memory_path: str | Path | None = None,
+        email_data: Iterable[EmailTemplate | dict[str, Any]] | None = None,
+        search_only: bool | None = None,
+        storage_backend: StorageBackend | None = None,
+        runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
+        exa_credentials: Any | None = None,
+        exa_client: Any | None = None,
+        resend_credentials: Any | None = None,
+        resend_client: Any | None = None,
+        allowed_resend_operations: tuple[str, ...] | None = None,
+        allowed_exa_operations: tuple[str, ...] | None = None,
+        tools: Sequence[RegisteredTool] | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
+    ) -> "ExaOutreachAgent":
+        resolved_path = Path(memory_path) if memory_path is not None else _DEFAULT_MEMORY_PATH
+        store = ExaOutreachMemoryStore(memory_path=resolved_path)
+        store.prepare()
+        profile = load_persisted_profile(
+            manifest_id=EXA_OUTREACH_HARNESS_MANIFEST.manifest_id,
+            memory_path=resolved_path,
+        )
+        profile_runtime, _ = merge_profile_parameters(
+            profile=profile,
+            runtime_overrides=runtime_overrides,
+            custom_overrides=custom_overrides,
+        )
+        query_config = store.read_query_config()
+        runtime_parameters = dict(query_config)
+        runtime_parameters.update(profile_runtime)
+        resolved_email_data = list(email_data or ())
+        resolved_search_only = bool(search_only) if search_only is not None else not resolved_email_data
+        return cls(
+            model=model,
+            email_data=resolved_email_data,
+            search_query=str(query_config.get("search_query", DEFAULT_SEARCH_QUERY)).strip() or DEFAULT_SEARCH_QUERY,
+            search_only=resolved_search_only,
+            memory_path=resolved_path,
+            storage_backend=storage_backend,
+            max_tokens=int(runtime_parameters.get("max_tokens", DEFAULT_AGENT_MAX_TOKENS)),
+            reset_threshold=float(runtime_parameters.get("reset_threshold", DEFAULT_AGENT_RESET_THRESHOLD)),
+            exa_credentials=exa_credentials,
+            exa_client=exa_client,
+            resend_credentials=resend_credentials,
+            resend_client=resend_client,
+            allowed_resend_operations=allowed_resend_operations,
+            allowed_exa_operations=allowed_exa_operations,
+            tools=tools,
+            runtime_config=runtime_config,
+            instance_name=instance_name,
+            master_prompt_override=master_prompt_override,
+        )
+
+    @classmethod
+    def from_profile(
+        cls,
+        *,
+        profile: HarnessProfile,
+        model: AgentModel,
+        memory_path: str | Path | None = None,
+        email_data: Iterable[EmailTemplate | dict[str, Any]] | None = None,
+        search_only: bool | None = None,
+        storage_backend: StorageBackend | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
+        runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
+        exa_credentials: Any | None = None,
+        exa_client: Any | None = None,
+        resend_credentials: Any | None = None,
+        resend_client: Any | None = None,
+        allowed_resend_operations: tuple[str, ...] | None = None,
+        allowed_exa_operations: tuple[str, ...] | None = None,
+        tools: Sequence[RegisteredTool] | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
+    ) -> "ExaOutreachAgent":
+        resolved_path = resolve_profile_memory_path(
+            profile=profile,
+            manifest=EXA_OUTREACH_HARNESS_MANIFEST,
+            memory_path=memory_path,
+        )
+        adapter_arguments = profile.last_run.adapter_arguments if profile.last_run is not None else {}
+        resolved_email_data = email_data
+        if resolved_email_data is None and adapter_arguments.get("email_data_factory"):
+            raw_email_data = load_factory(str(adapter_arguments["email_data_factory"]))()
+            resolved_email_data = [
+                EmailTemplate.from_dict(dict(payload))
+                for payload in raw_email_data
+            ]
+        resolved_runtime, resolved_custom = merge_profile_parameters(
+            profile=profile,
+            runtime_overrides=runtime_overrides,
+            custom_overrides=custom_overrides,
+        )
+        return cls.from_memory(
+            model=model,
+            memory_path=resolved_path,
+            email_data=resolved_email_data,
+            search_only=search_only if search_only is not None else bool(adapter_arguments.get("search_only", False)),
+            storage_backend=storage_backend,
+            runtime_overrides=resolved_runtime,
+            custom_overrides=resolved_custom,
+            exa_credentials=exa_credentials,
+            exa_client=exa_client,
+            resend_credentials=resend_credentials,
+            resend_client=resend_client,
+            allowed_resend_operations=allowed_resend_operations,
+            allowed_exa_operations=allowed_exa_operations,
+            tools=tools,
+            runtime_config=runtime_config,
+            instance_name=instance_name or profile.agent_name,
+            master_prompt_override=master_prompt_override,
+        )
 
     # ------------------------------------------------------------------
     # BaseAgent overrides
@@ -180,17 +316,19 @@ class ExaOutreachAgent(BaseAgent):
 
     def build_system_prompt(self) -> str:
         """Load and return the master prompt from the prompts directory."""
-        if not _MASTER_PROMPT_PATH.exists():
-            raise ResourceNotFoundError(
-                f"ExaOutreach master prompt not found at '{_MASTER_PROMPT_PATH}'. "
-                "Ensure harnessiq/agents/exa_outreach/prompts/master_prompt.md exists."
-            )
         identity = (
             self._memory_store.read_agent_identity()
             if self._memory_store.agent_identity_path.exists()
             else DEFAULT_AGENT_IDENTITY
         )
-        prompt = _MASTER_PROMPT_PATH.read_text(encoding="utf-8")
+        prompt = load_master_prompt_text(
+            default_path=_MASTER_PROMPT_PATH,
+            override=self._master_prompt_override,
+            missing_message=(
+                f"ExaOutreach master prompt not found at '{_MASTER_PROMPT_PATH}'. "
+                "Ensure harnessiq/agents/exa_outreach/prompts/master_prompt.md exists."
+            ),
+        )
         if identity and identity not in {DEFAULT_AGENT_IDENTITY, *LEGACY_DEFAULT_AGENT_IDENTITIES}:
             prompt = prompt.replace(
                 "[IDENTITY]\nYou are ExaOutreachAgent.",

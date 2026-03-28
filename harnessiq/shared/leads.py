@@ -602,9 +602,15 @@ class LeadsMemoryStore:
     def run_state_path(self) -> Path:
         return self.memory_path / RUN_STATE_FILENAME
 
+    @property
+    def runtime_parameters_path(self) -> Path:
+        return self.memory_path / RUNTIME_PARAMETERS_FILENAME
+
     def prepare(self) -> None:
         self.memory_path.mkdir(parents=True, exist_ok=True)
         self.icps_dir.mkdir(parents=True, exist_ok=True)
+        if not self.runtime_parameters_path.exists():
+            _write_json(self.runtime_parameters_path, {})
 
     def write_run_config(self, config: LeadRunConfig) -> None:
         self.prepare()
@@ -621,6 +627,13 @@ class LeadsMemoryStore:
     def read_run_state(self) -> LeadRunState:
         data = _read_json_file(self.run_state_path, expected_type=dict)
         return LeadRunState.from_dict(data)
+
+    def write_runtime_parameters(self, parameters: dict[str, Any]) -> None:
+        self.prepare()
+        _write_json(self.runtime_parameters_path, dict(parameters))
+
+    def read_runtime_parameters(self) -> dict[str, Any]:
+        return _read_json_file(self.runtime_parameters_path, expected_type=dict)
 
     def initialize_icp_states(self, icps: Sequence[LeadICP]) -> None:
         self.prepare()

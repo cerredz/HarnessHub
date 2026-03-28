@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Protocol, Sequence, TypedDict
 
 from harnessiq.shared.hooks import (
@@ -15,7 +16,7 @@ from harnessiq.shared.tool_selection import ToolSelectionConfig
 from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
 
 if TYPE_CHECKING:
-    from harnessiq.shared.hooks import RegisteredHook
+    from harnessiq.shared.hooks import HookDefinition, RegisteredHook
     from harnessiq.utils.ledger import OutputSink
 
 DEFAULT_AGENT_MAX_TOKENS = 80_000
@@ -149,6 +150,20 @@ class AgentRuntimeConfig:
     def reset_token_limit(self) -> int:
         """Return the token estimate that should trigger a transcript reset."""
         return max(1, int(self.max_tokens * self.reset_threshold))
+
+
+@dataclass(frozen=True, slots=True)
+class AgentRuntimeSnapshot:
+    """Assembled pre-run runtime state for one agent instance."""
+
+    system_prompt: str
+    parameter_sections: tuple["AgentParameterSection", ...]
+    tools: tuple[ToolDefinition, ...]
+    hooks: tuple["HookDefinition", ...]
+    runtime_config: AgentRuntimeConfig
+    memory_path: Path
+    instance_id: str
+    instance_name: str
 
 
 def merge_agent_runtime_config(
@@ -545,6 +560,7 @@ __all__ = [
     "AgentRunResult",
     "AgentRunStatus",
     "AgentRuntimeConfig",
+    "AgentRuntimeSnapshot",
     "AgentToolExecutor",
     "AgentTranscriptEntry",
     "AgentTranscriptEntryType",

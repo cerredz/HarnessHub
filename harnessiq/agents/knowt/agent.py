@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
 from harnessiq.agents.base import BaseAgent
 from harnessiq.agents.helpers import find_repo_root as _find_repo_root
+from harnessiq.agents.helpers import resolve_memory_path as _resolve_memory_path
 from harnessiq.agents.knowt.helpers import build_knowt_instance_payload as _build_knowt_instance_payload
+from harnessiq.agents.sdk_helpers import (
+    load_master_prompt_text,
+    load_persisted_profile,
+    merge_profile_parameters,
+    resolve_profile_memory_path,
+)
+from harnessiq.config import HarnessProfile
 from harnessiq.shared.agents import (
     DEFAULT_AGENT_MAX_TOKENS,
     DEFAULT_AGENT_RESET_THRESHOLD,
@@ -20,6 +28,7 @@ from harnessiq.shared.dtos import KnowtAgentInstancePayload
 from harnessiq.shared.exceptions import ResourceNotFoundError
 from harnessiq.shared.knowt import (
     KnowtAgentConfig,
+    KNOWT_HARNESS_MANIFEST,
     KnowtMemoryStore,
     MASTER_PROMPT_FILENAME,
     PROMPTS_DIRNAME,
@@ -46,6 +55,8 @@ class KnowtAgent(BaseAgent):
     be updated without touching Python source.
     """
 
+    master_prompt_path = _MASTER_PROMPT_PATH
+
     def __init__(
         self,
         *,
@@ -58,6 +69,8 @@ class KnowtAgent(BaseAgent):
         config: KnowtAgentConfig | None = None,
         tools: "Sequence[RegisteredTool] | None" = None,
         runtime_config: AgentRuntimeConfig | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
     ) -> None:
         # Store all params needed by build_instance_payload() before calling super().__init__().
         initial_config = config or KnowtAgentConfig(
@@ -65,6 +78,7 @@ class KnowtAgent(BaseAgent):
             max_tokens=max_tokens,
             reset_threshold=reset_threshold,
         )
+        self._master_prompt_override = master_prompt_override
         self._config = initial_config
         self._memory_store = KnowtMemoryStore(memory_path=self._config.memory_path)
         self._memory_store.prepare()
@@ -89,6 +103,7 @@ class KnowtAgent(BaseAgent):
             ),
             memory_path=self._config.memory_path,
             repo_root=_find_repo_root(Path(self._config.memory_path)),
+            instance_name=instance_name,
         )
         resolved_memory_path = self.memory_path
         self._config = KnowtAgentConfig(
@@ -114,17 +129,99 @@ class KnowtAgent(BaseAgent):
     def memory_store(self) -> KnowtMemoryStore:
         return self._memory_store
 
+    @classmethod
+    def from_memory(
+        cls,
+        *,
+        model: AgentModel,
+        memory_path: str | Path | None = None,
+        creatify_client: "CreatifyClient | None" = None,
+        creatify_credentials: "CreatifyCredentials | None" = None,
+        runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
+        tools: "Sequence[RegisteredTool] | None" = None,
+        runtime_config: AgentRuntimeConfig | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
+    ) -> "KnowtAgent":
+        resolved_memory_path = _resolve_memory_path(
+            memory_path,
+            default_path=Path(KNOWT_HARNESS_MANIFEST.resolved_default_memory_root),
+        )
+        profile = load_persisted_profile(
+            manifest_id=KNOWT_HARNESS_MANIFEST.manifest_id,
+            memory_path=resolved_memory_path,
+        )
+        runtime_parameters, _ = merge_profile_parameters(
+            profile=profile,
+            runtime_overrides=runtime_overrides,
+            custom_overrides=custom_overrides,
+        )
+        return cls(
+            model=model,
+            memory_path=resolved_memory_path,
+            creatify_client=creatify_client,
+            creatify_credentials=creatify_credentials,
+            max_tokens=int(runtime_parameters.get("max_tokens", DEFAULT_AGENT_MAX_TOKENS)),
+            reset_threshold=float(runtime_parameters.get("reset_threshold", DEFAULT_AGENT_RESET_THRESHOLD)),
+            tools=tools,
+            runtime_config=runtime_config,
+            instance_name=instance_name,
+            master_prompt_override=master_prompt_override,
+        )
+
+    @classmethod
+    def from_profile(
+        cls,
+        *,
+        profile: HarnessProfile,
+        model: AgentModel,
+        memory_path: str | Path | None = None,
+        creatify_client: "CreatifyClient | None" = None,
+        creatify_credentials: "CreatifyCredentials | None" = None,
+        runtime_config: AgentRuntimeConfig | None = None,
+        runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
+        tools: "Sequence[RegisteredTool] | None" = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
+    ) -> "KnowtAgent":
+        resolved_path = resolve_profile_memory_path(
+            profile=profile,
+            manifest=KNOWT_HARNESS_MANIFEST,
+            memory_path=memory_path,
+        )
+        resolved_runtime, resolved_custom = merge_profile_parameters(
+            profile=profile,
+            runtime_overrides=runtime_overrides,
+            custom_overrides=custom_overrides,
+        )
+        return cls.from_memory(
+            model=model,
+            memory_path=resolved_path,
+            creatify_client=creatify_client,
+            creatify_credentials=creatify_credentials,
+            runtime_overrides=resolved_runtime,
+            custom_overrides=resolved_custom,
+            tools=tools,
+            runtime_config=runtime_config,
+            instance_name=instance_name or profile.agent_name,
+            master_prompt_override=master_prompt_override,
+        )
+
     def prepare(self) -> None:
         self._memory_store.prepare()
 
     def build_system_prompt(self) -> str:
         """Load and return the master prompt from the prompts directory."""
-        if not _MASTER_PROMPT_PATH.exists():
-            raise ResourceNotFoundError(
+        return load_master_prompt_text(
+            default_path=_MASTER_PROMPT_PATH,
+            override=self._master_prompt_override,
+            missing_message=(
                 f"Knowt master prompt not found at '{_MASTER_PROMPT_PATH}'. "
                 "Ensure harnessiq/agents/knowt/prompts/master_prompt.md exists."
-            )
-        return _MASTER_PROMPT_PATH.read_text(encoding="utf-8")
+            ),
+        )
 
     def load_parameter_sections(self) -> Sequence[AgentParameterSection]:
         """Return current script and avatar description as durable parameter sections."""

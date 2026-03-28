@@ -8,6 +8,7 @@ from harnessiq.shared.agents import (
     AgentPauseSignal,
     AgentRunResult,
     AgentRunStatus,
+    AgentRuntimeSnapshot,
     AgentRuntimeConfig,
     AgentToolExecutor,
     AgentTranscriptEntry,
@@ -53,11 +54,13 @@ from harnessiq.utils import (
     AgentInstanceRecord,
     AgentInstanceStore,
     build_agent_instance_id,
+    build_output_sinks,
     build_default_instance_name,
     fingerprint_agent_payload,
 )
 
 from .base import BaseAgent
+from .sdk_helpers import build_agent_runtime_config, inspect_harness
 from .provider_base import BaseProviderToolAgent
 from .apollo import BaseApolloAgent
 from harnessiq.shared.apollo_agent import ApolloAgentConfig, DEFAULT_APOLLO_AGENT_IDENTITY
@@ -115,6 +118,7 @@ __all__ = [
     "AgentPauseSignal",
     "AgentRunResult",
     "AgentRunStatus",
+    "AgentRuntimeSnapshot",
     "AgentRuntimeConfig",
     "AgentToolExecutor",
     "AgentTranscriptEntry",
@@ -158,12 +162,15 @@ __all__ = [
     "ScreenshotPersistor",
     "build_linkedin_browser_tool_definitions",
     "build_agent_instance_id",
+    "build_output_sinks",
+    "build_agent_runtime_config",
     "build_default_instance_name",
     "create_linkedin_browser_stub_tools",
     "estimate_text_tokens",
     "fingerprint_agent_payload",
     "json_parameter_section",
     "get_harness_manifest",
+    "inspect_harness",
     "HookContext",
     "HookDefinition",
     "HookHandler",

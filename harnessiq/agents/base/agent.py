@@ -17,6 +17,7 @@ from harnessiq.shared.agents import (
     AgentPauseSignal,
     AgentRunResult,
     AgentRunStatus,
+    AgentRuntimeSnapshot,
     AgentRuntimeConfig,
     AgentToolExecutor,
     AgentTranscriptEntry,
@@ -296,6 +297,21 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
             parameter_sections=self._parameter_sections,
             transcript=tuple(self._transcript),
             tools=tools,
+        )
+
+    def snapshot(self) -> AgentRuntimeSnapshot:
+        """Return the current assembled runtime state without executing a model turn."""
+        self.prepare()
+        parameter_sections = self.refresh_parameters()
+        return AgentRuntimeSnapshot(
+            system_prompt=self.build_system_prompt(),
+            parameter_sections=parameter_sections,
+            tools=self.available_tools(),
+            hooks=self.available_hooks(),
+            runtime_config=self._runtime_config,
+            memory_path=self.memory_path,
+            instance_id=self.instance_id,
+            instance_name=self.instance_name,
         )
 
     def enable_context_tools(self) -> None:

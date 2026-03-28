@@ -11,6 +11,11 @@ from harnessiq.agents.helpers import (
     find_repo_root as _find_repo_root,
     resolve_memory_path as _resolve_memory_path,
 )
+from harnessiq.agents.sdk_helpers import (
+    load_master_prompt_text,
+    merge_profile_parameters,
+    resolve_profile_memory_path,
+)
 from harnessiq.agents.prospecting.helpers import (
     build_instance_payload as _build_instance_payload,
     create_browser_stub_tools as _create_browser_stub_tools,
@@ -40,6 +45,7 @@ from harnessiq.shared.prospecting import (
     DEFAULT_SINK_RECORD_TYPE,
     DEFAULT_SUMMARIZE_AT_X,
     DEFAULT_WEBSITE_INSPECT_ENABLED,
+    PROSPECTING_HARNESS_MANIFEST,
     NEXT_QUERY_SYSTEM_PROMPT,
     ProspectingAgentConfig,
     ProspectingMemoryStore,
@@ -55,6 +61,7 @@ from harnessiq.shared.prospecting import (
     utcnow,
 )
 from harnessiq.shared.tools import RegisteredTool, SEARCH_OR_SUMMARIZE, ToolResult
+from harnessiq.config import HarnessProfile
 from harnessiq.tools import create_evaluate_company_tool, create_search_or_summarize_tool
 from harnessiq.tools.registry import create_tool_registry
 
@@ -67,6 +74,8 @@ JsonSubcallRunner = Callable[[str, Sequence[AgentParameterSection], str], dict[s
 
 class GoogleMapsProspectingAgent(BaseAgent):
     """Concrete harness for Google Maps prospecting."""
+
+    master_prompt_path = _MASTER_PROMPT_PATH
 
     _RESET_SAFE_TOOL_KEYS = frozenset(
         {
@@ -97,6 +106,8 @@ class GoogleMapsProspectingAgent(BaseAgent):
         tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
         json_subcall_runner: JsonSubcallRunner | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
     ) -> None:
         # Store all params needed by build_instance_payload() before calling super().__init__().
         self._candidate_memory_path = Path(memory_path) if memory_path is not None else None
@@ -110,6 +121,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
         self._payload_website_inspect_enabled = website_inspect_enabled
         self._payload_sink_record_type = sink_record_type
         self._payload_eval_system_prompt = eval_system_prompt
+        self._master_prompt_override = master_prompt_override
 
         self._config = ProspectingAgentConfig(
             memory_path=Path("."),
@@ -144,6 +156,7 @@ class GoogleMapsProspectingAgent(BaseAgent):
             ),
             memory_path=self._candidate_memory_path,
             repo_root=_find_repo_root(self._candidate_memory_path),
+            instance_name=instance_name,
         )
         resolved_memory_path = self.memory_path or _DEFAULT_MEMORY_PATH
         self._memory_store = ProspectingMemoryStore(memory_path=resolved_memory_path)
@@ -180,6 +193,8 @@ class GoogleMapsProspectingAgent(BaseAgent):
         tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
         json_subcall_runner: JsonSubcallRunner | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
     ) -> "GoogleMapsProspectingAgent":
         resolved_path = _resolve_memory_path(memory_path, default_path=_DEFAULT_MEMORY_PATH)
         store = ProspectingMemoryStore(memory_path=resolved_path)
@@ -200,8 +215,49 @@ class GoogleMapsProspectingAgent(BaseAgent):
             tools=tools,
             runtime_config=runtime_config,
             json_subcall_runner=json_subcall_runner,
+            instance_name=instance_name,
+            master_prompt_override=master_prompt_override,
             **normalized_runtime,
             **normalized_custom,
+        )
+
+    @classmethod
+    def from_profile(
+        cls,
+        *,
+        profile: HarnessProfile,
+        model: AgentModel,
+        memory_path: str | Path | None = None,
+        browser_tools: Iterable[RegisteredTool] = (),
+        tools: Sequence[RegisteredTool] | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
+        runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
+        json_subcall_runner: JsonSubcallRunner | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
+    ) -> "GoogleMapsProspectingAgent":
+        resolved_path = resolve_profile_memory_path(
+            profile=profile,
+            manifest=PROSPECTING_HARNESS_MANIFEST,
+            memory_path=memory_path,
+        )
+        resolved_runtime, resolved_custom = merge_profile_parameters(
+            profile=profile,
+            runtime_overrides=runtime_overrides,
+            custom_overrides=custom_overrides,
+        )
+        return cls.from_memory(
+            model=model,
+            memory_path=resolved_path,
+            browser_tools=browser_tools,
+            runtime_overrides=resolved_runtime,
+            custom_overrides=resolved_custom,
+            tools=tools,
+            runtime_config=runtime_config,
+            json_subcall_runner=json_subcall_runner,
+            instance_name=instance_name or profile.agent_name,
+            master_prompt_override=master_prompt_override,
         )
 
     def prepare(self) -> None:
@@ -254,9 +310,11 @@ class GoogleMapsProspectingAgent(BaseAgent):
         self.refresh_parameters()
 
     def build_system_prompt(self) -> str:
-        if not _MASTER_PROMPT_PATH.exists():
-            raise ResourceNotFoundError(f"Prospecting master prompt not found at '{_MASTER_PROMPT_PATH}'.")
-        prompt = _MASTER_PROMPT_PATH.read_text(encoding="utf-8")
+        prompt = load_master_prompt_text(
+            default_path=_MASTER_PROMPT_PATH,
+            override=self._master_prompt_override,
+            missing_message=f"Prospecting master prompt not found at '{_MASTER_PROMPT_PATH}'.",
+        )
         company_description = self._memory_store.read_company_description() or DEFAULT_COMPANY_DESCRIPTION
         identity = self._memory_store.read_agent_identity() or DEFAULT_AGENT_IDENTITY
         tool_lines = "\n".join(f"- {tool.key}: {tool.description}" for tool in self.available_tools())

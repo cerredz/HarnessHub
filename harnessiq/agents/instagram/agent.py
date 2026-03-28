@@ -13,6 +13,11 @@ from harnessiq.agents.helpers import (
     resolve_memory_path as _resolve_memory_path,
     utc_now_z as _utcnow,
 )
+from harnessiq.agents.sdk_helpers import (
+    load_master_prompt_text,
+    merge_profile_parameters,
+    resolve_profile_memory_path,
+)
 from harnessiq.agents.instagram.helpers import (
     build_instagram_instance_payload as _build_instagram_instance_payload,
     is_search_only_response as _is_search_only_response,
@@ -39,6 +44,7 @@ from harnessiq.shared.instagram import (
     DEFAULT_RECENT_RESULT_WINDOW,
     DEFAULT_RECENT_SEARCH_WINDOW,
     DEFAULT_SEARCH_RESULT_LIMIT,
+    INSTAGRAM_HARNESS_MANIFEST,
     InstagramICP,
     InstagramKeywordAgentConfig,
     InstagramMemoryStore,
@@ -48,9 +54,12 @@ from harnessiq.shared.instagram import (
     resolve_instagram_icp_profiles,
 )
 from harnessiq.shared.tools import INSTAGRAM_SEARCH_KEYWORD, RegisteredTool, ToolCall, ToolResult
+from harnessiq.config import HarnessProfile
 from harnessiq.toolset import get_tool
 from harnessiq.tools.instagram import create_instagram_tools
 from harnessiq.tools.registry import create_tool_registry
+from harnessiq.utils.ledger import new_run_id
+
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / "master_prompt.md"
 _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
@@ -58,6 +67,8 @@ _DEFAULT_MEMORY_PATH = Path(__file__).parent / "memory"
 
 class InstagramKeywordDiscoveryAgent(BaseAgent):
     """Concrete harness for ICP-driven Instagram keyword discovery."""
+
+    master_prompt_path = _MASTER_PROMPT_PATH
 
     def __init__(
         self,
@@ -75,6 +86,8 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         persist_icp_descriptions: bool = True,
         tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
     ) -> None:
         if search_backend is None:
             raise ConfigurationError("InstagramKeywordDiscoveryAgent requires a search_backend.")
@@ -90,6 +103,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         self._payload_recent_search_window = recent_search_window
         self._payload_recent_result_window = recent_result_window
         self._payload_search_result_limit = search_result_limit
+        self._master_prompt_override = master_prompt_override
         self._run_id: str | None = None
         self._active_icp_index = 0
         self._icps: tuple[InstagramICP, ...] = tuple(InstagramICP(description=value) for value in normalized_icps)
@@ -138,6 +152,7 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             ),
             memory_path=candidate_memory_path,
             repo_root=_find_repo_root(candidate_memory_path),
+            instance_name=instance_name,
         )
 
     @property
@@ -159,6 +174,8 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         custom_overrides: Mapping[str, Any] | None = None,
         tools: Sequence[RegisteredTool] | None = None,
         runtime_config: AgentRuntimeConfig | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
     ) -> "InstagramKeywordDiscoveryAgent":
         resolved_path = _resolve_memory_path(memory_path, default_path=_DEFAULT_MEMORY_PATH)
         store = InstagramMemoryStore(memory_path=resolved_path)
@@ -182,7 +199,46 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             persist_icp_descriptions=False,
             tools=tools,
             runtime_config=runtime_config,
+            instance_name=instance_name,
+            master_prompt_override=master_prompt_override,
             **normalized,
+        )
+
+    @classmethod
+    def from_profile(
+        cls,
+        *,
+        profile: HarnessProfile,
+        model: AgentModel,
+        search_backend: InstagramSearchBackend,
+        memory_path: str | Path | None = None,
+        tools: Sequence[RegisteredTool] | None = None,
+        runtime_config: AgentRuntimeConfig | None = None,
+        runtime_overrides: Mapping[str, Any] | None = None,
+        custom_overrides: Mapping[str, Any] | None = None,
+        instance_name: str | None = None,
+        master_prompt_override: str | Path | None = None,
+    ) -> "InstagramKeywordDiscoveryAgent":
+        resolved_path = resolve_profile_memory_path(
+            profile=profile,
+            manifest=INSTAGRAM_HARNESS_MANIFEST,
+            memory_path=memory_path,
+        )
+        resolved_runtime, resolved_custom = merge_profile_parameters(
+            profile=profile,
+            runtime_overrides=runtime_overrides,
+            custom_overrides=custom_overrides,
+        )
+        return cls.from_memory(
+            model=model,
+            search_backend=search_backend,
+            memory_path=resolved_path,
+            runtime_overrides=resolved_runtime,
+            custom_overrides=resolved_custom,
+            tools=tools,
+            runtime_config=runtime_config,
+            instance_name=instance_name or profile.agent_name,
+            master_prompt_override=master_prompt_override,
         )
 
     def prepare(self) -> None:
@@ -231,12 +287,14 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             self.close()
 
     def build_system_prompt(self) -> str:
-        if not _MASTER_PROMPT_PATH.exists():
-            raise ResourceNotFoundError(
+        prompt_template = load_master_prompt_text(
+            default_path=_MASTER_PROMPT_PATH,
+            override=self._master_prompt_override,
+            missing_message=(
                 f"Instagram master prompt not found at '{_MASTER_PROMPT_PATH}'. "
                 "Ensure the prompt file exists."
-            )
-        prompt_template = _MASTER_PROMPT_PATH.read_text(encoding="utf-8").strip()
+            ),
+        ).strip()
         identity = (
             self._memory_store.read_agent_identity()
             if self._memory_store.agent_identity_path.exists()
@@ -462,6 +520,10 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
         result = super()._execute_tool(tool_call)
         if tool_call.tool_key == INSTAGRAM_SEARCH_KEYWORD:
             self.refresh_parameters()
+            self._append_recent_search_context_entry(
+                keyword=tool_call.arguments.get("keyword"),
+                result=result,
+            )
         return result
 
     def _record_assistant_response(self, response: AgentModelResponse) -> None:
@@ -527,6 +589,33 @@ class InstagramKeywordDiscoveryAgent(BaseAgent):
             self._attempted_search_keywords = self._attempted_search_keywords[
                 -self._config.recent_search_window :
             ]
+
+    def _append_recent_search_context_entry(
+        self,
+        *,
+        keyword: Any,
+        result: ToolResult,
+    ) -> None:
+        cleaned_keyword = keyword.strip() if isinstance(keyword, str) else ""
+        recent_searches = self._recent_search_keywords_for_context()
+        if not recent_searches and not cleaned_keyword:
+            return
+        output = result.output if isinstance(result.output, Mapping) else {}
+        payload = {
+            "active_icp": self._current_icp_description(),
+            "keyword": cleaned_keyword,
+            "recent_searches": list(recent_searches),
+            "status": str(output.get("status", "unknown")),
+        }
+        if "error" in output:
+            payload["error"] = str(output["error"])
+        self._transcript.append(
+            AgentTranscriptEntry(
+                entry_type="context",
+                label="Recent Searches",
+                content=json.dumps(payload, indent=2, sort_keys=True),
+            )
+        )
 
     def _activate_icp(self, icp_index: int) -> None:
         self._active_icp_index = icp_index
