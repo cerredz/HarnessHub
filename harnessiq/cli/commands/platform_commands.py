@@ -108,6 +108,24 @@ def register_platform_commands(subparsers: argparse._SubParsersAction[argparse.A
         action_parser = credentials_subparsers.add_parser(action, help=f"{action.title()} harness credentials")
         action_parser.set_defaults(command_handler=lambda args, parser=action_parser: _print_help(parser))
         _register_manifest_subcommands(action_parser, command=f"credentials_{action}")
+    verify_parser = credentials_subparsers.add_parser(
+        "verify",
+        help="Validate provider credential env mappings without a harness manifest",
+    )
+    verify_parser.add_argument("family", help="Provider family name.")
+    verify_parser.add_argument(
+        "--env",
+        action="append",
+        default=[],
+        metavar="FIELD=ENV_VAR",
+        help="Map one provider credential field to an env var for this verification check.",
+    )
+    verify_parser.add_argument(
+        "--repo-root",
+        default=".",
+        help="Project path used to resolve the repo root for the local .env file.",
+    )
+    verify_parser.set_defaults(command_handler=_handle_credentials_verify)
 
 
 def _register_manifest_subcommands(
@@ -421,6 +439,17 @@ def _handle_credentials_test(args: argparse.Namespace) -> int:
             manifest=manifest,
             agent_name=args.agent,
             memory_root=args.memory_root,
+        )
+    )
+    return 0
+
+
+def _handle_credentials_verify(args: argparse.Namespace) -> int:
+    emit_json(
+        HarnessCliLifecycleBuilder().verify_provider_credentials(
+            family=args.family,
+            assignments=list(args.env),
+            repo_root=Path(args.repo_root).expanduser().resolve(),
         )
     )
     return 0

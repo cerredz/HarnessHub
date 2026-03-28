@@ -13,6 +13,7 @@ import pytest
 
 from harnessiq.agents import AgentModelRequest, AgentModelResponse
 from harnessiq.cli.main import main
+from harnessiq.config import MissingEnvironmentVariableError
 
 _LAST_PROVIDER_ENV: dict[str, str] = {}
 _LAST_MODEL_SELECTION: dict[str, str] = {}
@@ -303,6 +304,82 @@ def test_credentials_bind_show_and_test_for_knowt(tmp_path: Path) -> None:
     assert tested["status"] == "resolved"
     assert tested["families"]["creatify"]["api_id"] == "cid_123"
     assert tested["families"]["creatify"]["api_key_masked"].startswith("key")
+
+
+def test_credentials_verify_resolves_provider_family_without_manifest(tmp_path: Path) -> None:
+    (tmp_path / ".env").write_text(
+        "CREATIFY_API_ID=cid_123\nCREATIFY_API_KEY=key_456\n",
+        encoding="utf-8",
+    )
+
+    exit_code, verified = _run(
+        [
+            "credentials",
+            "verify",
+            "creatify",
+            "--repo-root",
+            str(tmp_path),
+            "--env",
+            "api_id=CREATIFY_API_ID",
+            "--env",
+            "api_key=CREATIFY_API_KEY",
+        ]
+    )
+    assert exit_code == 0
+    assert verified["status"] == "resolved"
+    assert verified["family"] == "creatify"
+    assert verified["credential"]["api_id"] == "cid_123"
+    assert verified["credential"]["api_key_masked"].startswith("key")
+
+
+def test_credentials_verify_requires_non_empty_env_values(tmp_path: Path) -> None:
+    (tmp_path / ".env").write_text(
+        "CREATIFY_API_ID=cid_123\nCREATIFY_API_KEY=\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(MissingEnvironmentVariableError) as exc_info:
+        _run(
+            [
+                "credentials",
+                "verify",
+                "creatify",
+                "--repo-root",
+                str(tmp_path),
+                "--env",
+                "api_id=CREATIFY_API_ID",
+                "--env",
+                "api_key=CREATIFY_API_KEY",
+            ]
+        )
+
+    assert "CREATIFY_API_KEY" in str(exc_info.value)
+
+
+def test_credentials_verify_honors_explicit_repo_root_path(tmp_path: Path) -> None:
+    repo_root = tmp_path / "custom-root"
+    repo_root.mkdir()
+    (repo_root / ".env").write_text(
+        "CREATIFY_API_ID=cid_123\nCREATIFY_API_KEY=key_456\n",
+        encoding="utf-8",
+    )
+
+    exit_code, verified = _run(
+        [
+            "credentials",
+            "verify",
+            "creatify",
+            "--repo-root",
+            str(repo_root),
+            "--env",
+            "api_id=CREATIFY_API_ID",
+            "--env",
+            "api_key=CREATIFY_API_KEY",
+        ]
+    )
+
+    assert exit_code == 0
+    assert Path(str(verified["env_path"])).parent == repo_root
 
 
 def test_run_generic_knowt_uses_bound_creatify_credentials(tmp_path: Path) -> None:
