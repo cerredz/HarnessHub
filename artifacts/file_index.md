@@ -15,7 +15,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-| Test modules | 122 |
+| Test modules | 123 |
 
 ## Codebase Standards
 
@@ -32,16 +32,11 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 | Path | Kind | Responsibility |
 | --- | --- | --- |
-| `.harnessiq/` | generated/cache | Fallback local HarnessIQ home used by the ledger/output-sink runtime when the preferred home path is not writable. |
-| `.worktrees/` | local state | Git worktree checkouts used for isolated implementation branches; local-only and not part of the shipped package. |
 | `artifacts/` | repo docs | Generated and curated repository reference artifacts. |
-| `build/` | generated/cache | Setuptools build output; generated, not part of the live source tree. |
 | `docs/` | repo docs | Focused usage and architecture notes for the package. |
 | `harnessiq/` | source | Live SDK package source. |
-| `harnessiq.egg-info/` | generated/cache | Packaging metadata emitted by local builds. |
 | `memory/` | local state | Task artifacts plus durable agent runtime state; not part of the shipped package. |
 | `scripts/` | repo tooling | Repository maintenance and generation scripts. |
-| `src/` | generated/cache | Legacy or generated residue in this checkout; not the authoritative package source. |
 | `tests/` | source | unittest coverage for runtime, CLI, providers, and tools. |
 
 ## Package Layout
@@ -56,7 +51,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | `harnessiq/master_prompts/` | prompts | Packaged prompt assets and prompt registry helpers. |
 | `harnessiq/providers/` | anthropic, apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, gcloud, gemini, google_drive, grok, hunter, inboxapp, instantly, leadiq, lemlist, lusha, openai, outreach, paperclip, peopledatalabs, phantombuster, playwright, proxycurl, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | Model-provider adapters, external service clients, output-sink transport clients, and Playwright runtime support. |
 | `harnessiq/shared/` | dtos | Shared manifests, durable memory stores, operation metadata, and package-wide types/constants. |
-| `harnessiq/tools/` | apollo, arcads, arxiv, attio, browser_use, context, coresignal, creatify, eval, exa, expandi, google_drive, hooks, hunter, inboxapp, instagram, instantly, knowt, leadiq, leads, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, prospecting, proxycurl, reasoning, salesforge, search, serper, smartlead, snovio, zerobounce, zoominfo | Built-in tool families, provider-backed tool factories, and domain-specific helper tools. |
+| `harnessiq/tools/` | apollo, arcads, arxiv, attio, browser_use, context, coresignal, creatify, eval, exa, expandi, google_drive, hooks, hunter, inboxapp, instagram, instantly, knowt, leadiq, leads, lemlist, lusha, mission_driven, outreach, paperclip, peopledatalabs, phantombuster, prospecting, proxycurl, reasoning, salesforge, search, serper, smartlead, snovio, spawn_specialized_subagents, zerobounce, zoominfo | Built-in tool families, provider-backed tool factories, and domain-specific helper tools. |
 | `harnessiq/toolset/` | - | Static tool catalog plus registration and lookup helpers for reusable tool composition. |
 | `harnessiq/utils/` | harness_manifest | Agent instance storage, ledger export/report helpers, and built-in output sink implementations. |
 
@@ -98,7 +93,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | knowt | Knowt Content Creator | `harnessiq.agents.knowt:KnowtAgent` | `memory/knowt` | max_tokens, reset_threshold | - | current_script.md, current_avatar_description.md, creation_log.jsonl | creatify | avatar_description, creation_log, script |
 | leads | Leads Agent | `harnessiq.agents.leads:LeadsAgent` | `memory/leads` | max_tokens, reset_threshold, prune_search_interval, prune_token_limit, search_summary_every, search_tail_size, max_leads_per_icp | - | run_config.json, run_state.json, runtime_parameters.json, icps/*.json, lead_storage, lead_storage/saved_leads.json | apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, hunter, inboxapp, instantly, leadiq, lemlist, lusha, outreach, paperclip, peopledatalabs, phantombuster, proxycurl, resend, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | icp_states, run_config, run_state, saved_leads |
 | linkedin | LinkedIn Job Applier | `harnessiq.agents.linkedin:LinkedInJobApplierAgent` | `memory/linkedin` | max_tokens, reset_threshold, action_log_window, linkedin_start_url, notify_on_pause, pause_webhook | open-ended | job_preferences.md, user_profile.md, agent_identity.md, runtime_parameters.json, custom_parameters.json, additional_prompt.md, applied_jobs.jsonl, action_log.jsonl, managed_files.json, managed_files, screenshots | playwright | jobs_applied, managed_files, recent_actions |
-| mission_driven | Mission Driven | `harnessiq.agents.mission_driven:MissionDrivenAgent` | `memory/mission_driven` | max_tokens, reset_threshold | mission_goal, mission_type | mission.json, task_plan.json, memory_store.json, decision_log.json, file_manifest.json, error_log.json, feedback_log.json, test_results.json, artifacts.json, progress_log.jsonl, README.md, checkpoints, additional_prompt.md, runtime_parameters.json, custom_parameters.json | - | artifact_count, blocked_task_count, completed_task_count, current_task_pointer, mission_goal, mission_status, mission_type, next_actions, task_count |
+| mission_driven | Mission Driven | `harnessiq.agents.mission_driven:MissionDrivenAgent` | `memory/mission_driven` | max_tokens, reset_threshold | mission_goal, mission_type | mission.json, task_plan.json, memory_store.json, decision_log.json, file_manifest.json, error_log.json, feedback_log.json, test_results.json, artifacts.json, tool_call_history.json, research_log.json, next_actions.json, mission_status.json, progress_log.jsonl, README.md, checkpoints, additional_prompt.md, runtime_parameters.json, custom_parameters.json | - | artifact_count, blocked_task_count, completed_task_count, current_task_pointer, file_record_count, mission_goal, mission_status, mission_type, next_actions, research_entry_count, task_count, tool_call_count |
 | prospecting | Google Maps Prospecting | `harnessiq.agents.prospecting:GoogleMapsProspectingAgent` | `memory/prospecting` | max_tokens, reset_threshold | qualification_threshold, summarize_at_x, max_searches_per_run, max_listings_per_search, website_inspect_enabled, sink_record_type, eval_system_prompt | company_description.md, agent_identity.md, additional_prompt.md, runtime_parameters.json, custom_parameters.json, prospecting_state.json, qualified_leads.jsonl, browser-data | playwright | company_description, counts, qualified_leads, searches_completed, summary |
 | research_sweep | Research Sweep | `harnessiq.agents.research_sweep:ResearchSweepAgent` | `memory/research_sweep` | max_tokens, reset_threshold | query, allowed_serper_operations | query.txt, additional_prompt.md, runtime_parameters.json, custom_parameters.json, context_runtime_state.json | serper | all_sites_empty, continuation_pointer, final_report, query, site_results |
 | spawn_specialized_subagents | Spawn Specialized Subagents | `harnessiq.agents.spawn_specialized_subagents:SpawnSpecializedSubagentsAgent` | `memory/spawn_specialized_subagents` | max_tokens, reset_threshold | objective, available_agent_types | objective.md, current_context.md, additional_prompt.md, plan.json, worker_outputs.json, integration_summary.json, execution_log.jsonl, README.md, runtime_parameters.json, custom_parameters.json | - | assignment_count, final_response, immediate_local_step, objective, worker_output_count |
@@ -195,7 +190,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 ## Test Surface
 
-`tests/` currently contains 122 test modules. The table below groups them by dominant responsibility.
+`tests/` currently contains 123 test modules. The table below groups them by dominant responsibility.
 
 | Area | Count | Examples |
 | --- | --- | --- |
@@ -203,5 +198,5 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | cli | 12 | `tests/test_email_cli.py`, `tests/test_exa_outreach_cli.py`, `tests/test_gcloud_cli.py` |
 | ledger | 1 | `tests/test_output_sinks.py` |
 | providers | 32 | `tests/test_anthropic_provider.py`, `tests/test_apollo_provider.py`, `tests/test_arcads_provider.py` |
-| support | 40 | `tests/test_cli_builders.py`, `tests/test_cli_common.py`, `tests/test_cli_environment.py` |
+| support | 41 | `tests/test_cli_builders.py`, `tests/test_cli_common.py`, `tests/test_cli_environment.py` |
 | tools | 16 | `tests/test_context_compaction_tools.py`, `tests/test_context_window_tools.py`, `tests/test_general_tools.py` |
