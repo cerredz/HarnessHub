@@ -1,0 +1,66 @@
+[
+  {
+    "id": "A001",
+    "path": "harnessiq/interfaces/formalization.py",
+    "artifact_type": "source_file",
+    "purpose": "Defines the new self-documenting formalization interface contracts.",
+    "produced_by_task": "1",
+    "produced_at": "2026-03-29T00:39:05.9812092Z",
+    "content_hash": "2094FA2742C637D7DA1CD141F7D035D1865CE8613D5A5EDEF84AE53644652C70",
+    "size_bytes": 27502,
+    "dependencies": [],
+    "dependents": [
+      "2"
+    ],
+    "is_final_deliverable": true
+  },
+  {
+    "id": "A002",
+    "path": "harnessiq/interfaces/__init__.py",
+    "artifact_type": "source_file",
+    "purpose": "Exports the new formalization contracts from the SDK-facing interfaces package.",
+    "produced_by_task": "1",
+    "produced_at": "2026-03-29T00:39:05.9812092Z",
+    "content_hash": "CC3C5AB26C391381ACE90B6B794626BFCEF493B5B4FAB5F32357585008476E9A",
+    "size_bytes": 2372,
+    "dependencies": [
+      "A001"
+    ],
+    "dependents": [
+      "2"
+    ],
+    "is_final_deliverable": true
+  },
+  {
+    "id": "A003",
+    "path": "harnessiq/shared/__init__.py",
+    "artifact_type": "source_file",
+    "purpose": "Provides lazy shared-package exports that eliminate the interface import cycle.",
+    "produced_by_task": "1",
+    "produced_at": "2026-03-29T00:39:05.9812092Z",
+    "content_hash": "46D984775F289239612A8BD3A188DFE9AAB2D2A3A0C04A7C0E2C5C3DD44C14E3",
+    "size_bytes": 7468,
+    "dependencies": [],
+    "dependents": [
+      "2"
+    ],
+    "is_final_deliverable": true
+  },
+  {
+    "id": "A004",
+    "path": "tests/test_interfaces.py",
+    "artifact_type": "source_file",
+    "purpose": "Adds focused verification for the new formalization interface contracts.",
+    "produced_by_task": "2",
+    "produced_at": "2026-03-29T00:39:05.9812092Z",
+    "content_hash": "F7CF8C9D199BA47B77D7099566E4BA523FD9CE3E34CCE7FAAF0CB5FE8191F30F",
+    "size_bytes": 15263,
+    "dependencies": [
+      "A001",
+      "A002",
+      "A003"
+    ],
+    "dependents": [],
+    "is_final_deliverable": true
+  }
+]

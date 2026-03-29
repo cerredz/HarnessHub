@@ -1,0 +1,9 @@
+[
+  {
+    "id": "F001",
+    "received_at": "2026-03-29T00:29:54.2205007Z",
+    "source": "user",
+    "summary": "Add base formalization layer interfaces to the repository, make them self-documenting, include only the base class plus some typed base formalization objects, and keep the change minimal to the interfaces folder and SDK.",
+    "impact": "Constrains the work to public interface abstractions and rules out full runtime integration in this change."
+  }
+]

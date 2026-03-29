@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from .cli import FactoryLoader, IterableFactory, IterableFactoryLoader, PreparedStoreLoader, ZeroArgumentFactory
-from .models import AnthropicModelClient, GeminiModelClient, OpenAIStyleModelClient
 from .output_sinks import (
     ConfluenceSinkClient,
     GoogleSheetsSinkClient,
@@ -23,18 +22,56 @@ from .provider_clients import (
     TimeoutConfig,
 )
 from .tool_selection import DynamicToolSelector, EmbeddingBackend, EmbeddingModelClient
+from .models import AnthropicModelClient, GeminiModelClient, OpenAIStyleModelClient
+from .formalization import (
+    ArtifactSpec,
+    BaseArtifactLayer,
+    BaseContractLayer,
+    BaseFormalizationLayer,
+    BaseHookLayer,
+    BaseRoleLayer,
+    BaseStageLayer,
+    BaseStateLayer,
+    BaseToolContributionLayer,
+    BudgetSpec,
+    FieldSpec,
+    FormalizationDescription,
+    FormalizationEnforcementType,
+    FormalizationHookName,
+    HookBehaviorSpec,
+    LayerRuleRecord,
+    RoleSpec,
+    StageSpec,
+    StateFieldSpec,
+)
 
 __all__ = [
     "AnthropicModelClient",
+    "ArtifactSpec",
+    "BaseArtifactLayer",
+    "BaseContractLayer",
+    "BaseFormalizationLayer",
+    "BaseHookLayer",
+    "BaseRoleLayer",
+    "BaseStageLayer",
+    "BaseStateLayer",
+    "BaseToolContributionLayer",
+    "BudgetSpec",
     "ConfluenceSinkClient",
     "DynamicToolSelector",
     "EmbeddingBackend",
     "EmbeddingModelClient",
     "FactoryLoader",
+    "FieldSpec",
+    "FormalizationDescription",
+    "FormalizationEnforcementType",
+    "FormalizationHookName",
     "GeminiModelClient",
     "GoogleSheetsSinkClient",
+    "HookBehaviorSpec",
     "IterableFactory",
     "IterableFactoryLoader",
+    "LayerRuleRecord",
     "LinearSinkClient",
     "MongoClientFactory",
     "MongoCollectionSinkClient",
@@ -46,6 +83,9 @@ __all__ = [
     "RequestExecutor",
     "RequestPreparingClient",
     "ResendRequestClient",
+    "RoleSpec",
+    "StageSpec",
+    "StateFieldSpec",
     "SupabaseSinkClient",
     "TimeoutConfig",
     "WebhookSinkClient",

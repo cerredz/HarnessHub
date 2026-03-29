@@ -1,0 +1,35 @@
+[
+  {
+    "id": "D001",
+    "task_id": "1",
+    "decision": "Keep this change at the public interface layer and do not wire formalization execution into `BaseAgent` yet.",
+    "rationale": "The user explicitly requested a minimal interfaces-plus-SDK change. The existing runtime has no formalization hook surface yet, so introducing runtime behavior here would increase blast radius and couple an unfinished API to production loop logic.",
+    "alternatives_considered": [
+      "Modify `BaseAgent` immediately to accept formalization layers.",
+      "Add only empty protocols with no shared behavior."
+    ],
+    "chosen_at": "2026-03-29T00:29:54.2205007Z"
+  },
+  {
+    "id": "D002",
+    "task_id": "1",
+    "decision": "Model the formalization surface as abstract base classes plus small supporting dataclasses instead of pure protocols.",
+    "rationale": "The requested design depends on shared default behavior such as `describe()` and default parameter-section rendering, which protocols do not express cleanly. A documentation-heavy ABC layer still fits the interfaces package because it defines construction and behavioral contracts rather than concrete runtime implementations.",
+    "alternatives_considered": [
+      "Use `Protocol` only and force every implementation to duplicate default behavior.",
+      "Put the abstractions directly into the agents runtime package."
+    ],
+    "chosen_at": "2026-03-29T00:29:54.2205007Z"
+  },
+  {
+    "id": "D003",
+    "task_id": "1",
+    "decision": "Make `harnessiq.shared` export lazily instead of eagerly importing manifests and tools at package import time.",
+    "rationale": "The new interface module exposed a pre-existing circular import path: importing `harnessiq.interfaces` could re-enter the package through `harnessiq.shared` and provider/tool modules before contract symbols were bound. Lazy exports fix the import graph without changing the public names.",
+    "alternatives_considered": [
+      "Patch many provider and tool modules to import submodules instead of `harnessiq.interfaces`.",
+      "Avoid public package imports in tests and leave the SDK import path fragile."
+    ],
+    "chosen_at": "2026-03-29T00:39:05.9812092Z"
+  }
+]
