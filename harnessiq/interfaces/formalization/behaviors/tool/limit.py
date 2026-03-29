@@ -49,7 +49,12 @@ class ToolCallLimitBehavior(BaseToolBehaviorLayer):
         for pattern, limit in self._limits.items():
             if not _is_tool_allowed(tool_key, (pattern,)):
                 continue
-            if self._call_counts.get(tool_key, 0) >= limit:
+            used = sum(
+                count
+                for matched_tool_key, count in self._call_counts.items()
+                if _is_tool_allowed(matched_tool_key, (pattern,))
+            )
+            if used >= limit:
                 return False, f"limit {limit} reached for '{pattern}'"
         return True, ""
 

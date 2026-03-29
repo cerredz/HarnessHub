@@ -32,6 +32,18 @@ class ToolBehaviorTests(unittest.TestCase):
         visible_after_reset = layer.filter_tool_keys(("exa.request", "serper.request"))
         self.assertEqual(visible_after_reset, ("exa.request", "serper.request"))
 
+    def test_tool_call_limit_behavior_applies_budget_across_tool_family(self) -> None:
+        layer = ToolCallLimitBehavior({"exa.*": 2})
+        layer.on_agent_prepare(agent_name="demo", memory_path="memory/demo")
+
+        layer.on_tool_result(ToolResult(tool_key="exa.request", output={"ok": True}))
+        layer.on_tool_result(ToolResult(tool_key="exa.search", output={"ok": True}))
+
+        visible_after_family_budget = layer.filter_tool_keys(
+            ("exa.request", "exa.search", "serper.request")
+        )
+        self.assertEqual(visible_after_family_budget, ("serper.request",))
+
     def test_tool_sequencing_behavior_requires_prerequisite_first(self) -> None:
         layer = ToolSequencingBehavior({"artifact.write_*": ("exa.*",)})
         layer.on_agent_prepare(agent_name="demo", memory_path="memory/demo")
