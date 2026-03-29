@@ -28,6 +28,14 @@ def _emit_decision_result(root: str) -> ToolResult:
 
 
 class CommunicationBehaviorTests(unittest.TestCase):
+    def test_communication_behaviors_reject_invalid_configuration(self) -> None:
+        with self.assertRaisesRegex(ValueError, "must be set"):
+            ProgressReportingBehavior()
+        with self.assertRaisesRegex(ValueError, "target_patterns must not be empty"):
+            DecisionLoggingBehavior(target_patterns=())
+        with self.assertRaisesRegex(ValueError, "monitored_patterns must not be empty"):
+            UncertaintySignalingBehavior(monitored_patterns=())
+
     def test_progress_reporting_behavior_blocks_after_cycle_threshold_until_reported(self) -> None:
         layer = ProgressReportingBehavior(
             every_n_cycles=2,
