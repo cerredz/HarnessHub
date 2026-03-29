@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from harnessiq.shared.agents import AgentParameterSection
-from harnessiq.tools.hooks.defaults import is_tool_allowed
 
 from .base import BaseToolBehaviorLayer, ToolConstraintSpec
 
@@ -48,7 +47,7 @@ class ToolCallLimitBehavior(BaseToolBehaviorLayer):
     ) -> tuple[bool, str]:
         del reset_count, cycle_index
         for pattern, limit in self._limits.items():
-            if not is_tool_allowed(tool_key, (pattern,)):
+            if not _is_tool_allowed(tool_key, (pattern,)):
                 continue
             if self._call_counts.get(tool_key, 0) >= limit:
                 return False, f"limit {limit} reached for '{pattern}'"
@@ -67,7 +66,7 @@ class ToolCallLimitBehavior(BaseToolBehaviorLayer):
             used = sum(
                 count
                 for tool_key, count in self._call_counts.items()
-                if is_tool_allowed(tool_key, (pattern,))
+                if _is_tool_allowed(tool_key, (pattern,))
             )
             lines.append(f"- {pattern}: {used}/{limit} used")
         return (
@@ -77,3 +76,9 @@ class ToolCallLimitBehavior(BaseToolBehaviorLayer):
                 content="\n".join(lines),
             ),
         )
+
+
+def _is_tool_allowed(tool_key: str, patterns: tuple[str, ...]) -> bool:
+    from harnessiq.tools.hooks.defaults import is_tool_allowed
+
+    return is_tool_allowed(tool_key, patterns)

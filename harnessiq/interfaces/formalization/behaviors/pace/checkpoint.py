@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from harnessiq.shared.agents import AgentParameterSection
 from harnessiq.shared.tools import ToolResult
-from harnessiq.tools.hooks.defaults import is_tool_allowed
 
-from .base import BaseExecutionPaceLayer, PaceRuleSpec
+from .base import BaseExecutionPaceLayer, PaceRuleSpec, _is_tool_allowed
 
 
 class ProgressCheckpointBehavior(BaseExecutionPaceLayer):
@@ -50,7 +49,7 @@ class ProgressCheckpointBehavior(BaseExecutionPaceLayer):
         self._calls_since_checkpoint = 0
 
     def on_tool_result(self, result: ToolResult) -> ToolResult:
-        if any(is_tool_allowed(result.tool_key, (pattern,)) for pattern in self._checkpoint_patterns):
+        if any(_is_tool_allowed(result.tool_key, (pattern,)) for pattern in self._checkpoint_patterns):
             self._checkpoint_pending = False
             self._calls_since_checkpoint = 0
             return super().on_tool_result(result)

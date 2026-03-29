@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from harnessiq.shared.agents import AgentParameterSection
 from harnessiq.shared.tools import ToolResult
-from harnessiq.tools.hooks.defaults import is_tool_allowed
 
-from .base import BaseExecutionPaceLayer, PaceRuleSpec
+from .base import BaseExecutionPaceLayer, PaceRuleSpec, _is_tool_allowed
 
 
 class VerificationBehavior(BaseExecutionPaceLayer):
@@ -50,11 +49,11 @@ class VerificationBehavior(BaseExecutionPaceLayer):
         self._last_write_tool = None
 
     def on_tool_result(self, result: ToolResult) -> ToolResult:
-        if any(is_tool_allowed(result.tool_key, (pattern,)) for pattern in self._verification_patterns):
+        if any(_is_tool_allowed(result.tool_key, (pattern,)) for pattern in self._verification_patterns):
             self._verification_pending = False
             self._last_write_tool = None
             return super().on_tool_result(result)
-        if any(is_tool_allowed(result.tool_key, (pattern,)) for pattern in self._write_patterns):
+        if any(_is_tool_allowed(result.tool_key, (pattern,)) for pattern in self._write_patterns):
             self._verification_pending = True
             self._last_write_tool = result.tool_key
         return super().on_tool_result(result)

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from harnessiq.shared.agents import AgentParameterSection
 from harnessiq.shared.tools import ToolResult
-from harnessiq.tools.hooks.defaults import is_tool_allowed
 
-from .base import BaseExecutionPaceLayer, PaceRuleSpec
+from .base import BaseExecutionPaceLayer, PaceRuleSpec, _is_tool_allowed
 
 
 class ReflectionCadenceBehavior(BaseExecutionPaceLayer):
@@ -50,7 +49,7 @@ class ReflectionCadenceBehavior(BaseExecutionPaceLayer):
         self._calls_since_reflection = 0
 
     def on_tool_result(self, result: ToolResult) -> ToolResult:
-        if any(is_tool_allowed(result.tool_key, (pattern,)) for pattern in self._reasoning_patterns):
+        if any(_is_tool_allowed(result.tool_key, (pattern,)) for pattern in self._reasoning_patterns):
             self._reflection_pending = False
             self._calls_since_reflection = 0
             return super().on_tool_result(result)

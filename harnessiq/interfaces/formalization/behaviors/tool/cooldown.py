@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 from harnessiq.shared.agents import AgentParameterSection
-from harnessiq.tools.hooks.defaults import is_tool_allowed
 
 from .base import BaseToolBehaviorLayer, ToolConstraintSpec
 from .limit import _constraint_id
@@ -51,7 +50,7 @@ class ToolCooldownBehavior(BaseToolBehaviorLayer):
     ) -> tuple[bool, str]:
         del reset_count, cycle_index
         for pattern in self._cooldowns:
-            if is_tool_allowed(tool_key, (pattern,)) and pattern in self._cooling_patterns:
+            if _is_tool_allowed(tool_key, (pattern,)) and pattern in self._cooling_patterns:
                 return False, f"cooldown active for '{pattern}'"
         return True, ""
 
@@ -60,13 +59,13 @@ class ToolCooldownBehavior(BaseToolBehaviorLayer):
         for pattern, cooldown_tools in self._cooldowns.items():
             if pattern not in cooled_patterns:
                 continue
-            if is_tool_allowed(tool_key, (pattern,)):
+            if _is_tool_allowed(tool_key, (pattern,)):
                 continue
-            if not cooldown_tools or any(is_tool_allowed(tool_key, (item,)) for item in cooldown_tools):
+            if not cooldown_tools or any(_is_tool_allowed(tool_key, (item,)) for item in cooldown_tools):
                 self._cooling_patterns.discard(pattern)
 
         for pattern in self._cooldowns:
-            if is_tool_allowed(tool_key, (pattern,)):
+            if _is_tool_allowed(tool_key, (pattern,)):
                 self._cooling_patterns.add(pattern)
 
     def on_post_reset(self) -> None:
@@ -96,3 +95,9 @@ def _cooldown_suffix(cooldown_tools: tuple[str, ...]) -> str:
     if not cooldown_tools:
         return ""
     return f" matching {cooldown_tools}"
+
+
+def _is_tool_allowed(tool_key: str, patterns: tuple[str, ...]) -> bool:
+    from harnessiq.tools.hooks.defaults import is_tool_allowed
+
+    return is_tool_allowed(tool_key, patterns)

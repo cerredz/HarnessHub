@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 from harnessiq.shared.agents import AgentParameterSection
-from harnessiq.tools.hooks.defaults import is_tool_allowed
 
 from .base import BaseToolBehaviorLayer, ToolConstraintSpec
 from .limit import _constraint_id
@@ -44,7 +43,7 @@ class ToolSequencingBehavior(BaseToolBehaviorLayer):
     ) -> tuple[bool, str]:
         del reset_count, cycle_index
         for target_pattern, prerequisite_patterns in self._prerequisites.items():
-            if not is_tool_allowed(tool_key, (target_pattern,)):
+            if not _is_tool_allowed(tool_key, (target_pattern,)):
                 continue
             if target_pattern not in self._satisfied_targets:
                 return (
@@ -55,7 +54,7 @@ class ToolSequencingBehavior(BaseToolBehaviorLayer):
 
     def record_tool_call(self, tool_key: str) -> None:
         for target_pattern, prerequisite_patterns in self._prerequisites.items():
-            if any(is_tool_allowed(tool_key, (pattern,)) for pattern in prerequisite_patterns):
+            if any(_is_tool_allowed(tool_key, (pattern,)) for pattern in prerequisite_patterns):
                 self._satisfied_targets.add(target_pattern)
 
     def on_post_reset(self) -> None:
@@ -76,3 +75,9 @@ class ToolSequencingBehavior(BaseToolBehaviorLayer):
                 content="\n".join(lines),
             ),
         )
+
+
+def _is_tool_allowed(tool_key: str, patterns: tuple[str, ...]) -> bool:
+    from harnessiq.tools.hooks.defaults import is_tool_allowed
+
+    return is_tool_allowed(tool_key, patterns)

@@ -7,7 +7,6 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from harnessiq.shared.tools import ToolResult
-from harnessiq.tools.hooks.defaults import is_tool_allowed
 
 from ..base import BaseBehaviorLayer, BehaviorConstraint
 
@@ -59,12 +58,12 @@ class BaseExecutionPaceLayer(BaseBehaviorLayer):
                 continue
             for tool_key in tool_keys:
                 if any(
-                    is_tool_allowed(tool_key, (pattern,))
+                    _is_tool_allowed(tool_key, (pattern,))
                     for pattern in rule.required_action_patterns
                 ):
                     continue
                 if any(
-                    is_tool_allowed(tool_key, (pattern,))
+                    _is_tool_allowed(tool_key, (pattern,))
                     for pattern in rule.blocked_until_satisfied
                 ):
                     permitted.discard(tool_key)
@@ -73,8 +72,14 @@ class BaseExecutionPaceLayer(BaseBehaviorLayer):
     def on_tool_result(self, result: ToolResult) -> ToolResult:
         for rule in self.get_pace_rules():
             if any(
-                is_tool_allowed(result.tool_key, (pattern,))
+                _is_tool_allowed(result.tool_key, (pattern,))
                 for pattern in rule.required_action_patterns
             ):
                 self.record_pace_action(result.tool_key, rule)
         return result
+
+
+def _is_tool_allowed(tool_key: str, patterns: tuple[str, ...]) -> bool:
+    from harnessiq.tools.hooks.defaults import is_tool_allowed
+
+    return is_tool_allowed(tool_key, patterns)
