@@ -16,6 +16,7 @@ from .input_spec import (
     SupportedInputFormat,
     validate_input_artifact_specs,
 )
+from .output_layer import OutputArtifactLayer
 from .output_spec import (
     CompletionRequirement,
     OutputArtifactSpec,
@@ -33,6 +34,7 @@ __all__ = [
     "InputArtifactSpec",
     "OnOversize",
     "OutputArtifactMissingError",
+    "OutputArtifactLayer",
     "OutputArtifactSpec",
     "SupportedInputFormat",
     "SupportedOutputFormat",
