@@ -20,6 +20,7 @@ from harnessiq.master_prompts import (
 EXPECTED_PROMPT_KEYS = {
     "answer_with_notable_web_sources",
     "autonomous_execution_loop",
+    "bilateral_argumentation",
     "cognitive_multiplexer",
     "competitor_researcher",
     "create_github_execution_issues",
@@ -79,14 +80,30 @@ PERSONA_PROMPT_REQUIRED_SECTIONS = (
     "Inputs",
 )
 MASTER_PROMPTS_README = Path(__file__).resolve().parents[1] / "harnessiq" / "master_prompts" / "README.md"
+BILATERAL_ARGUMENTATION_MARKDOWN = (
+    Path(__file__).resolve().parents[1]
+    / "harnessiq"
+    / "master_prompts"
+    / "prompts"
+    / "bilateral_argumentation.md"
+)
 
 
 def _section_position(prompt_text: str, section_name: str) -> int:
-    pattern = re.compile(rf"^##\s+{re.escape(section_name)}\s*$", re.MULTILINE)
+    escaped = re.escape(section_name)
+    if section_name == "Identity":
+        variants = (escaped, re.escape("Identity / Persona"))
+    else:
+        variants = (escaped,)
+    body = "|".join(variants)
+    pattern = re.compile(rf"^(?:##\s+)?(?:{body})\s*$", re.MULTILINE)
     match = pattern.search(prompt_text)
-    if match is None:
-        raise AssertionError(f"Missing section heading for {section_name!r}")
-    return match.start()
+    if match is not None:
+        return match.start()
+    try:
+        return prompt_text.index(section_name)
+    except ValueError as exc:
+        raise AssertionError(f"Missing section heading for {section_name!r}") from exc
 
 
 class MasterPromptDataclassTests(unittest.TestCase):
@@ -307,6 +324,31 @@ class CognitiveMultiplexerPromptTests(unittest.TestCase):
 
     def test_cognitive_multiplexer_key_matches_filename_convention(self) -> None:
         self.assertEqual(self.prompt.key, "cognitive_multiplexer")
+
+
+class BilateralArgumentationPromptTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.prompt = MasterPromptRegistry().get("bilateral_argumentation")
+
+    def test_bilateral_argumentation_contains_expected_sections(self) -> None:
+        for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS:
+            with self.subTest(section=section_name):
+                self.assertIn(section_name, self.prompt.prompt)
+
+    def test_bilateral_argumentation_sections_appear_in_order(self) -> None:
+        positions = [self.prompt.prompt.index(section_name) for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_bilateral_argumentation_contains_requested_persona_language(self) -> None:
+        self.assertIn("You are a master dialectician", self.prompt.prompt)
+        self.assertIn("You think in cruxes.", self.prompt.prompt)
+        self.assertIn("The Question (required).", self.prompt.prompt)
+
+    def test_bilateral_argumentation_matches_markdown_payload_exactly(self) -> None:
+        self.assertEqual(self.prompt.prompt, BILATERAL_ARGUMENTATION_MARKDOWN.read_text(encoding="utf-8"))
+
+    def test_bilateral_argumentation_key_matches_filename_convention(self) -> None:
+        self.assertEqual(self.prompt.key, "bilateral_argumentation")
 
 
 class OrchestratorMasterPromptTests(unittest.TestCase):
