@@ -1,0 +1,30 @@
+{
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Implement formalization interface contracts",
+      "description": "Add a new public interface module for formalization layers, including the base self-documenting abstraction and a focused subset of typed abstract bases that match the current repository architecture and requested conversation scope.",
+      "status": "complete",
+      "prerequisites": [],
+      "complexity": "medium",
+      "assigned_to_session": "2026-03-29T00:29:54.2205007Z",
+      "completed_at": "2026-03-29T00:39:05.9812092Z",
+      "blocked_reason": null
+    },
+    {
+      "id": "2",
+      "title": "Verify formalization exports and behavior",
+      "description": "Add or update focused tests for the new public contracts and run targeted verification so the interface surface is proven and reviewable.",
+      "status": "complete",
+      "prerequisites": [
+        "1"
+      ],
+      "complexity": "small",
+      "assigned_to_session": "2026-03-29T00:29:54.2205007Z",
+      "completed_at": "2026-03-29T00:39:05.9812092Z",
+      "blocked_reason": null
+    }
+  ],
+  "current_task_pointer": null,
+  "last_updated": "2026-03-29T00:39:05.9812092Z"
+}

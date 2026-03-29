@@ -33,6 +33,12 @@ from harnessiq.interfaces import (
     WebhookSinkClient,
     ZeroArgumentFactory,
 )
+from harnessiq.shared import (
+    ArtifactSpec,
+    FormalizationDescription,
+    StateUpdateRule,
+)
+from harnessiq.shared.tool_selection import ToolSelectionConfig, ToolSelectionResult
 from harnessiq.shared.dtos import PreparedProviderOperationResultDTO, ProviderOperationRequestDTO
 from harnessiq.shared.tool_selection import ToolSelectionConfig, ToolSelectionResult
 
@@ -313,7 +319,7 @@ class InterfacesPackageTests(unittest.TestCase):
         self.assertIn("BaseStateLayer", exported)
         self.assertIn("LayerRuleRecord", exported)
 
-    def test_interfaces_package_contains_flat_contract_files(self) -> None:
+    def test_interfaces_package_contains_formalization_package(self) -> None:
         package_dir = Path(interfaces.__file__).resolve().parent
         self.assertTrue((package_dir / "formalization.py").exists())
         self.assertTrue((package_dir / "provider_clients.py").exists())

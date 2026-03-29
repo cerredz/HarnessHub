@@ -1,0 +1,107 @@
+[
+  {
+    "path": "memory/formalization-layer-interfaces/mission.json",
+    "status": "created",
+    "purpose": "Mission definition and status for the formalization interface task."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/task_plan.json",
+    "status": "created",
+    "purpose": "Executable task decomposition for the formalization interface task."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/memory_store.json",
+    "status": "created",
+    "purpose": "Durable facts needed to resume the task safely."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/decision_log.json",
+    "status": "created",
+    "purpose": "Recorded implementation-scope decisions for the task."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/file_manifest.json",
+    "status": "created",
+    "purpose": "Registry of mission and implementation files touched by this task."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/error_log.json",
+    "status": "created",
+    "purpose": "Structured blocker and error log for the task."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/feedback_log.json",
+    "status": "created",
+    "purpose": "Recorded human inputs and scope constraints for the task."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/test_results.json",
+    "status": "created",
+    "purpose": "Structured verification evidence for the task."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/artifacts.json",
+    "status": "created",
+    "purpose": "Registry of task outputs and durable deliverables."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/progress_log.jsonl",
+    "status": "created",
+    "purpose": "Append-only event log for mission state transitions."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/README.md",
+    "status": "created",
+    "purpose": "Narrative summary for a cold-start agent or human reviewer."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/internalization.md",
+    "status": "created",
+    "purpose": "Repository survey, task mapping, and risk inventory required by the engineering workflow."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/clarifications.md",
+    "status": "created",
+    "purpose": "Clarification record for the task."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/tickets/index.md",
+    "status": "created",
+    "purpose": "Summary index of scoped implementation tickets."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/tickets/ticket-1.md",
+    "status": "created",
+    "purpose": "Single focused implementation ticket for the formalization interface addition."
+  },
+  {
+    "path": "harnessiq/interfaces/formalization.py",
+    "status": "created",
+    "purpose": "Public self-documenting formalization layer contracts and typed base abstractions."
+  },
+  {
+    "path": "harnessiq/interfaces/__init__.py",
+    "status": "modified",
+    "purpose": "Exports the new formalization contracts from the public interfaces package."
+  },
+  {
+    "path": "harnessiq/shared/__init__.py",
+    "status": "modified",
+    "purpose": "Lazily exports shared symbols so the public interfaces package can be imported without circular initialization."
+  },
+  {
+    "path": "tests/test_interfaces.py",
+    "status": "modified",
+    "purpose": "Adds focused tests for the new formalization interface contracts and default self-documenting behavior."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/tickets/ticket-1-quality.md",
+    "status": "created",
+    "purpose": "Recorded verification evidence for the completed implementation ticket."
+  },
+  {
+    "path": "memory/formalization-layer-interfaces/tickets/ticket-1-critique.md",
+    "status": "created",
+    "purpose": "Recorded post-implementation self-critique for the completed implementation ticket."
+  }
+]

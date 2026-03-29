@@ -49,13 +49,13 @@ Harnessiq ships a dedicated Google Cloud deployment surface for running manifest
 | Metric | Count |
 | --- | --- |
 | Concrete harness manifests | 10 |
-| Top-level CLI commands | 21 |
-| Registered CLI command paths | 181 |
+| Top-level CLI commands | 24 |
+| Registered CLI command paths | 199 |
 | Model providers | 4 |
 | Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-| Test modules | 124 |
+| Test modules | 128 |
 
 ## Agent Matrix
 
@@ -129,6 +129,7 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 
 | Command | Direct Subcommands | Description |
 | --- | --- | --- |
+| harnessiq agents | list, show | Inspect registered harness manifests |
 | harnessiq connect | confluence, discord, google_sheets, linear, mongodb, notion, obsidian, slack, supabase | Configure a global output sink connection |
 | harnessiq connections | list, remove, test | Inspect or manage configured sink connections |
 | harnessiq credentials | bind, show, test | Manage persisted harness credential bindings |
@@ -140,16 +141,18 @@ The generated command catalog lives at `artifacts/commands.md`. Use it as the hi
 | harnessiq leads | configure, prepare, run, show | Manage and run the leads discovery agent |
 | harnessiq linkedin | configure, init-browser, prepare, run, show | Manage and run the LinkedIn agent |
 | harnessiq logs | - | Inspect the local audit ledger |
-| harnessiq models | add, list | Manage reusable provider-backed model profiles |
+| harnessiq models | add, export, import, list, remove, show, validate | Manage reusable provider-backed model profiles |
 | harnessiq outreach | configure, prepare, run, show | Manage and run the ExaOutreach agent |
 | harnessiq prepare | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Prepare and persist generic config for a harness |
-| harnessiq prompts | activate, clear, current, list, show, text | Inspect bundled master prompts |
+| harnessiq prompts | activate, clear, current, list, search, show, text | Inspect bundled master prompts |
 | harnessiq prospecting | configure, init-browser, prepare, run, show | Manage and run the Google Maps prospecting agent |
+| harnessiq providers | list, show | Inspect provider-backed tool families |
 | harnessiq report | - | Build a cross-agent report from the local ledger |
 | harnessiq research-sweep | configure, prepare, run, show | Manage and run the ResearchSweepAgent harness |
 | harnessiq run | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Run a harness through the platform-first CLI |
 | harnessiq show | email, exa_outreach (outreach), instagram, knowt, leads, linkedin, mission_driven, prospecting, research_sweep (research-sweep), spawn_specialized_subagents | Show persisted platform config and harness state |
 | harnessiq stats | agent, export, instance, rebuild, session, summary | Inspect local stats and analytics snapshots |
+| harnessiq tools | families, import, list, show, validate | Inspect the registered HarnessIQ tool catalog |
 
 ## Repo Docs
 

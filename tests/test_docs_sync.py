@@ -127,7 +127,22 @@ class DocsSyncTests(unittest.TestCase):
         self.assertIn("harnessiq/cli/adapters/", focused_subpackages)
         self.assertIn("harnessiq/cli/adapters/utils/", focused_subpackages)
         self.assertIn("harnessiq/config/provider_credentials/", focused_subpackages)
+        self.assertIn("harnessiq/interfaces/formalization/", focused_subpackages)
         self.assertIn("harnessiq/utils/harness_manifest/", focused_subpackages)
+
+    def test_inventory_includes_interfaces_package_and_formalization_key_files(self) -> None:
+        inventory = self.sync_repo_docs.build_inventory()
+        package_layout = {
+            entry["path"]: entry["description"] for entry in inventory["package_layout"]
+        }
+        key_files = {
+            entry["path"]: entry["description"] for entry in inventory["key_files"]
+        }
+
+        self.assertIn("harnessiq/interfaces/", package_layout)
+        self.assertIn("formalization abstractions", package_layout["harnessiq/interfaces/"])
+        self.assertIn("harnessiq/shared/formalization.py", key_files)
+        self.assertIn("harnessiq/interfaces/formalization/base.py", key_files)
 
     def test_top_level_directory_classifier_preserves_exact_match_metadata(self) -> None:
         classified = self.sync_repo_docs.classify_top_level_directory(ROOT / "artifacts")
