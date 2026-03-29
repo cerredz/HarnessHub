@@ -9,24 +9,32 @@ import unittest
 from harnessiq import interfaces
 from harnessiq.interfaces import (
     AnthropicModelClient,
+    BaseContractLayer,
+    BaseStageLayer,
+    BaseStateLayer,
+    BudgetSpec,
     DynamicToolSelector,
     EmbeddingBackend,
     EmbeddingModelClient,
     FactoryLoader,
+    FieldSpec,
     GeminiModelClient,
     GoogleSheetsSinkClient,
     IterableFactoryLoader,
+    LayerRuleRecord,
     OpenAIStyleModelClient,
     PreparedRequest,
     PreparedStoreLoader,
     RequestExecutor,
     RequestPreparingClient,
+    StageSpec,
+    StateFieldSpec,
     TimeoutConfig,
     WebhookSinkClient,
     ZeroArgumentFactory,
 )
-from harnessiq.shared.tool_selection import ToolSelectionConfig, ToolSelectionResult
 from harnessiq.shared.dtos import PreparedProviderOperationResultDTO, ProviderOperationRequestDTO
+from harnessiq.shared.tool_selection import ToolSelectionConfig, ToolSelectionResult
 
 
 @dataclass
@@ -197,6 +205,80 @@ class _FakeDynamicToolSelector:
         return ToolSelectionResult(selected_keys=selected, retrieval_query="demo")
 
 
+class _FakeContractLayer(BaseContractLayer):
+    def get_input_spec(self):
+        return (
+            FieldSpec(
+                name="mission_goal",
+                field_type="string",
+                description="The user-provided objective for the harness.",
+                required=True,
+            ),
+        )
+
+    def get_output_spec(self):
+        return (
+            FieldSpec(
+                name="final_report",
+                field_type="markdown",
+                description="The final structured deliverable.",
+                required=True,
+            ),
+        )
+
+    def get_budget_spec(self):
+        return BudgetSpec(max_tokens=120000, max_resets=6, max_wall_seconds=900.0)
+
+
+class _FakeStageLayer(BaseStageLayer):
+    def get_stages(self):
+        return (
+            StageSpec(
+                name="discover",
+                description="Collect the core facts.",
+                system_prompt_fragment="You are in the discovery stage.",
+                allowed_tool_patterns=("search.*", "artifact.append_run_log"),
+                required_output_keys=("facts",),
+                completion_hint="Facts have been collected.",
+            ),
+            StageSpec(
+                name="report",
+                description="Write the structured report.",
+                system_prompt_fragment="You are in the reporting stage.",
+                allowed_tool_patterns=("artifact.*",),
+                required_output_keys=("final_report",),
+            ),
+        )
+
+    def get_current_stage_index(self) -> int:
+        return 0
+
+
+class _FakeStateLayer(BaseStateLayer):
+    def get_state_fields(self):
+        return (
+            StateFieldSpec(
+                name="continuation_pointer",
+                field_type="string",
+                description="The next step to resume from.",
+                update_rule="overwrite",
+                is_continuation_pointer=True,
+            ),
+            StateFieldSpec(
+                name="mission_goal",
+                field_type="string",
+                description="Original user objective.",
+                update_rule="write_once",
+            ),
+        )
+
+    def get_state_snapshot(self):
+        return {
+            "continuation_pointer": "report",
+            "mission_goal": "Add formalization layer interfaces",
+        }
+
+
 def _fake_request_executor(
     method: str,
     url: str,
@@ -226,14 +308,24 @@ class InterfacesPackageTests(unittest.TestCase):
         self.assertIn("OpenAIStyleModelClient", exported)
         self.assertIn("DynamicToolSelector", exported)
         self.assertIn("EmbeddingBackend", exported)
+        self.assertIn("BaseFormalizationLayer", exported)
+        self.assertIn("BaseStageLayer", exported)
+        self.assertIn("BaseStateLayer", exported)
+        self.assertIn("LayerRuleRecord", exported)
 
     def test_interfaces_package_contains_flat_contract_files(self) -> None:
         package_dir = Path(interfaces.__file__).resolve().parent
+        self.assertTrue((package_dir / "formalization.py").exists())
         self.assertTrue((package_dir / "provider_clients.py").exists())
         self.assertTrue((package_dir / "output_sinks.py").exists())
         self.assertTrue((package_dir / "cli.py").exists())
         self.assertTrue((package_dir / "models.py").exists())
         self.assertTrue((package_dir / "tool_selection.py").exists())
+
+    def test_top_level_harnessiq_exports_formalization_module(self) -> None:
+        from harnessiq import formalization
+
+        self.assertTrue((Path(formalization.__file__).resolve().parent / "base.py").exists())
 
 
 class ProviderContractTests(unittest.TestCase):
@@ -293,6 +385,50 @@ class ModelContractTests(unittest.TestCase):
 
     def test_dynamic_tool_selector_protocol_matches_fake(self) -> None:
         self.assertIsInstance(_FakeDynamicToolSelector(), DynamicToolSelector)
+
+
+class FormalizationContractTests(unittest.TestCase):
+    def test_contract_layer_produces_default_self_documentation(self) -> None:
+        layer = _FakeContractLayer()
+
+        description = layer.describe()
+        sections = layer.get_parameter_sections()
+
+        self.assertIn("execution contract", description.identity)
+        self.assertEqual(description.rules[0], LayerRuleRecord(
+            rule_id="CONTRACT-INPUTS",
+            description="Required inputs must exist before substantive work begins: mission_goal.",
+            enforced_at="on_agent_prepare",
+            enforcement_type="raise",
+        ))
+        self.assertEqual(sections[0].title, "Formalization: _FakeContractLayer")
+        self.assertIn("mission_goal", sections[0].content)
+        self.assertIn("final_report", sections[0].content)
+
+    def test_stage_layer_filters_visible_tools_and_augments_prompt(self) -> None:
+        layer = _FakeStageLayer()
+
+        filtered = layer.filter_tool_keys(
+            ("search.web", "artifact.write_markdown", "artifact.append_run_log", "reason.step")
+        )
+        prompt = layer.augment_system_prompt("Base system prompt")
+        sections = layer.get_parameter_sections()
+
+        self.assertEqual(filtered, ("search.web", "artifact.append_run_log"))
+        self.assertIn("You are in the discovery stage.", prompt)
+        self.assertEqual(sections[1].title, "Current Stage")
+        self.assertIn('"stage_name": "discover"', sections[1].content)
+
+    def test_state_layer_injects_state_snapshot_parameter_section(self) -> None:
+        layer = _FakeStateLayer()
+
+        sections = layer.get_parameter_sections()
+        description = layer.describe()
+
+        self.assertEqual(sections[1].title, "Formalization State")
+        self.assertIn('"continuation_pointer": "report"', sections[1].content)
+        self.assertIn("Continuation pointer: continuation_pointer.", description.identity)
+        self.assertIn("STATE-WRITE-ONCE-MISSION_GOAL", [rule.rule_id for rule in description.rules])
 
 
 if __name__ == "__main__":
