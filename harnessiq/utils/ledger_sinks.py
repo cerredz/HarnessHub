@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from harnessiq.interfaces import (
+from harnessiq.interfaces.output_sinks import (
     ConfluenceSinkClient,
     GoogleSheetsSinkClient,
     LinearSinkClient,

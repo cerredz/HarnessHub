@@ -12,6 +12,7 @@ _EXPORTED_MODULES = frozenset(
         "cli",
         "config",
         "evaluations",
+        "formalization",
         "integrations",
         "interfaces",
         "master_prompts",
