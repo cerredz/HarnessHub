@@ -13,6 +13,7 @@ from typing import Any
 
 from harnessiq.providers import build_langsmith_client, trace_agent_run, trace_tool_call
 from harnessiq.providers.output_sinks import extract_model_metadata
+from harnessiq.shared.agents import AgentToolExecutor
 from harnessiq.shared.agents import (
     AgentContextDirective,
     AgentContextEntry,
@@ -27,9 +28,10 @@ from harnessiq.shared.agents import (
     json_parameter_section,
 )
 from harnessiq.shared.hooks import HookContext, HookPhase, RegisteredHook
-from harnessiq.shared.tools import CONTEXT_SELECT_CHECKPOINT, ToolCall, ToolDefinition, ToolResult
+from harnessiq.shared.tools import CONTEXT_SELECT_CHECKPOINT, RegisteredTool, ToolCall, ToolDefinition, ToolResult
 from harnessiq.tools.context import BoundContextToolExecutor, create_context_tools
 from harnessiq.tools.hooks import create_default_hook_tools
+from harnessiq.tools.registry import ToolRegistry, merge_tools
 from harnessiq.utils.ledger import JSONLLedgerSink, LedgerEntry, load_ledger_entries, new_run_id
 from harnessiq.utils.stats_projector import StatsProjector
 
@@ -39,6 +41,86 @@ _CONTEXT_MEMORY_SECTION_TITLE = "Context Memory"
 _DIRECTIVE_PRIORITY_ORDER = {"critical": 0, "standard": 1, "advisory": 2}
 _RESUMABLE_RUN_STATUSES = frozenset({"paused", "max_cycles_reached"})
 _SESSION_ID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+
+
+class _BoundRegisteredToolExecutor:
+    """Overlay an ordered set of registered tools on top of an existing executor."""
+
+    def __init__(self, *, delegate: AgentToolExecutor, tools: Sequence[RegisteredTool]) -> None:
+        self._delegate = delegate
+        self._registry = ToolRegistry(tools)
+
+    def keys(self) -> tuple[str, ...]:
+        delegate_keys = tuple(getattr(self._delegate, "keys", lambda: ())())
+        overlay_keys = tuple(self._registry.keys())
+        return tuple([*delegate_keys, *(tool_key for tool_key in overlay_keys if tool_key not in delegate_keys)])
+
+    def definitions(self, tool_keys: Sequence[str] | None = None) -> list[ToolDefinition]:
+        if tool_keys is None:
+            delegate_definitions = self._delegate.definitions()
+            overlay_definitions = self._registry.definitions()
+            overlay_by_key = {definition.key: definition for definition in overlay_definitions}
+            definitions = [
+                overlay_by_key.get(definition.key, definition)
+                for definition in delegate_definitions
+            ]
+            delegate_keys = {definition.key for definition in delegate_definitions}
+            definitions.extend(
+                definition
+                for definition in overlay_definitions
+                if definition.key not in delegate_keys
+            )
+            return definitions
+
+        definitions: list[ToolDefinition] = []
+        overlay_keys = set(self._registry.keys())
+        delegate_keys = set(getattr(self._delegate, "keys", lambda: ())())
+        for tool_key in tool_keys:
+            if tool_key in overlay_keys:
+                definitions.extend(self._registry.definitions([tool_key]))
+                continue
+            if tool_key in delegate_keys:
+                definitions.extend(self._delegate.definitions([tool_key]))
+                continue
+            definitions.extend(self._delegate.definitions([tool_key]))
+        return definitions
+
+    def inspect(self, tool_keys: Sequence[str] | None = None) -> list[dict[str, Any]]:
+        if tool_keys is None:
+            payload: list[dict[str, Any]] = []
+            inspector = getattr(self._delegate, "inspect", None)
+            if callable(inspector):
+                payload.extend(inspector())
+            else:
+                payload.extend(definition.inspect() for definition in self._delegate.definitions())
+            overlay_payload = self._registry.inspect()
+            overlay_by_key = {item["key"]: item for item in overlay_payload}
+            merged_payload = [
+                overlay_by_key.get(item["key"], item)
+                for item in payload
+            ]
+            payload_keys = {item["key"] for item in payload}
+            merged_payload.extend(item for item in overlay_payload if item["key"] not in payload_keys)
+            return merged_payload
+
+        payload: list[dict[str, Any]] = []
+        inspector = getattr(self._delegate, "inspect", None)
+        overlay_keys = set(self._registry.keys())
+        delegate_keys = set(getattr(self._delegate, "keys", lambda: ())())
+        for tool_key in tool_keys:
+            if tool_key in overlay_keys:
+                payload.extend(self._registry.inspect([tool_key]))
+                continue
+            if callable(inspector) and tool_key in delegate_keys:
+                payload.extend(inspector([tool_key]))
+                continue
+            payload.extend(definition.inspect() for definition in self._delegate.definitions([tool_key]))
+        return payload
+
+    def execute(self, tool_key: str, arguments: dict[str, Any]) -> ToolResult:
+        if tool_key in self._registry:
+            return self._registry.execute(tool_key, arguments)
+        return self._delegate.execute(tool_key, arguments)
 
 
 class BaseAgentHelpersMixin:
@@ -62,7 +144,10 @@ class BaseAgentHelpersMixin:
 
     def _effective_system_prompt(self) -> str:
         """Append any active context directives to the base system prompt."""
+        self._ensure_formalization_prepared()
         prompt = self.build_system_prompt()
+        for layer in self._formalization_layers:
+            prompt = layer.augment_system_prompt(prompt)
         directives = self._active_context_directives()
         if not directives:
             return prompt
@@ -74,6 +159,81 @@ class BaseAgentHelpersMixin:
             ),
         ]
         return f"{prompt}\n\n" + "\n".join(lines)
+
+    def _ensure_formalization_prepared(self) -> None:
+        """Run one-time formalization setup after the agent instance is resolved."""
+        if self._formalization_prepared:
+            return
+        for layer in self._formalization_layers:
+            layer.on_agent_prepare(agent_name=self.name, memory_path=str(self.memory_path))
+        self._formalization_prepared = True
+
+    def _formalization_parameter_sections(self) -> tuple[AgentParameterSection, ...]:
+        """Return the live parameter sections contributed by all formalization layers."""
+        sections: list[AgentParameterSection] = []
+        for layer in self._formalization_layers:
+            sections.extend(layer.get_parameter_sections())
+        return tuple(sections)
+
+    def _filter_formalization_tool_keys(
+        self,
+        tool_keys: Sequence[str],
+    ) -> tuple[str, ...]:
+        """Apply every formalization layer's tool visibility filter in order."""
+        filtered = tuple(tool_keys)
+        for layer in self._formalization_layers:
+            filtered = tuple(layer.filter_tool_keys(filtered))
+        seen: set[str] = set()
+        unique_keys: list[str] = []
+        for tool_key in filtered:
+            if tool_key in seen:
+                continue
+            seen.add(tool_key)
+            unique_keys.append(tool_key)
+        return tuple(unique_keys)
+
+    def _apply_formalization_tool_result(self, result: ToolResult) -> ToolResult:
+        """Run one tool result through every formalization layer."""
+        current = result
+        for layer in self._formalization_layers:
+            current = layer.on_tool_result(current)
+        return current
+
+    def _collect_formalization_tools(self) -> tuple[RegisteredTool, ...]:
+        """Return all registered tools contributed by formalization layers."""
+        collected: list[tuple[RegisteredTool, ...]] = []
+        for layer in self._formalization_layers:
+            layer_tools = tuple(layer.get_formalization_tools())
+            if not layer_tools:
+                continue
+            for tool in layer_tools:
+                if not isinstance(tool, RegisteredTool):
+                    message = (
+                        f"{layer.layer_id}.get_formalization_tools() must return RegisteredTool instances."
+                    )
+                    raise TypeError(message)
+            collected.append(layer_tools)
+        if not collected:
+            return ()
+        return merge_tools(*collected)
+
+    def _bind_registered_tools(
+        self,
+        tool_executor: AgentToolExecutor,
+        tools: Sequence[RegisteredTool],
+    ) -> AgentToolExecutor:
+        """Overlay additional registered tools onto an existing tool executor."""
+        if not tools:
+            return tool_executor
+        return _BoundRegisteredToolExecutor(delegate=tool_executor, tools=tuple(tools))
+
+    def _formalization_requires_reset(self) -> bool:
+        """Return whether a formalization layer has requested an immediate reset."""
+        return any(bool(getattr(layer, "completion_pending", False)) for layer in self._formalization_layers)
+
+    def _formalization_run_completed(self) -> bool:
+        """Return whether a formalization layer marked the run as terminally complete."""
+        return any(bool(getattr(layer, "run_completed", False)) for layer in self._formalization_layers)
 
     def _compose_parameter_sections(
         self,
@@ -472,7 +632,10 @@ class BaseAgentHelpersMixin:
 
     def _resolve_tool_definition(self, tool_key: str) -> ToolDefinition | None:
         """Look up the canonical tool definition for one tool key."""
-        definitions = self._tool_executor.definitions([tool_key])
+        try:
+            definitions = self._tool_executor.definitions([tool_key])
+        except Exception:
+            return None
         if not definitions:
             return None
         return definitions[0]

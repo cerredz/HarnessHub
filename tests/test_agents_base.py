@@ -17,6 +17,8 @@ from harnessiq.agents import (
     BaseAgent,
     json_parameter_section,
 )
+from harnessiq.formalization import BaseFormalizationLayer, LayerRuleRecord
+from harnessiq.formalization.stages import SimpleStageSpec
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.shared.tool_selection import ToolSelectionConfig, ToolSelectionResult
 from harnessiq.shared.tools import (
@@ -27,8 +29,10 @@ from harnessiq.shared.tools import (
     RegisteredTool,
     ToolCall,
     ToolDefinition,
+    ToolResult,
 )
 from harnessiq.tools import create_context_compaction_tools, create_general_purpose_tools
+from harnessiq.tools.control import create_control_tools
 from harnessiq.tools.registry import ToolRegistry
 from harnessiq.utils import JSONLLedgerSink, LedgerEntry, build_agent_instance_dirname, load_ledger_entries
 
@@ -64,6 +68,8 @@ class _InspectableAgent(BaseAgent):
         runtime_config: AgentRuntimeConfig | None = None,
         payload: dict | None = None,
         dynamic_tool_selector=None,
+        formalization_layers=None,
+        stages=None,
         repo_root: str | Path | None = None,
     ) -> None:
         self._parameter_versions = parameter_versions or ["initial"]
@@ -77,6 +83,8 @@ class _InspectableAgent(BaseAgent):
             tool_executor=tool_executor,
             runtime_config=runtime_config or AgentRuntimeConfig(include_default_output_sink=False),
             dynamic_tool_selector=dynamic_tool_selector,
+            formalization_layers=formalization_layers,
+            stages=stages,
             repo_root=repo_root,
         )
 
@@ -165,6 +173,59 @@ class _FakeDynamicToolSelector:
         )
 
 
+class _TrackingFormalizationLayer(BaseFormalizationLayer):
+    def __init__(self) -> None:
+        self.prepare_calls: list[tuple[str, str]] = []
+        self.pre_reset_calls = 0
+        self.post_reset_calls = 0
+        self.tool_results: list[ToolResult] = []
+
+    def _describe_contract(self) -> str:
+        return "Track prompt, parameters, tools, and reset hooks."
+
+    def _describe_rules(self) -> tuple[LayerRuleRecord, ...]:
+        return (
+            LayerRuleRecord(
+                rule_id="TRACKING-LAYER",
+                description="Tracks runtime integration points for tests.",
+                enforced_at="on_tool_result",
+                enforcement_type="transform",
+            ),
+        )
+
+    def _describe_configuration(self) -> dict[str, object]:
+        return {"kind": "tracking"}
+
+    def augment_system_prompt(self, system_prompt: str) -> str:
+        return f"{system_prompt}\n\n[TRACKING LAYER]\nUse only the visible tool surface."
+
+    def get_parameter_sections(self) -> tuple[AgentParameterSection, ...]:
+        return (AgentParameterSection(title="Formalization Layer", content="tracking"),)
+
+    def filter_tool_keys(self, tool_keys) -> tuple[str, ...]:
+        allowed = {"session.echo"}
+        return tuple(tool_key for tool_key in tool_keys if tool_key in allowed)
+
+    def on_agent_prepare(self, *, agent_name: str, memory_path: str) -> None:
+        self.prepare_calls.append((agent_name, memory_path))
+
+    def on_tool_result(self, result: ToolResult) -> ToolResult:
+        self.tool_results.append(result)
+        if result.tool_key != "session.echo":
+            return result
+        output = result.output if isinstance(result.output, dict) else {"raw": result.output}
+        return ToolResult(
+            tool_key=result.tool_key,
+            output={"wrapped": True, "payload": output},
+        )
+
+    def on_pre_reset(self) -> None:
+        self.pre_reset_calls += 1
+
+    def on_post_reset(self) -> None:
+        self.post_reset_calls += 1
+
+
 class BaseAgentTests(unittest.TestCase):
     def test_runtime_config_defaults_align_with_shared_constants(self) -> None:
         runtime_config = AgentRuntimeConfig()
@@ -251,6 +312,130 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(snapshot.memory_path, agent.memory_path)
         self.assertEqual(snapshot.instance_id, agent.instance_id)
         self.assertEqual(snapshot.instance_name, agent.instance_name)
+
+    def test_formalization_layers_augment_prompt_filter_tools_transform_results_and_run_reset_hooks(self) -> None:
+        registry = ToolRegistry(
+            [
+                _constant_tool("session.echo", "echo", _echo_handler),
+                _constant_tool("session.write", "write", lambda arguments: {"written": arguments}),
+            ]
+        )
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Use the echo tool.",
+                    tool_calls=(ToolCall(tool_key="session.echo", arguments={"text": "hello"}),),
+                    should_continue=True,
+                ),
+                AgentModelResponse(assistant_message="done", should_continue=False),
+            ]
+        )
+        layer = _TrackingFormalizationLayer()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = _InspectableAgent(
+                model=model,
+                tool_executor=registry,
+                formalization_layers=(layer,),
+                parameter_versions=["initial", "refreshed"],
+                repo_root=temp_dir,
+            )
+
+            request = agent.build_model_request()
+            agent.reset_context()
+            result = agent.run(max_cycles=3)
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(layer.prepare_calls[0][0], "inspectable_agent")
+        self.assertIn("[TRACKING LAYER]", request.system_prompt)
+        self.assertIn("Formalization Layer", [section.title for section in request.parameter_sections])
+        self.assertEqual([tool.key for tool in request.tools], ["session.echo"])
+        self.assertEqual(layer.pre_reset_calls, 1)
+        self.assertEqual(layer.post_reset_calls, 1)
+        self.assertTrue(layer.tool_results)
+        self.assertIn('"wrapped": true', model.requests[1].transcript[2].content.lower())
+
+    def test_stages_drive_live_tool_swaps_and_terminal_completion(self) -> None:
+        registry = ToolRegistry(
+            [
+                _constant_tool("session.echo", "echo", _echo_handler),
+                _constant_tool("session.write", "write", lambda arguments: {"written": arguments}),
+            ]
+        )
+        discovery_stage = SimpleStageSpec(
+            name="discovery",
+            description="Discover inputs.",
+            system_prompt_fragment="Focus on discovery only.",
+            tools=(_constant_tool("stage.discovery", "stage_discovery", "stage-1"),),
+            allowed_tool_patterns=("session.echo",),
+            required_output_keys=("items",),
+            completion_hint="At least one item is found.",
+        )
+        report_stage = SimpleStageSpec(
+            name="report",
+            description="Write the report.",
+            system_prompt_fragment="Turn the discovered items into a report.",
+            tools=(_constant_tool("stage.report", "stage_report", "stage-2"),),
+            allowed_tool_patterns=("session.write",),
+            required_output_keys=("artifact",),
+            completion_hint="The report artifact exists.",
+        )
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Complete discovery.",
+                    tool_calls=(
+                        ToolCall(
+                            tool_key="formalization.stage_complete",
+                            arguments={"summary": "done discovery", "outputs": {"items": ["Acme"]}},
+                        ),
+                    ),
+                    should_continue=True,
+                ),
+                AgentModelResponse(
+                    assistant_message="Complete report.",
+                    tool_calls=(
+                        ToolCall(
+                            tool_key="formalization.stage_complete",
+                            arguments={"summary": "done report", "outputs": {"artifact": "report.md"}},
+                        ),
+                    ),
+                    should_continue=True,
+                ),
+            ]
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = _InspectableAgent(
+                model=model,
+                tool_executor=registry,
+                stages=(discovery_stage, report_stage),
+                repo_root=temp_dir,
+            )
+
+            result = agent.run(max_cycles=5)
+
+            self.assertEqual(result.status, "completed")
+            self.assertEqual(result.cycles_completed, 2)
+            self.assertEqual(result.resets, 2)
+            self.assertEqual(
+                [tool.key for tool in model.requests[0].tools],
+                ["stage.discovery", "session.echo", "formalization.stage_complete"],
+            )
+            self.assertEqual(
+                [tool.key for tool in model.requests[1].tools],
+                ["stage.report", "session.write", "formalization.stage_complete"],
+            )
+            self.assertIn("[STAGE 1/2: DISCOVERY]", model.requests[0].system_prompt)
+            self.assertIn("[STAGE 2/2: REPORT]", model.requests[1].system_prompt)
+
+            stage_outputs_path = agent.memory_path / "stage_outputs.json"
+            stage_index_path = agent.memory_path / "stage_index.json"
+            self.assertTrue(stage_outputs_path.exists())
+            self.assertTrue(stage_index_path.exists())
+            outputs_payload = stage_outputs_path.read_text(encoding="utf-8")
+            index_payload = stage_index_path.read_text(encoding="utf-8")
+            self.assertIn('"discovery"', outputs_payload)
+            self.assertIn('"report"', outputs_payload)
+            self.assertIn('"current_stage": "report"', index_payload)
 
     def test_run_records_tool_results_and_passes_transcript_to_next_turn(self) -> None:
         registry = ToolRegistry(
@@ -396,7 +581,7 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(len(model.requests), 1)
 
     def test_run_pauses_when_builtin_pause_tool_is_invoked(self) -> None:
-        registry = ToolRegistry(create_general_purpose_tools())
+        registry = ToolRegistry(create_control_tools())
         model = _FakeModel(
             [
                 AgentModelResponse(
@@ -404,7 +589,7 @@ class BaseAgentTests(unittest.TestCase):
                     tool_calls=(
                         ToolCall(
                             tool_key=CONTROL_PAUSE_FOR_HUMAN,
-                            arguments={"reason": "approval required", "details": {"step": "send outreach"}},
+                            arguments={"reason": "approval required", "context_summary": "send outreach"},
                         ),
                     ),
                     should_continue=True,
