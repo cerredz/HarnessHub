@@ -43,6 +43,7 @@ from .formalization import (
     RoleSpec,
     StageSpec,
     StateFieldSpec,
+    StateUpdateRule,
 )
 
 __all__ = [
@@ -86,6 +87,7 @@ __all__ = [
     "RoleSpec",
     "StageSpec",
     "StateFieldSpec",
+    "StateUpdateRule",
     "SupabaseSinkClient",
     "TimeoutConfig",
     "WebhookSinkClient",

@@ -33,6 +33,11 @@ from harnessiq.interfaces import (
     WebhookSinkClient,
     ZeroArgumentFactory,
 )
+from harnessiq.shared import (
+    ArtifactSpec,
+    FormalizationDescription,
+    StateUpdateRule,
+)
 from harnessiq.shared.tool_selection import ToolSelectionConfig, ToolSelectionResult
 from harnessiq.shared.dtos import PreparedProviderOperationResultDTO, ProviderOperationRequestDTO
 
@@ -312,15 +317,29 @@ class InterfacesPackageTests(unittest.TestCase):
         self.assertIn("BaseStageLayer", exported)
         self.assertIn("BaseStateLayer", exported)
         self.assertIn("LayerRuleRecord", exported)
+        self.assertIn("StateUpdateRule", exported)
 
-    def test_interfaces_package_contains_flat_contract_files(self) -> None:
+    def test_interfaces_package_contains_formalization_package(self) -> None:
         package_dir = Path(interfaces.__file__).resolve().parent
-        self.assertTrue((package_dir / "formalization.py").exists())
+        self.assertTrue((package_dir / "formalization" / "__init__.py").exists())
+        self.assertTrue((package_dir / "formalization" / "base.py").exists())
+        self.assertTrue((package_dir / "formalization" / "contract.py").exists())
+        self.assertTrue((package_dir / "formalization" / "artifact.py").exists())
+        self.assertTrue((package_dir / "formalization" / "hook_layer.py").exists())
+        self.assertTrue((package_dir / "formalization" / "stage.py").exists())
+        self.assertTrue((package_dir / "formalization" / "role.py").exists())
+        self.assertTrue((package_dir / "formalization" / "state.py").exists())
+        self.assertTrue((package_dir / "formalization" / "tool_contribution.py").exists())
         self.assertTrue((package_dir / "provider_clients.py").exists())
         self.assertTrue((package_dir / "output_sinks.py").exists())
         self.assertTrue((package_dir / "cli.py").exists())
         self.assertTrue((package_dir / "models.py").exists())
         self.assertTrue((package_dir / "tool_selection.py").exists())
+
+    def test_shared_package_exports_formalization_records(self) -> None:
+        self.assertTrue(issubclass(ArtifactSpec, object))
+        self.assertTrue(issubclass(FormalizationDescription, object))
+        self.assertEqual(StateUpdateRule.__args__, ("overwrite", "append", "write_once"))
 
 
 class ProviderContractTests(unittest.TestCase):
@@ -390,6 +409,7 @@ class FormalizationContractTests(unittest.TestCase):
         sections = layer.get_parameter_sections()
 
         self.assertIn("execution contract", description.identity)
+        self.assertIn("hidden runtime assumptions", description.identity)
         self.assertEqual(description.rules[0], LayerRuleRecord(
             rule_id="CONTRACT-INPUTS",
             description="Required inputs must exist before substantive work begins: mission_goal.",
@@ -422,7 +442,7 @@ class FormalizationContractTests(unittest.TestCase):
 
         self.assertEqual(sections[1].title, "Formalization State")
         self.assertIn('"continuation_pointer": "report"', sections[1].content)
-        self.assertIn("Continuation pointer: continuation_pointer.", description.identity)
+        self.assertIn("Continuation pointer fields: continuation_pointer.", description.identity)
         self.assertIn("STATE-WRITE-ONCE-MISSION_GOAL", [rule.rule_id for rule in description.rules])
 
 

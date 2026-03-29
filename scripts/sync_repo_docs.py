@@ -95,6 +95,10 @@ PACKAGE_LAYOUT = [
         "Concrete external runtime adapters such as Playwright backends and model factories.",
     ),
     (
+        "harnessiq/interfaces/",
+        "Public runtime dependency seams and injectable formalization abstractions used by the SDK surface.",
+    ),
+    (
         "harnessiq/master_prompts/",
         "Packaged prompt assets and prompt registry helpers.",
     ),
@@ -138,6 +142,10 @@ FOCUSED_SUBPACKAGE_DESCRIPTIONS = [
         "Minimal eval helpers plus the pytest integration used for category filtering and model selection.",
     ),
     (
+        "harnessiq/interfaces/formalization/",
+        "Self-documenting formalization interface package with one module per abstract layer family and shared injectable harness semantics.",
+    ),
+    (
         "harnessiq/utils/harness_manifest/",
         "Manifest coercion, validation, and registry helpers extracted from the public shared manifest modules.",
     ),
@@ -155,6 +163,14 @@ KEY_FILE_DESCRIPTIONS = [
     (
         "harnessiq/shared/harness_manifests.py",
         "Registry of the built-in harness manifests in deterministic order.",
+    ),
+    (
+        "harnessiq/shared/formalization.py",
+        "Shared formalization records and typed specs consumed by the formalization interface package and future runtime enforcement code.",
+    ),
+    (
+        "harnessiq/interfaces/formalization/base.py",
+        "Universal base contract for injectable formalization layers, including self-documenting description helpers and lifecycle hook seams.",
     ),
     (
         "harnessiq/cli/main.py",
@@ -201,6 +217,7 @@ KEY_FILE_DESCRIPTIONS = [
 FILE_INDEX_STANDARDS = [
     "Treat `harnessiq/` as the only authoritative runtime source tree. `build/`, `src/`, caches, and packaging metadata are generated or residue directories.",
     "Concrete harness metadata belongs in the shared manifest layer under `harnessiq/shared/`, and CLI behavior should consume that metadata instead of duplicating typed parameter rules.",
+    "Injectable formalization records live in `harnessiq/shared/formalization.py`, while the abstract layer interfaces that consume them live under `harnessiq/interfaces/formalization/`.",
     "Agents orchestrate. Tools execute deterministic operations. Providers wrap external systems. Utilities own cross-cutting runtime infrastructure like the ledger and output sinks.",
     "Evaluation scaffolding belongs under `harnessiq/evaluations/` and should stay pytest-first, lightweight, and behavior-oriented.",
     "Durable memory is a first-class design constraint: harnesses are expected to persist state that survives resets and restarts.",
