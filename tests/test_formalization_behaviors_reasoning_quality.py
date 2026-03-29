@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
 
 from harnessiq.formalization import (
@@ -16,8 +17,13 @@ from harnessiq.tools.control import create_control_tools
 
 
 def _mark_complete_result(summary: str = "done") -> ToolResult:
-    tool = next(tool for tool in create_control_tools(root="memory/test") if tool.key == CONTROL_MARK_COMPLETE)
-    return tool.execute({"summary": summary})
+    with tempfile.TemporaryDirectory() as temp_dir:
+        tool = next(
+            tool
+            for tool in create_control_tools(root=temp_dir)
+            if tool.key == CONTROL_MARK_COMPLETE
+        )
+        return tool.execute({"summary": summary})
 
 
 class ReasoningBehaviorTests(unittest.TestCase):
