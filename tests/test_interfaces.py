@@ -12,8 +12,10 @@ from harnessiq.interfaces import (
     BaseContractLayer,
     BaseBehaviorLayer,
     BaseExecutionPaceLayer,
+    BaseErrorRecoveryLayer,
     BaseQualityBehaviorLayer,
     BaseReasoningBehaviorLayer,
+    BaseSafetyBehaviorLayer,
     BaseStageLayer,
     BaseStateLayer,
     BaseToolBehaviorLayer,
@@ -23,11 +25,14 @@ from harnessiq.interfaces import (
     DynamicToolSelector,
     EmbeddingBackend,
     EmbeddingModelClient,
+    ErrorEscalationBehavior,
     FactoryLoader,
     FieldSpec,
     GeminiModelClient,
+    GuardrailSpec,
     GoogleSheetsSinkClient,
     HypothesisTestingBehavior,
+    IrreversibleActionGateBehavior,
     IterableFactoryLoader,
     LayerRuleRecord,
     OpenAIStyleModelClient,
@@ -38,14 +43,19 @@ from harnessiq.interfaces import (
     ProgressCheckpointBehavior,
     QualityCriterionSpec,
     QualityGateBehavior,
+    RateLimitBehavior,
+    RecoveryStrategySpec,
     ReflectionCadenceBehavior,
     ReasoningRequirementSpec,
     RequestExecutor,
     RequestPreparingClient,
+    RetryStrategyBehavior,
     ScopeEnforcementBehavior,
+    ScopeGuardBehavior,
     SelfCritiqueBehavior,
     StageSpec,
     StateFieldSpec,
+    StuckDetectionBehavior,
     TimeoutConfig,
     ToolCallLimitBehavior,
     ToolConstraintSpec,
@@ -358,8 +368,10 @@ class InterfacesPackageTests(unittest.TestCase):
         self.assertIn("EmbeddingBackend", exported)
         self.assertIn("BaseBehaviorLayer", exported)
         self.assertIn("BaseExecutionPaceLayer", exported)
+        self.assertIn("BaseErrorRecoveryLayer", exported)
         self.assertIn("BaseQualityBehaviorLayer", exported)
         self.assertIn("BaseReasoningBehaviorLayer", exported)
+        self.assertIn("BaseSafetyBehaviorLayer", exported)
         self.assertIn("BaseFormalizationLayer", exported)
         self.assertIn("BaseStageLayer", exported)
         self.assertIn("BaseStateLayer", exported)
@@ -385,6 +397,8 @@ class InterfacesPackageTests(unittest.TestCase):
         self.assertEqual(formalization.ReflectionCadenceBehavior.__name__, "ReflectionCadenceBehavior")
         self.assertEqual(formalization.PreActionReasoningBehavior.__name__, "PreActionReasoningBehavior")
         self.assertEqual(formalization.ScopeEnforcementBehavior.__name__, "ScopeEnforcementBehavior")
+        self.assertEqual(formalization.RetryStrategyBehavior.__name__, "RetryStrategyBehavior")
+        self.assertEqual(formalization.IrreversibleActionGateBehavior.__name__, "IrreversibleActionGateBehavior")
 
     def test_lazy_exports_resolve_and_cache_symbols(self) -> None:
         first = interfaces.RequestPreparingClient
@@ -495,6 +509,18 @@ class FormalizationContractTests(unittest.TestCase):
         self.assertEqual(ScopeEnforcementBehavior.__name__, "ScopeEnforcementBehavior")
         self.assertEqual(QualityGateBehavior.__name__, "QualityGateBehavior")
         self.assertEqual(CitationRequirementBehavior.__name__, "CitationRequirementBehavior")
+
+    def test_recovery_and_safety_behavior_exports_resolve(self) -> None:
+        self.assertEqual(BaseErrorRecoveryLayer.__name__, "BaseErrorRecoveryLayer")
+        self.assertEqual(BaseSafetyBehaviorLayer.__name__, "BaseSafetyBehaviorLayer")
+        self.assertEqual(RecoveryStrategySpec.__name__, "RecoveryStrategySpec")
+        self.assertEqual(GuardrailSpec.__name__, "GuardrailSpec")
+        self.assertEqual(RetryStrategyBehavior.__name__, "RetryStrategyBehavior")
+        self.assertEqual(StuckDetectionBehavior.__name__, "StuckDetectionBehavior")
+        self.assertEqual(ErrorEscalationBehavior.__name__, "ErrorEscalationBehavior")
+        self.assertEqual(IrreversibleActionGateBehavior.__name__, "IrreversibleActionGateBehavior")
+        self.assertEqual(RateLimitBehavior.__name__, "RateLimitBehavior")
+        self.assertEqual(ScopeGuardBehavior.__name__, "ScopeGuardBehavior")
 
     def test_contract_layer_produces_default_self_documentation(self) -> None:
         layer = _FakeContractLayer()
