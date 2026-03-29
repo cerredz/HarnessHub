@@ -1,0 +1,39 @@
+"""Compatibility re-exports for artifact-formalization runtime types."""
+
+from harnessiq.formalization.artifacts import (
+    ArtifactNotFoundError,
+    CompletionRequirement,
+    FORMAT_EXTENSION_MAP,
+    FORMAT_TOOL_MAP,
+    InjectionPolicy,
+    InputArtifactSpec,
+    OnOversize,
+    OutputArtifactMissingError,
+    OutputArtifactSpec,
+    SupportedInputFormat,
+    SupportedOutputFormat,
+    resolve_artifact_path,
+    resolve_output_path,
+    resolve_write_tool_key,
+    validate_input_artifact_specs,
+    validate_output_artifact_specs,
+)
+
+__all__ = [
+    "ArtifactNotFoundError",
+    "CompletionRequirement",
+    "FORMAT_EXTENSION_MAP",
+    "FORMAT_TOOL_MAP",
+    "InjectionPolicy",
+    "InputArtifactSpec",
+    "OnOversize",
+    "OutputArtifactMissingError",
+    "OutputArtifactSpec",
+    "SupportedInputFormat",
+    "SupportedOutputFormat",
+    "resolve_artifact_path",
+    "resolve_output_path",
+    "resolve_write_tool_key",
+    "validate_input_artifact_specs",
+    "validate_output_artifact_specs",
+]
