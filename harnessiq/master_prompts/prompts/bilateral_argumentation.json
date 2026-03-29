@@ -1,0 +1,5 @@
+{
+  "title": "Bilateral Argumentation",
+  "description": "A rigorous bilateral-analysis prompt for reconstructing the strongest case on both sides of a question, surfacing the true crux, classifying argument types, and mapping what would resolve the disagreement without false balance.",
+  "prompt_path": "bilateral_argumentation.md"
+}
