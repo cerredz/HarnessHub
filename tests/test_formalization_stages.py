@@ -7,6 +7,7 @@ from pathlib import Path
 from harnessiq.formalization.stages import (
     STAGE_COMPLETE_TOOL,
     SimpleStageSpec,
+    StageAdvancementError,
     StageAwareToolExecutor,
     StageContext,
     StageLayer,
@@ -359,6 +360,26 @@ class StageLayerTests(unittest.TestCase):
             self.assertEqual(restored.current_stage.name, "publish")
             self.assertEqual(restored.prior_outputs["discovery"]["facts"], ["A"])
             self.assertEqual([tool.key for tool in stage_executor.definitions()], ["stage.publish", "base.read"])
+
+    def test_stage_layer_raises_for_unknown_next_stage(self) -> None:
+        broken = _RecordingStage(
+            name="broken",
+            description="Route incorrectly.",
+            tool_keys=("stage.broken",),
+            required_output_keys=("items",),
+            next_stage="missing_stage",
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            layer = StageLayer((broken,))
+            layer.on_agent_prepare(agent_name="demo_agent", memory_path=temp_dir)
+            layer.on_tool_result(
+                STAGE_COMPLETE_TOOL.execute({"summary": "done", "outputs": {"items": [1]}})
+            )
+            layer.on_pre_reset()
+
+            with self.assertRaises(StageAdvancementError):
+                layer.on_post_reset()
 
 
 if __name__ == "__main__":
