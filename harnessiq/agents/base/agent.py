@@ -43,6 +43,7 @@ from harnessiq.utils.agent_instances import AgentInstanceRecord, AgentInstanceSt
 from .helpers import BaseAgentHelpersMixin, _resolve_repo_root, _utcnow
 
 if TYPE_CHECKING:
+    from harnessiq.interfaces.formalization.behaviors import BaseBehaviorLayer
     from harnessiq.formalization.artifacts import InputArtifactSpec, OutputArtifactSpec
     from harnessiq.formalization.base import BaseFormalizationLayer
     from harnessiq.formalization.stages import StageSpec
@@ -75,6 +76,7 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         stages: Sequence["StageSpec"] | None = None,
         input_artifacts: Sequence["InputArtifactSpec"] | None = None,
         output_artifacts: Sequence["OutputArtifactSpec"] | None = None,
+        behaviors: Sequence["BaseBehaviorLayer"] | None = None,
         memory_path: Path | None = None,
         repo_root: str | Path | None = None,
         instance_name: str | None = None,
@@ -121,7 +123,7 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
             input_artifacts=input_artifacts,
             output_artifacts=output_artifacts,
         )
-        resolved_layers = [*stage_layers, *artifact_layers, *explicit_layers]
+        resolved_layers = [*stage_layers, *artifact_layers, *(behaviors or ()), *explicit_layers]
         if resolved_layers:
             self._formalization_layers = tuple(resolved_layers)
             for layer in self._iter_artifact_layers(self._formalization_layers):
@@ -487,10 +489,15 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
                     if pause_signal is not None:
                         break
                     assert tool_call is not None  # noqa: S101
+                    tool_call, formalization_result, pause_signal = self._apply_formalization_tool_call(tool_call)
+                    if pause_signal is not None:
+                        break
+                    if result is None:
+                        result = formalization_result
                     if result is None:
                         result = self._execute_tool(tool_call)
                     result, hook_pause_signal = self._finalize_tool_result(tool_call, result)
-                    result = self._apply_formalization_tool_result(result)
+                    result = self._apply_formalization_tool_result_event(tool_call, result)
                     if self._apply_compaction_result(result):
                         if hook_pause_signal is not None:
                             pause_signal = hook_pause_signal
