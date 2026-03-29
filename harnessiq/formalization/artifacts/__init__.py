@@ -8,6 +8,7 @@ from .format_map import (
     resolve_output_path,
     resolve_write_tool_key,
 )
+from .input_layer import InputArtifactLayer
 from .input_spec import (
     InjectionPolicy,
     InputArtifactSpec,
@@ -28,6 +29,7 @@ __all__ = [
     "FORMAT_EXTENSION_MAP",
     "FORMAT_TOOL_MAP",
     "InjectionPolicy",
+    "InputArtifactLayer",
     "InputArtifactSpec",
     "OnOversize",
     "OutputArtifactMissingError",
