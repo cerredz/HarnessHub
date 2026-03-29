@@ -42,6 +42,7 @@ class StageLayer(BaseFormalizationLayer):
         self._completion_pending = False
         self._pending_outputs: dict[str, Any] = {}
         self._pending_summary = ""
+        self._run_completed = False
         self._prior_outputs: dict[str, dict[str, Any]] = {}
         self._memory_path: Path | None = None
         self._agent_name = ""
@@ -207,6 +208,7 @@ class StageLayer(BaseFormalizationLayer):
         )
 
     def on_agent_prepare(self, *, agent_name: str, memory_path: str) -> None:
+        self._run_completed = False
         self._agent_name = agent_name
         self._memory_path = Path(memory_path)
         self._load_prior_outputs()
@@ -268,11 +270,13 @@ class StageLayer(BaseFormalizationLayer):
 
     def on_post_reset(self) -> None:
         self._reset_count += 1
+        self._run_completed = False
         if not self._completion_pending:
             return
 
         current_stage = self._current_stage
         next_name = current_stage.get_next_stage(self._pending_outputs)
+        terminal_completion = next_name is None and self._is_final_stage
         if next_name is not None:
             if next_name not in self._stage_map:
                 raise StageAdvancementError(
@@ -288,6 +292,9 @@ class StageLayer(BaseFormalizationLayer):
         self._pending_outputs = {}
         self._pending_summary = ""
         self._persist_stage_index()
+        if terminal_completion:
+            self._run_completed = True
+            return
         self._install_current_stage_tools()
         self._current_stage.on_enter(self._make_context())
 
@@ -302,6 +309,14 @@ class StageLayer(BaseFormalizationLayer):
     @property
     def prior_outputs(self) -> dict[str, dict[str, Any]]:
         return dict(self._prior_outputs)
+
+    @property
+    def completion_pending(self) -> bool:
+        return self._completion_pending
+
+    @property
+    def run_completed(self) -> bool:
+        return self._run_completed
 
     @property
     def _current_stage(self) -> StageSpec:
@@ -332,6 +347,7 @@ class StageLayer(BaseFormalizationLayer):
         if self._memory_path is None:
             return
         path = self._memory_path / _STAGE_OUTPUTS_FILENAME
+        path.parent.mkdir(parents=True, exist_ok=True)
         existing: dict[str, Any] = {}
         if path.exists():
             existing = json.loads(path.read_text(encoding="utf-8"))
@@ -349,6 +365,7 @@ class StageLayer(BaseFormalizationLayer):
         if self._memory_path is None:
             return
         path = self._memory_path / _STAGE_INDEX_FILENAME
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
             json.dumps(
                 {

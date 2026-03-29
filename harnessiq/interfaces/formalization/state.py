@@ -50,7 +50,7 @@ class BaseStateLayer(BaseFormalizationLayer, ABC):
             ),
             how=(
                 f"The layer manages {len(fields)} typed field(s). "
-                f"Continuation pointer fields: {', '.join(pointer_names) or 'none'}."
+                f"Continuation pointer: {', '.join(pointer_names) or 'none'}."
             ),
             intent=(
                 "Make reset continuity, resumption semantics, and write rules inspectable for "

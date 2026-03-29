@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Mapping, Sequence, TypeVar
 
 from harnessiq.interfaces.tool_selection import DynamicToolSelector
 from harnessiq.integrations import create_embedding_backend_from_spec
@@ -42,6 +42,10 @@ from harnessiq.tools.hooks.defaults import is_tool_allowed
 from harnessiq.utils.agent_instances import AgentInstanceRecord, AgentInstanceStore
 from .helpers import BaseAgentHelpersMixin, _resolve_repo_root, _utcnow
 
+if TYPE_CHECKING:
+    from harnessiq.formalization.base import BaseFormalizationLayer
+    from harnessiq.formalization.stages import StageSpec
+
 FileBackedStoreT = TypeVar("FileBackedStoreT")
 
 
@@ -66,6 +70,8 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         tool_executor: AgentToolExecutor,
         runtime_config: AgentRuntimeConfig | None = None,
         dynamic_tool_selector: DynamicToolSelector | None = None,
+        formalization_layers: Sequence["BaseFormalizationLayer"] | None = None,
+        stages: Sequence["StageSpec"] | None = None,
         memory_path: Path | None = None,
         repo_root: str | Path | None = None,
         instance_name: str | None = None,
@@ -93,6 +99,26 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         self._run_tool_call_breakdown: dict[str, int] = {}
         self._context_runtime_state = self._load_context_runtime_state()
         self._tool_executor = tool_executor
+        self._formalization_layers: tuple[BaseFormalizationLayer, ...] = ()
+        self._formalization_prepared = False
+        resolved_layers = list(formalization_layers or ())
+        if stages:
+            from harnessiq.formalization.stages import StageAwareToolExecutor, StageLayer
+
+            stage_layer = StageLayer(tuple(stages))
+            stage_executor = StageAwareToolExecutor(
+                base=self._tool_executor,
+                initial_stage_tools=tuple(stages[0].build_tools(self._memory_path)),
+            )
+            stage_layer._stage_executor = stage_executor
+            self._tool_executor = stage_executor
+            resolved_layers = [stage_layer, *resolved_layers]
+        if resolved_layers:
+            self._formalization_layers = tuple(resolved_layers)
+            self._tool_executor = self._bind_registered_tools(
+                self._tool_executor,
+                self._collect_formalization_tools(),
+            )
         self._hook_tools = self._build_hook_tools()
         self._active_request_tool_keys: tuple[str, ...] | None = None
         self._dynamic_tool_selector = dynamic_tool_selector or self._build_dynamic_tool_selector()
@@ -191,15 +217,26 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
 
     def available_tools(self, tool_keys: Sequence[str] | None = None) -> tuple[ToolDefinition, ...]:
         """Return the currently registered runtime tools."""
+        self._ensure_formalization_prepared()
         requested_keys = tool_keys if tool_keys is not None else self._active_request_tool_keys
+        if requested_keys is None:
+            requested_keys = self._filter_formalization_tool_keys(
+                tuple(definition.key for definition in self._tool_executor.definitions())
+            )
         return tuple(self._tool_executor.definitions(requested_keys))
 
     def inspect_tools(self, tool_keys: Sequence[str] | None = None) -> tuple[dict[str, Any], ...]:
         """Return rich inspection metadata for all or selected tools."""
+        self._ensure_formalization_prepared()
         inspector = getattr(self._tool_executor, "inspect", None)
+        requested_keys = tool_keys
+        if requested_keys is None:
+            requested_keys = self._filter_formalization_tool_keys(
+                tuple(definition.key for definition in self._tool_executor.definitions())
+            )
         if callable(inspector):
-            return tuple(inspector(tool_keys))
-        definitions = self._tool_executor.definitions(tool_keys)
+            return tuple(inspector(requested_keys))
+        definitions = self._tool_executor.definitions(requested_keys)
         return tuple(definition.inspect() for definition in definitions)
 
     def available_hooks(self) -> tuple[HookDefinition, ...]:
@@ -217,7 +254,13 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
 
     def refresh_parameters(self) -> tuple[AgentParameterSection, ...]:
         """Reload and cache the current durable parameter sections."""
-        sections = tuple(self._compose_parameter_sections(tuple(self.load_parameter_sections())))
+        self._ensure_formalization_prepared()
+        base_sections = tuple(self.load_parameter_sections())
+        sections = tuple(
+            self._compose_parameter_sections(
+                (*base_sections, *self._formalization_parameter_sections())
+            )
+        )
         self._parameter_sections = sections
         return sections
 
@@ -275,9 +318,14 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
 
     def reset_context(self) -> None:
         """Clear transcript state and rebuild durable parameters."""
+        self._ensure_formalization_prepared()
+        for layer in self._formalization_layers:
+            layer.on_pre_reset()
         self._transcript.clear()
         self._reset_count += 1
         self._expire_context_directives()
+        for layer in self._formalization_layers:
+            layer.on_post_reset()
         self.refresh_parameters()
 
     def build_model_request(self) -> AgentModelRequest:
@@ -304,7 +352,7 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         self.prepare()
         parameter_sections = self.refresh_parameters()
         return AgentRuntimeSnapshot(
-            system_prompt=self.build_system_prompt(),
+            system_prompt=self._effective_system_prompt(),
             parameter_sections=parameter_sections,
             tools=self.available_tools(),
             hooks=self.available_hooks(),
@@ -387,6 +435,7 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
                     if result is None:
                         result = self._execute_tool(tool_call)
                     result, hook_pause_signal = self._finalize_tool_result(tool_call, result)
+                    result = self._apply_formalization_tool_result(result)
                     if self._apply_compaction_result(result):
                         if hook_pause_signal is not None:
                             pause_signal = hook_pause_signal
@@ -402,6 +451,21 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
                         break
                     if not self._allow_auto_reset_after_tool_result(result):
                         continue
+                    if self._formalization_requires_reset():
+                        self.reset_context()
+                        self._last_prune_progress = self.pruning_progress_value()
+                        reset_after_tool_result = True
+                        if self._formalization_run_completed():
+                            return self._complete_run(
+                                AgentRunResult(
+                                    status="completed",
+                                    cycles_completed=cycles_completed,
+                                    resets=self._reset_count,
+                                ),
+                                started_at=started_at,
+                                total_estimated_request_tokens=total_estimated_request_tokens,
+                            )
+                        break
                     if self._should_prune_context():
                         self.reset_context()
                         self._last_prune_progress = self.pruning_progress_value()
