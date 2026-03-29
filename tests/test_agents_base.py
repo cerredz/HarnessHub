@@ -19,6 +19,8 @@ from harnessiq.agents import (
 )
 from harnessiq.formalization import (
     BaseFormalizationLayer,
+    BaseBehaviorLayer,
+    BehaviorConstraint,
     InputArtifactLayer,
     InputArtifactSpec,
     LayerRuleRecord,
@@ -78,6 +80,7 @@ class _InspectableAgent(BaseAgent):
         payload: dict | None = None,
         dynamic_tool_selector=None,
         formalization_layers=None,
+        behaviors=None,
         stages=None,
         input_artifacts=None,
         output_artifacts=None,
@@ -96,6 +99,7 @@ class _InspectableAgent(BaseAgent):
             runtime_config=runtime_config or AgentRuntimeConfig(include_default_output_sink=False),
             dynamic_tool_selector=dynamic_tool_selector,
             formalization_layers=formalization_layers,
+            behaviors=behaviors,
             stages=stages,
             input_artifacts=input_artifacts,
             output_artifacts=output_artifacts,
@@ -266,6 +270,71 @@ class _AllowSpecificToolsLayer(BaseFormalizationLayer):
         return tuple(tool_key for tool_key in tool_keys if tool_key in allowed)
 
 
+class _TrackingBehaviorLayer(BaseBehaviorLayer):
+    def __init__(self, events: list[str] | None = None) -> None:
+        self.prepare_calls: list[tuple[str, str]] = []
+        self.tool_calls: list[ToolCall] = []
+        self.tool_results: list[ToolResult] = []
+        self._events = events
+
+    def get_behavioral_constraints(self) -> tuple[BehaviorConstraint, ...]:
+        return (
+            BehaviorConstraint(
+                constraint_id="BEHAVIOR-TRACKING",
+                description="Track tool-call and tool-result behavior integration points.",
+                category="test_behavior",
+                enforced_at="on_tool_call",
+                violation_action="warn",
+            ),
+        )
+
+    def on_agent_prepare(self, *, agent_name: str, memory_path: str) -> None:
+        self.prepare_calls.append((agent_name, memory_path))
+        if self._events is not None:
+            self._events.append("behavior")
+
+    def on_tool_call(self, tool_call: ToolCall):
+        self.tool_calls.append(tool_call)
+        return tool_call
+
+    def on_tool_result_event(self, tool_call: ToolCall, result: ToolResult) -> ToolResult:
+        self.tool_results.append(result)
+        if result.tool_key != "session.echo":
+            return result
+        output = result.output if isinstance(result.output, dict) else {"raw": result.output}
+        return ToolResult(
+            tool_key=result.tool_key,
+            output={"wrapped": True, "arguments": dict(tool_call.arguments), "payload": output},
+        )
+
+
+class _OrderingFormalizationLayer(BaseFormalizationLayer):
+    def __init__(self, events: list[str]) -> None:
+        self._events = events
+
+    def _describe_contract(self) -> str:
+        return "Record prepare-order integration."
+
+    def _describe_rules(self) -> tuple[LayerRuleRecord, ...]:
+        return ()
+
+    def _describe_configuration(self) -> dict[str, object]:
+        return {}
+
+    def on_agent_prepare(self, *, agent_name: str, memory_path: str) -> None:
+        del agent_name, memory_path
+        self._events.append("formalization")
+
+
+class _InvalidResultEventLayer(BaseBehaviorLayer):
+    def get_behavioral_constraints(self) -> tuple[BehaviorConstraint, ...]:
+        return ()
+
+    def on_tool_result_event(self, tool_call: ToolCall, result: ToolResult):
+        del tool_call, result
+        return {"invalid": True}
+
+
 class BaseAgentTests(unittest.TestCase):
     def test_runtime_config_defaults_align_with_shared_constants(self) -> None:
         runtime_config = AgentRuntimeConfig()
@@ -393,6 +462,74 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(layer.post_reset_calls, 1)
         self.assertTrue(layer.tool_results)
         self.assertIn('"wrapped": true', model.requests[1].transcript[2].content.lower())
+
+    def test_behaviors_run_before_explicit_formalization_layers_and_receive_tool_call_context(self) -> None:
+        registry = ToolRegistry(
+            [
+                _constant_tool("session.echo", "echo", _echo_handler),
+                _constant_tool("session.write", "write", lambda arguments: {"written": arguments}),
+            ]
+        )
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Use the echo tool.",
+                    tool_calls=(ToolCall(tool_key="session.echo", arguments={"text": "hello"}),),
+                    should_continue=True,
+                ),
+                AgentModelResponse(assistant_message="done", should_continue=False),
+            ]
+        )
+        events: list[str] = []
+        behavior = _TrackingBehaviorLayer(events)
+        explicit_layer = _OrderingFormalizationLayer(events)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = _InspectableAgent(
+                model=model,
+                tool_executor=registry,
+                behaviors=(behavior,),
+                formalization_layers=(explicit_layer,),
+                parameter_versions=["initial", "refreshed"],
+                repo_root=temp_dir,
+            )
+
+            request = agent.build_model_request()
+            result = agent.run(max_cycles=3)
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(events, ["behavior", "formalization"])
+        self.assertEqual(behavior.prepare_calls[0][0], "inspectable_agent")
+        self.assertEqual(behavior.tool_calls[0].arguments, {"text": "hello"})
+        self.assertIn("[BEHAVIORAL CONSTRAINTS: _TrackingBehaviorLayer]", request.system_prompt)
+        self.assertIn('"arguments": {', model.requests[1].transcript[2].content)
+        self.assertIn('"text": "hello"', model.requests[1].transcript[2].content)
+
+    def test_result_event_hooks_must_return_tool_result(self) -> None:
+        registry = ToolRegistry([_constant_tool("session.echo", "echo", _echo_handler)])
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Use the echo tool.",
+                    tool_calls=(ToolCall(tool_key="session.echo", arguments={"text": "hello"}),),
+                    should_continue=True,
+                ),
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = _InspectableAgent(
+                model=model,
+                tool_executor=registry,
+                behaviors=(_InvalidResultEventLayer(),),
+                repo_root=temp_dir,
+            )
+
+            with self.assertRaisesRegex(
+                TypeError,
+                r"_InvalidResultEventLayer\.on_tool_result_event\(\) must return ToolResult\.",
+            ):
+                agent.run(max_cycles=1)
 
     def test_stages_drive_live_tool_swaps_and_terminal_completion(self) -> None:
         registry = ToolRegistry(

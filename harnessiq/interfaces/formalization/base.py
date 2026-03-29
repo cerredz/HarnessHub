@@ -21,14 +21,14 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any
 
-from harnessiq.shared.agents import AgentParameterSection
+from harnessiq.shared.agents import AgentParameterSection, AgentPauseSignal
 from harnessiq.shared.formalization import (
     BudgetSpec,
     FieldSpec,
     FormalizationDescription,
     LayerRuleRecord,
 )
-from harnessiq.shared.tools import ToolDefinition, ToolResult
+from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
 
 
 class BaseFormalizationLayer(ABC):
@@ -85,9 +85,21 @@ class BaseFormalizationLayer(ABC):
         """Run deterministic setup before the harness enters its main loop."""
         del agent_name, memory_path
 
+    def on_tool_call(
+        self,
+        tool_call: ToolCall,
+    ) -> ToolCall | ToolResult | AgentPauseSignal:
+        """Inspect or transform a tool call before the harness executes it."""
+        return tool_call
+
     def on_tool_result(self, result: ToolResult) -> ToolResult:
         """Inspect or transform a tool result before the harness records it."""
         return result
+
+    def on_tool_result_event(self, tool_call: ToolCall, result: ToolResult) -> ToolResult:
+        """Inspect a tool result with access to the originating tool call."""
+        del tool_call
+        return self.on_tool_result(result)
 
     def on_pre_reset(self) -> None:
         """Run deterministic work immediately before the context resets."""

@@ -20,6 +20,12 @@ from .artifacts import (
     validate_input_artifact_specs,
     validate_output_artifact_specs,
 )
+from .behaviors import (
+    BaseBehaviorLayer,
+    BehaviorConstraint,
+    BehaviorEnforcementMode,
+    BehaviorViolationAction,
+)
 from .base import (
     ArtifactSpec,
     BaseArtifactLayer,
@@ -46,6 +52,7 @@ __all__ = [
     "ArtifactSpec",
     "ArtifactNotFoundError",
     "BaseArtifactLayer",
+    "BaseBehaviorLayer",
     "BaseContractLayer",
     "BaseFormalizationLayer",
     "BaseHookLayer",
@@ -55,6 +62,9 @@ __all__ = [
     "BaseToolContributionLayer",
     "BudgetSpec",
     "CompletionRequirement",
+    "BehaviorConstraint",
+    "BehaviorEnforcementMode",
+    "BehaviorViolationAction",
     "FORMAT_EXTENSION_MAP",
     "FORMAT_TOOL_MAP",
     "FieldSpec",

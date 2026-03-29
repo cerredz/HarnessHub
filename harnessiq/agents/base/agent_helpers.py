@@ -192,11 +192,52 @@ class BaseAgentHelpersMixin:
             unique_keys.append(tool_key)
         return tuple(unique_keys)
 
-    def _apply_formalization_tool_result(self, result: ToolResult) -> ToolResult:
-        """Run one tool result through every formalization layer."""
+    def _apply_formalization_tool_call(
+        self,
+        tool_call: ToolCall,
+    ) -> tuple[ToolCall, ToolResult | None, AgentPauseSignal | None]:
+        """Run one tool call through every formalization layer before execution."""
+        current = tool_call
+        for layer in self._formalization_layers:
+            hook = getattr(layer, "on_tool_call", None)
+            if not callable(hook):
+                continue
+            response = hook(current)
+            if isinstance(response, ToolCall):
+                current = response
+                continue
+            if isinstance(response, ToolResult):
+                return current, response, None
+            if isinstance(response, AgentPauseSignal):
+                return current, None, response
+            message = (
+                f"{layer.layer_id}.on_tool_call() must return ToolCall, ToolResult, "
+                "or AgentPauseSignal."
+            )
+            raise TypeError(message)
+        return current, None, None
+
+    def _apply_formalization_tool_result_event(
+        self,
+        tool_call: ToolCall,
+        result: ToolResult,
+    ) -> ToolResult:
+        """Run one tool result through every formalization layer with call context."""
         current = result
         for layer in self._formalization_layers:
+            hook = getattr(layer, "on_tool_result_event", None)
+            if callable(hook):
+                current = hook(tool_call, current)
+                if not isinstance(current, ToolResult):
+                    message = (
+                        f"{layer.layer_id}.on_tool_result_event() must return ToolResult."
+                    )
+                    raise TypeError(message)
+                continue
             current = layer.on_tool_result(current)
+            if not isinstance(current, ToolResult):
+                message = f"{layer.layer_id}.on_tool_result() must return ToolResult."
+                raise TypeError(message)
         return current
 
     def _collect_formalization_tools(self) -> tuple[RegisteredTool, ...]:

@@ -10,8 +10,10 @@ from harnessiq import interfaces
 from harnessiq.interfaces import (
     AnthropicModelClient,
     BaseContractLayer,
+    BaseBehaviorLayer,
     BaseStageLayer,
     BaseStateLayer,
+    BehaviorConstraint,
     BudgetSpec,
     DynamicToolSelector,
     EmbeddingBackend,
@@ -285,6 +287,26 @@ class _FakeStateLayer(BaseStateLayer):
         }
 
 
+class _FakeBehaviorLayer(BaseBehaviorLayer):
+    def get_behavioral_constraints(self):
+        return (
+            BehaviorConstraint(
+                constraint_id="BEHAVIOR-ONE",
+                description="Reason before writing the final artifact.",
+                category="reasoning_behavior",
+                enforced_at="filter_tool_keys",
+                violation_action="hide_tool",
+            ),
+            BehaviorConstraint(
+                constraint_id="BEHAVIOR-TWO",
+                description="Block completion if the quality gate fails.",
+                category="quality_behavior",
+                enforced_at="on_tool_result",
+                violation_action="block_result",
+            ),
+        )
+
+
 def _fake_request_executor(
     method: str,
     url: str,
@@ -314,6 +336,7 @@ class InterfacesPackageTests(unittest.TestCase):
         self.assertIn("OpenAIStyleModelClient", exported)
         self.assertIn("DynamicToolSelector", exported)
         self.assertIn("EmbeddingBackend", exported)
+        self.assertIn("BaseBehaviorLayer", exported)
         self.assertIn("BaseFormalizationLayer", exported)
         self.assertIn("BaseStageLayer", exported)
         self.assertIn("BaseStateLayer", exported)
@@ -333,6 +356,7 @@ class InterfacesPackageTests(unittest.TestCase):
 
         self.assertTrue((Path(formalization.__file__).resolve().parent / "base.py").exists())
         self.assertEqual(formalization.BaseFormalizationLayer.__name__, "BaseFormalizationLayer")
+        self.assertEqual(formalization.BaseBehaviorLayer.__name__, "BaseBehaviorLayer")
 
     def test_lazy_exports_resolve_and_cache_symbols(self) -> None:
         first = interfaces.RequestPreparingClient
@@ -402,6 +426,24 @@ class ModelContractTests(unittest.TestCase):
 
 
 class FormalizationContractTests(unittest.TestCase):
+    def test_behavior_layer_derives_self_documentation_from_constraints(self) -> None:
+        layer = _FakeBehaviorLayer()
+
+        description = layer.describe()
+        sections = layer.get_parameter_sections()
+        prompt = layer.augment_system_prompt("Base system prompt")
+
+        self.assertIn("behavioral constraint", description.identity)
+        self.assertEqual(description.rules[0], LayerRuleRecord(
+            rule_id="BEHAVIOR-ONE",
+            description="Reason before writing the final artifact.",
+            enforced_at="filter_tool_keys",
+            enforcement_type="block",
+        ))
+        self.assertEqual(sections[0].title, "Formalization: _FakeBehaviorLayer")
+        self.assertIn("BEHAVIOR-ONE", sections[0].content)
+        self.assertIn("[BEHAVIORAL CONSTRAINTS: _FakeBehaviorLayer]", prompt)
+
     def test_contract_layer_produces_default_self_documentation(self) -> None:
         layer = _FakeContractLayer()
 

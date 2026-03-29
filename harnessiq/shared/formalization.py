@@ -31,6 +31,7 @@ FormalizationHookName = Literal[
     "filter_tool_keys",
     "get_parameter_sections",
     "on_agent_prepare",
+    "on_tool_call",
     "on_post_reset",
     "on_pre_reset",
     "on_tool_result",

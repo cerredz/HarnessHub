@@ -51,6 +51,12 @@ from .artifacts import (
 )
 from .artifact import BaseArtifactLayer
 from .base import BaseFormalizationLayer
+from .behaviors import (
+    BaseBehaviorLayer,
+    BehaviorConstraint,
+    BehaviorEnforcementMode,
+    BehaviorViolationAction,
+)
 from .contract import BaseContractLayer
 from .hook_layer import BaseHookLayer
 from .role import BaseRoleLayer
@@ -62,6 +68,7 @@ __all__ = [
     "ArtifactSpec",
     "ArtifactNotFoundError",
     "BaseArtifactLayer",
+    "BaseBehaviorLayer",
     "BaseContractLayer",
     "BaseFormalizationLayer",
     "BaseHookLayer",
@@ -71,6 +78,9 @@ __all__ = [
     "BaseToolContributionLayer",
     "BudgetSpec",
     "CompletionRequirement",
+    "BehaviorConstraint",
+    "BehaviorEnforcementMode",
+    "BehaviorViolationAction",
     "FORMAT_EXTENSION_MAP",
     "FORMAT_TOOL_MAP",
     "FieldSpec",
