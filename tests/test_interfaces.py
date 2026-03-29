@@ -326,6 +326,14 @@ class InterfacesPackageTests(unittest.TestCase):
         from harnessiq import formalization
 
         self.assertTrue((Path(formalization.__file__).resolve().parent / "base.py").exists())
+        self.assertEqual(formalization.BaseFormalizationLayer.__name__, "BaseFormalizationLayer")
+
+    def test_lazy_exports_resolve_and_cache_symbols(self) -> None:
+        first = interfaces.RequestPreparingClient
+        second = interfaces.RequestPreparingClient
+
+        self.assertIs(first, second)
+        self.assertIn("RequestPreparingClient", dir(interfaces))
 
 
 class ProviderContractTests(unittest.TestCase):
