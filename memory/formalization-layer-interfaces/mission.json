@@ -1,0 +1,53 @@
+{
+  "goal": "Add self-documenting formalization layer interfaces to the public HarnessIQ repository surface. The delivered scope is a minimal SDK-facing interface addition: a base formalization layer abstract class plus a focused subset of typed formalization layer base classes that can later be wired into harness runtime injection.",
+  "mission_type": {
+    "primary": "app_build",
+    "secondary": "research"
+  },
+  "success_criteria": [
+    "1. The repository exports a new formalization interface module from the public `harnessiq.interfaces` package.",
+    "2. The new module defines a self-documenting base formalization abstraction with documented runtime hook methods and developer-facing description helpers.",
+    "3. The new module includes a focused subset of typed formalization layer base classes derived from the conversation, without overcommitting the runtime implementation.",
+    "4. Targeted tests cover the new public exports and the core self-documenting behavior.",
+    "5. The change avoids unrelated runtime rewrites and does not disturb existing dirty worktree changes."
+  ],
+  "scope": {
+    "in_scope": [
+      "Add one new interface module under `harnessiq/interfaces/` for formalization contracts.",
+      "Export the new contracts from `harnessiq.interfaces`.",
+      "Add focused tests for the new interface surface.",
+      "Create and maintain durable mission artifacts and implementation notes under `memory/formalization-layer-interfaces/`."
+    ],
+    "out_of_scope": [
+      "Integrating formalization layers into `BaseAgent` runtime execution in this change.",
+      "Adding every possible concrete formalization implementation described in the design conversation.",
+      "Regenerating repository-wide generated docs or broad SDK refactors unrelated to the new contracts."
+    ]
+  },
+  "constraints": [
+    "Do not revert or disturb unrelated dirty worktree changes.",
+    "Treat `harnessiq/` as the only authoritative runtime source tree.",
+    "Keep the repository change minimal and centered on the interfaces package plus tests.",
+    "Prefer self-documenting abstractions that can describe both runtime behavior and model-facing context without committing to a full runtime implementation yet."
+  ],
+  "authorization_level": {
+    "allowed_without_additional_approval": [
+      "Read repository files.",
+      "Create and update mission artifacts under `memory/formalization-layer-interfaces/`.",
+      "Edit interface and test files needed for the scoped implementation.",
+      "Run targeted local tests."
+    ],
+    "requires_human_approval": [
+      "Broad runtime integration beyond the interface layer.",
+      "Destructive repository operations.",
+      "Pushing branches, creating PRs, or deleting user-created issues."
+    ]
+  },
+  "human_contact": {
+    "contact": "repository user in current session",
+    "urgency": "Surface only blocking ambiguities that would materially change the interface contract."
+  },
+  "mission_status": "complete",
+  "created_at": "2026-03-29T00:29:54.2205007Z",
+  "last_updated": "2026-03-29T00:39:05.9812092Z"
+}

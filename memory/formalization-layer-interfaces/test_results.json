@@ -1,0 +1,41 @@
+[
+  {
+    "id": "T001",
+    "task_id": "2",
+    "test_type": "unit_test",
+    "test_description": "Run the focused public interface contract test module after adding the new formalization surface.",
+    "inputs": "python -m pytest tests/test_interfaces.py",
+    "expected_output": "The interface package imports cleanly and all interface tests pass.",
+    "actual_output": "20 tests passed.",
+    "result": "pass",
+    "run_at": "2026-03-29T00:39:05.9812092Z",
+    "run_by": "agent",
+    "notes": "This run also verified the `harnessiq.shared` lazy-export fix by exercising the public `harnessiq.interfaces` import path."
+  },
+  {
+    "id": "T002",
+    "task_id": "2",
+    "test_type": "integration_test",
+    "test_description": "Run adjacent interface consumers that depend on output-sink and dynamic-tool-selector contracts.",
+    "inputs": "python -m pytest tests/test_output_sinks.py tests/test_toolset_dynamic_selector.py",
+    "expected_output": "Adjacent public-contract tests continue to pass after the interface and shared-package changes.",
+    "actual_output": "26 tests passed.",
+    "result": "pass",
+    "run_at": "2026-03-29T00:39:05.9812092Z",
+    "run_by": "agent",
+    "notes": "Confirms the package-init change did not break nearby interface consumers."
+  },
+  {
+    "id": "T003",
+    "task_id": "2",
+    "test_type": "integration_test",
+    "test_description": "Run shared-manifest and validated shared-module tests after converting `harnessiq.shared` to lazy exports.",
+    "inputs": "python -m pytest tests/test_harness_manifests.py tests/test_validated_shared.py tests/test_tool_selection_shared.py",
+    "expected_output": "Shared-package imports and manifest exports continue to behave correctly.",
+    "actual_output": "22 tests passed.",
+    "result": "pass",
+    "run_at": "2026-03-29T00:39:05.9812092Z",
+    "run_by": "agent",
+    "notes": "This targets the package most directly affected by the import-cycle fix."
+  }
+]
