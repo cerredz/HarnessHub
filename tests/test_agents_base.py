@@ -19,6 +19,7 @@ from harnessiq.agents import (
 )
 from harnessiq.formalization import (
     BaseFormalizationLayer,
+    InputArtifactLayer,
     InputArtifactSpec,
     LayerRuleRecord,
     OutputArtifactLayer,
@@ -605,6 +606,39 @@ class BaseAgentTests(unittest.TestCase):
             [tool.key for tool in request.tools],
             [CONTROL_MARK_COMPLETE, ARTIFACT_WRITE_MARKDOWN],
         )
+
+    def test_explicit_input_artifact_layer_renders_sections_through_base_agent(self) -> None:
+        registry = ToolRegistry(create_control_tools())
+        model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            memory_path = Path(temp_dir) / "agent-memory"
+            brief_path = memory_path / "inputs" / "brief.md"
+            brief_path.parent.mkdir(parents=True, exist_ok=True)
+            brief_path.write_text("Client brief", encoding="utf-8")
+            input_layer = InputArtifactLayer(
+                (
+                    InputArtifactSpec(
+                        name="client_brief",
+                        path="inputs/brief.md",
+                        description="The full client brief.",
+                        file_format="markdown",
+                    ),
+                )
+            )
+
+            agent = _InspectableAgent(
+                model=model,
+                tool_executor=registry,
+                formalization_layers=(input_layer,),
+                memory_path=memory_path,
+                repo_root=temp_dir,
+            )
+
+            request = agent.build_model_request()
+
+        input_section = next(section for section in request.parameter_sections if section.title == "Input: client_brief")
+        self.assertIn("Client brief", input_section.content)
 
     def test_run_records_tool_results_and_passes_transcript_to_next_turn(self) -> None:
         registry = ToolRegistry(
