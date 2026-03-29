@@ -92,6 +92,36 @@ When `tool_selection.enabled=False`, `BaseAgent` keeps the existing static tool 
 
 For the full dynamic-selection contract, including CLI flags and custom-tool behavior, see [docs/dynamic-tool-selection.md](./dynamic-tool-selection.md).
 
+Artifact formalization layers can also be attached directly through the `BaseAgent` constructor. `input_artifacts=` injects declared files into every rebuilt context window, while `output_artifacts=` adds the correct write tools and blocks `control.mark_complete` until required outputs are written.
+
+```python
+from harnessiq.agents import BaseAgent
+from harnessiq.formalization import InputArtifactSpec, OutputArtifactSpec
+
+agent = DemoAgent(
+    name="demo_agent",
+    model=model,
+    tool_executor=create_builtin_registry(),
+    input_artifacts=(
+        InputArtifactSpec(
+            name="client_brief",
+            path="inputs/brief.md",
+            description="The source brief for this run.",
+            file_format="markdown",
+        ),
+    ),
+    output_artifacts=(
+        OutputArtifactSpec(
+            name="executive_memo",
+            description="A one-page executive memo summarizing the brief.",
+            file_format="markdown",
+        ),
+    ),
+)
+```
+
+For advanced cases, you can still instantiate `InputArtifactLayer` or `OutputArtifactLayer` directly and pass them through `formalization_layers=`.
+
 For custom agents, `json_parameter_section()` is the SDK helper for durable JSON-backed memory blocks, and `build_context_window()` / `inspect_tools()` expose the assembled runtime state for debugging and orchestration.
 
 Harnessiq also exposes declarative harness manifests for the built-in agents. These manifests live under `harnessiq.shared` and capture stable metadata such as prompt paths, runtime/custom parameter specs, durable memory files, provider families, and structured output contracts.
