@@ -11,8 +11,10 @@ from harnessiq.interfaces import (
     AnthropicModelClient,
     BaseContractLayer,
     BaseBehaviorLayer,
+    BaseExecutionPaceLayer,
     BaseStageLayer,
     BaseStateLayer,
+    BaseToolBehaviorLayer,
     BehaviorConstraint,
     BudgetSpec,
     DynamicToolSelector,
@@ -25,13 +27,21 @@ from harnessiq.interfaces import (
     IterableFactoryLoader,
     LayerRuleRecord,
     OpenAIStyleModelClient,
+    PaceRuleSpec,
     PreparedRequest,
     PreparedStoreLoader,
+    ProgressCheckpointBehavior,
+    ReflectionCadenceBehavior,
     RequestExecutor,
     RequestPreparingClient,
     StageSpec,
     StateFieldSpec,
     TimeoutConfig,
+    ToolCallLimitBehavior,
+    ToolConstraintSpec,
+    ToolCooldownBehavior,
+    ToolSequencingBehavior,
+    VerificationBehavior,
     WebhookSinkClient,
     ZeroArgumentFactory,
 )
@@ -337,9 +347,11 @@ class InterfacesPackageTests(unittest.TestCase):
         self.assertIn("DynamicToolSelector", exported)
         self.assertIn("EmbeddingBackend", exported)
         self.assertIn("BaseBehaviorLayer", exported)
+        self.assertIn("BaseExecutionPaceLayer", exported)
         self.assertIn("BaseFormalizationLayer", exported)
         self.assertIn("BaseStageLayer", exported)
         self.assertIn("BaseStateLayer", exported)
+        self.assertIn("BaseToolBehaviorLayer", exported)
         self.assertIn("LayerRuleRecord", exported)
 
     def test_interfaces_package_contains_formalization_package(self) -> None:
@@ -357,6 +369,8 @@ class InterfacesPackageTests(unittest.TestCase):
         self.assertTrue((Path(formalization.__file__).resolve().parent / "base.py").exists())
         self.assertEqual(formalization.BaseFormalizationLayer.__name__, "BaseFormalizationLayer")
         self.assertEqual(formalization.BaseBehaviorLayer.__name__, "BaseBehaviorLayer")
+        self.assertEqual(formalization.ToolCallLimitBehavior.__name__, "ToolCallLimitBehavior")
+        self.assertEqual(formalization.ReflectionCadenceBehavior.__name__, "ReflectionCadenceBehavior")
 
     def test_lazy_exports_resolve_and_cache_symbols(self) -> None:
         first = interfaces.RequestPreparingClient
@@ -443,6 +457,18 @@ class FormalizationContractTests(unittest.TestCase):
         self.assertEqual(sections[0].title, "Formalization: _FakeBehaviorLayer")
         self.assertIn("BEHAVIOR-ONE", sections[0].content)
         self.assertIn("[BEHAVIORAL CONSTRAINTS: _FakeBehaviorLayer]", prompt)
+
+    def test_tool_and_pace_behavior_exports_resolve(self) -> None:
+        self.assertEqual(BaseToolBehaviorLayer.__name__, "BaseToolBehaviorLayer")
+        self.assertEqual(BaseExecutionPaceLayer.__name__, "BaseExecutionPaceLayer")
+        self.assertEqual(ToolConstraintSpec.__name__, "ToolConstraintSpec")
+        self.assertEqual(PaceRuleSpec.__name__, "PaceRuleSpec")
+        self.assertEqual(ToolCallLimitBehavior.__name__, "ToolCallLimitBehavior")
+        self.assertEqual(ToolCooldownBehavior.__name__, "ToolCooldownBehavior")
+        self.assertEqual(ToolSequencingBehavior.__name__, "ToolSequencingBehavior")
+        self.assertEqual(ProgressCheckpointBehavior.__name__, "ProgressCheckpointBehavior")
+        self.assertEqual(ReflectionCadenceBehavior.__name__, "ReflectionCadenceBehavior")
+        self.assertEqual(VerificationBehavior.__name__, "VerificationBehavior")
 
     def test_contract_layer_produces_default_self_documentation(self) -> None:
         layer = _FakeContractLayer()
