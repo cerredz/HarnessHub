@@ -7,7 +7,11 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from harnessiq.shared.tools import FILESYSTEM_PATH_EXISTS, PROMPT_CREATE_SYSTEM_PROMPT
+from harnessiq.shared.tools import (
+    FILESYSTEM_PATH_EXISTS,
+    FILESYSTEM_REPLACE_TEXT_FILE,
+    PROMPT_CREATE_SYSTEM_PROMPT,
+)
 from harnessiq.tools import (
     append_text_file,
     copy_path,
@@ -18,6 +22,7 @@ from harnessiq.tools import (
     make_directory,
     path_exists,
     read_text_file,
+    replace_text_file,
     write_text_file,
 )
 
@@ -105,10 +110,44 @@ class PromptAndFilesystemToolsTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "overwriting is not allowed"):
                 write_text_file(str(target), "new")
 
+    def test_replace_text_file_supports_create_and_overwrite(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            target = Path(tmp_dir) / "rewrite.txt"
+
+            created = replace_text_file(str(target), "first")
+            replaced = replace_text_file(str(target), "second")
+
+            self.assertTrue(created["created"])
+            self.assertFalse(created["overwritten"])
+            self.assertFalse(replaced["created"])
+            self.assertTrue(replaced["overwritten"])
+            self.assertEqual(target.read_text(encoding="utf-8"), "second")
+
+    def test_replace_text_file_can_create_missing_parents(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            target = Path(tmp_dir) / "nested" / "rewrite.txt"
+
+            with self.assertRaisesRegex(ValueError, "Parent directory"):
+                replace_text_file(str(target), "value")
+
+            result = replace_text_file(str(target), "value", create_parents=True)
+
+            self.assertTrue(result["created"])
+            self.assertEqual(target.read_text(encoding="utf-8"), "value")
+
+    def test_replace_text_file_refuses_directory_target(self) -> None:
+        with TemporaryDirectory() as tmp_dir:
+            target = Path(tmp_dir) / "directory-target"
+            target.mkdir()
+
+            with self.assertRaisesRegex(ValueError, "cannot be overwritten"):
+                replace_text_file(str(target), "value")
+
     def test_registry_executes_prompt_and_filesystem_tools(self) -> None:
         registry = create_builtin_registry()
         with TemporaryDirectory() as tmp_dir:
             temp_path = Path(tmp_dir) / "missing.txt"
+            rewritten_path = Path(tmp_dir) / "rewritten.txt"
             prompt_result = registry.execute(
                 PROMPT_CREATE_SYSTEM_PROMPT,
                 {
@@ -118,9 +157,18 @@ class PromptAndFilesystemToolsTests(unittest.TestCase):
                 },
             )
             path_result = registry.execute(FILESYSTEM_PATH_EXISTS, {"path": str(temp_path)})
+            replace_result = registry.execute(
+                FILESYSTEM_REPLACE_TEXT_FILE,
+                {"path": str(rewritten_path), "content": "replacement content"},
+            )
+
+            self.assertEqual(rewritten_path.read_text(encoding="utf-8"), "replacement content")
 
         self.assertIn("Make a tight plan.", prompt_result.output["system_prompt"])
         self.assertFalse(path_result.output["exists"])
+        self.assertEqual(replace_result.output["path"], str(rewritten_path.resolve()))
+        self.assertTrue(replace_result.output["created"])
+        self.assertFalse(replace_result.output["overwritten"])
 
 
 if __name__ == "__main__":

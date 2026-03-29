@@ -16,6 +16,7 @@ from harnessiq.shared.tools import (
     FILESYSTEM_MAKE_DIRECTORY,
     FILESYSTEM_PATH_EXISTS,
     FILESYSTEM_READ_TEXT_FILE,
+    FILESYSTEM_REPLACE_TEXT_FILE,
     FILESYSTEM_WRITE_TEXT_FILE,
     RegisteredTool,
     ToolArguments,
@@ -116,6 +117,29 @@ def append_text_file(
         "path": str(file_path),
         "appended": True,
         "created": not existed_before,
+        "character_count": len(content),
+        "encoding": encoding,
+    }
+
+
+def replace_text_file(
+    path: str,
+    content: str,
+    *,
+    encoding: str = "utf-8",
+    create_parents: bool = False,
+) -> dict[str, object]:
+    """Write text to a file, replacing any existing file content."""
+    file_path = _normalize_path(path)
+    if file_path.exists() and file_path.is_dir():
+        raise ValueError(f"Path '{file_path}' is a directory and cannot be overwritten.")
+    existed_before = file_path.exists()
+    _ensure_parent_directory(file_path, create_parents=create_parents)
+    file_path.write_text(content, encoding=encoding)
+    return {
+        "path": str(file_path),
+        "created": not existed_before,
+        "overwritten": existed_before,
         "character_count": len(content),
         "encoding": encoding,
     }
@@ -231,6 +255,24 @@ def create_filesystem_tools() -> tuple[RegisteredTool, ...]:
         ),
         RegisteredTool(
             definition=_tool_definition(
+                key=FILESYSTEM_REPLACE_TEXT_FILE,
+                name="replace_text_file",
+                description="Write text to a file, replacing any existing file content.",
+                properties={
+                    "path": deepcopy(_PATH_PROPERTY),
+                    "content": {"type": "string", "description": "Full text content to write."},
+                    "encoding": {"type": "string", "description": "Text encoding used to encode the file."},
+                    "create_parents": {
+                        "type": "boolean",
+                        "description": "Create missing parent directories before writing.",
+                    },
+                },
+                required=("path", "content"),
+            ),
+            handler=_replace_text_file_tool,
+        ),
+        RegisteredTool(
+            definition=_tool_definition(
                 key=FILESYSTEM_APPEND_TEXT_FILE,
                 name="append_text_file",
                 description="Append text to a file, creating it if it does not already exist.",
@@ -323,6 +365,14 @@ def _append_text_file_tool(arguments: ToolArguments) -> dict[str, object]:
     encoding = _require_optional_string(arguments, "encoding") or "utf-8"
     create_parents = _require_bool(arguments, "create_parents", default=False)
     return append_text_file(path, content, encoding=encoding, create_parents=create_parents)
+
+
+def _replace_text_file_tool(arguments: ToolArguments) -> dict[str, object]:
+    path = _require_string(arguments, "path")
+    content = _require_string(arguments, "content")
+    encoding = _require_optional_string(arguments, "encoding") or "utf-8"
+    create_parents = _require_bool(arguments, "create_parents", default=False)
+    return replace_text_file(path, content, encoding=encoding, create_parents=create_parents)
 
 
 def _make_directory_tool(arguments: ToolArguments) -> dict[str, object]:
@@ -439,5 +489,6 @@ __all__ = [
     "make_directory",
     "path_exists",
     "read_text_file",
+    "replace_text_file",
     "write_text_file",
 ]

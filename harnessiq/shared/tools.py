@@ -178,6 +178,7 @@ FILESYSTEM_PATH_EXISTS = "filesystem.path_exists"
 FILESYSTEM_LIST_DIRECTORY = "filesystem.list_directory"
 FILESYSTEM_READ_TEXT_FILE = "filesystem.read_text_file"
 FILESYSTEM_WRITE_TEXT_FILE = "filesystem.write_text_file"
+FILESYSTEM_REPLACE_TEXT_FILE = "filesystem.replace_text_file"
 FILESYSTEM_APPEND_TEXT_FILE = "filesystem.append_text_file"
 FILESYSTEM_MAKE_DIRECTORY = "filesystem.make_directory"
 FILESYSTEM_COPY_PATH = "filesystem.copy_path"
@@ -594,6 +595,7 @@ __all__ = [
     "FILESYSTEM_MAKE_DIRECTORY",
     "FILESYSTEM_PATH_EXISTS",
     "FILESYSTEM_READ_TEXT_FILE",
+    "FILESYSTEM_REPLACE_TEXT_FILE",
     "FILESYSTEM_WRITE_TEXT_FILE",
     "CONTEXT_COMPACTION_TOOL_KEYS",
     "CONTEXT_INJECT_ASSISTANT_NOTE",

@@ -28,6 +28,7 @@ from harnessiq.shared.tools import (
     FILESYSTEM_MAKE_DIRECTORY,
     FILESYSTEM_PATH_EXISTS,
     FILESYSTEM_READ_TEXT_FILE,
+    FILESYSTEM_REPLACE_TEXT_FILE,
     FILESYSTEM_WRITE_TEXT_FILE,
     HEAVY_COMPACTION,
     JsonObject,
@@ -142,6 +143,7 @@ from .filesystem import (
     make_directory,
     path_exists,
     read_text_file,
+    replace_text_file,
     write_text_file,
 )
 from .filesystem_safe import create_filesystem_safe_tools
@@ -244,6 +246,7 @@ __all__ = [
     "FILESYSTEM_MAKE_DIRECTORY",
     "FILESYSTEM_PATH_EXISTS",
     "FILESYSTEM_READ_TEXT_FILE",
+    "FILESYSTEM_REPLACE_TEXT_FILE",
     "FILESYSTEM_WRITE_TEXT_FILE",
     "create_filesystem_safe_tools",
     "FilterOperator",
@@ -390,6 +393,7 @@ __all__ = [
     "path_exists",
     "pause_for_human",
     "read_text_file",
+    "replace_text_file",
     "regex_extract",
     "remove_tool_entries",
     "remove_tool_result_entries",
