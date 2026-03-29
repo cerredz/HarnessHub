@@ -101,6 +101,23 @@ class SafetyBehaviorTests(unittest.TestCase):
         )
         self.assertEqual(visible_after_use, ("behavior.confirm_action", "filesystem.read_text_file"))
 
+    def test_irreversible_action_gate_rejects_non_protected_confirmation_targets(self) -> None:
+        layer = IrreversibleActionGateBehavior(irreversible_patterns=("filesystem.write_*",))
+
+        confirm_tool = layer.get_formalization_tools()[0]
+        rejected = confirm_tool.execute(
+            {
+                "target_tool": "filesystem.read_text_file",
+                "rationale": "This should not be confirmable.",
+            }
+        )
+
+        self.assertFalse(rejected.output["confirmed"])
+        self.assertEqual(
+            layer.filter_tool_keys(("filesystem.write_text_file", "filesystem.read_text_file")),
+            ("filesystem.read_text_file",),
+        )
+
     def test_rate_limit_behavior_hides_tools_during_cooldown_and_after_limit(self) -> None:
         layer = RateLimitBehavior(limits={"instantly.*": 2}, window="reset", cooldown_cycles=1)
         layer.on_agent_prepare(agent_name="demo", memory_path="memory/demo")
@@ -137,6 +154,10 @@ class SafetyBehaviorTests(unittest.TestCase):
         self.assertIn("forbidden scope value", blocked.output["error"])
 
         self.assertIs(layer.on_tool_call(safe_call), safe_call)
+
+    def test_rate_limit_behavior_rejects_invalid_configuration(self) -> None:
+        with self.assertRaisesRegex(ValueError, "greater than zero"):
+            RateLimitBehavior(limits={"instantly.*": 0})
 
 
 if __name__ == "__main__":

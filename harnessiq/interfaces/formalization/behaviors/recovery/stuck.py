@@ -17,6 +17,8 @@ class StuckDetectionBehavior(BaseErrorRecoveryLayer):
         threshold: int = 3,
         monitored_patterns: tuple[str, ...] = ("*",),
     ) -> None:
+        if threshold <= 0:
+            raise ValueError("threshold must be greater than zero.")
         self._threshold = threshold
         self._monitored_patterns = tuple(monitored_patterns)
         self._last_signature: tuple[str, str] | None = None

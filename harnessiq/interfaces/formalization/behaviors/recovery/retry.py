@@ -23,6 +23,8 @@ class RetryStrategyBehavior(BaseErrorRecoveryLayer):
         monitored_patterns: tuple[str, ...],
         max_retries: int = 2,
     ) -> None:
+        if max_retries <= 0:
+            raise ValueError("max_retries must be greater than zero.")
         self._monitored_patterns = tuple(monitored_patterns)
         self._max_retries = max_retries
         self._failure_counts: dict[tuple[str, str], int] = {}

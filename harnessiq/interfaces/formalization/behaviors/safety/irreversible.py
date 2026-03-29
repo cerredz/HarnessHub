@@ -61,6 +61,15 @@ class IrreversibleActionGateBehavior(BaseSafetyBehaviorLayer):
     def _handle_confirm(self, arguments: dict[str, object]) -> dict[str, object]:
         target_tool = str(arguments["target_tool"])
         rationale = str(arguments["rationale"])
+        if not any(
+            _is_tool_allowed(target_tool, (pattern,))
+            for pattern in self._irreversible_patterns
+        ):
+            return {
+                "confirmed": False,
+                "target_tool": target_tool,
+                "error": "Target tool is not protected by this irreversible-action gate.",
+            }
         self._confirmed[target_tool] = rationale
         return {"confirmed": True, "target_tool": target_tool, "rationale": rationale}
 

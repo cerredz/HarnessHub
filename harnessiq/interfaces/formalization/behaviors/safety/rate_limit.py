@@ -20,6 +20,10 @@ class RateLimitBehavior(BaseSafetyBehaviorLayer):
     ) -> None:
         if window not in {"reset", "run"}:
             raise ValueError("window must be either 'reset' or 'run'.")
+        if cooldown_cycles < 0:
+            raise ValueError("cooldown_cycles must not be negative.")
+        if any(count <= 0 for count in limits.values()):
+            raise ValueError("All rate-limit counts must be greater than zero.")
         self._limits = {pattern: count for pattern, count in limits.items()}
         self._window = window
         self._cooldown_cycles = cooldown_cycles

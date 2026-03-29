@@ -17,6 +17,8 @@ class ErrorEscalationBehavior(BaseErrorRecoveryLayer):
         monitored_patterns: tuple[str, ...] = ("*",),
         max_consecutive_failures: int = 3,
     ) -> None:
+        if max_consecutive_failures <= 0:
+            raise ValueError("max_consecutive_failures must be greater than zero.")
         self._monitored_patterns = tuple(monitored_patterns)
         self._max_consecutive_failures = max_consecutive_failures
         self._consecutive_failures = 0
