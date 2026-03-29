@@ -17,13 +17,21 @@ from harnessiq.agents import (
     BaseAgent,
     json_parameter_section,
 )
-from harnessiq.formalization import BaseFormalizationLayer, LayerRuleRecord
+from harnessiq.formalization import (
+    BaseFormalizationLayer,
+    InputArtifactSpec,
+    LayerRuleRecord,
+    OutputArtifactLayer,
+    OutputArtifactSpec,
+)
 from harnessiq.formalization.stages import SimpleStageSpec
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.shared.tool_selection import ToolSelectionConfig, ToolSelectionResult
 from harnessiq.shared.tools import (
+    ARTIFACT_WRITE_MARKDOWN,
     CONTEXT_INJECT_ASSISTANT_NOTE,
     CONTEXT_PARAM_INJECT_SECTION,
+    CONTROL_MARK_COMPLETE,
     CONTROL_PAUSE_FOR_HUMAN,
     HEAVY_COMPACTION,
     RegisteredTool,
@@ -70,6 +78,9 @@ class _InspectableAgent(BaseAgent):
         dynamic_tool_selector=None,
         formalization_layers=None,
         stages=None,
+        input_artifacts=None,
+        output_artifacts=None,
+        memory_path: Path | None = None,
         repo_root: str | Path | None = None,
     ) -> None:
         self._parameter_versions = parameter_versions or ["initial"]
@@ -85,6 +96,9 @@ class _InspectableAgent(BaseAgent):
             dynamic_tool_selector=dynamic_tool_selector,
             formalization_layers=formalization_layers,
             stages=stages,
+            input_artifacts=input_artifacts,
+            output_artifacts=output_artifacts,
+            memory_path=memory_path,
             repo_root=repo_root,
         )
 
@@ -224,6 +238,31 @@ class _TrackingFormalizationLayer(BaseFormalizationLayer):
 
     def on_post_reset(self) -> None:
         self.post_reset_calls += 1
+
+
+class _AllowSpecificToolsLayer(BaseFormalizationLayer):
+    def __init__(self, allowed_keys: tuple[str, ...]) -> None:
+        self._allowed_keys = allowed_keys
+
+    def _describe_contract(self) -> str:
+        return "Restrict the visible tool surface to a known subset."
+
+    def _describe_rules(self) -> tuple[LayerRuleRecord, ...]:
+        return (
+            LayerRuleRecord(
+                rule_id="ALLOW-SPECIFIC-TOOLS",
+                description="Only explicitly allowed tools remain visible to the model.",
+                enforced_at="filter_tool_keys",
+                enforcement_type="block",
+            ),
+        )
+
+    def _describe_configuration(self) -> dict[str, object]:
+        return {"allowed_keys": self._allowed_keys}
+
+    def filter_tool_keys(self, tool_keys) -> tuple[str, ...]:
+        allowed = set(self._allowed_keys)
+        return tuple(tool_key for tool_key in tool_keys if tool_key in allowed)
 
 
 class BaseAgentTests(unittest.TestCase):
@@ -436,6 +475,136 @@ class BaseAgentTests(unittest.TestCase):
             self.assertIn('"discovery"', outputs_payload)
             self.assertIn('"report"', outputs_payload)
             self.assertIn('"current_stage": "report"', index_payload)
+
+    def test_input_and_output_artifacts_wire_into_base_agent_constructor(self) -> None:
+        registry = ToolRegistry(create_control_tools())
+        model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            memory_path = Path(temp_dir) / "agent-memory"
+            brief_path = memory_path / "inputs" / "brief.md"
+            brief_path.parent.mkdir(parents=True, exist_ok=True)
+            brief_path.write_text("Client brief", encoding="utf-8")
+
+            agent = _InspectableAgent(
+                model=model,
+                tool_executor=registry,
+                input_artifacts=(
+                    InputArtifactSpec(
+                        name="client_brief",
+                        path="inputs/brief.md",
+                        description="The full client brief.",
+                        file_format="markdown",
+                    ),
+                ),
+                output_artifacts=(
+                    OutputArtifactSpec(
+                        name="executive_memo",
+                        description="A one-page executive memo.",
+                        file_format="markdown",
+                    ),
+                ),
+                memory_path=memory_path,
+                repo_root=temp_dir,
+            )
+
+            request = agent.build_model_request()
+
+        section_titles = [section.title for section in request.parameter_sections]
+        self.assertIn("Input: client_brief", section_titles)
+        self.assertIn("Output Artifacts", section_titles)
+        input_section = next(section for section in request.parameter_sections if section.title == "Input: client_brief")
+        output_section = next(section for section in request.parameter_sections if section.title == "Output Artifacts")
+        self.assertIn("Client brief", input_section.content)
+        self.assertIn('artifact.write_markdown(name="executive_memo", ...)', output_section.content)
+        tool_keys = [tool.key for tool in request.tools]
+        self.assertIn(CONTROL_MARK_COMPLETE, tool_keys)
+        self.assertIn(ARTIFACT_WRITE_MARKDOWN, tool_keys)
+
+    def test_output_artifacts_work_through_base_agent_run_and_block_completion(self) -> None:
+        registry = ToolRegistry(create_control_tools())
+        model = _FakeModel(
+            [
+                AgentModelResponse(
+                    assistant_message="Try to finish early.",
+                    tool_calls=(ToolCall(tool_key=CONTROL_MARK_COMPLETE, arguments={"summary": "done"}),),
+                    should_continue=True,
+                ),
+                AgentModelResponse(
+                    assistant_message="Write the memo.",
+                    tool_calls=(
+                        ToolCall(
+                            tool_key=ARTIFACT_WRITE_MARKDOWN,
+                            arguments={"name": "executive_memo", "content": "Body"},
+                        ),
+                    ),
+                    should_continue=True,
+                ),
+                AgentModelResponse(
+                    assistant_message="Finish now.",
+                    tool_calls=(ToolCall(tool_key=CONTROL_MARK_COMPLETE, arguments={"summary": "done"}),),
+                    should_continue=True,
+                ),
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = _InspectableAgent(
+                model=model,
+                tool_executor=registry,
+                output_artifacts=(
+                    OutputArtifactSpec(
+                        name="executive_memo",
+                        description="A one-page executive memo.",
+                        file_format="markdown",
+                    ),
+                ),
+                repo_root=temp_dir,
+            )
+
+            result = agent.run(max_cycles=5)
+            agent.refresh_parameters()
+
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(result.cycles_completed, 3)
+        self.assertEqual(result.resets, 0)
+        self.assertIn("Completion blocked.", model.requests[1].transcript[2].content)
+        output_section = next(section for section in agent.parameter_sections if section.title == "Output Artifacts")
+        self.assertIn("executive_memo [required]  [written]", output_section.content)
+
+    def test_explicit_output_artifact_layer_tools_still_flow_through_formalization_filters(self) -> None:
+        registry = ToolRegistry(
+            [
+                _constant_tool("session.echo", "echo", _echo_handler),
+                *create_control_tools(),
+            ]
+        )
+        model = _FakeModel([AgentModelResponse(assistant_message="done", should_continue=False)])
+        output_layer = OutputArtifactLayer(
+            (
+                OutputArtifactSpec(
+                    name="executive_memo",
+                    description="A one-page executive memo.",
+                    file_format="markdown",
+                ),
+            )
+        )
+        filter_layer = _AllowSpecificToolsLayer((ARTIFACT_WRITE_MARKDOWN, CONTROL_MARK_COMPLETE))
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = _InspectableAgent(
+                model=model,
+                tool_executor=registry,
+                formalization_layers=(output_layer, filter_layer),
+                repo_root=temp_dir,
+            )
+
+            request = agent.build_model_request()
+
+        self.assertEqual(
+            [tool.key for tool in request.tools],
+            [CONTROL_MARK_COMPLETE, ARTIFACT_WRITE_MARKDOWN],
+        )
 
     def test_run_records_tool_results_and_passes_transcript_to_next_turn(self) -> None:
         registry = ToolRegistry(

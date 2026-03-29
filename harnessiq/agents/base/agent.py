@@ -43,6 +43,7 @@ from harnessiq.utils.agent_instances import AgentInstanceRecord, AgentInstanceSt
 from .helpers import BaseAgentHelpersMixin, _resolve_repo_root, _utcnow
 
 if TYPE_CHECKING:
+    from harnessiq.formalization.artifacts import InputArtifactSpec, OutputArtifactSpec
     from harnessiq.formalization.base import BaseFormalizationLayer
     from harnessiq.formalization.stages import StageSpec
 
@@ -72,6 +73,8 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         dynamic_tool_selector: DynamicToolSelector | None = None,
         formalization_layers: Sequence["BaseFormalizationLayer"] | None = None,
         stages: Sequence["StageSpec"] | None = None,
+        input_artifacts: Sequence["InputArtifactSpec"] | None = None,
+        output_artifacts: Sequence["OutputArtifactSpec"] | None = None,
         memory_path: Path | None = None,
         repo_root: str | Path | None = None,
         instance_name: str | None = None,
@@ -101,7 +104,8 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         self._tool_executor = tool_executor
         self._formalization_layers: tuple[BaseFormalizationLayer, ...] = ()
         self._formalization_prepared = False
-        resolved_layers = list(formalization_layers or ())
+        explicit_layers = list(formalization_layers or ())
+        stage_layers: list[BaseFormalizationLayer] = []
         if stages:
             from harnessiq.formalization.stages import StageAwareToolExecutor, StageLayer
 
@@ -112,9 +116,16 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
             )
             stage_layer._stage_executor = stage_executor
             self._tool_executor = stage_executor
-            resolved_layers = [stage_layer, *resolved_layers]
+            stage_layers.append(stage_layer)
+        artifact_layers = self._build_artifact_layers(
+            input_artifacts=input_artifacts,
+            output_artifacts=output_artifacts,
+        )
+        resolved_layers = [*stage_layers, *artifact_layers, *explicit_layers]
         if resolved_layers:
             self._formalization_layers = tuple(resolved_layers)
+            for layer in self._iter_artifact_layers(self._formalization_layers):
+                layer.on_agent_prepare(agent_name=self.name, memory_path=str(self._memory_path))
             self._tool_executor = self._bind_registered_tools(
                 self._tool_executor,
                 self._collect_formalization_tools(),
@@ -315,6 +326,50 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         if sync_callback is not None:
             sync_callback(store)
         return store
+
+    def _build_artifact_layers(
+        self,
+        *,
+        input_artifacts: Sequence["InputArtifactSpec"] | None,
+        output_artifacts: Sequence["OutputArtifactSpec"] | None,
+    ) -> list["BaseFormalizationLayer"]:
+        """Instantiate artifact-backed formalization layers from constructor sugar."""
+        if not input_artifacts and not output_artifacts:
+            return []
+
+        from harnessiq.formalization.artifacts import InputArtifactLayer, OutputArtifactLayer
+
+        layers: list[BaseFormalizationLayer] = []
+        if input_artifacts:
+            layers.append(InputArtifactLayer(tuple(input_artifacts)))
+        if output_artifacts:
+            layers.append(
+                OutputArtifactLayer(
+                    tuple(output_artifacts),
+                    completion_requirement="all",
+                )
+            )
+        return layers
+
+    def _iter_artifact_layers(
+        self,
+        layers: Sequence["BaseFormalizationLayer"],
+    ) -> tuple["BaseFormalizationLayer", ...]:
+        """Return artifact-formalization layers that need memory-path priming."""
+        from harnessiq.formalization.artifacts import InputArtifactLayer, OutputArtifactLayer
+
+        artifact_types = (InputArtifactLayer, OutputArtifactLayer)
+        prepared_ids: set[int] = set()
+        prepared_layers: list[BaseFormalizationLayer] = []
+        for layer in layers:
+            if not isinstance(layer, artifact_types):
+                continue
+            layer_id = id(layer)
+            if layer_id in prepared_ids:
+                continue
+            prepared_ids.add(layer_id)
+            prepared_layers.append(layer)
+        return tuple(prepared_layers)
 
     def reset_context(self) -> None:
         """Clear transcript state and rebuild durable parameters."""
