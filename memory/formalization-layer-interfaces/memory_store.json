@@ -1,0 +1,46 @@
+[
+  {
+    "key": "repo_runtime_source_of_truth",
+    "value": "The generated file index explicitly states that `harnessiq/` is the only authoritative runtime source tree; `build/` and `src/` should not be edited for live behavior.",
+    "source": "artifacts/file_index.md",
+    "discovered_at": "2026-03-29T00:29:54.2205007Z",
+    "applies_to": [
+      "1",
+      "2"
+    ],
+    "confidence": "confirmed"
+  },
+  {
+    "key": "interfaces_package_pattern",
+    "value": "The public `harnessiq.interfaces` package currently uses flat modules with exported runtime-checkable protocols and lightweight callables, so a new formalization surface should remain lightweight and documentation-forward.",
+    "source": "harnessiq/interfaces/*.py",
+    "discovered_at": "2026-03-29T00:29:54.2205007Z",
+    "applies_to": [
+      "1",
+      "2"
+    ],
+    "confidence": "confirmed"
+  },
+  {
+    "key": "requested_scope_is_interface_only",
+    "value": "The user asked for the base formalization layer class and some typed base formalization objects to be added to the interfaces class, with a minimal SDK-facing change rather than a full runtime integration.",
+    "source": "user request",
+    "discovered_at": "2026-03-29T00:29:54.2205007Z",
+    "applies_to": [
+      "1",
+      "2"
+    ],
+    "confidence": "confirmed"
+  },
+  {
+    "key": "shared_package_init_was_eager",
+    "value": "Importing `harnessiq.interfaces` through the public package surface re-entered the package via `harnessiq.shared` and tool modules; converting `harnessiq.shared.__init__` to lazy exports was required to make the new interface surface importable and testable.",
+    "source": "targeted verification during task 2",
+    "discovered_at": "2026-03-29T00:39:05.9812092Z",
+    "applies_to": [
+      "1",
+      "2"
+    ],
+    "confidence": "confirmed"
+  }
+]

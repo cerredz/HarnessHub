@@ -146,7 +146,7 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
             self.assertEqual(run_state["status"], "completed")
             self.assertEqual(run_state["active_icp_index"], 1)
 
-    def test_search_tool_persists_results_and_refreshes_active_icp_context(self) -> None:
+    def test_search_tool_persists_results_and_refreshes_active_icp_context_without_transcript_duplication(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             model = _FakeModel(
                 [
@@ -172,24 +172,13 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
             self.assertEqual(backend.calls, [("fitness coach", 5)])
             self.assertEqual(model.requests[1].parameter_sections[0].content, "fitness creators")
             self.assertEqual(model.requests[1].parameter_sections[2].content, "fitness coach")
-            self.assertEqual(len(model.requests[1].transcript), 1)
-            self.assertEqual(model.requests[1].transcript[0].entry_type, "context")
-            self.assertEqual(model.requests[1].transcript[0].label, "Recent Searches")
-            self.assertEqual(
-                json.loads(model.requests[1].transcript[0].content),
-                {
-                    "active_icp": "fitness creators",
-                    "keyword": "fitness coach",
-                    "recent_searches": ["fitness coach"],
-                    "status": "searched",
-                },
-            )
+            self.assertEqual(model.requests[1].transcript, ())
             self.assertFalse(any(entry.entry_type == "tool_call" for entry in agent.transcript))
             self.assertFalse(any(entry.entry_type == "tool_result" for entry in agent.transcript))
             database = json.loads(Path(temp_dir, "lead_database.json").read_text(encoding="utf-8"))
             self.assertEqual(database["emails"], ["creator@example.com"])
 
-    def test_sequential_searches_append_recent_search_context_entries(self) -> None:
+    def test_sequential_searches_refresh_recent_search_parameter_without_transcript_entries(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             model = _FakeModel(
                 [
@@ -219,16 +208,8 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
             self.assertEqual(result.status, "completed")
             self.assertEqual(model.requests[1].parameter_sections[2].content, "fitness coach")
             self.assertEqual(model.requests[2].parameter_sections[2].content, "fitness coach, pilates creator")
-            self.assertEqual(len(model.requests[1].transcript), 1)
-            self.assertEqual(len(model.requests[2].transcript), 2)
-            self.assertEqual(
-                json.loads(model.requests[1].transcript[0].content)["recent_searches"],
-                ["fitness coach"],
-            )
-            self.assertEqual(
-                json.loads(model.requests[2].transcript[-1].content)["recent_searches"],
-                ["fitness coach", "pilates creator"],
-            )
+            self.assertEqual(model.requests[1].transcript, ())
+            self.assertEqual(model.requests[2].transcript, ())
             self.assertFalse(any(entry.entry_type == "tool_call" for entry in model.requests[2].transcript))
             self.assertFalse(any(entry.entry_type == "tool_result" for entry in model.requests[2].transcript))
 
@@ -255,6 +236,7 @@ class InstagramKeywordDiscoveryAgentTests(unittest.TestCase):
 
             self.assertEqual(result.status, "completed")
             self.assertEqual(model.requests[1].parameter_sections[2].content, "fitness coach")
+            self.assertEqual(model.requests[1].transcript, ())
             self.assertEqual(agent.get_search_history(), ())
 
     def test_duplicate_keyword_detection_is_scoped_per_icp(self) -> None:

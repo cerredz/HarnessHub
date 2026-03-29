@@ -21,6 +21,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 
 - Treat `harnessiq/` as the only authoritative runtime source tree. `build/`, `src/`, caches, and packaging metadata are generated or residue directories.
 - Concrete harness metadata belongs in the shared manifest layer under `harnessiq/shared/`, and CLI behavior should consume that metadata instead of duplicating typed parameter rules.
+- Injectable formalization records live in `harnessiq/shared/formalization.py`, while the abstract layer interfaces that consume them live under `harnessiq/interfaces/formalization/`.
 - Agents orchestrate. Tools execute deterministic operations. Providers wrap external systems. Utilities own cross-cutting runtime infrastructure like the ledger and output sinks.
 - Evaluation scaffolding belongs under `harnessiq/evaluations/` and should stay pytest-first, lightweight, and behavior-oriented.
 - Durable memory is a first-class design constraint: harnesses are expected to persist state that survives resets and restarts.
@@ -48,6 +49,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | `harnessiq/config/` | provider_credentials | Environment loading, credential binding, and provider-credential spec models. |
 | `harnessiq/evaluations/` | - | Pytest-first evaluation helpers, lightweight scoring helpers, and plugin support for tagged eval runs. |
 | `harnessiq/integrations/` | - | Concrete external runtime adapters such as Playwright backends and model factories. |
+| `harnessiq/interfaces/` | formalization | Public runtime dependency seams and injectable formalization abstractions used by the SDK surface. |
 | `harnessiq/master_prompts/` | prompts | Packaged prompt assets and prompt registry helpers. |
 | `harnessiq/providers/` | anthropic, apollo, arcads, arxiv, attio, browser_use, coresignal, creatify, exa, expandi, gcloud, gemini, google_drive, grok, hunter, inboxapp, instantly, leadiq, lemlist, lusha, openai, outreach, paperclip, peopledatalabs, phantombuster, playwright, proxycurl, salesforge, serper, smartlead, snovio, zerobounce, zoominfo | Model-provider adapters, external service clients, output-sink transport clients, and Playwright runtime support. |
 | `harnessiq/shared/` | dtos | Shared manifests, durable memory stores, operation metadata, and package-wide types/constants. |
@@ -63,6 +65,7 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | `harnessiq/cli/adapters/utils/` | Shared helper modules for adapter store loading, payload shaping, factory resolution, and session-directory setup. |
 | `harnessiq/config/provider_credentials/` | Focused provider-credential spec package split into catalog, models, builders, and masking helpers. |
 | `harnessiq/evaluations/` | Minimal eval helpers plus the pytest integration used for category filtering and model selection. |
+| `harnessiq/interfaces/formalization/` | Self-documenting formalization interface package with one module per abstract layer family and shared injectable harness semantics. |
 | `harnessiq/utils/harness_manifest/` | Manifest coercion, validation, and registry helpers extracted from the public shared manifest modules. |
 | `harnessiq/providers/gcloud/` | Google Cloud deployment provider package with command builders, credential sync, manifest-backed deploy specs, and the Cloud Run runtime wrapper. |
 
@@ -72,6 +75,8 @@ It is intentionally high-signal rather than exhaustive: the goal is to explain t
 | --- | --- |
 | `harnessiq/shared/harness_manifest.py` | Typed manifest primitives for runtime/custom parameters, durable memory entries, provider families, and output schemas. |
 | `harnessiq/shared/harness_manifests.py` | Registry of the built-in harness manifests in deterministic order. |
+| `harnessiq/shared/formalization.py` | Shared formalization records and typed specs consumed by the formalization interface package and future runtime enforcement code. |
+| `harnessiq/interfaces/formalization/base.py` | Universal base contract for injectable formalization layers, including self-documenting description helpers and lifecycle hook seams. |
 | `harnessiq/cli/main.py` | Root argparse entrypoint that wires every top-level command family into `harnessiq`. |
 | `harnessiq/cli/platform_commands.py` | Platform-first CLI roots that synthesize manifest-driven prepare/show/run/inspect and credential management commands. |
 | `harnessiq/cli/adapters/base.py` | Abstract adapter hooks and shared store-backed adapter behavior for the platform-first CLI. |
