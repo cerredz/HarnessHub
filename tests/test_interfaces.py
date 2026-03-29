@@ -410,6 +410,8 @@ class FormalizationContractTests(unittest.TestCase):
 
         self.assertIn("execution contract", description.identity)
         self.assertIn("hidden runtime assumptions", description.identity)
+        self.assertNotIn("What:", description.identity)
+        self.assertNotIn("Why:", description.identity)
         self.assertEqual(description.rules[0], LayerRuleRecord(
             rule_id="CONTRACT-INPUTS",
             description="Required inputs must exist before substantive work begins: mission_goal.",
