@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -37,6 +38,18 @@ def _tool(layer: OutputArtifactLayer, key: str):
 def _mark_complete_result(memory_path: str, summary: str = "complete") -> ToolResult:
     tool = next(tool for tool in create_control_tools(root=memory_path) if tool.key == CONTROL_MARK_COMPLETE)
     return tool.execute({"summary": summary})
+
+
+@contextmanager
+def _pushd(path: Path):
+    previous = Path.cwd()
+    try:
+        import os
+
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(previous)
 
 
 class OutputArtifactLayerTests(unittest.TestCase):
@@ -165,6 +178,33 @@ class OutputArtifactLayerTests(unittest.TestCase):
             )
             layer.on_tool_result(result)
             section = _output_section(layer)
+
+        self.assertIn("summary_note [required]  [written]", section.content)
+
+    def test_text_file_writes_match_when_memory_path_is_relative(self) -> None:
+        spec = OutputArtifactSpec(
+            name="summary_note",
+            description="Plain text summary.",
+            file_format="text",
+            path="{memory_path}/summaries/{name}.txt",
+        )
+        layer = OutputArtifactLayer((spec,))
+
+        repo_root = Path.cwd()
+        with TemporaryDirectory(dir=repo_root) as temp_dir:
+            memory_path = Path(temp_dir)
+            relative_memory_path = memory_path.relative_to(repo_root)
+            with _pushd(repo_root):
+                layer.on_agent_prepare(agent_name="demo", memory_path=str(relative_memory_path))
+                text_tool = _tool(layer, FILESYSTEM_REPLACE_TEXT_FILE)
+                result = text_tool.execute(
+                    {
+                        "path": str(resolve_output_path(spec, memory_path)),
+                        "content": "hello world",
+                    }
+                )
+                layer.on_tool_result(result)
+                section = _output_section(layer)
 
         self.assertIn("summary_note [required]  [written]", section.content)
 

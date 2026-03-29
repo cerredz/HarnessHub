@@ -295,9 +295,11 @@ class OutputArtifactLayer(BaseFormalizationLayer):
         if not written_path:
             return
 
-        normalized_written_path = str(Path(written_path))
+        normalized_written_path = self._normalize_path(written_path)
         for spec in self._specs:
-            if normalized_written_path == str(resolve_output_path(spec, self._memory_path)):
+            if normalized_written_path == self._normalize_path(
+                resolve_output_path(spec, self._memory_path)
+            ):
                 self._written.add(spec.name)
 
     def _missing_required_outputs(self) -> list[str]:
@@ -314,6 +316,14 @@ class OutputArtifactLayer(BaseFormalizationLayer):
             target_path = resolve_output_path(spec, memory_path or self._memory_path or Path("memory"))
             return f'{tool_key}(path="{target_path}", ...)'
         return f'{tool_key}(name="{spec.name}", ...)'
+
+    @staticmethod
+    def _normalize_path(path: str | Path) -> str:
+        candidate = Path(path).expanduser()
+        try:
+            return str(candidate.resolve(strict=False))
+        except OSError:
+            return str(candidate.absolute())
 
 
 __all__ = ["OutputArtifactLayer"]
