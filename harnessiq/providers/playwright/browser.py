@@ -21,6 +21,7 @@ class PlaywrightBrowserSession:
         import_error_message: str,
         launch_args: Sequence[str] = (),
         init_scripts: Sequence[str] = (),
+        context_options: Mapping[str, Any] | None = None,
     ) -> None:
         self._session_dir = Path(session_dir) if session_dir is not None else None
         self._channel = channel
@@ -29,6 +30,7 @@ class PlaywrightBrowserSession:
         self._import_error_message = import_error_message
         self._launch_args = tuple(str(value) for value in launch_args)
         self._init_scripts = tuple(str(value) for value in init_scripts if str(value).strip())
+        self._context_options = dict(context_options or {})
         self._playwright: Any = None
         self._browser: Any = None
         self._context: Any = None
@@ -49,14 +51,15 @@ class PlaywrightBrowserSession:
             raise RuntimeError(self._import_error_message) from exc
 
         self._playwright = sync_playwright().start()
+        context_kwargs = {"viewport": dict(self._viewport), **self._context_options}
         if self._session_dir is not None:
             self._session_dir.mkdir(parents=True, exist_ok=True)
             self._context = self._playwright.chromium.launch_persistent_context(
                 str(self._session_dir),
                 channel=self._channel,
                 headless=self._headless,
-                viewport=dict(self._viewport),
                 args=list(self._launch_args),
+                **context_kwargs,
             )
             self._browser = None
             self._apply_init_scripts()
@@ -66,7 +69,7 @@ class PlaywrightBrowserSession:
             headless=self._headless,
             args=list(self._launch_args),
         )
-        self._context = self._browser.new_context(viewport=dict(self._viewport))
+        self._context = self._browser.new_context(**context_kwargs)
         self._apply_init_scripts()
 
     def get_or_create_page(self) -> Any:
