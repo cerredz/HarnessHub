@@ -112,6 +112,10 @@ class StageCompleteToolTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             STAGE_COMPLETE_TOOL.execute({"summary": "done", "outputs": ["bad"]})
 
+    def test_stage_complete_tool_rejects_blank_summary(self) -> None:
+        with self.assertRaises(ValueError):
+            STAGE_COMPLETE_TOOL.execute({"summary": "   "})
+
 
 class StageAwareToolExecutorTests(unittest.TestCase):
     def test_stage_tools_shadow_base_tools_and_swap_cleanly(self) -> None:

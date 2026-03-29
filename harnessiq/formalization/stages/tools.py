@@ -7,6 +7,8 @@ from harnessiq.shared.tools import RegisteredTool, ToolDefinition
 
 def _handle_stage_complete(arguments: dict[str, Any]) -> dict[str, Any]:
     summary = str(arguments["summary"]).strip()
+    if not summary:
+        raise ValueError("summary must not be blank.")
     raw_outputs = arguments.get("outputs", {})
     if raw_outputs is None:
         outputs: dict[str, Any] = {}
