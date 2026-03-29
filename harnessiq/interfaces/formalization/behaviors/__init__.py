@@ -6,6 +6,13 @@ from .base import (
     BehaviorEnforcementMode,
     BehaviorViolationAction,
 )
+from .communication import (
+    BaseCommunicationBehaviorLayer,
+    CommunicationRuleSpec,
+    DecisionLoggingBehavior,
+    ProgressReportingBehavior,
+    UncertaintySignalingBehavior,
+)
 from .pace import (
     BaseExecutionPaceLayer,
     PaceRuleSpec,
@@ -51,6 +58,7 @@ from .tool import (
 
 __all__ = [
     "BaseBehaviorLayer",
+    "BaseCommunicationBehaviorLayer",
     "BaseExecutionPaceLayer",
     "BaseErrorRecoveryLayer",
     "BaseQualityBehaviorLayer",
@@ -61,12 +69,15 @@ __all__ = [
     "BehaviorEnforcementMode",
     "BehaviorViolationAction",
     "CitationRequirementBehavior",
+    "CommunicationRuleSpec",
+    "DecisionLoggingBehavior",
     "ErrorEscalationBehavior",
     "GuardrailSpec",
     "HypothesisTestingBehavior",
     "IrreversibleActionGateBehavior",
     "PaceRuleSpec",
     "PreActionReasoningBehavior",
+    "ProgressReportingBehavior",
     "ProgressCheckpointBehavior",
     "QualityCriterionSpec",
     "QualityGateBehavior",
@@ -83,5 +94,6 @@ __all__ = [
     "ToolConstraintSpec",
     "ToolCooldownBehavior",
     "ToolSequencingBehavior",
+    "UncertaintySignalingBehavior",
     "VerificationBehavior",
 ]
