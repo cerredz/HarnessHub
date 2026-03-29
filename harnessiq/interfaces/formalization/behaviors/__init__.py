@@ -13,6 +13,20 @@ from .pace import (
     ReflectionCadenceBehavior,
     VerificationBehavior,
 )
+from .quality import (
+    BaseQualityBehaviorLayer,
+    CitationRequirementBehavior,
+    QualityCriterionSpec,
+    QualityGateBehavior,
+    ScopeEnforcementBehavior,
+)
+from .reasoning import (
+    BaseReasoningBehaviorLayer,
+    HypothesisTestingBehavior,
+    PreActionReasoningBehavior,
+    ReasoningRequirementSpec,
+    SelfCritiqueBehavior,
+)
 from .tool import (
     BaseToolBehaviorLayer,
     ToolCallLimitBehavior,
@@ -24,13 +38,23 @@ from .tool import (
 __all__ = [
     "BaseBehaviorLayer",
     "BaseExecutionPaceLayer",
+    "BaseQualityBehaviorLayer",
+    "BaseReasoningBehaviorLayer",
     "BaseToolBehaviorLayer",
     "BehaviorConstraint",
     "BehaviorEnforcementMode",
     "BehaviorViolationAction",
+    "CitationRequirementBehavior",
+    "HypothesisTestingBehavior",
     "PaceRuleSpec",
+    "PreActionReasoningBehavior",
     "ProgressCheckpointBehavior",
+    "QualityCriterionSpec",
+    "QualityGateBehavior",
     "ReflectionCadenceBehavior",
+    "ReasoningRequirementSpec",
+    "ScopeEnforcementBehavior",
+    "SelfCritiqueBehavior",
     "ToolCallLimitBehavior",
     "ToolConstraintSpec",
     "ToolCooldownBehavior",
