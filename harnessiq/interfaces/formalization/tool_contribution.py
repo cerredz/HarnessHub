@@ -1,8 +1,27 @@
-"""Abstract tool-contribution layer for formalization-owned tool surfaces.
+"""
+===============================================================================
+File: harnessiq/interfaces/formalization/tool_contribution.py
 
-Some formalization layers do not just document behavior; they also contribute
-tools that should become part of the harness runtime surface. This interface
-keeps that responsibility explicit and self-documenting.
+What this file does:
+- Defines part of the abstract formalization interface surface used to describe
+  harness behavior declaratively.
+- Abstract tool-contribution layer for formalization-owned tool surfaces. Some
+  formalization layers do not just document behavior; they also contribute
+  tools that should become part of the harness runtime surface. This interface
+  keeps that responsibility explicit and self-documenting.
+
+Use cases:
+- Subclass or import these interfaces when building a new formalization layer
+  family or behavior.
+
+How to use it:
+- Use the abstractions here to declare behavior, rules, and configuration in a
+  form the runtime can later inspect or enforce.
+
+Intent:
+- Keep formalization contracts explicit and composable so harness rules are
+  visible in code and docs.
+===============================================================================
 """
 
 from __future__ import annotations

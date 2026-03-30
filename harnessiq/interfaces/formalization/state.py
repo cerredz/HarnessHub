@@ -1,9 +1,28 @@
-"""Abstract durable-state layer for formalized reset continuity.
+"""
+===============================================================================
+File: harnessiq/interfaces/formalization/state.py
 
-State layers define typed fields that survive resets and restarts. The point is
-not only persistence. The state schema also explains to the harness and the
-agent which values matter across context boundaries and how they are allowed to
-change over time.
+What this file does:
+- Defines part of the abstract formalization interface surface used to describe
+  harness behavior declaratively.
+- Abstract durable-state layer for formalized reset continuity. State layers
+  define typed fields that survive resets and restarts. The point is not only
+  persistence. The state schema also explains to the harness and the agent
+  which values matter across context boundaries and how they are allowed to
+  change over time.
+
+Use cases:
+- Subclass or import these interfaces when building a new formalization layer
+  family or behavior.
+
+How to use it:
+- Use the abstractions here to declare behavior, rules, and configuration in a
+  form the runtime can later inspect or enforce.
+
+Intent:
+- Keep formalization contracts explicit and composable so harness rules are
+  visible in code and docs.
+===============================================================================
 """
 
 from __future__ import annotations

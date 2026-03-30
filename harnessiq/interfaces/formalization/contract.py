@@ -1,9 +1,29 @@
-"""Abstract execution-contract layer for formalized harness inputs and outputs.
+"""
+===============================================================================
+File: harnessiq/interfaces/formalization/contract.py
 
-Contract layers answer the most basic formalization question: what must be
-available before work begins, what must exist before the task is complete, and
-what execution budget bounds the run. The class in this module keeps those
-requirements declarative so the runtime can later validate them deterministically.
+What this file does:
+- Defines part of the abstract formalization interface surface used to describe
+  harness behavior declaratively.
+- Abstract execution-contract layer for formalized harness inputs and outputs.
+  Contract layers answer the most basic formalization question: what must be
+  available before work begins, what must exist before the task is complete,
+  and what execution budget bounds the run. The class in this module keeps
+  those requirements declarative so the runtime can later validate them
+  deterministically.
+
+Use cases:
+- Subclass or import these interfaces when building a new formalization layer
+  family or behavior.
+
+How to use it:
+- Use the abstractions here to declare behavior, rules, and configuration in a
+  form the runtime can later inspect or enforce.
+
+Intent:
+- Keep formalization contracts explicit and composable so harness rules are
+  visible in code and docs.
+===============================================================================
 """
 
 from __future__ import annotations

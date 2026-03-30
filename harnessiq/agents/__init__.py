@@ -1,4 +1,28 @@
-"""Agent runtime primitives and concrete agent implementations."""
+"""
+===============================================================================
+File: harnessiq/agents/__init__.py
+
+What this file does:
+- Defines the package-level export surface for `harnessiq/agents` within the
+  HarnessIQ runtime.
+- Agent runtime primitives and concrete agent implementations.
+
+Use cases:
+- Import ActionLogEntry, AgentInstanceCatalog, AgentInstanceRecord,
+  AgentInstanceStore, AgentModel, AgentModelRequest from one stable package
+  entry point.
+- Read this module to understand what `harnessiq/agents` intends to expose
+  publicly.
+
+How to use it:
+- Import from `harnessiq/agents` when you want the supported facade instead of
+  reaching through deeper internal modules.
+
+Intent:
+- Keep the public surface for `harnessiq/agents` explicit, discoverable, and
+  easier to maintain.
+===============================================================================
+"""
 
 from harnessiq.shared.agents import (
     AgentModel,

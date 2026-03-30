@@ -1,4 +1,28 @@
-"""Canonical tool primitives for Harnessiq."""
+"""
+===============================================================================
+File: harnessiq/tools/__init__.py
+
+What this file does:
+- Defines the package-level export surface for `harnessiq/tools` within the
+  HarnessIQ runtime.
+- Canonical tool primitives for Harnessiq.
+
+Use cases:
+- Import ADD_NUMBERS, ApprovalPolicy, BROWSER_CLICK, BROWSER_EXTRACT_CONTENT,
+  BROWSER_FIND_ELEMENT, BROWSER_GET_CURRENT_URL from one stable package entry
+  point.
+- Read this module to understand what `harnessiq/tools` intends to expose
+  publicly.
+
+How to use it:
+- Import from `harnessiq/tools` when you want the supported facade instead of
+  reaching through deeper internal modules.
+
+Intent:
+- Keep the public surface for `harnessiq/tools` explicit, discoverable, and
+  easier to maintain.
+===============================================================================
+"""
 
 from harnessiq.shared.tools import (
     ADD_NUMBERS,

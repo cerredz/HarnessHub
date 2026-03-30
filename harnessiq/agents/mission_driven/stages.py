@@ -1,4 +1,24 @@
-"""Typed model stages for the mission-driven harness."""
+"""
+===============================================================================
+File: harnessiq/agents/mission_driven/stages.py
+
+What this file does:
+- Defines the staged sub-workflows used by the `mission_driven` agent package.
+- Typed model stages for the mission-driven harness.
+
+Use cases:
+- Use these stage helpers when the agent needs explicit subcalls or
+  deterministic planning steps before or after the main loop.
+
+How to use it:
+- Instantiate the stage objects from the sibling agent runtime and feed them
+  the domain payloads they expect.
+
+Intent:
+- Separate reusable stage logic from the top-level agent class so multi-step
+  workflows stay testable and easier to reason about.
+===============================================================================
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,25 @@
-"""Tool definitions for context summarization tools."""
+"""
+===============================================================================
+File: harnessiq/tools/context/definitions/summarization.py
+
+What this file does:
+- Implements part of the context-tool system that rewrites, summarizes, or
+  annotates an agent context window.
+- Tool definitions for context summarization tools.
+
+Use cases:
+- Use these helpers when a runtime needs deterministic context compaction or
+  injection behavior.
+
+How to use it:
+- Import the definitions or executors from this module through the context-tool
+  catalog rather than wiring ad hoc context mutations inline.
+
+Intent:
+- Keep context-window manipulation explicit and reusable so long-running agents
+  can manage token pressure predictably.
+===============================================================================
+"""
 
 from __future__ import annotations
 

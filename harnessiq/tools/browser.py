@@ -1,4 +1,24 @@
-"""Reusable browser tool definitions and factory helpers."""
+"""
+===============================================================================
+File: harnessiq/tools/browser.py
+
+What this file does:
+- Implements focused support logic for `harnessiq/tools`.
+- Reusable browser tool definitions and factory helpers.
+
+Use cases:
+- Import this module when sibling runtime code needs the behavior it
+  centralizes.
+
+How to use it:
+- Use `build_browser_tool_definitions` and the other exported symbols here
+  through their package-level integration points.
+
+Intent:
+- Keep related runtime behavior centralized and easier to discover during
+  maintenance.
+===============================================================================
+"""
 
 from __future__ import annotations
 

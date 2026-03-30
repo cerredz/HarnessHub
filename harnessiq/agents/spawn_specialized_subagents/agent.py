@@ -1,4 +1,31 @@
-"""Concrete spawn-specialized-subagents harness implementation."""
+"""
+===============================================================================
+File: harnessiq/agents/spawn_specialized_subagents/agent.py
+
+What this file does:
+- Implements the delegation harness that plans assignments, records worker
+  outputs, and integrates the final result.
+- The module owns the durable orchestration state that lets subagent planning
+  survive resets and resume coherently.
+- Concrete spawn-specialized-subagents harness implementation.
+
+Use cases:
+- Use it when one agent needs to break work into bounded assignments before
+  integrating results.
+- Inspect it when debugging how assignments are planned, executed, or
+  reconciled back into one response.
+
+How to use it:
+- Construct `SpawnSpecializedSubagentsAgent` directly or hydrate it from
+  memory/profile helpers.
+- Drive assignment planning, worker execution, and result integration through
+  the tool handlers defined here.
+
+Intent:
+- Keep delegation explicit, auditable, and restart-safe instead of relying on
+  one large free-form prompt.
+===============================================================================
+"""
 
 from __future__ import annotations
 
@@ -267,6 +294,8 @@ class SpawnSpecializedSubagentsAgent(BaseAgent):
         store.write_current_context(self._config.current_context)
 
     def _plan_assignments(self) -> dict[str, Any]:
+        # Planning is persisted before any worker executes so delegation becomes
+        # a restart-safe artifact, not an ephemeral one-turn model suggestion.
         payload = self._planner_stage.run(
             objective=self._memory_store.read_objective(),
             available_agent_types=self._config.available_agent_types,
@@ -297,6 +326,9 @@ class SpawnSpecializedSubagentsAgent(BaseAgent):
         return payload
 
     def _handle_run_assignment(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        # Assignment execution is deliberately single-assignment-at-a-time. That
+        # keeps ownership, execution logs, and durable worker outputs aligned
+        # with one bounded unit of delegated work.
         assignment_id = str(arguments["assignment_id"]).strip()
         if not assignment_id:
             raise ValidationError("assignment_id must not be blank.")
@@ -323,6 +355,9 @@ class SpawnSpecializedSubagentsAgent(BaseAgent):
 
     def _handle_integrate_results(self, arguments: dict[str, Any]) -> dict[str, Any]:
         del arguments
+        # Integration is blocked until there is at least one durable worker
+        # output. That guard prevents the agent from fabricating a synthesized
+        # result before the delegated work has actually been recorded.
         plan = self._memory_store.read_plan()
         worker_outputs = self._memory_store.read_worker_outputs()
         if not worker_outputs:
@@ -345,6 +380,9 @@ class SpawnSpecializedSubagentsAgent(BaseAgent):
         return payload
 
     def _find_assignment(self, plan: Mapping[str, Any], assignment_id: str) -> SubAgentAssignmentDTO:
+        # Plans are stored as plain JSON-compatible mappings. Rehydrating the
+        # selected assignment into a typed DTO gives the worker stage one stable
+        # contract even though the durable store is schema-light JSON.
         raw_assignments = plan.get("assignments", [])
         if not isinstance(raw_assignments, list):
             raise ValidationError("Current plan does not contain assignments.")

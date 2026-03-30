@@ -1,16 +1,28 @@
-"""Universal base contract for all formalization layer interfaces.
+"""
+===============================================================================
+File: harnessiq/interfaces/formalization/base.py
 
-This module defines the one abstraction every formalization layer shares. The
-design goal is to make formalization layers optional, composable, and
-self-documenting:
+What this file does:
+- Defines the universal abstract base contract for self-documenting
+  formalization layers.
+- Explains the runtime hook surface a layer can participate in and provides the
+  default description pipeline that turns declarations into structured docs.
 
-- optional, because a harness should still work without any formalization layer
-- composable, because multiple layers can participate without tightly coupling
-- self-documenting, because the interface itself should explain what it is doing
+Use cases:
+- Subclass it when creating a new formalization layer family.
+- Read it to understand which runtime seams a harness can expose to declarative
+  formalization logic.
 
-The base class deliberately provides no-op runtime hooks and a default
-documentation pipeline. Concrete layer families only override the specific
-runtime seams and description methods they care about.
+How to use it:
+- Override the description methods and only the runtime hooks your layer
+  actually needs.
+- Let the default helper methods render developer-facing and agent-facing
+  descriptions from those declarations.
+
+Intent:
+- Make formalization optional, composable, and inspectable instead of hiding
+  control rules inside prompts or scattered runtime checks.
+===============================================================================
 """
 
 from __future__ import annotations
@@ -52,6 +64,9 @@ class BaseFormalizationLayer(ABC):
 
     def describe(self) -> FormalizationDescription:
         """Return the structured self-description for this layer."""
+        # `describe()` is the canonical translation point from Python layer
+        # implementation to portable metadata. Other SDK surfaces rely on this
+        # object instead of inspecting concrete subclasses ad hoc.
         return FormalizationDescription(
             layer_id=self.layer_id,
             identity=self._describe_identity(),
@@ -62,6 +77,9 @@ class BaseFormalizationLayer(ABC):
 
     def get_parameter_sections(self) -> tuple[AgentParameterSection, ...]:
         """Return formalization-owned context sections for the model window."""
+        # The same formalization metadata shown to developers is also injected
+        # into the model context so the runtime and the prompt describe the same
+        # rules instead of drifting apart.
         return (
             AgentParameterSection(
                 title=f"Formalization: {self.layer_id}",
@@ -109,6 +127,10 @@ class BaseFormalizationLayer(ABC):
 
     def _describe_identity(self) -> str:
         """Return default identity prose for a generic formalization layer."""
+        # Identity text answers the top-level question, "what layer is active
+        # right now and why should the harness care?" Concrete layer families
+        # can sharpen that message, but this default keeps even generic layers
+        # self-explanatory.
         rules = tuple(self._describe_rules())
         declared_hooks = sorted({rule.enforced_at for rule in rules})
         hook_summary = ", ".join(declared_hooks) if declared_hooks else "no explicit hooks"
@@ -161,6 +183,8 @@ class BaseFormalizationLayer(ABC):
     @staticmethod
     def _format_budget(budget: BudgetSpec | None) -> str:
         """Render a human-readable execution budget summary."""
+        # Budget formatting is intentionally shared so every contract layer
+        # renders limits in the same language across docs, prompts, and tests.
         if budget is None:
             return "No explicit execution budget declared."
         parts: list[str] = []
@@ -178,6 +202,9 @@ class BaseFormalizationLayer(ABC):
         patterns: Sequence[str],
     ) -> tuple[str, ...]:
         """Apply fnmatch patterns to a visible tool-key surface."""
+        # Pattern-based filtering gives formalization layers a declarative way to
+        # narrow tool visibility without forcing each layer to reimplement the
+        # same matching loop.
         if not patterns:
             return tuple(tool_keys)
         return tuple(

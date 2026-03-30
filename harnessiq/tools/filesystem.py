@@ -1,4 +1,24 @@
-"""Explicit non-destructive filesystem tools."""
+"""
+===============================================================================
+File: harnessiq/tools/filesystem.py
+
+What this file does:
+- Implements focused support logic for `harnessiq/tools`.
+- Explicit non-destructive filesystem tools.
+
+Use cases:
+- Import this module when sibling runtime code needs the behavior it
+  centralizes.
+
+How to use it:
+- Use `get_current_directory` and the other exported symbols here through their
+  package-level integration points.
+
+Intent:
+- Keep related runtime behavior centralized and easier to discover during
+  maintenance.
+===============================================================================
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,34 @@
-"""Reusable agent runtime abstractions and loop orchestration."""
+"""
+===============================================================================
+File: harnessiq/agents/base/agent.py
+
+What this file does:
+- Implements the shared HarnessIQ agent runtime that every long-running
+  tool-using harness builds on.
+- Owns model-request assembly, transcript management, tool execution, context
+  resets, and formalization integration.
+- Reusable agent runtime abstractions and loop orchestration.
+
+Use cases:
+- Subclass it when building a new durable agent with provider-backed tools.
+- Inspect it when you need to understand how the main run loop decides to
+  continue, pause, reset, or complete.
+- Use it as the reference point for how stages, artifacts, hooks, and dynamic
+  tool selection plug into the SDK.
+
+How to use it:
+- Implement `build_instance_payload()`, `build_system_prompt()`, and
+  `load_parameter_sections()` in a subclass.
+- Pass tool registries, runtime config, and optional formalization layers into
+  the constructor.
+- Call `run()` for the managed loop or `snapshot()` when you need the assembled
+  runtime state without execution.
+
+Intent:
+- Keep every agent on one deterministic runtime contract so business workflows
+  can vary without each package reinventing loop orchestration.
+===============================================================================
+"""
 
 from __future__ import annotations
 
@@ -437,6 +467,9 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
 
     def _run_loop(self, *, max_cycles: int | None = None) -> AgentRunResult:
         """Run the agent loop until it pauses, completes, or hits ``max_cycles``."""
+        # This reset establishes one clean runtime window for the current run.
+        # Durable state remains on disk, but transcript-local state is rebuilt so
+        # every run starts from the same deterministic baseline.
         self.prepare()
         self._reset_count = 0
         self._cycle_index = 0
@@ -462,6 +495,10 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         cycles_completed = 0
         try:
             while max_cycles is None or cycles_completed < max_cycles:
+                # Each cycle follows the same contract: build the provider-agnostic
+                # request, ask the model for the next turn, then reconcile every
+                # requested tool call back through hooks, formalization, and
+                # transcript bookkeeping before the next cycle begins.
                 self._cycle_index = cycles_completed + 1
                 request = self.build_model_request()
                 total_estimated_request_tokens += request.estimated_tokens()
@@ -485,6 +522,10 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
                 reset_after_tool_result = False
                 last_recorded_tool_result: ToolResult | None = None
                 for requested_tool_call in response.tool_calls:
+                    # Tool execution is intentionally multi-stage. Hooks can pause
+                    # or rewrite the call, formalization layers can intercept it,
+                    # and only then does the raw tool executor run. That ordering
+                    # keeps policy and workflow rules outside the tool code itself.
                     tool_call, result, pause_signal = self._prepare_tool_call(requested_tool_call)
                     if pause_signal is not None:
                         break
@@ -513,6 +554,10 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
                         break
                     if not self._allow_auto_reset_after_tool_result(result):
                         continue
+                    # Resets are evaluated immediately after meaningful tool
+                    # results so the next model turn sees an updated context
+                    # window. Formalization-driven resets take priority because
+                    # they encode workflow semantics rather than token hygiene.
                     if self._formalization_requires_reset():
                         self.reset_context()
                         self._last_prune_progress = self.pruning_progress_value()
@@ -638,6 +683,9 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
         )
 
     def _resolve_active_tool_keys(self) -> tuple[str, ...]:
+        # Dynamic tool selection only narrows the already-available runtime
+        # surface. It never invents tools; it filters the definitions that
+        # survived formalization and explicit allow-list checks.
         available_definitions = self.available_tools(None)
         if self._dynamic_tool_selector is None or not self._runtime_config.tool_selection.enabled:
             self._last_tool_selection_result = None

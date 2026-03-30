@@ -1,3 +1,31 @@
+"""
+===============================================================================
+File: harnessiq/formalization/stages/layer.py
+
+What this file does:
+- Implements the runtime stage manager that advances a harness through a
+  deterministic ordered sequence of stages.
+- This module ties stage descriptions to actual runtime behavior such as tool
+  swapping, output persistence, and stage completion checks.
+
+Use cases:
+- Use it when a harness must progress through named stages instead of free-form
+  tool use.
+- Inspect it when debugging why a stage advanced, failed to advance, or changed
+  the visible tool surface.
+
+How to use it:
+- Instantiate `StageLayer` with a non-empty ordered list of `StageSpec` objects
+  and pass it into the agent runtime.
+- Call `formalization.stage_complete` from the model loop when a stage is done
+  and required outputs are ready.
+
+Intent:
+- Enforce stage sequencing in Python so a staged workflow stays auditable and
+  does not rely on prompt discipline alone.
+===============================================================================
+"""
+
 from __future__ import annotations
 
 import json
@@ -131,6 +159,9 @@ class StageLayer(BaseFormalizationLayer):
         }
 
     def get_parameter_sections(self) -> Sequence[AgentParameterSection]:
+        # Stage metadata is surfaced both as formalization docs and as a live
+        # "current stage" parameter block so the model always sees what phase it
+        # is in, what counts as done, and what prior stage outputs still matter.
         static_sections = super().get_parameter_sections()
         stage = self._current_stage
         index = self._current_index
@@ -195,6 +226,9 @@ class StageLayer(BaseFormalizationLayer):
         if not patterns:
             return tuple(tool_keys)
 
+        # Stage-owned tools are always preserved even if they do not match the
+        # generic allow patterns, because they are the concrete operations the
+        # active stage needs to complete its contract.
         stage_tool_keys: set[str] = set()
         if self._stage_executor is not None and getattr(self._stage_executor, "_stage_registry", None) is not None:
             stage_tool_keys = set(self._stage_executor._stage_registry.keys())
@@ -220,6 +254,9 @@ class StageLayer(BaseFormalizationLayer):
         if result.tool_key != STAGE_COMPLETE_TOOL.key:
             return result
 
+        # `stage_complete` is advisory until the runtime validates both the
+        # required outputs and the stage's own completion predicate. Only then
+        # does the layer mark advancement as pending for the next reset.
         stage = self._current_stage
         payload = result.output if isinstance(result.output, dict) else {}
         outputs = dict(payload.get("outputs", {}))
@@ -274,6 +311,9 @@ class StageLayer(BaseFormalizationLayer):
         if not self._completion_pending:
             return
 
+        # Advancement happens after the reset, not inside `stage_complete`, so
+        # the next model turn always starts in a clean context already aligned
+        # with the new stage and its freshly swapped tool surface.
         current_stage = self._current_stage
         next_name = current_stage.get_next_stage(self._pending_outputs)
         terminal_completion = next_name is None and self._is_final_stage
@@ -346,6 +386,9 @@ class StageLayer(BaseFormalizationLayer):
     def _persist_stage_outputs(self, stage_name: str, outputs: dict[str, Any]) -> None:
         if self._memory_path is None:
             return
+        # Prior stage outputs are durably stored by stage name so later stages
+        # can reference them after resets or restarts without depending on the
+        # transcript to preserve those artifacts.
         path = self._memory_path / _STAGE_OUTPUTS_FILENAME
         path.parent.mkdir(parents=True, exist_ok=True)
         existing: dict[str, Any] = {}
@@ -383,6 +426,9 @@ class StageLayer(BaseFormalizationLayer):
         path = self._memory_path / _STAGE_INDEX_FILENAME
         if not path.exists():
             return
+        # Stage restoration is name-based instead of trusting a raw numeric
+        # index alone, which makes persisted state more robust if stage order
+        # changes while the registered names remain stable.
         payload = json.loads(path.read_text(encoding="utf-8"))
         stage_name = payload.get("current_stage")
         if stage_name in self._index_map:
