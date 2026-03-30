@@ -1,4 +1,24 @@
-"""Prompt-generation tools for agent system prompts."""
+"""
+===============================================================================
+File: harnessiq/tools/prompting.py
+
+What this file does:
+- Implements focused support logic for `harnessiq/tools`.
+- Prompt-generation tools for agent system prompts.
+
+Use cases:
+- Import this module when sibling runtime code needs the behavior it
+  centralizes.
+
+How to use it:
+- Use `create_system_prompt` and the other exported symbols here through their
+  package-level integration points.
+
+Intent:
+- Keep related runtime behavior centralized and easier to discover during
+  maintenance.
+===============================================================================
+"""
 
 from __future__ import annotations
 

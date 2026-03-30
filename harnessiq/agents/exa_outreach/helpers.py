@@ -1,4 +1,24 @@
-"""Helper functions for the ExaOutreach agent."""
+"""
+===============================================================================
+File: harnessiq/agents/exa_outreach/helpers.py
+
+What this file does:
+- Collects shared helper functions for the `exa_outreach` package.
+- Helper functions for the ExaOutreach agent.
+
+Use cases:
+- Use these helpers when sibling runtime modules need the same normalization,
+  path resolution, or payload-shaping logic.
+
+How to use it:
+- Import the narrow helper you need from `harnessiq/agents/exa_outreach` rather
+  than duplicating package-specific support code.
+
+Intent:
+- Keep reusable `exa_outreach` support logic centralized so business modules
+  stay focused on orchestration.
+===============================================================================
+"""
 
 from __future__ import annotations
 

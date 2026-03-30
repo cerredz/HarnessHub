@@ -1,4 +1,27 @@
-"""Knowt agent tool implementations for the content creation pipeline."""
+"""
+===============================================================================
+File: harnessiq/tools/knowt/operations.py
+
+What this file does:
+- Exposes the `knowt` tool family for the HarnessIQ tool layer.
+- In most packages this module is the bridge between provider-backed operations
+  and the generic tool registration surface.
+- Knowt agent tool implementations for the content creation pipeline.
+
+Use cases:
+- Import this module when an agent or registry needs the `knowt` tool
+  definitions.
+- Read it to see which runtime operations are intentionally surfaced as tools.
+
+How to use it:
+- Call the exported factory helpers from `harnessiq/tools/knowt` and merge the
+  resulting tools into a registry.
+
+Intent:
+- Keep the public `knowt` tool surface small, explicit, and separate from
+  provider implementation details.
+===============================================================================
+"""
 
 from __future__ import annotations
 

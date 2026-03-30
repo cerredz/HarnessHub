@@ -1,4 +1,28 @@
-"""Behavior-layer formalization interfaces."""
+"""
+===============================================================================
+File: harnessiq/interfaces/formalization/behaviors/__init__.py
+
+What this file does:
+- Defines the package-level export surface for
+  `harnessiq/interfaces/formalization/behaviors` within the HarnessIQ runtime.
+- Behavior-layer formalization interfaces.
+
+Use cases:
+- Import BaseBehaviorLayer, BaseExecutionPaceLayer, BaseErrorRecoveryLayer,
+  BaseQualityBehaviorLayer, BaseReasoningBehaviorLayer, BaseSafetyBehaviorLayer
+  from one stable package entry point.
+- Read this module to understand what
+  `harnessiq/interfaces/formalization/behaviors` intends to expose publicly.
+
+How to use it:
+- Import from `harnessiq/interfaces/formalization/behaviors` when you want the
+  supported facade instead of reaching through deeper internal modules.
+
+Intent:
+- Keep the public surface for `harnessiq/interfaces/formalization/behaviors`
+  explicit, discoverable, and easier to maintain.
+===============================================================================
+"""
 
 from .base import (
     BaseBehaviorLayer,

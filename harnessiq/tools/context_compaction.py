@@ -1,4 +1,24 @@
-"""Context-window compaction helpers and registered tools."""
+"""
+===============================================================================
+File: harnessiq/tools/context_compaction.py
+
+What this file does:
+- Implements focused support logic for `harnessiq/tools`.
+- Context-window compaction helpers and registered tools.
+
+Use cases:
+- Import this module when sibling runtime code needs the behavior it
+  centralizes.
+
+How to use it:
+- Use `remove_tool_result_entries` and the other exported symbols here through
+  their package-level integration points.
+
+Intent:
+- Keep related runtime behavior centralized and easier to discover during
+  maintenance.
+===============================================================================
+"""
 
 from __future__ import annotations
 

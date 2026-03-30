@@ -1,4 +1,28 @@
-"""Legacy-compatible behavior formalization exports."""
+"""
+===============================================================================
+File: harnessiq/formalization/behaviors/__init__.py
+
+What this file does:
+- Defines the package-level export surface for
+  `harnessiq/formalization/behaviors` within the HarnessIQ runtime.
+- Legacy-compatible behavior formalization exports.
+
+Use cases:
+- Import BaseBehaviorLayer, BaseExecutionPaceLayer, BaseErrorRecoveryLayer,
+  BaseQualityBehaviorLayer, BaseReasoningBehaviorLayer, BaseSafetyBehaviorLayer
+  from one stable package entry point.
+- Read this module to understand what `harnessiq/formalization/behaviors`
+  intends to expose publicly.
+
+How to use it:
+- Import from `harnessiq/formalization/behaviors` when you want the supported
+  facade instead of reaching through deeper internal modules.
+
+Intent:
+- Keep the public surface for `harnessiq/formalization/behaviors` explicit,
+  discoverable, and easier to maintain.
+===============================================================================
+"""
 
 from .base import (
     BaseBehaviorLayer,

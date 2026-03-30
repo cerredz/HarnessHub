@@ -1,4 +1,24 @@
-"""Default lifecycle hooks and policy helpers."""
+"""
+===============================================================================
+File: harnessiq/tools/hooks/defaults.py
+
+What this file does:
+- Implements focused support logic for `harnessiq/tools/hooks`.
+- Default lifecycle hooks and policy helpers.
+
+Use cases:
+- Import this module when sibling runtime code needs the behavior it
+  centralizes.
+
+How to use it:
+- Use `create_default_hook_tools` and the other exported symbols here through
+  their package-level integration points.
+
+Intent:
+- Keep related runtime behavior centralized and easier to discover during
+  maintenance.
+===============================================================================
+"""
 
 from __future__ import annotations
 

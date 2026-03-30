@@ -1,19 +1,40 @@
-"""Shared formalization records used by the public interface layer package.
+"""
+===============================================================================
+File: harnessiq/shared/formalization.py
 
-This module intentionally holds the durable, dependency-light data structures
-that describe a formalization layer. The interface package builds abstract
-behavior on top of these records, but the records themselves live in
-``harnessiq.shared`` so they can be reused by runtime code, tests, generators,
-and SDK consumers without importing the higher-level interface package.
+What this file does:
+- Defines the shared, dependency-light record types that describe formalization
+  layers across the SDK.
+- These records are the stable vocabulary used by abstract interfaces, runtime
+  implementations, tests, and generators.
+- Shared formalization records used by the public interface layer package. This
+  module intentionally holds the durable, dependency-light data structures that
+  describe a formalization layer. The interface package builds abstract
+  behavior on top of these records, but the records themselves live in
+  ``harnessiq.shared`` so they can be reused by runtime code, tests,
+  generators, and SDK consumers without importing the higher-level interface
+  package. The separation matters for two reasons: 1. These records are the
+  stable vocabulary for formalization layers. They are not specific to any one
+  abstract base class. 2. The formalization interfaces are expected to be
+  injectable into different harness compositions. Keeping the records in
+  ``shared`` lets both the interface layer and the eventual runtime
+  implementation depend on the same source of truth.
 
-The separation matters for two reasons:
+Use cases:
+- Use these dataclasses when you need a portable description of a layer
+  contract or rule set.
+- Read this module first when you are learning the data model that powers
+  formalization documentation and enforcement.
 
-1. These records are the stable vocabulary for formalization layers. They are
-   not specific to any one abstract base class.
-2. The formalization interfaces are expected to be injectable into different
-   harness compositions. Keeping the records in ``shared`` lets both the
-   interface layer and the eventual runtime implementation depend on the same
-   source of truth.
+How to use it:
+- Import the record types directly from `harnessiq.shared.formalization` when
+  you need schema-like formalization metadata without higher-level runtime
+  dependencies.
+
+Intent:
+- Keep the language of formalization stable and reusable so higher layers can
+  share one source of truth.
+===============================================================================
 """
 
 from __future__ import annotations

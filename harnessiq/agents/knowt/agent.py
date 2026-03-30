@@ -1,4 +1,28 @@
-"""Knowt TikTok content creation agent harness."""
+"""
+===============================================================================
+File: harnessiq/agents/knowt/agent.py
+
+What this file does:
+- Implements the concrete `KnowtAgent` runtime for the `knowt` agent package.
+- The module owns the package-specific memory loading, prompt assembly, and
+  tool wiring needed by that agent.
+- Knowt TikTok content creation agent harness.
+
+Use cases:
+- Instantiate the agent directly when you already have the required runtime
+  parameters.
+- Load the agent from persisted memory or profile helpers when resuming a
+  previous run.
+
+How to use it:
+- Construct `KnowtAgent` or use its factory helpers, then call `run()` or
+  `snapshot()` through the shared base runtime.
+
+Intent:
+- Keep the `knowt` workflow packaged as one reusable HarnessIQ harness instead
+  of scattering its durable behavior across scripts.
+===============================================================================
+"""
 
 from __future__ import annotations
 

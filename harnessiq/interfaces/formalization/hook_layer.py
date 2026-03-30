@@ -1,8 +1,27 @@
-"""Abstract hook-behavior layer for stateful runtime interception.
+"""
+===============================================================================
+File: harnessiq/interfaces/formalization/hook_layer.py
 
-The existing runtime already has hook concepts, but a formalization hook layer
-captures a different concern: behaviors that belong to a self-documenting
-formalization object and may carry their own state or rule declarations.
+What this file does:
+- Defines part of the abstract formalization interface surface used to describe
+  harness behavior declaratively.
+- Abstract hook-behavior layer for stateful runtime interception. The existing
+  runtime already has hook concepts, but a formalization hook layer captures a
+  different concern: behaviors that belong to a self-documenting formalization
+  object and may carry their own state or rule declarations.
+
+Use cases:
+- Subclass or import these interfaces when building a new formalization layer
+  family or behavior.
+
+How to use it:
+- Use the abstractions here to declare behavior, rules, and configuration in a
+  form the runtime can later inspect or enforce.
+
+Intent:
+- Keep formalization contracts explicit and composable so harness rules are
+  visible in code and docs.
+===============================================================================
 """
 
 from __future__ import annotations

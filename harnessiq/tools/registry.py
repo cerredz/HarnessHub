@@ -1,4 +1,32 @@
-"""Deterministic registration and execution helpers for tools."""
+"""
+===============================================================================
+File: harnessiq/tools/registry.py
+
+What this file does:
+- Defines the deterministic in-memory registry that stores executable tool
+  definitions and runs them by public key.
+- Also owns canonical duplicate-key checks and a small but important
+  schema-validation pass before execution.
+- Deterministic registration and execution helpers for tools.
+
+Use cases:
+- Build a runtime tool surface for one harness from built-ins plus
+  agent-specific tools.
+- Inspect or expose the currently registered tool definitions to a model or
+  CLI.
+- Execute a tool call through the same validation path every agent relies on.
+
+How to use it:
+- Call `create_tool_registry(...)` with one or more ordered groups of
+  `RegisteredTool` objects.
+- Use `definitions()` or `inspect()` when surfacing tools to the outside world,
+  and `execute()` for runtime execution.
+
+Intent:
+- Keep tool lookup order, override semantics, and argument validation
+  centralized so the SDK has one predictable execution path.
+===============================================================================
+"""
 
 from __future__ import annotations
 
@@ -23,6 +51,8 @@ class ToolRegistry:
     """A deterministic in-memory registry for executable tools."""
 
     def __init__(self, tools: Iterable[RegisteredTool]) -> None:
+        # Registration order is part of the public runtime contract because the
+        # same order is later exposed to inspection surfaces and model requests.
         ordered_tools = tuple(tools)
         registry: dict[str, RegisteredTool] = {}
         for tool in ordered_tools:
@@ -75,6 +105,9 @@ class ToolRegistry:
 
 def _validate_arguments(definition: ToolDefinition, arguments: ToolArguments) -> None:
     """Apply a small deterministic validation pass for the canonical schema."""
+    # This validator intentionally enforces only the canonical structural rules
+    # shared by every tool: required fields and additional-properties policy.
+    # Deeper semantic validation stays inside the tool implementation itself.
     required_keys = tuple(definition.input_schema.get("required", ()))
     missing_keys = [key for key in required_keys if key not in arguments]
     if missing_keys:
@@ -101,6 +134,9 @@ def create_builtin_registry() -> ToolRegistry:
 
 def merge_tools(*tool_groups: Iterable[RegisteredTool]) -> tuple[RegisteredTool, ...]:
     """Merge ordered tool groups while allowing later groups to override keys."""
+    # Later groups override earlier registrations by key, but the first time a
+    # key appears defines its position in the ordered surface. That lets agents
+    # specialize built-ins without destabilizing tool ordering for the model.
     ordered_keys: list[str] = []
     merged: dict[str, RegisteredTool] = {}
     for tool_group in tool_groups:

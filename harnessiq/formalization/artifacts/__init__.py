@@ -1,4 +1,28 @@
-"""Artifact-formalization runtime specs, helpers, and exceptions."""
+"""
+===============================================================================
+File: harnessiq/formalization/artifacts/__init__.py
+
+What this file does:
+- Defines the package-level export surface for
+  `harnessiq/formalization/artifacts` within the HarnessIQ runtime.
+- Artifact-formalization runtime specs, helpers, and exceptions.
+
+Use cases:
+- Import ArtifactNotFoundError, CompletionRequirement, FORMAT_EXTENSION_MAP,
+  FORMAT_TOOL_MAP, InjectionPolicy, InputArtifactLayer from one stable package
+  entry point.
+- Read this module to understand what `harnessiq/formalization/artifacts`
+  intends to expose publicly.
+
+How to use it:
+- Import from `harnessiq/formalization/artifacts` when you want the supported
+  facade instead of reaching through deeper internal modules.
+
+Intent:
+- Keep the public surface for `harnessiq/formalization/artifacts` explicit,
+  discoverable, and easier to maintain.
+===============================================================================
+"""
 
 from .exceptions import ArtifactNotFoundError, OutputArtifactMissingError
 from .format_map import (

@@ -1,4 +1,27 @@
-"""Lusha MCP-style tool factory for the Harnessiq tool layer."""
+"""
+===============================================================================
+File: harnessiq/tools/lusha/operations.py
+
+What this file does:
+- Exposes the `lusha` tool family for the HarnessIQ tool layer.
+- In most packages this module is the bridge between provider-backed operations
+  and the generic tool registration surface.
+- Lusha MCP-style tool factory for the Harnessiq tool layer.
+
+Use cases:
+- Import this module when an agent or registry needs the `lusha` tool
+  definitions.
+- Read it to see which runtime operations are intentionally surfaced as tools.
+
+How to use it:
+- Call the exported factory helpers from `harnessiq/tools/lusha` and merge the
+  resulting tools into a registry.
+
+Intent:
+- Keep the public `lusha` tool surface small, explicit, and separate from
+  provider implementation details.
+===============================================================================
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,28 @@
-"""Public formalization-layer contracts and runtime building blocks."""
+"""
+===============================================================================
+File: harnessiq/formalization/__init__.py
+
+What this file does:
+- Defines the package-level export surface for `harnessiq/formalization` within
+  the HarnessIQ runtime.
+- Public formalization-layer contracts and runtime building blocks.
+
+Use cases:
+- Import ArtifactSpec, ArtifactNotFoundError, BaseArtifactLayer,
+  BaseBehaviorLayer, BaseExecutionPaceLayer, BaseErrorRecoveryLayer from one
+  stable package entry point.
+- Read this module to understand what `harnessiq/formalization` intends to
+  expose publicly.
+
+How to use it:
+- Import from `harnessiq/formalization` when you want the supported facade
+  instead of reaching through deeper internal modules.
+
+Intent:
+- Keep the public surface for `harnessiq/formalization` explicit, discoverable,
+  and easier to maintain.
+===============================================================================
+"""
 
 from .artifacts import (
     ArtifactNotFoundError,

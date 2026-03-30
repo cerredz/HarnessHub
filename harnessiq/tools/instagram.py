@@ -1,4 +1,24 @@
-"""Instagram agent tool definitions and runtime handlers."""
+"""
+===============================================================================
+File: harnessiq/tools/instagram.py
+
+What this file does:
+- Implements focused support logic for `harnessiq/tools`.
+- Instagram agent tool definitions and runtime handlers.
+
+Use cases:
+- Import this module when sibling runtime code needs the behavior it
+  centralizes.
+
+How to use it:
+- Use `create_instagram_tools` and the other exported symbols here through
+  their package-level integration points.
+
+Intent:
+- Keep related runtime behavior centralized and easier to discover during
+  maintenance.
+===============================================================================
+"""
 
 from __future__ import annotations
 

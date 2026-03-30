@@ -1,4 +1,24 @@
-"""Helper functions for the Research Sweep agent."""
+"""
+===============================================================================
+File: harnessiq/agents/research_sweep/helpers.py
+
+What this file does:
+- Collects shared helper functions for the `research_sweep` package.
+- Helper functions for the Research Sweep agent.
+
+Use cases:
+- Use these helpers when sibling runtime modules need the same normalization,
+  path resolution, or payload-shaping logic.
+
+How to use it:
+- Import the narrow helper you need from `harnessiq/agents/research_sweep`
+  rather than duplicating package-specific support code.
+
+Intent:
+- Keep reusable `research_sweep` support logic centralized so business modules
+  stay focused on orchestration.
+===============================================================================
+"""
 
 from __future__ import annotations
 

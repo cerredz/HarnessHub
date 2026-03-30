@@ -1,4 +1,25 @@
-"""Reasoning lens tool definitions, handlers, and factory."""
+"""
+===============================================================================
+File: harnessiq/tools/reasoning/lenses.py
+
+What this file does:
+- Implements part of the reasoning-tool surface used to make agent thinking
+  steps more structured and inspectable.
+- Reasoning lens tool definitions, handlers, and factory.
+
+Use cases:
+- Use these helpers when a harness needs explicit reasoning tools instead of
+  relying only on free-form assistant text.
+
+How to use it:
+- Register these tools through the built-in tool catalog or a custom registry
+  composition.
+
+Intent:
+- Expose reasoning support as deterministic tools so the SDK can guide thinking
+  without hiding behavior in prompts alone.
+===============================================================================
+"""
 
 from __future__ import annotations
 

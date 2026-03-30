@@ -1,4 +1,25 @@
-"""Resend client and request-preparation helpers."""
+"""
+===============================================================================
+File: harnessiq/tools/resend_client.py
+
+What this file does:
+- Defines the `ResendClient` type and the supporting logic it needs in the
+  `harnessiq/tools` module.
+- Resend client and request-preparation helpers.
+
+Use cases:
+- Import `ResendClient` when composing higher-level HarnessIQ runtime behavior
+  from this package.
+
+How to use it:
+- Use the public class and any exported helpers here as the supported entry
+  points for this module.
+
+Intent:
+- Keep this package responsibility encapsulated behind one focused module
+  instead of duplicating the same logic elsewhere.
+===============================================================================
+"""
 
 from __future__ import annotations
 

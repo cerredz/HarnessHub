@@ -1,4 +1,27 @@
-"""Public shared Instagram keyword search tool definition and factory."""
+"""
+===============================================================================
+File: harnessiq/tools/instagram/operations.py
+
+What this file does:
+- Exposes the `instagram` tool family for the HarnessIQ tool layer.
+- In most packages this module is the bridge between provider-backed operations
+  and the generic tool registration surface.
+- Public shared Instagram keyword search tool definition and factory.
+
+Use cases:
+- Import this module when an agent or registry needs the `instagram` tool
+  definitions.
+- Read it to see which runtime operations are intentionally surfaced as tools.
+
+How to use it:
+- Call the exported factory helpers from `harnessiq/tools/instagram` and merge
+  the resulting tools into a registry.
+
+Intent:
+- Keep the public `instagram` tool surface small, explicit, and separate from
+  provider implementation details.
+===============================================================================
+"""
 
 from __future__ import annotations
 

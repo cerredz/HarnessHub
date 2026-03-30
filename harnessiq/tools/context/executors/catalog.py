@@ -1,4 +1,25 @@
-"""Additional catalog context-tool executors."""
+"""
+===============================================================================
+File: harnessiq/tools/context/executors/catalog.py
+
+What this file does:
+- Implements part of the context-tool system that rewrites, summarizes, or
+  annotates an agent context window.
+- Additional catalog context-tool executors.
+
+Use cases:
+- Use these helpers when a runtime needs deterministic context compaction or
+  injection behavior.
+
+How to use it:
+- Import the definitions or executors from this module through the context-tool
+  catalog rather than wiring ad hoc context mutations inline.
+
+Intent:
+- Keep context-window manipulation explicit and reusable so long-running agents
+  can manage token pressure predictably.
+===============================================================================
+"""
 
 from __future__ import annotations
 
@@ -25,6 +46,9 @@ from .. import (
 
 
 def summarize_transcript(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dict[str, Any]:
+    # The summary payload deliberately separates completed actions, tool results,
+    # and recent errors so a caller can compact the transcript without losing the
+    # pieces of state most useful for the next reasoning step.
     detail = coerce_optional_string(arguments, "detail_level") or "standard"
     parameter_entries, transcript_entries = split_context_window(current_context_window(runtime))
     completed_actions = [entry.get("content", "") for entry in transcript_entries if entry["kind"] in {"assistant", "summary"} and entry.get("content")]
@@ -49,6 +73,9 @@ def summarize_transcript(runtime: ContextToolRuntime, arguments: dict[str, Any])
 
 
 def prune_tool_results(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dict[str, Any]:
+    # Result pruning preserves the latest matching tool results while replacing
+    # older ones with an explicit marker. That retains the fact that work
+    # happened without paying the full token cost of every historical payload.
     keep_last_n = coerce_non_negative_int(arguments, "keep_last_n", default=3)
     tool_filter = set(coerce_string_list(arguments, "tool_filter"))
     replacement = coerce_optional_string(arguments, "replacement_text") or "[result pruned - content processed]"
@@ -68,6 +95,9 @@ def prune_tool_results(runtime: ContextToolRuntime, arguments: dict[str, Any]) -
 
 
 def estimate_window_pressure(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dict[str, Any]:
+    # Pressure estimates turn raw token counts into discrete operating guidance
+    # so agents and hooks can make deterministic compaction decisions instead of
+    # guessing from the transcript size alone.
     planned = arguments.get("planned_action_tokens")
     if planned is not None and (isinstance(planned, bool) or not isinstance(planned, int)):
         raise ValueError("The 'planned_action_tokens' argument must be an integer when provided.")
@@ -124,6 +154,9 @@ def handoff_brief(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dic
 
 
 def collapse_repeated_calls(runtime: ContextToolRuntime, arguments: dict[str, Any]) -> dict[str, Any]:
+    # Repeated tool-call runs often come from retry loops or idempotent probing.
+    # Collapsing exact repeats preserves the latest representative call while
+    # encoding the repetition count as metadata for downstream inspection.
     minimum = coerce_non_negative_int(arguments, "min_repetitions", default=3)
     tool_filter = set(coerce_string_list(arguments, "tool_filter"))
     parameter_entries, transcript_entries = split_context_window(current_context_window(runtime))

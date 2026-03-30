@@ -1,7 +1,28 @@
-"""Proxycurl MCP-style tool factory for the Harnessiq tool layer.
+"""
+===============================================================================
+File: harnessiq/tools/proxycurl/operations.py
 
-NOTE: Proxycurl shut down in January 2025 following a LinkedIn lawsuit.
-This module is preserved for reference only and will not produce live responses.
+What this file does:
+- Exposes the `proxycurl` tool family for the HarnessIQ tool layer.
+- In most packages this module is the bridge between provider-backed operations
+  and the generic tool registration surface.
+- Proxycurl MCP-style tool factory for the Harnessiq tool layer. NOTE:
+  Proxycurl shut down in January 2025 following a LinkedIn lawsuit. This module
+  is preserved for reference only and will not produce live responses.
+
+Use cases:
+- Import this module when an agent or registry needs the `proxycurl` tool
+  definitions.
+- Read it to see which runtime operations are intentionally surfaced as tools.
+
+How to use it:
+- Call the exported factory helpers from `harnessiq/tools/proxycurl` and merge
+  the resulting tools into a registry.
+
+Intent:
+- Keep the public `proxycurl` tool surface small, explicit, and separate from
+  provider implementation details.
+===============================================================================
 """
 
 from __future__ import annotations

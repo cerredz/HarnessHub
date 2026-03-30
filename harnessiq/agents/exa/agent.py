@@ -1,4 +1,28 @@
-"""Reusable Exa-backed agent harnesses."""
+"""
+===============================================================================
+File: harnessiq/agents/exa/agent.py
+
+What this file does:
+- Implements the concrete `BaseExaAgent` runtime for the `exa` agent package.
+- The module owns the package-specific memory loading, prompt assembly, and
+  tool wiring needed by that agent.
+- Reusable Exa-backed agent harnesses.
+
+Use cases:
+- Instantiate the agent directly when you already have the required runtime
+  parameters.
+- Load the agent from persisted memory or profile helpers when resuming a
+  previous run.
+
+How to use it:
+- Construct `BaseExaAgent` or use its factory helpers, then call `run()` or
+  `snapshot()` through the shared base runtime.
+
+Intent:
+- Keep the `exa` workflow packaged as one reusable HarnessIQ harness instead of
+  scattering its durable behavior across scripts.
+===============================================================================
+"""
 
 from __future__ import annotations
 

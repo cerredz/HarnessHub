@@ -1,4 +1,31 @@
-"""Concrete mission-driven harness implementation."""
+"""
+===============================================================================
+File: harnessiq/agents/mission_driven/agent.py
+
+What this file does:
+- Implements the mission-driven harness that keeps a durable mission artifact
+  synchronized with the agent loop.
+- It coordinates staged subcalls, mission memory files, and mission-specific
+  tools so planning and execution state survive resets.
+- Concrete mission-driven harness implementation.
+
+Use cases:
+- Run long-lived work that needs a mission definition, task plan, progress log,
+  checkpoints, and artifact tracking.
+- Inspect it when debugging how mission updates are normalized into the durable
+  artifact.
+
+How to use it:
+- Construct `MissionDrivenAgent` directly or load it from persisted
+  memory/profile helpers.
+- Interact with the mission through the mission tools rather than treating the
+  transcript as durable state.
+
+Intent:
+- Make durable mission execution a first-class SDK pattern instead of ad hoc
+  prompt-driven bookkeeping.
+===============================================================================
+"""
 
 from __future__ import annotations
 
@@ -290,6 +317,9 @@ class MissionDrivenAgent(BaseAgent):
         }
 
     def _initialize_artifact(self) -> dict[str, Any]:
+        # Artifact initialization is front-loaded into deterministic stages so
+        # the durable mission starts with a definition, plan, status, and human-
+        # readable narrative before the open-ended run loop begins.
         definition = self._definition_stage.run(
             mission_goal=self._config.mission_goal,
             mission_type=self._config.mission_type,
@@ -344,6 +374,10 @@ class MissionDrivenAgent(BaseAgent):
         return snapshot
 
     def _handle_record_updates(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        # This handler is the heart of the mission-driven harness. It reconciles
+        # partial updates from the agent back into the durable artifact, then
+        # recomputes mission status and the README summary from the new source of
+        # truth so every surface stays synchronized after a tool call.
         task_updates = self._coerce_mapping_list(arguments.get("task_updates", []))
         progress_events = self._coerce_mapping_list(arguments.get("progress_events", []))
         memory_facts = self._coerce_mapping_list(arguments.get("memory_facts", []))
@@ -481,6 +515,10 @@ class MissionDrivenAgent(BaseAgent):
         return snapshot
 
     def _apply_task_updates(self, current_plan: MissionTaskPlan, updates: list[Mapping[str, Any]]) -> MissionTaskPlan:
+        # Task updates are merge-style rather than replace-all so the model can
+        # incrementally refine the plan without resending the full task graph on
+        # every call. Existing fields survive unless the update explicitly
+        # changes them.
         task_index = {task.task_id: task for task in current_plan.tasks}
         for update in updates:
             task_id = str(update.get("id", "")).strip()
@@ -506,6 +544,9 @@ class MissionDrivenAgent(BaseAgent):
         )
 
     def _sync_file_manifest(self) -> None:
+        # The file manifest is derived from the harness manifest instead of being
+        # hand-maintained so the durable artifact can always explain which files
+        # it owns and whether each expected memory entry currently exists.
         records: list[dict[str, Any]] = []
         for entry in MISSION_DRIVEN_HARNESS_MANIFEST.memory_files:
             path = self.memory_path / entry.relative_path

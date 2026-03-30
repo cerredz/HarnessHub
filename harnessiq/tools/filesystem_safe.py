@@ -1,4 +1,24 @@
-"""Additive and non-destructive filesystem tools."""
+"""
+===============================================================================
+File: harnessiq/tools/filesystem_safe.py
+
+What this file does:
+- Implements focused support logic for `harnessiq/tools`.
+- Additive and non-destructive filesystem tools.
+
+Use cases:
+- Import this module when sibling runtime code needs the behavior it
+  centralizes.
+
+How to use it:
+- Use `read_file` and the other exported symbols here through their
+  package-level integration points.
+
+Intent:
+- Keep related runtime behavior centralized and easier to discover during
+  maintenance.
+===============================================================================
+"""
 
 from __future__ import annotations
 

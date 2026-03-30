@@ -1,4 +1,29 @@
-"""LinkedIn-specific agent harness and durable memory helpers."""
+"""
+===============================================================================
+File: harnessiq/agents/linkedin/agent.py
+
+What this file does:
+- Implements the concrete `LinkedInJobApplierAgent` runtime for the `linkedin`
+  agent package.
+- The module owns the package-specific memory loading, prompt assembly, and
+  tool wiring needed by that agent.
+- LinkedIn-specific agent harness and durable memory helpers.
+
+Use cases:
+- Instantiate the agent directly when you already have the required runtime
+  parameters.
+- Load the agent from persisted memory or profile helpers when resuming a
+  previous run.
+
+How to use it:
+- Construct `LinkedInJobApplierAgent` or use its factory helpers, then call
+  `run()` or `snapshot()` through the shared base runtime.
+
+Intent:
+- Keep the `linkedin` workflow packaged as one reusable HarnessIQ harness
+  instead of scattering its durable behavior across scripts.
+===============================================================================
+"""
 
 from __future__ import annotations
 

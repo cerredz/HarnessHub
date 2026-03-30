@@ -1,15 +1,34 @@
-"""Public formalization interfaces for injectable harness structure.
+"""
+===============================================================================
+File: harnessiq/interfaces/formalization/__init__.py
 
-The classes exported from this package define the SDK-facing abstraction layer
-for formalization. A harness can depend on none of them, some of them, or many
-of them. The common pattern is:
+What this file does:
+- Defines the package-level export surface for
+  `harnessiq/interfaces/formalization` within the HarnessIQ runtime.
+- Public formalization interfaces for injectable harness structure. The classes
+  exported from this package define the SDK-facing abstraction layer for
+  formalization. A harness can depend on none of them, some of them, or many of
+  them. The common pattern is: 1. shared formalization records live in
+  ``harnessiq.shared.formalization`` 2. abstract behavioral contracts live here
+  under ``harnessiq.interfaces`` 3. concrete runtime implementations can later
+  plug these layers into a harness Each class lives in its own module so the
+  package stays navigable as the formalization surface grows.
 
-1. shared formalization records live in ``harnessiq.shared.formalization``
-2. abstract behavioral contracts live here under ``harnessiq.interfaces``
-3. concrete runtime implementations can later plug these layers into a harness
+Use cases:
+- Import ArtifactSpec, ArtifactNotFoundError, BaseArtifactLayer,
+  BaseBehaviorLayer, BaseExecutionPaceLayer, BaseErrorRecoveryLayer from one
+  stable package entry point.
+- Read this module to understand what `harnessiq/interfaces/formalization`
+  intends to expose publicly.
 
-Each class lives in its own module so the package stays navigable as the
-formalization surface grows.
+How to use it:
+- Import from `harnessiq/interfaces/formalization` when you want the supported
+  facade instead of reaching through deeper internal modules.
+
+Intent:
+- Keep the public surface for `harnessiq/interfaces/formalization` explicit,
+  discoverable, and easier to maintain.
+===============================================================================
 """
 
 from __future__ import annotations

@@ -1,4 +1,24 @@
-"""Helper functions for email-capable agents."""
+"""
+===============================================================================
+File: harnessiq/agents/email/helpers.py
+
+What this file does:
+- Collects shared helper functions for the `email` package.
+- Helper functions for email-capable agents.
+
+Use cases:
+- Use these helpers when sibling runtime modules need the same normalization,
+  path resolution, or payload-shaping logic.
+
+How to use it:
+- Import the narrow helper you need from `harnessiq/agents/email` rather than
+  duplicating package-specific support code.
+
+Intent:
+- Keep reusable `email` support logic centralized so business modules stay
+  focused on orchestration.
+===============================================================================
+"""
 
 from __future__ import annotations
 

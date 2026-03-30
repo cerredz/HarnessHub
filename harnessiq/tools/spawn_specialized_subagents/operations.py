@@ -1,4 +1,29 @@
-"""Tool definitions for the spawn-specialized-subagents harness."""
+"""
+===============================================================================
+File: harnessiq/tools/spawn_specialized_subagents/operations.py
+
+What this file does:
+- Exposes the `spawn_specialized_subagents` tool family for the HarnessIQ tool
+  layer.
+- In most packages this module is the bridge between provider-backed operations
+  and the generic tool registration surface.
+- Tool definitions for the spawn-specialized-subagents harness.
+
+Use cases:
+- Import this module when an agent or registry needs the
+  `spawn_specialized_subagents` tool definitions.
+- Read it to see which runtime operations are intentionally surfaced as tools.
+
+How to use it:
+- Call the exported factory helpers from
+  `harnessiq/tools/spawn_specialized_subagents` and merge the resulting tools
+  into a registry.
+
+Intent:
+- Keep the public `spawn_specialized_subagents` tool surface small, explicit,
+  and separate from provider implementation details.
+===============================================================================
+"""
 
 from __future__ import annotations
 

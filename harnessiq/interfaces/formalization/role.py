@@ -1,9 +1,28 @@
-"""Abstract role-selection layer for multi-role harness formalization.
+"""
+===============================================================================
+File: harnessiq/interfaces/formalization/role.py
 
-Role layers formalize agent identity switching without forcing that logic into
-the harness itself. A role can inject prompt fragments and narrow the visible
-tool surface, while the harness stays responsible for deciding which role is
-currently active.
+What this file does:
+- Defines part of the abstract formalization interface surface used to describe
+  harness behavior declaratively.
+- Abstract role-selection layer for multi-role harness formalization. Role
+  layers formalize agent identity switching without forcing that logic into the
+  harness itself. A role can inject prompt fragments and narrow the visible
+  tool surface, while the harness stays responsible for deciding which role is
+  currently active.
+
+Use cases:
+- Subclass or import these interfaces when building a new formalization layer
+  family or behavior.
+
+How to use it:
+- Use the abstractions here to declare behavior, rules, and configuration in a
+  form the runtime can later inspect or enforce.
+
+Intent:
+- Keep formalization contracts explicit and composable so harness rules are
+  visible in code and docs.
+===============================================================================
 """
 
 from __future__ import annotations

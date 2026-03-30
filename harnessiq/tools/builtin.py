@@ -1,4 +1,29 @@
-"""Small built-in tools used to validate the initial runtime scaffold."""
+"""
+===============================================================================
+File: harnessiq/tools/builtin.py
+
+What this file does:
+- Composes the default built-in tool catalog that every HarnessIQ runtime can
+  start from.
+- This file is the assembly point where generic context, filesystem, reasoning,
+  memory, and validation tool families are stitched together.
+- Small built-in tools used to validate the initial runtime scaffold.
+
+Use cases:
+- Inspect the default baseline tool surface available before agent-specific
+  tools are added.
+- Update this file when adding or reordering a built-in tool family.
+
+How to use it:
+- Import `BUILTIN_TOOLS` or call registry helpers that use it under the hood.
+- Add new built-ins by defining `RegisteredTool` entries or appending family
+  factory output here.
+
+Intent:
+- Make the default runtime surface explicit and deterministic instead of
+  letting built-ins emerge from scattered imports.
+===============================================================================
+"""
 
 from __future__ import annotations
 

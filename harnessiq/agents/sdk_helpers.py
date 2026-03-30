@@ -1,4 +1,24 @@
-"""Public SDK helpers and shared agent-construction utilities."""
+"""
+===============================================================================
+File: harnessiq/agents/sdk_helpers.py
+
+What this file does:
+- Implements focused support logic for `harnessiq/agents`.
+- Public SDK helpers and shared agent-construction utilities.
+
+Use cases:
+- Import this module when sibling runtime code needs the behavior it
+  centralizes.
+
+How to use it:
+- Use `build_agent_runtime_config` and the other exported symbols here through
+  their package-level integration points.
+
+Intent:
+- Keep related runtime behavior centralized and easier to discover during
+  maintenance.
+===============================================================================
+"""
 
 from __future__ import annotations
 

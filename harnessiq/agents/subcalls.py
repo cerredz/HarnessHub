@@ -1,4 +1,24 @@
-"""Shared helpers for deterministic JSON-returning model subcalls."""
+"""
+===============================================================================
+File: harnessiq/agents/subcalls.py
+
+What this file does:
+- Implements focused support logic for `harnessiq/agents`.
+- Shared helpers for deterministic JSON-returning model subcalls.
+
+Use cases:
+- Import this module when sibling runtime code needs the behavior it
+  centralizes.
+
+How to use it:
+- Use `parse_json_object` and the other exported symbols here through their
+  package-level integration points.
+
+Intent:
+- Keep related runtime behavior centralized and easier to discover during
+  maintenance.
+===============================================================================
+"""
 
 from __future__ import annotations
 

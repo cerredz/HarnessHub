@@ -1,4 +1,24 @@
-"""Deterministic record-transformation tools."""
+"""
+===============================================================================
+File: harnessiq/tools/records.py
+
+What this file does:
+- Implements focused support logic for `harnessiq/tools`.
+- Deterministic record-transformation tools.
+
+Use cases:
+- Import this module when sibling runtime code needs the behavior it
+  centralizes.
+
+How to use it:
+- Use `filter_records` and the other exported symbols here through their
+  package-level integration points.
+
+Intent:
+- Keep related runtime behavior centralized and easier to discover during
+  maintenance.
+===============================================================================
+"""
 
 from __future__ import annotations
 

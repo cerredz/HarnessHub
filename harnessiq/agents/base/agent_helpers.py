@@ -1,4 +1,29 @@
-"""Private helper methods and utilities for the base agent runtime."""
+"""
+===============================================================================
+File: harnessiq/agents/base/agent_helpers.py
+
+What this file does:
+- Provides the shared helper mixin used by `BaseAgent` to reconcile
+  formalization layers, hook tools, context mutation, and ledger behavior.
+- Private helper methods and utilities for the base agent runtime.
+
+Use cases:
+- Read this module when debugging how a tool call is filtered, transformed, or
+  finalized before it reaches the transcript.
+- Extend these helpers when adding cross-cutting runtime behavior that should
+  apply to every agent.
+
+How to use it:
+- Treat the helpers here as internal runtime infrastructure rather than public
+  agent APIs.
+- Compose new agent behavior by extending `BaseAgent` and letting the mixin
+  methods keep orchestration consistent.
+
+Intent:
+- Centralize the non-domain-specific runtime rules so agent packages stay
+  focused on business behavior instead of SDK plumbing.
+===============================================================================
+"""
 
 from __future__ import annotations
 
@@ -242,6 +267,9 @@ class BaseAgentHelpersMixin:
 
     def _collect_formalization_tools(self) -> tuple[RegisteredTool, ...]:
         """Return all registered tools contributed by formalization layers."""
+        # Formalization tools are merged as a late overlay so the layer that owns
+        # a workflow constraint can also expose the deterministic tools that make
+        # the constraint operable during the run.
         collected: list[tuple[RegisteredTool, ...]] = []
         for layer in self._formalization_layers:
             layer_tools = tuple(layer.get_formalization_tools())
@@ -281,6 +309,10 @@ class BaseAgentHelpersMixin:
         base_sections: Sequence[AgentParameterSection],
     ) -> tuple[AgentParameterSection, ...]:
         """Merge durable sections, overrides, and context memory into one block."""
+        # Parameter composition is the final place where durable configuration,
+        # formalization-owned context, and runtime-injected reminders converge.
+        # The order matters because downstream context tools depend on a stable
+        # layout when they rebuild or compact the context window.
         state = self._context_runtime_state
         injected_first: list[AgentParameterSection] = []
         injected_before_memory: list[AgentParameterSection] = []
@@ -686,6 +718,9 @@ class BaseAgentHelpersMixin:
         tool_call: ToolCall,
     ) -> tuple[ToolCall | None, ToolResult | None, AgentPauseSignal | None]:
         """Run pre-tool hooks and return the executable tool call payload."""
+        # Checkpoint hooks run before general tool hooks because they protect a
+        # durable handoff boundary. The generic before-tool phase then sees the
+        # already-normalized arguments and can still pause or override execution.
         tool_definition = self._resolve_tool_definition(tool_call.tool_key)
         tool_name = tool_definition.name if tool_definition is not None else tool_call.tool_key
         context = self._make_hook_context(
@@ -746,6 +781,9 @@ class BaseAgentHelpersMixin:
         context: HookContext,
     ) -> tuple[HookContext, ToolResult | None, AgentPauseSignal | None]:
         """Execute matching hooks for one phase until one alters control flow."""
+        # Hooks are short-circuiting by design. The first hook that pauses or
+        # returns a synthetic tool result becomes the controlling policy decision
+        # for that phase, which keeps approval and safety behavior deterministic.
         current_context = context
         for hook in self._resolved_hook_tools():
             if not hook.applies_to(phase):
@@ -903,6 +941,9 @@ class BaseAgentHelpersMixin:
 
     def _is_reset_helpful(self, token_limit: int) -> bool:
         """Estimate whether clearing transcript state meaningfully reduces tokens."""
+        # The runtime only resets when dropping transcript history materially
+        # improves the next request. This avoids churn where a reset would clear
+        # history but still leave the request above the configured token budget.
         request = self.build_model_request()
         if request.estimated_tokens() < token_limit:
             return False
@@ -930,6 +971,9 @@ class BaseAgentHelpersMixin:
 
     def _apply_context_window(self, context_window: list[dict[str, Any]]) -> None:
         """Replace the active transcript and parameters from a context snapshot."""
+        # Context-compaction tools speak in a normalized context-window shape.
+        # Rehydrating that shape back into transcript and parameter objects keeps
+        # manual transcript surgery out of individual tool implementations.
         parameter_sections: list[AgentParameterSection] = []
         transcript: list[AgentTranscriptEntry] = []
         for entry in context_window:

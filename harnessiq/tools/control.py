@@ -1,4 +1,25 @@
-"""Runtime-backed control-flow tools."""
+"""
+===============================================================================
+File: harnessiq/tools/control.py
+
+What this file does:
+- Defines the `ControlToolRuntime` type and the supporting logic it needs in
+  the `harnessiq/tools` module.
+- Runtime-backed control-flow tools.
+
+Use cases:
+- Import `ControlToolRuntime` when composing higher-level HarnessIQ runtime
+  behavior from this package.
+
+How to use it:
+- Use the public class and any exported helpers here as the supported entry
+  points for this module.
+
+Intent:
+- Keep this package responsibility encapsulated behind one focused module
+  instead of duplicating the same logic elsewhere.
+===============================================================================
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,27 @@
-"""Tool definitions for the mission-driven harness."""
+"""
+===============================================================================
+File: harnessiq/tools/mission_driven/operations.py
+
+What this file does:
+- Exposes the `mission_driven` tool family for the HarnessIQ tool layer.
+- In most packages this module is the bridge between provider-backed operations
+  and the generic tool registration surface.
+- Tool definitions for the mission-driven harness.
+
+Use cases:
+- Import this module when an agent or registry needs the `mission_driven` tool
+  definitions.
+- Read it to see which runtime operations are intentionally surfaced as tools.
+
+How to use it:
+- Call the exported factory helpers from `harnessiq/tools/mission_driven` and
+  merge the resulting tools into a registry.
+
+Intent:
+- Keep the public `mission_driven` tool surface small, explicit, and separate
+  from provider implementation details.
+===============================================================================
+"""
 
 from __future__ import annotations
 
