@@ -11,6 +11,7 @@ from harnessiq.interfaces import (
     AnthropicModelClient,
     BaseContractLayer,
     BaseBehaviorLayer,
+    BaseCommunicationBehaviorLayer,
     BaseExecutionPaceLayer,
     BaseErrorRecoveryLayer,
     BaseQualityBehaviorLayer,
@@ -22,6 +23,8 @@ from harnessiq.interfaces import (
     BehaviorConstraint,
     BudgetSpec,
     CitationRequirementBehavior,
+    CommunicationRuleSpec,
+    DecisionLoggingBehavior,
     DynamicToolSelector,
     EmbeddingBackend,
     EmbeddingModelClient,
@@ -41,6 +44,7 @@ from harnessiq.interfaces import (
     PreparedRequest,
     PreparedStoreLoader,
     ProgressCheckpointBehavior,
+    ProgressReportingBehavior,
     QualityCriterionSpec,
     QualityGateBehavior,
     RateLimitBehavior,
@@ -61,6 +65,7 @@ from harnessiq.interfaces import (
     ToolConstraintSpec,
     ToolCooldownBehavior,
     ToolSequencingBehavior,
+    UncertaintySignalingBehavior,
     VerificationBehavior,
     WebhookSinkClient,
     ZeroArgumentFactory,
@@ -367,6 +372,7 @@ class InterfacesPackageTests(unittest.TestCase):
         self.assertIn("DynamicToolSelector", exported)
         self.assertIn("EmbeddingBackend", exported)
         self.assertIn("BaseBehaviorLayer", exported)
+        self.assertIn("BaseCommunicationBehaviorLayer", exported)
         self.assertIn("BaseExecutionPaceLayer", exported)
         self.assertIn("BaseErrorRecoveryLayer", exported)
         self.assertIn("BaseQualityBehaviorLayer", exported)
@@ -399,6 +405,9 @@ class InterfacesPackageTests(unittest.TestCase):
         self.assertEqual(formalization.ScopeEnforcementBehavior.__name__, "ScopeEnforcementBehavior")
         self.assertEqual(formalization.RetryStrategyBehavior.__name__, "RetryStrategyBehavior")
         self.assertEqual(formalization.IrreversibleActionGateBehavior.__name__, "IrreversibleActionGateBehavior")
+        self.assertEqual(formalization.ProgressReportingBehavior.__name__, "ProgressReportingBehavior")
+        self.assertEqual(formalization.DecisionLoggingBehavior.__name__, "DecisionLoggingBehavior")
+        self.assertEqual(formalization.UncertaintySignalingBehavior.__name__, "UncertaintySignalingBehavior")
 
     def test_lazy_exports_resolve_and_cache_symbols(self) -> None:
         first = interfaces.RequestPreparingClient
@@ -521,6 +530,13 @@ class FormalizationContractTests(unittest.TestCase):
         self.assertEqual(IrreversibleActionGateBehavior.__name__, "IrreversibleActionGateBehavior")
         self.assertEqual(RateLimitBehavior.__name__, "RateLimitBehavior")
         self.assertEqual(ScopeGuardBehavior.__name__, "ScopeGuardBehavior")
+
+    def test_communication_behavior_exports_resolve(self) -> None:
+        self.assertEqual(BaseCommunicationBehaviorLayer.__name__, "BaseCommunicationBehaviorLayer")
+        self.assertEqual(CommunicationRuleSpec.__name__, "CommunicationRuleSpec")
+        self.assertEqual(ProgressReportingBehavior.__name__, "ProgressReportingBehavior")
+        self.assertEqual(DecisionLoggingBehavior.__name__, "DecisionLoggingBehavior")
+        self.assertEqual(UncertaintySignalingBehavior.__name__, "UncertaintySignalingBehavior")
 
     def test_contract_layer_produces_default_self_documentation(self) -> None:
         layer = _FakeContractLayer()

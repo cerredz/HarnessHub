@@ -4,6 +4,6 @@
 2. `ticket-2.md` - Implement tool and execution-pace behavior categories. PR: #446 https://github.com/cerredz/HarnessHub/pull/446
 3. `ticket-3.md` - Implement reasoning and quality behavior categories. PR: #447 https://github.com/cerredz/HarnessHub/pull/447
 4. `ticket-4.md` - Implement recovery and safety behavior categories. PR: #448 https://github.com/cerredz/HarnessHub/pull/448
-5. `ticket-5.md` - Implement communication behaviors and finalize public behavior surface. Issue: #444 https://github.com/cerredz/HarnessHub/issues/444
+5. `ticket-5.md` - Implement communication behaviors and finalize public behavior surface. PR: #449 https://github.com/cerredz/HarnessHub/pull/449
 
 Phase 3 complete.
