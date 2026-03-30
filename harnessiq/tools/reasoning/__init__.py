@@ -1,16 +1,36 @@
-"""Reasoning tools for agent cognitive scaffolding.
+"""
+===============================================================================
+File: harnessiq/tools/reasoning/__init__.py
 
-This package exposes two complementary tool sets:
+What this file does:
+- Defines the package-level export surface for `harnessiq/tools/reasoning`
+  within the HarnessIQ runtime.
+- Reasoning tools for agent cognitive scaffolding. This package exposes two
+  complementary tool sets: - Core reasoning tools (``brainstorm``,
+  ``chain_of_thought``, ``critique``) defined in ``reasoning.core`` — three
+  high-level injectable tools for structured ideation, sequential analysis, and
+  self-evaluation. Import via ``from harnessiq.tools.reasoning import
+  brainstorm`` or add to an agent with ``create_reasoning_tools()`` from
+  ``harnessiq.tools``. - Reasoning lens tools (50 cognitive scaffolding lenses)
+  defined in ``reasoning.lenses`` — a broad catalog of named reasoning
+  patterns. The lens factory ``create_reasoning_tools`` exported from this
+  package assembles all 50.
 
-- Core reasoning tools (``brainstorm``, ``chain_of_thought``, ``critique``) defined
-  in ``reasoning.core`` — three high-level injectable tools for structured ideation,
-  sequential analysis, and self-evaluation.  Import via
-  ``from harnessiq.tools.reasoning import brainstorm`` or add to an agent with
-  ``create_reasoning_tools()`` from ``harnessiq.tools``.
+Use cases:
+- Import brainstorm, chain_of_thought, create_injectable_reasoning_tools,
+  critique, REASONING_ABDUCTIVE_REASONING, REASONING_ANALOGY_GENERATION from
+  one stable package entry point.
+- Read this module to understand what `harnessiq/tools/reasoning` intends to
+  expose publicly.
 
-- Reasoning lens tools (50 cognitive scaffolding lenses) defined in
-  ``reasoning.lenses`` — a broad catalog of named reasoning patterns.  The lens
-  factory ``create_reasoning_tools`` exported from this package assembles all 50.
+How to use it:
+- Import from `harnessiq/tools/reasoning` when you want the supported facade
+  instead of reaching through deeper internal modules.
+
+Intent:
+- Keep the public surface for `harnessiq/tools/reasoning` explicit,
+  discoverable, and easier to maintain.
+===============================================================================
 """
 
 from .core import brainstorm, chain_of_thought, create_injectable_reasoning_tools, critique

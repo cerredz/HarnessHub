@@ -1,4 +1,27 @@
-"""Leads agent tool factory and handlers."""
+"""
+===============================================================================
+File: harnessiq/tools/leads/operations.py
+
+What this file does:
+- Exposes the `leads` tool family for the HarnessIQ tool layer.
+- In most packages this module is the bridge between provider-backed operations
+  and the generic tool registration surface.
+- Leads agent tool factory and handlers.
+
+Use cases:
+- Import this module when an agent or registry needs the `leads` tool
+  definitions.
+- Read it to see which runtime operations are intentionally surfaced as tools.
+
+How to use it:
+- Call the exported factory helpers from `harnessiq/tools/leads` and merge the
+  resulting tools into a registry.
+
+Intent:
+- Keep the public `leads` tool surface small, explicit, and separate from
+  provider implementation details.
+===============================================================================
+"""
 
 from __future__ import annotations
 

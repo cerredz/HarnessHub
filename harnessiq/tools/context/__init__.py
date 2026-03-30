@@ -1,4 +1,29 @@
-"""Context-window manipulation tool family."""
+"""
+===============================================================================
+File: harnessiq/tools/context/__init__.py
+
+What this file does:
+- Defines the package-level export surface for `harnessiq/tools/context` within
+  the HarnessIQ runtime.
+- Context-window manipulation tool family.
+
+Use cases:
+- Import CONTEXT_COMPACTION_TOOL_KEYS, CONTEXT_INJECT_ASSISTANT_NOTE,
+  CONTEXT_INJECT_CONTEXT_BLOCK, CONTEXT_INJECT_HANDOFF_BRIEF,
+  CONTEXT_INJECT_PROGRESS_MARKER, CONTEXT_INJECT_REPLAY_MEMORY from one stable
+  package entry point.
+- Read this module to understand what `harnessiq/tools/context` intends to
+  expose publicly.
+
+How to use it:
+- Import from `harnessiq/tools/context` when you want the supported facade
+  instead of reaching through deeper internal modules.
+
+Intent:
+- Keep the public surface for `harnessiq/tools/context` explicit, discoverable,
+  and easier to maintain.
+===============================================================================
+"""
 
 from __future__ import annotations
 

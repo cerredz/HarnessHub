@@ -1,4 +1,29 @@
-"""Reusable provider-backed agent harness scaffolding."""
+"""
+===============================================================================
+File: harnessiq/agents/provider_base/agent.py
+
+What this file does:
+- Implements the concrete `BaseProviderToolAgent` runtime for the
+  `provider_base` agent package.
+- The module owns the package-specific memory loading, prompt assembly, and
+  tool wiring needed by that agent.
+- Reusable provider-backed agent harness scaffolding.
+
+Use cases:
+- Instantiate the agent directly when you already have the required runtime
+  parameters.
+- Load the agent from persisted memory or profile helpers when resuming a
+  previous run.
+
+How to use it:
+- Construct `BaseProviderToolAgent` or use its factory helpers, then call
+  `run()` or `snapshot()` through the shared base runtime.
+
+Intent:
+- Keep the `provider_base` workflow packaged as one reusable HarnessIQ harness
+  instead of scattering its durable behavior across scripts.
+===============================================================================
+"""
 
 from __future__ import annotations
 

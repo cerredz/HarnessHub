@@ -1,9 +1,28 @@
-"""Abstract staged-execution layer for deterministic multi-phase harnesses.
+"""
+===============================================================================
+File: harnessiq/interfaces/formalization/stage.py
 
-Stage layers describe ordered execution phases. They are responsible for
-projecting stage-specific prompt fragments, narrowing visible tools, and
-declaring the outputs that make a stage complete. The runtime can later wire
-those declarations into reset-driven advancement or other deterministic flow.
+What this file does:
+- Defines part of the abstract formalization interface surface used to describe
+  harness behavior declaratively.
+- Abstract staged-execution layer for deterministic multi-phase harnesses.
+  Stage layers describe ordered execution phases. They are responsible for
+  projecting stage-specific prompt fragments, narrowing visible tools, and
+  declaring the outputs that make a stage complete. The runtime can later wire
+  those declarations into reset-driven advancement or other deterministic flow.
+
+Use cases:
+- Subclass or import these interfaces when building a new formalization layer
+  family or behavior.
+
+How to use it:
+- Use the abstractions here to declare behavior, rules, and configuration in a
+  form the runtime can later inspect or enforce.
+
+Intent:
+- Keep formalization contracts explicit and composable so harness rules are
+  visible in code and docs.
+===============================================================================
 """
 
 from __future__ import annotations

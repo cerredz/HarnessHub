@@ -1,4 +1,29 @@
-"""Deterministic academic research sweep harness."""
+"""
+===============================================================================
+File: harnessiq/agents/research_sweep/agent.py
+
+What this file does:
+- Implements the concrete `ResearchSweepAgent` runtime for the `research_sweep`
+  agent package.
+- The module owns the package-specific memory loading, prompt assembly, and
+  tool wiring needed by that agent.
+- Deterministic academic research sweep harness.
+
+Use cases:
+- Instantiate the agent directly when you already have the required runtime
+  parameters.
+- Load the agent from persisted memory or profile helpers when resuming a
+  previous run.
+
+How to use it:
+- Construct `ResearchSweepAgent` or use its factory helpers, then call `run()`
+  or `snapshot()` through the shared base runtime.
+
+Intent:
+- Keep the `research_sweep` workflow packaged as one reusable HarnessIQ harness
+  instead of scattering its durable behavior across scripts.
+===============================================================================
+"""
 
 from __future__ import annotations
 

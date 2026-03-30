@@ -1,4 +1,28 @@
-"""LinkedIn job application agent harness."""
+"""
+===============================================================================
+File: harnessiq/agents/linkedin/__init__.py
+
+What this file does:
+- Defines the package-level export surface for `harnessiq/agents/linkedin`
+  within the HarnessIQ runtime.
+- LinkedIn job application agent harness.
+
+Use cases:
+- Import ActionLogEntry, JobApplicationRecord, LINKEDIN_HARNESS_MANIFEST,
+  LinkedInAgentConfig, LinkedInManagedFile, LinkedInJobApplierAgent from one
+  stable package entry point.
+- Read this module to understand what `harnessiq/agents/linkedin` intends to
+  expose publicly.
+
+How to use it:
+- Import from `harnessiq/agents/linkedin` when you want the supported facade
+  instead of reaching through deeper internal modules.
+
+Intent:
+- Keep the public surface for `harnessiq/agents/linkedin` explicit,
+  discoverable, and easier to maintain.
+===============================================================================
+"""
 
 from harnessiq.agents.linkedin.agent import (
     LinkedInJobApplierAgent,

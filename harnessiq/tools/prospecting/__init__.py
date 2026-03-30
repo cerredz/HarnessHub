@@ -1,4 +1,28 @@
-"""Google Maps prospecting tool definitions and factories."""
+"""
+===============================================================================
+File: harnessiq/tools/prospecting/__init__.py
+
+What this file does:
+- Defines the package-level export surface for `harnessiq/tools/prospecting`
+  within the HarnessIQ runtime.
+- Google Maps prospecting tool definitions and factories.
+
+Use cases:
+- Import COMPLETE_SEARCH, RECORD_LISTING_RESULT, SAVE_QUALIFIED_LEAD,
+  START_SEARCH, ProspectingToolHandler, build_complete_search_tool_definition
+  from one stable package entry point.
+- Read this module to understand what `harnessiq/tools/prospecting` intends to
+  expose publicly.
+
+How to use it:
+- Import from `harnessiq/tools/prospecting` when you want the supported facade
+  instead of reaching through deeper internal modules.
+
+Intent:
+- Keep the public surface for `harnessiq/tools/prospecting` explicit,
+  discoverable, and easier to maintain.
+===============================================================================
+"""
 
 from harnessiq.tools.prospecting.operations import (
     COMPLETE_SEARCH,

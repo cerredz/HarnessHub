@@ -1,4 +1,27 @@
-"""Google Drive MCP-style tool factory for the Harnessiq tool layer."""
+"""
+===============================================================================
+File: harnessiq/tools/google_drive/operations.py
+
+What this file does:
+- Exposes the `google_drive` tool family for the HarnessIQ tool layer.
+- In most packages this module is the bridge between provider-backed operations
+  and the generic tool registration surface.
+- Google Drive MCP-style tool factory for the Harnessiq tool layer.
+
+Use cases:
+- Import this module when an agent or registry needs the `google_drive` tool
+  definitions.
+- Read it to see which runtime operations are intentionally surfaced as tools.
+
+How to use it:
+- Call the exported factory helpers from `harnessiq/tools/google_drive` and
+  merge the resulting tools into a registry.
+
+Intent:
+- Keep the public `google_drive` tool surface small, explicit, and separate
+  from provider implementation details.
+===============================================================================
+"""
 
 from __future__ import annotations
 
