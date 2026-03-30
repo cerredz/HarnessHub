@@ -27,13 +27,49 @@ DEFAULT_INSTAGRAM_HEADLESS = False
 DEFAULT_INSTAGRAM_TIMEOUT_MS = 30_000
 DEFAULT_INSTAGRAM_NETWORK_IDLE_TIMEOUT_MS = 5_000
 DEFAULT_INSTAGRAM_BROWSER_VIEWPORT = {"width": 1280, "height": 900}
+DEFAULT_INSTAGRAM_BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/134.0.0.0 Safari/537.36"
+)
+DEFAULT_INSTAGRAM_BROWSER_LOCALE = "en-US"
+DEFAULT_INSTAGRAM_BROWSER_TIMEZONE_ID = "America/New_York"
+DEFAULT_INSTAGRAM_BROWSER_COLOR_SCHEME = "light"
+DEFAULT_INSTAGRAM_BROWSER_EXTRA_HTTP_HEADERS = {"Accept-Language": "en-US,en;q=0.9"}
 DEFAULT_INSTAGRAM_BROWSER_LAUNCH_ARGS = ("--disable-blink-features=AutomationControlled",)
 DEFAULT_INSTAGRAM_BROWSER_INIT_SCRIPT = """
 Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+Object.defineProperty(navigator, 'language', {get: () => 'en-US'});
 Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
 Object.defineProperty(navigator, 'platform', {get: () => 'Win32'});
 Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
-window.chrome = window.chrome || { runtime: {} };
+Object.defineProperty(navigator, 'pdfViewerEnabled', {get: () => true});
+Object.defineProperty(navigator, 'hardwareConcurrency', {get: () => 8});
+Object.defineProperty(navigator, 'userAgentData', {
+  get: () => ({
+    brands: [
+      { brand: 'Google Chrome', version: '134' },
+      { brand: 'Chromium', version: '134' },
+      { brand: 'Not.A/Brand', version: '24' }
+    ],
+    mobile: false,
+    platform: 'Windows',
+    getHighEntropyValues: async () => ({
+      architecture: 'x86',
+      bitness: '64',
+      mobile: false,
+      model: '',
+      platform: 'Windows',
+      platformVersion: '10.0.0',
+      uaFullVersion: '134.0.0.0',
+    }),
+  }),
+});
+window.chrome = window.chrome || {
+  app: { isInstalled: false },
+  runtime: {},
+  webstore: {},
+};
 """
 
 DEFAULT_RECENT_SEARCH_WINDOW = 10
@@ -847,8 +883,13 @@ __all__ = [
     "CUSTOM_PARAMETERS_FILENAME",
     "DEFAULT_AGENT_IDENTITY",
     "DEFAULT_INSTAGRAM_BROWSER_CHANNEL",
+    "DEFAULT_INSTAGRAM_BROWSER_COLOR_SCHEME",
+    "DEFAULT_INSTAGRAM_BROWSER_EXTRA_HTTP_HEADERS",
     "DEFAULT_INSTAGRAM_BROWSER_INIT_SCRIPT",
     "DEFAULT_INSTAGRAM_BROWSER_LAUNCH_ARGS",
+    "DEFAULT_INSTAGRAM_BROWSER_LOCALE",
+    "DEFAULT_INSTAGRAM_BROWSER_TIMEZONE_ID",
+    "DEFAULT_INSTAGRAM_BROWSER_USER_AGENT",
     "DEFAULT_INSTAGRAM_BROWSER_VIEWPORT",
     "DEFAULT_INSTAGRAM_HEADLESS",
     "DEFAULT_INSTAGRAM_NETWORK_IDLE_TIMEOUT_MS",

@@ -18,8 +18,13 @@ from harnessiq.providers.playwright import (
 )
 from harnessiq.shared.instagram import (
     DEFAULT_INSTAGRAM_BROWSER_CHANNEL,
+    DEFAULT_INSTAGRAM_BROWSER_COLOR_SCHEME,
+    DEFAULT_INSTAGRAM_BROWSER_EXTRA_HTTP_HEADERS,
     DEFAULT_INSTAGRAM_BROWSER_INIT_SCRIPT,
     DEFAULT_INSTAGRAM_BROWSER_LAUNCH_ARGS,
+    DEFAULT_INSTAGRAM_BROWSER_LOCALE,
+    DEFAULT_INSTAGRAM_BROWSER_TIMEZONE_ID,
+    DEFAULT_INSTAGRAM_BROWSER_USER_AGENT,
     DEFAULT_INSTAGRAM_BROWSER_VIEWPORT,
     DEFAULT_INSTAGRAM_HEADLESS,
     DEFAULT_INSTAGRAM_NETWORK_IDLE_TIMEOUT_MS,
@@ -55,6 +60,7 @@ class PlaywrightInstagramSearchBackend:
         search_interval_seconds: float = _DEFAULT_SEARCH_INTERVAL_SECONDS,
         launch_args: Sequence[str] | None = None,
         init_scripts: Sequence[str] | None = None,
+        context_options: dict[str, Any] | None = None,
     ) -> None:
         self._session_dir = Path(session_dir) if session_dir else None
         self._headless = headless
@@ -71,6 +77,17 @@ class PlaywrightInstagramSearchBackend:
             tuple(str(value) for value in init_scripts if str(value).strip())
             if init_scripts is not None
             else (DEFAULT_INSTAGRAM_BROWSER_INIT_SCRIPT,)
+        )
+        self._context_options = (
+            dict(context_options)
+            if context_options is not None
+            else {
+                "color_scheme": DEFAULT_INSTAGRAM_BROWSER_COLOR_SCHEME,
+                "extra_http_headers": dict(DEFAULT_INSTAGRAM_BROWSER_EXTRA_HTTP_HEADERS),
+                "locale": DEFAULT_INSTAGRAM_BROWSER_LOCALE,
+                "timezone_id": DEFAULT_INSTAGRAM_BROWSER_TIMEZONE_ID,
+                "user_agent": DEFAULT_INSTAGRAM_BROWSER_USER_AGENT,
+            }
         )
         self._session: PlaywrightBrowserSession | None = None
         self._search_page: Any = None
@@ -135,6 +152,7 @@ class PlaywrightInstagramSearchBackend:
                 import_error_message=_DEFAULT_IMPORT_ERROR_MESSAGE,
                 launch_args=self._launch_args,
                 init_scripts=self._init_scripts,
+                context_options=self._context_options,
             )
             session.start()
             self._session = session
@@ -256,6 +274,17 @@ def create_search_backend() -> InstagramSearchBackend:
         ),
         launch_args=() if hardening_disabled else None,
         init_scripts=() if hardening_disabled else None,
+        context_options=(
+            {}
+            if hardening_disabled
+            else {
+                "color_scheme": DEFAULT_INSTAGRAM_BROWSER_COLOR_SCHEME,
+                "extra_http_headers": dict(DEFAULT_INSTAGRAM_BROWSER_EXTRA_HTTP_HEADERS),
+                "locale": DEFAULT_INSTAGRAM_BROWSER_LOCALE,
+                "timezone_id": DEFAULT_INSTAGRAM_BROWSER_TIMEZONE_ID,
+                "user_agent": DEFAULT_INSTAGRAM_BROWSER_USER_AGENT,
+            }
+        ),
     )
 
 

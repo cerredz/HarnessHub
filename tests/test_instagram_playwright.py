@@ -12,6 +12,9 @@ from harnessiq.integrations.instagram_playwright import (
 from harnessiq.shared.instagram import (
     DEFAULT_INSTAGRAM_BROWSER_INIT_SCRIPT,
     DEFAULT_INSTAGRAM_BROWSER_LAUNCH_ARGS,
+    DEFAULT_INSTAGRAM_BROWSER_LOCALE,
+    DEFAULT_INSTAGRAM_BROWSER_TIMEZONE_ID,
+    DEFAULT_INSTAGRAM_BROWSER_USER_AGENT,
     DEFAULT_INSTAGRAM_HEADLESS,
     build_instagram_google_fallback_query,
     build_instagram_google_query,
@@ -257,6 +260,9 @@ class InstagramPlaywrightTests(unittest.TestCase):
         self.assertEqual(kwargs["headless"], DEFAULT_INSTAGRAM_HEADLESS)
         self.assertEqual(kwargs["launch_args"], DEFAULT_INSTAGRAM_BROWSER_LAUNCH_ARGS)
         self.assertEqual(kwargs["init_scripts"], (DEFAULT_INSTAGRAM_BROWSER_INIT_SCRIPT,))
+        self.assertEqual(kwargs["context_options"]["locale"], DEFAULT_INSTAGRAM_BROWSER_LOCALE)
+        self.assertEqual(kwargs["context_options"]["timezone_id"], DEFAULT_INSTAGRAM_BROWSER_TIMEZONE_ID)
+        self.assertEqual(kwargs["context_options"]["user_agent"], DEFAULT_INSTAGRAM_BROWSER_USER_AGENT)
 
     def test_backend_allows_explicit_session_hardening_overrides(self) -> None:
         search_page = _FakePage(entries=[])
@@ -271,6 +277,7 @@ class InstagramPlaywrightTests(unittest.TestCase):
                 headless=True,
                 launch_args=("--custom-arg",),
                 init_scripts=("window.__custom = true;",),
+                context_options={"locale": "fr-FR", "user_agent": "CustomAgent/1.0"},
             )
             backend._get_session()
 
@@ -278,6 +285,7 @@ class InstagramPlaywrightTests(unittest.TestCase):
         self.assertTrue(kwargs["headless"])
         self.assertEqual(kwargs["launch_args"], ("--custom-arg",))
         self.assertEqual(kwargs["init_scripts"], ("window.__custom = true;",))
+        self.assertEqual(kwargs["context_options"], {"locale": "fr-FR", "user_agent": "CustomAgent/1.0"})
 
 
 if __name__ == "__main__":
