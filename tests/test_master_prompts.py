@@ -19,6 +19,7 @@ from harnessiq.master_prompts import (
 
 EXPECTED_PROMPT_KEYS = {
     "answer_with_notable_web_sources",
+    "assumption_archaeologist",
     "autonomous_execution_loop",
     "bilateral_argumentation",
     "cognitive_multiplexer",
@@ -46,6 +47,7 @@ EXPECTED_PROMPT_KEYS = {
     "surgical_bugfix",
 }
 STANDARD_STRUCTURE_PROMPT_KEYS = EXPECTED_PROMPT_KEYS - {
+    "assumption_archaeologist",
     "cognitive_multiplexer",
     "handshake_autonomous_job_applier",
     "mission_driven",
@@ -86,6 +88,13 @@ BILATERAL_ARGUMENTATION_MARKDOWN = (
     / "master_prompts"
     / "prompts"
     / "bilateral_argumentation.md"
+)
+ASSUMPTION_ARCHAEOLOGIST_MARKDOWN = (
+    Path(__file__).resolve().parents[1]
+    / "harnessiq"
+    / "master_prompts"
+    / "prompts"
+    / "assumption_archaeologist.md"
 )
 
 
@@ -418,6 +427,32 @@ class HandshakeAutonomousJobApplierPromptTests(unittest.TestCase):
 
     def test_handshake_prompt_key_matches_filename_convention(self) -> None:
         self.assertEqual(self.prompt.key, "handshake_autonomous_job_applier")
+
+
+class AssumptionArchaeologistPromptTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.prompt = MasterPromptRegistry().get("assumption_archaeologist")
+
+    def test_assumption_archaeologist_contains_expected_sections(self) -> None:
+        for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS:
+            with self.subTest(section=section_name):
+                _section_position(self.prompt.prompt, section_name)
+
+    def test_assumption_archaeologist_sections_appear_in_order(self) -> None:
+        positions = [_section_position(self.prompt.prompt, section_name) for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_assumption_archaeologist_contains_requested_persona_language(self) -> None:
+        self.assertIn("You are an assumption archaeologist", self.prompt.prompt)
+        self.assertIn("You rank assumptions by their blast radius before you select which ones to surface.", self.prompt.prompt)
+        self.assertIn("Task or Prompt (required):", self.prompt.prompt)
+        self.assertIn("Prior Clarifications (optional):", self.prompt.prompt)
+
+    def test_assumption_archaeologist_matches_markdown_payload_exactly(self) -> None:
+        self.assertEqual(self.prompt.prompt, ASSUMPTION_ARCHAEOLOGIST_MARKDOWN.read_text(encoding="utf-8"))
+
+    def test_assumption_archaeologist_key_matches_filename_convention(self) -> None:
+        self.assertEqual(self.prompt.key, "assumption_archaeologist")
 
 
 class ModuleLevelAPITests(unittest.TestCase):
