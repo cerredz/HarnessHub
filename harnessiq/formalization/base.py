@@ -238,6 +238,16 @@ class BaseFormalizationLayer(ABC):
     def on_post_reset(self) -> None:
         """Run deterministic work immediately after the context resets."""
 
+    def allow_completion(self) -> tuple[bool, str]:
+        """Return (allowed, error_message) for the current completion attempt.
+
+        Called by BaseAgent before honoring a should_continue=False response
+        or before completing after control.mark_complete. Default allows
+        completion unconditionally. Override in layers that enforce stop
+        conditions (e.g. StopCriteriaLayer).
+        """
+        return True, ""
+
     def _describe_identity(self) -> str:
         """Return the default identity prose for this formalization layer."""
         rules = tuple(self._describe_rules())
