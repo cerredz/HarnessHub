@@ -1,0 +1,5 @@
+{
+  "title": "Assumption Archaeologist",
+  "description": "An assumption-excavation prompt for surfacing the hidden architecture underneath any task or prompt — scope, definitional, causal, constraint, value, and frame assumptions ranked by blast radius — so the work that follows is aimed at the right target.",
+  "prompt_path": "assumption_archaeologist.md"
+}
