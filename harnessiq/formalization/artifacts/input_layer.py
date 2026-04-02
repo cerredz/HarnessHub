@@ -191,6 +191,30 @@ class InputArtifactLayer(BaseFormalizationLayer):
                 rendered_sections.append(section)
         return (*static_sections, *rendered_sections)
 
+    def get_template_sections(self) -> tuple[AgentParameterSection, ...]:
+        rendered_sections: list[AgentParameterSection] = []
+        for spec in self._specs:
+            policy = spec.injection_policy
+            resolved = self._resolve_path(spec) if self._memory_path is not None else Path(spec.path)
+            format_label = _FORMAT_SECTION_LABEL[spec.file_format]
+            title = (
+                policy.section_title_template
+                .replace("{name}", spec.name)
+                .replace("{path}", str(resolved))
+                .replace("{format}", format_label)
+            )
+            content_lines = [spec.description]
+            if policy.include_path_in_section:
+                content_lines.append(f"Path: {resolved}  ({format_label})")
+            content_lines.extend(["", "[template placeholder - content not inlined]"])
+            rendered_sections.append(
+                AgentParameterSection(
+                    title=title,
+                    content="\n".join(content_lines),
+                )
+            )
+        return super().get_template_sections() + tuple(rendered_sections)
+
     def _resolve_path(self, spec: InputArtifactSpec) -> Path:
         if self._memory_path is None:
             raise RuntimeError("InputArtifactLayer memory path is not initialized.")

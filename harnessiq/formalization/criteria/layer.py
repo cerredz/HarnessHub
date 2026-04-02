@@ -126,6 +126,20 @@ class StopCriteriaLayer(BaseFormalizationLayer):
             ),
         )
 
+    def get_template_sections(self) -> tuple[AgentParameterSection, ...]:
+        base = super().get_template_sections()
+        lines = ["Stop criteria (must ALL pass before stopping):", ""]
+        for criterion in self._expression.all_criteria():
+            lines.append(f"[{criterion.criterion_id}] {criterion.description}")
+            lines.append("Progress at runtime: [will be shown during run]")
+            lines.append("")
+        return base + (
+            AgentParameterSection(
+                title="Stop Criteria",
+                content="\n".join(lines).rstrip(),
+            ),
+        )
+
     # ── Enforcement ────────────────────────────────────────────────────────────
 
     def on_tool_result(self, result: ToolResult) -> ToolResult:

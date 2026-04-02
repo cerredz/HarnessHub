@@ -87,6 +87,28 @@ class BaseFormalizationLayer(ABC):
             ),
         )
 
+    def get_template_sections(self) -> tuple[AgentParameterSection, ...]:
+        """Return context sections with live values masked for template output."""
+        from harnessiq.agents.prompt_bundle import _mask_section_values
+
+        return tuple(
+            AgentParameterSection(
+                title=section.title,
+                content=_mask_section_values(section.content),
+            )
+            for section in self.get_parameter_sections()
+        )
+
+    def describe_for_prompt(self) -> str:
+        """Return a prose block suitable for prompt-level structural descriptions."""
+        doc = self.describe()
+        lines = [f"[{self.__class__.__name__}: {doc.layer_id}]", "", doc.contract]
+        if doc.rules:
+            lines.extend(["", "Enforced rules:"])
+            for rule in doc.rules:
+                lines.append(f"  [{rule.rule_id}] {rule.description}")
+        return "\n".join(lines)
+
     def augment_system_prompt(self, system_prompt: str) -> str:
         """Return the system prompt after this layer's deterministic changes."""
         return system_prompt

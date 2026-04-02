@@ -214,6 +214,28 @@ class OutputArtifactLayer(BaseFormalizationLayer):
             ),
         )
 
+    def get_template_sections(self) -> tuple[AgentParameterSection, ...]:
+        memory_path = self._memory_path or Path("memory")
+        lines = [f"Expected outputs ({len(self._specs)} artifact(s)):", ""]
+        for spec in self._specs:
+            gate = " [required]" if spec.name in self._required_names else ""
+            lines.extend(
+                [
+                    f"{spec.name}{gate}  [not yet written]",
+                    f"  {spec.description}",
+                    f"  Format: {spec.file_format}",
+                    f"  Write with: {self._render_write_guidance(spec, memory_path=memory_path)}",
+                    f"  Output path: {resolve_output_path(spec, memory_path)}",
+                    "",
+                ]
+            )
+        return super().get_template_sections() + (
+            AgentParameterSection(
+                title="Output Artifacts",
+                content="\n".join(lines).rstrip(),
+            ),
+        )
+
     def augment_system_prompt(self, prompt: str) -> str:
         doc = self.describe()
         return (

@@ -197,6 +197,59 @@ class StageLayer(BaseFormalizationLayer):
             )
         return tuple(sections)
 
+    def get_template_sections(self) -> tuple[AgentParameterSection, ...]:
+        sections = [
+            AgentParameterSection(
+                title="Formalization: StageLayer",
+                content=self.describe_for_prompt(),
+            ),
+            AgentParameterSection(
+                title="Current Stage",
+                content=(
+                    f"Stage [current] of {len(self._stages)}: [stage name]\n"
+                    "[stage description]\n\n"
+                    "Done when: [completion hint]\n\n"
+                    "Pass to stage_complete outputs=: [required outputs]\n\n"
+                    "Next stage: [next stage]"
+                ),
+            ),
+        ]
+        if self._prior_outputs:
+            sections.append(
+                AgentParameterSection(
+                    title="Prior Stage Outputs",
+                    content='{\n  "[stage name]": {\n    "[output_key]": "---"\n  }\n}',
+                )
+            )
+        return tuple(sections)
+
+    def describe_for_prompt(self) -> str:
+        total = len(self._stages)
+        lines = [
+            f"[Stage Execution: {total} stage{'s' if total != 1 else ''}]",
+            "",
+            "This agent executes in a fixed sequence of stages. Each stage has its own "
+            "focus, tools, and completion criteria. Call formalization.stage_complete "
+            "when a stage is done, passing summary= and any required outputs=.",
+            "",
+        ]
+        for index, stage in enumerate(self._stages):
+            lines.append(f"Stage {index + 1} of {total}: {stage.name.upper()}")
+            lines.append(stage.description)
+            fragment = stage.build_system_prompt_fragment()
+            if fragment:
+                lines.extend(["", fragment])
+            if stage.required_output_keys:
+                lines.append(f"Required outputs: {', '.join(stage.required_output_keys)}")
+            hint = stage.get_completion_hint()
+            if hint:
+                lines.append(f"Done when: {hint}")
+            if index < total - 1:
+                next_hint = stage.get_next_stage_hint() or f"Next stage: {self._stages[index + 1].name}"
+                lines.append(next_hint)
+            lines.append("")
+        return "\n".join(lines).rstrip()
+
     def augment_system_prompt(self, prompt: str) -> str:
         stage = self._current_stage
         index = self._current_index

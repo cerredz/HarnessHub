@@ -73,6 +73,7 @@ from harnessiq.utils.agent_instances import AgentInstanceRecord, AgentInstanceSt
 from .helpers import BaseAgentHelpersMixin, _resolve_repo_root, _utcnow
 
 if TYPE_CHECKING:
+    from harnessiq.agents.prompt_bundle import MasterPromptBundle
     from harnessiq.interfaces.formalization.behaviors import BaseBehaviorLayer
     from harnessiq.formalization.artifacts import InputArtifactSpec, OutputArtifactSpec
     from harnessiq.formalization.base import BaseFormalizationLayer
@@ -297,15 +298,22 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
 
     def refresh_parameters(self) -> tuple[AgentParameterSection, ...]:
         """Reload and cache the current durable parameter sections."""
-        self._ensure_formalization_prepared()
-        base_sections = tuple(self.load_parameter_sections())
-        sections = tuple(
-            self._compose_parameter_sections(
-                (*base_sections, *self._formalization_parameter_sections())
-            )
-        )
+        sections = self._build_parameter_sections()
         self._parameter_sections = sections
         return sections
+
+    def build_master_prompt(self, template: bool = False) -> "MasterPromptBundle":
+        """Assemble and return the complete effective prompt for this agent."""
+        from harnessiq.agents.prompt_bundle import MasterPromptBundle
+
+        return MasterPromptBundle(
+            system_prompt=self._effective_system_prompt(),
+            parameter_sections=self._build_parameter_sections(template=template),
+            agent_name=self._name,
+            layer_count=len(self._formalization_layers),
+            built_at_reset=self._reset_count,
+            is_template=template,
+        )
 
     def _create_file_backed_store(
         self,

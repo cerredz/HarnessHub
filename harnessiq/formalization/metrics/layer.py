@@ -205,6 +205,32 @@ class MetricsLayer(BaseFormalizationLayer):
 
         return base + (AgentParameterSection(title="Metrics", content="\n".join(lines)),)
 
+    def get_template_sections(self) -> tuple[AgentParameterSection, ...]:
+        base = super().get_template_sections()
+        visible = [(name, spec) for name, spec in self._all_specs.items() if spec.visible]
+        if not visible:
+            return base
+
+        lines = ["Metrics (schema - current values not shown in template mode):"]
+        for name, spec in visible:
+            unit = f" {spec.unit}" if spec.unit else ""
+            kind = (
+                "auto-tracked"
+                if isinstance(spec, DeterministicMetricSpec)
+                else "self-reported"
+            )
+            lines.append(f"{name}: [current value]{unit}  ({spec.description}) [{kind}]")
+
+        if any(spec.visible for spec in self._model_reported):
+            lines.extend(
+                [
+                    "",
+                    'Report model-assessed metrics via: metrics.report(name="<metric_name>", value=<value>)',
+                ]
+            )
+
+        return base + (AgentParameterSection(title="Metrics", content="\n".join(lines)),)
+
     # ── Tools ──────────────────────────────────────────────────────────────────
 
     def get_formalization_tools(self) -> tuple[RegisteredTool, ...]:

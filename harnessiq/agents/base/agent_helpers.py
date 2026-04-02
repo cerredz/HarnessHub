@@ -193,12 +193,40 @@ class BaseAgentHelpersMixin:
             layer.on_agent_prepare(agent_name=self.name, memory_path=str(self.memory_path))
         self._formalization_prepared = True
 
-    def _formalization_parameter_sections(self) -> tuple[AgentParameterSection, ...]:
-        """Return the live parameter sections contributed by all formalization layers."""
+    def _formalization_parameter_sections(
+        self,
+        *,
+        template: bool = False,
+    ) -> tuple[AgentParameterSection, ...]:
+        """Return parameter sections contributed by all formalization layers."""
         sections: list[AgentParameterSection] = []
         for layer in self._formalization_layers:
-            sections.extend(layer.get_parameter_sections())
+            if template:
+                sections.extend(layer.get_template_sections())
+            else:
+                sections.extend(layer.get_parameter_sections())
         return tuple(sections)
+
+    def _build_parameter_sections(
+        self,
+        *,
+        template: bool = False,
+    ) -> tuple[AgentParameterSection, ...]:
+        """Assemble the effective parameter section block for the current runtime state."""
+        from harnessiq.agents.prompt_bundle import mask_parameter_sections
+
+        self._ensure_formalization_prepared()
+        base_sections = tuple(self.load_parameter_sections())
+        if template:
+            base_sections = mask_parameter_sections(base_sections)
+        sections = tuple(
+            self._compose_parameter_sections(
+                (*base_sections, *self._formalization_parameter_sections(template=template))
+            )
+        )
+        if template:
+            return mask_parameter_sections(sections)
+        return sections
 
     def _filter_formalization_tool_keys(
         self,

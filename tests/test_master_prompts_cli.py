@@ -56,6 +56,11 @@ class TestMasterPromptParserRegistration:
         args, _ = parser.parse_known_args(["prompts", "clear"])
         assert args.prompts_command == "clear"
 
+    def test_prompts_build_subcommand_registered(self) -> None:
+        parser = build_parser()
+        args, _ = parser.parse_known_args(["prompts", "build", "--agent", "linkedin"])
+        assert args.prompts_command == "build"
+
 
 class TestMasterPromptCommands:
     def test_list_emits_prompt_catalog_json(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -176,3 +181,30 @@ class TestMasterPromptCommands:
         payload = json.loads(capsys.readouterr().out)
         assert Path(payload["files"]["claude"]) == repo_root / ".claude" / "CLAUDE.md"
         assert Path(payload["files"]["codex"]) == repo_root / "AGENTS.override.md"
+
+    def test_build_renders_prompt_text_for_runtime_agent(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+    ) -> None:
+        result = _run(["prompts", "build", "--agent", "linkedin", "--memory-path", str(tmp_path)])
+        assert result == 0
+
+        output = capsys.readouterr().out
+        assert "Job Preferences" in output
+        assert "User Profile" in output
+
+    def test_build_supports_json_output(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+    ) -> None:
+        result = _run(
+            ["prompts", "build", "--agent", "linkedin", "--memory-path", str(tmp_path), "--format", "json"]
+        )
+        assert result == 0
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["agent_name"] == "linkedin_job_applier"
+        assert "system_prompt" in payload
+        assert any(section["title"] == "Job Preferences" for section in payload["parameter_sections"])
