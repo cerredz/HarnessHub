@@ -1,6 +1,7 @@
 Title: Add repo-local import boundary enforcement and break the current top-level package cycle
 
 Issue URL: https://github.com/cerredz/HarnessHub/issues/464
+PR URL: https://github.com/cerredz/HarnessHub/pull/466
 
 Intent:
 Add mechanical import-boundary checks for the documented package architecture and remove the existing dependency leaks that would otherwise make those checks fail immediately.
