@@ -492,7 +492,7 @@ def _create_exa_tools(
     client: Any | None,
     allowed_operations: Sequence[str] | None,
 ) -> tuple[RegisteredTool, ...]:
-    from harnessiq.providers.exa.operations import create_exa_tools
+    from harnessiq.tools.exa import create_exa_tools
 
     return create_exa_tools(credentials=credentials, client=client, allowed_operations=allowed_operations)
 

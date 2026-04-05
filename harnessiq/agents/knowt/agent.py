@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Sequence
+from typing import Any, Sequence
 
 from harnessiq.agents.base import BaseAgent
 from harnessiq.shared.agents import (
@@ -25,9 +25,6 @@ from harnessiq.tools.knowt import create_knowt_tools
 from harnessiq.tools.reasoning import create_injectable_reasoning_tools
 from harnessiq.tools.registry import ToolRegistry
 
-if TYPE_CHECKING:
-    from harnessiq.providers.creatify.client import CreatifyClient, CreatifyCredentials
-
 _PROMPTS_DIR = Path(__file__).parent / PROMPTS_DIRNAME
 _MASTER_PROMPT_PATH = _PROMPTS_DIR / MASTER_PROMPT_FILENAME
 
@@ -47,8 +44,8 @@ class KnowtAgent(BaseAgent):
         *,
         model: AgentModel,
         memory_path: str | Path,
-        creatify_client: "CreatifyClient | None" = None,
-        creatify_credentials: "CreatifyCredentials | None" = None,
+        creatify_client: Any | None = None,
+        creatify_credentials: Any | None = None,
         max_tokens: int = DEFAULT_AGENT_MAX_TOKENS,
         reset_threshold: float = DEFAULT_AGENT_RESET_THRESHOLD,
         config: KnowtAgentConfig | None = None,

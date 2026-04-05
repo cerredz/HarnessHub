@@ -21,6 +21,7 @@ Codebase standards:
 - These agents are being built for full autonomy, so designs must assume multiple context window resets. Durable memory and parameter sections should carry forward the state needed to resume work without losing orientation.
 - Agent behavior should be configurable through parameters. The shared runtime comes from `BaseAgent`, while concrete harnesses can expose runtime parameters and user-defined custom parameters where the workflow requires them.
 - Update this file whenever a meaningful architectural folder is added or when the intended boundary between `agents/`, `shared/`, `tools/`, and `toolset/` changes.
+- Repo-level AST architecture tests now mechanically enforce the documented import direction, including top-level package acyclicity and boundary checks for `shared/`, `agents/`, and `cli/`.
 - The shared runtime now also owns a framework-level audit ledger. Every terminal run emits a universal `LedgerEntry` envelope after execution, and output sinks are injected at the runtime-config layer rather than at the harness layer.
 - Output sinks are a post-run export concern, not an in-context agent capability. They must never participate in the execution loop, modify the transcript, or change the returned `AgentRunResult`.
 
@@ -132,6 +133,7 @@ Tests:
 - `tests/test_prompt_filesystem_tools.py`: coverage for system-prompt generation and non-destructive filesystem tools
 - `tests/test_resend_tools.py`: coverage for the Resend operation catalog, MCP-style request tool, and Resend-specific transport/header behavior
 - `tests/test_provider_base.py`: coverage for shared provider helpers and HTTP transport
+- `tests/test_import_boundaries.py`: AST-based architecture enforcement for import boundaries and top-level package cycles
 - `tests/test_providers.py`: coverage for provider message normalization and request translation across all supported providers
 - `tests/test_anthropic_provider.py`: coverage for Anthropic request, tool, and client helpers
 - `tests/test_grok_provider.py`: coverage for Grok request, tool, and client helpers
