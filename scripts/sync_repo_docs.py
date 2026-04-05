@@ -236,6 +236,13 @@ README_DOC_LINKS = [
     ("docs/leads-agent.md", "Leads harness memory model and CLI workflow."),
     ("artifacts/file_index.md", "Generated architecture map for the live repository."),
     ("artifacts/commands.md", "Generated CLI command catalog."),
+    ("artifacts/one_way_guide.md", "Default-path guide for repeated contributor decisions such as adding providers, tool families, harnesses, durable memory, runtime parameters, and artifact updates."),
+]
+
+REPO_ARTIFACT_LINKS = [
+    ("artifacts/file_index.md", "Generated architecture map for the live repository."),
+    ("artifacts/commands.md", "Generated CLI command catalog."),
+    ("artifacts/one_way_guide.md", "Default-path guide for repeated contributor decisions such as adding providers, tool families, harnesses, durable memory, runtime parameters, and artifact updates."),
 ]
 
 
@@ -1253,6 +1260,7 @@ def render_commands_artifact(inventory: dict[str, Any]) -> str:
 
 def render_file_index(inventory: dict[str, Any]) -> str:
     top_level_rows = [[f"`{entry['path']}`", entry["kind"], entry["description"]] for entry in inventory["top_level_directories"]]
+    artifact_rows = [[f"`{path}`", description] for path, description in REPO_ARTIFACT_LINKS]
     package_rows = [[f"`{entry['path']}`", entry["children"], entry["description"]] for entry in inventory["package_layout"]]
     focused_subpackage_rows = [[f"`{entry['path']}`", entry["description"]] for entry in inventory["focused_subpackages"]]
     key_file_rows = [[f"`{entry['path']}`", entry["description"]] for entry in inventory["key_files"]]
@@ -1324,6 +1332,10 @@ def render_file_index(inventory: dict[str, Any]) -> str:
             "## Top-Level Directories",
             "",
             make_table(["Path", "Kind", "Responsibility"], top_level_rows),
+            "",
+            "## Repository Artifacts",
+            "",
+            make_table(["Path", "Responsibility"], artifact_rows),
             "",
             "## Package Layout",
             "",
