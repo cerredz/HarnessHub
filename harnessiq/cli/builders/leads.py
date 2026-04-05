@@ -8,16 +8,17 @@ from pathlib import Path
 from typing import Any
 
 from harnessiq.cli.common import (
-    parse_manifest_parameter_assignments,
+    parse_generic_assignments,
     resolve_memory_path,
     resolve_text_argument,
 )
 from harnessiq.shared.leads import (
-    LEADS_HARNESS_MANIFEST,
     RUNTIME_PARAMETERS_FILENAME,
     LeadICP,
     LeadRunConfig,
     LeadsMemoryStore,
+    normalize_leads_platform_name,
+    normalize_leads_runtime_parameters,
 )
 
 _RUN_CONFIG_KEYS = frozenset({"search_summary_every", "search_tail_size", "max_leads_per_icp"})
@@ -72,13 +73,11 @@ class LeadsCliBuilder:
             updated.append("icps")
 
         if platforms:
-            config_payload["platforms"] = [self._normalize_platform_name(value) for value in platforms]
+            config_payload["platforms"] = [normalize_leads_platform_name(value) for value in platforms]
             updated.append("platforms")
 
-        normalized_parameters = parse_manifest_parameter_assignments(
-            runtime_assignments,
-            manifest=LEADS_HARNESS_MANIFEST,
-            scope="runtime",
+        normalized_parameters = normalize_leads_runtime_parameters(
+            parse_generic_assignments(runtime_assignments)
         )
         for key, value in normalized_parameters.items():
             if key in _RUN_CONFIG_KEYS:
@@ -180,9 +179,5 @@ class LeadsCliBuilder:
         if not store.run_config_path.exists():
             return {}
         return store.read_run_config().as_dict()
-
-    def _normalize_platform_name(self, value: str) -> str:
-        return value.strip().lower()
-
 
 __all__ = ["LeadsCliBuilder"]

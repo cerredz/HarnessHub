@@ -12,12 +12,12 @@ from harnessiq.shared.hooks import (
     SUPPORTED_APPROVAL_POLICIES,
     ApprovalPolicy,
 )
+from harnessiq.shared.output_sinks import OutputSink
 from harnessiq.shared.tool_selection import ToolSelectionConfig
 from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
 
 if TYPE_CHECKING:
     from harnessiq.shared.hooks import HookDefinition, RegisteredHook
-    from harnessiq.utils.ledger import OutputSink
 
 DEFAULT_AGENT_MAX_TOKENS = 80_000
 DEFAULT_AGENT_RESET_THRESHOLD = 0.9

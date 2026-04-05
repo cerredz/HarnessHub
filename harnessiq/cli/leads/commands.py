@@ -12,14 +12,12 @@ from harnessiq.cli.common import (
     add_model_selection_options,
     add_text_or_file_options,
     emit_json,
-    format_manifest_parameter_keys,
 )
 from harnessiq.cli.runners import LeadsCliRunner
 from harnessiq.shared.leads import (
-    LEADS_HARNESS_MANIFEST,
+    SUPPORTED_LEADS_RUNTIME_PARAMETERS,
+    normalize_leads_runtime_parameters as _normalize_leads_runtime_parameters,
 )
-
-SUPPORTED_LEADS_RUNTIME_PARAMETERS = LEADS_HARNESS_MANIFEST.runtime_parameter_names
 
 
 def register_leads_commands(
@@ -77,7 +75,7 @@ def register_leads_commands(
         metavar="KEY=VALUE",
         help=(
             "Persist a leads runtime/config parameter. Supported keys: "
-            f"{format_manifest_parameter_keys(LEADS_HARNESS_MANIFEST, scope='runtime')}."
+            f"{', '.join(SUPPORTED_LEADS_RUNTIME_PARAMETERS)}."
         ),
     )
     configure_parser.set_defaults(command_handler=_handle_configure)
@@ -200,7 +198,7 @@ def _print_help(parser: argparse.ArgumentParser) -> int:
 
 
 def normalize_leads_runtime_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
-    return LEADS_HARNESS_MANIFEST.coerce_runtime_parameters(parameters)
+    return _normalize_leads_runtime_parameters(parameters)
 
 
 __all__ = [

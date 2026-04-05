@@ -11,12 +11,17 @@ from harnessiq.cli._langsmith import seed_cli_environment
 from harnessiq.cli.builders.leads import LeadsCliBuilder
 from harnessiq.cli.common import (
     load_factory,
-    parse_manifest_parameter_assignments,
+    parse_generic_assignments,
     resolve_agent_model,
     split_assignment,
 )
 from harnessiq.cli.runners.lifecycle import HarnessCliLifecycleRunner
-from harnessiq.shared.leads import LEADS_HARNESS_MANIFEST, LeadRunConfig, LeadsMemoryStore, LeadsStorageBackend
+from harnessiq.shared.leads import (
+    LeadRunConfig,
+    LeadsMemoryStore,
+    LeadsStorageBackend,
+    normalize_leads_runtime_parameters,
+)
 
 _RUN_CONFIG_KEYS = frozenset({"search_summary_every", "search_tail_size", "max_leads_per_icp"})
 
@@ -53,10 +58,8 @@ class LeadsCliRunner:
         self._ensure_configured(store)
 
         run_config = store.read_run_config()
-        overrides = parse_manifest_parameter_assignments(
-            runtime_assignments,
-            manifest=LEADS_HARNESS_MANIFEST,
-            scope="runtime",
+        overrides = normalize_leads_runtime_parameters(
+            parse_generic_assignments(runtime_assignments)
         )
         effective_run_config = self._apply_run_config_overrides(run_config, overrides)
 

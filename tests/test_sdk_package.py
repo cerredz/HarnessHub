@@ -35,6 +35,13 @@ SHARED_CLASS_SUFFIXES = ("Config", "Credentials", "Operation", "PreparedRequest"
 PROVIDER_HYGIENE_EXCLUDED_PREFIXES = (
     Path("harnessiq/providers/gcloud"),
 )
+SHARED_FORBIDDEN_IMPORTS_BY_FILE = {
+    Path("harnessiq/shared/agents.py"): ("harnessiq.utils.ledger_models",),
+    Path("harnessiq/shared/credentials.py"): ("harnessiq.config.models",),
+    Path("harnessiq/shared/email.py"): ("harnessiq.tools.resend",),
+    Path("harnessiq/shared/exa_outreach.py"): ("harnessiq.utils.run_storage",),
+    Path("harnessiq/shared/leads.py"): ("harnessiq.utils.run_storage",),
+}
 
 
 class HarnessiqPackageTests(unittest.TestCase):
@@ -145,6 +152,7 @@ class HarnessiqPackageTests(unittest.TestCase):
         self.assertEqual(help_run.returncode, 0)
 
     def test_shared_definition_exports_originate_from_shared_modules(self) -> None:
+        from harnessiq.config import ProviderCredentialConfig
         from harnessiq.agents import (
             ApolloAgentConfig,
             ApolloAgentRequest,
@@ -171,6 +179,7 @@ class HarnessiqPackageTests(unittest.TestCase):
         from harnessiq.providers.openai import OpenAIResponseRequestDTO
         from harnessiq.shared.dtos import AgentInstancePayload, HarnessCommandPayloadDTO, HarnessRunSnapshotDTO
         from harnessiq.tools import ResendCredentials
+        from harnessiq.utils import FileSystemStorageBackend, RunRecord, StorageBackend
 
         self.assertEqual(AgentInstancePayload.__module__, "harnessiq.shared.dtos.agents")
         self.assertEqual(HarnessCommandPayloadDTO.__module__, "harnessiq.shared.dtos.cli")
@@ -191,11 +200,15 @@ class HarnessiqPackageTests(unittest.TestCase):
         self.assertEqual(AnthropicMessageRequestDTO.__module__, "harnessiq.shared.dtos.providers")
         self.assertEqual(GeminiGenerateContentRequestDTO.__module__, "harnessiq.shared.dtos.providers")
         self.assertEqual(GrokChatCompletionRequestDTO.__module__, "harnessiq.shared.dtos.providers")
+        self.assertEqual(ProviderCredentialConfig.__module__, "harnessiq.shared.credentials")
         self.assertEqual(ProviderFormatError.__module__, "harnessiq.shared.providers")
         self.assertEqual(ProviderHTTPError.__module__, "harnessiq.shared.http")
         self.assertEqual(ArxivConfig.__module__, "harnessiq.shared.provider_configs")
         self.assertEqual(ArcadsOperation.__module__, "harnessiq.shared.arcads")
         self.assertEqual(ResendCredentials.__module__, "harnessiq.shared.resend")
+        self.assertEqual(FileSystemStorageBackend.__module__, "harnessiq.shared.run_storage")
+        self.assertEqual(RunRecord.__module__, "harnessiq.shared.run_storage")
+        self.assertEqual(StorageBackend.__module__, "harnessiq.shared.run_storage")
 
     def test_provider_base_exports_resolve_from_documented_modules(self) -> None:
         from harnessiq.agents import (
@@ -236,6 +249,26 @@ class HarnessiqPackageTests(unittest.TestCase):
                         if root_name == "providers" and name in PROVIDER_ALLOWED_LOCAL_CONSTANTS:
                             continue
                         violations.append(f"{relative_path} defines constant {name}")
+
+        self.assertEqual(violations, [])
+
+    def test_shared_package_imports_only_shared_harnessiq_modules(self) -> None:
+        violations: list[str] = []
+        shared_root = REPO_ROOT / "harnessiq" / "shared"
+        for path in shared_root.rglob("*.py"):
+            relative_path = path.relative_to(REPO_ROOT)
+            forbidden_modules = SHARED_FORBIDDEN_IMPORTS_BY_FILE.get(relative_path)
+            if not forbidden_modules:
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name in forbidden_modules:
+                            violations.append(f"{relative_path} imports {alias.name}")
+                elif isinstance(node, ast.ImportFrom) and node.module:
+                    if node.module in forbidden_modules:
+                        violations.append(f"{relative_path} imports from {node.module}")
 
         self.assertEqual(violations, [])
 
