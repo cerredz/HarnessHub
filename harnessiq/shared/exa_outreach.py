@@ -2,7 +2,7 @@
 
 This module re-exports the generic run-storage backend types used by the
 outreach harness so older import paths remain stable while run persistence
-continues to live in ``harnessiq.utils.run_storage``.
+continues to live in ``harnessiq.shared.run_storage``.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
-from harnessiq.utils.run_storage import (
+from harnessiq.shared.run_storage import (
     RUNS_DIRNAME,
     FileSystemStorageBackend,
     RunRecord,
@@ -302,8 +302,8 @@ class ExaOutreachMemoryStore:
         """Read and return a run log by run ID.
 
         Reconstructs an :class:`OutreachRunLog` from the generic
-        :class:`~harnessiq.utils.run_storage.RunRecord` event log written by
-        :class:`~harnessiq.utils.run_storage.FileSystemStorageBackend`.
+        :class:`~harnessiq.shared.run_storage.RunRecord` event log written by
+        :class:`~harnessiq.shared.run_storage.FileSystemStorageBackend`.
         """
         path = self.runs_dir / f"{run_id}.json"
         if not path.exists():

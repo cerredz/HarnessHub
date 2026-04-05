@@ -10,7 +10,7 @@ from typing import Any, Iterable, Protocol, Sequence, runtime_checkable
 from urllib.parse import urlsplit, urlunsplit
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
-from harnessiq.utils.run_storage import FileSystemStorageBackend
+from harnessiq.shared.run_storage import FileSystemStorageBackend
 
 ICPS_DIRNAME = "icps"
 LEADS_STORAGE_DIRNAME = "lead_storage"

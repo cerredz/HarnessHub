@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, Protocol, Sequence, TypedDict
+from typing import Any, Literal, Protocol, Sequence, TypedDict
 
 from harnessiq.shared.tools import ToolCall, ToolDefinition, ToolResult
-
-if TYPE_CHECKING:
-    from harnessiq.utils.ledger import OutputSink
 
 DEFAULT_AGENT_MAX_TOKENS = 80_000
 DEFAULT_AGENT_RESET_THRESHOLD = 0.9
@@ -246,6 +243,13 @@ class AgentToolExecutor(Protocol):
         """Execute a tool and return a normalized result."""
 
 
+class OutputSink(Protocol):
+    """Write-only post-run sink contract for agent runtime configuration."""
+
+    def on_run_complete(self, entry: Any) -> None:
+        """Persist or export a completed ledger entry."""
+
+
 __all__ = [
     "AgentContextEntry",
     "AgentContextEntryKind",
@@ -267,6 +271,7 @@ __all__ = [
     "DEFAULT_AGENT_PRUNE_PROGRESS_INTERVAL",
     "DEFAULT_AGENT_PRUNE_TOKEN_LIMIT",
     "DEFAULT_AGENT_RESET_THRESHOLD",
+    "OutputSink",
     "merge_agent_runtime_config",
     "estimate_text_tokens",
 ]

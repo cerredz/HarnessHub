@@ -26,7 +26,7 @@ from harnessiq.shared.tools import (
     RegisteredTool,
     ToolDefinition,
 )
-from harnessiq.toolset.catalog import PROVIDER_FACTORY_MAP
+from harnessiq.shared.provider_tools import PROVIDER_FACTORY_MAP
 
 
 def create_leads_tools(

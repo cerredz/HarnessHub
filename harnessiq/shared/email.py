@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
-from harnessiq.tools.resend import ResendCredentials, get_resend_operation
+from harnessiq.shared.resend import ResendCredentials, get_resend_operation
 
 DEFAULT_EMAIL_AGENT_IDENTITY = (
     "A disciplined email operations agent that drafts, reviews, schedules, and sends email only "

@@ -7,15 +7,14 @@ from harnessiq.shared.output_sinks import (
     LINEAR_DEFAULT_BASE_URL,
     NOTION_DEFAULT_BASE_URL,
 )
-
-from .output_sink_clients import (
+from harnessiq.utils.output_sink_clients import (
     ConfluenceClient,
     LinearClient,
     NotionClient,
     SupabaseClient,
     WebhookDeliveryClient,
 )
-from .output_sink_metadata import extract_model_metadata
+from harnessiq.utils.output_sink_metadata import extract_model_metadata
 
 ConfluenceClient.__module__ = __name__
 LinearClient.__module__ = __name__

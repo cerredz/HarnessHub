@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from harnessiq.providers.output_sinks import (
+from harnessiq.utils.output_sink_clients import (
     ConfluenceClient,
     LinearClient,
     NotionClient,
