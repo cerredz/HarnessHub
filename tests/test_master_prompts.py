@@ -43,6 +43,7 @@ EXPECTED_PROMPT_KEYS = {
     "research_with_arxiv_papers",
     "research_with_hugging_face_hub_pages",
     "research_with_hugging_face_papers",
+    "several_stage_reasoning",
     "spawn_specialized_subagents",
     "surgical_bugfix",
 }
@@ -453,6 +454,41 @@ class AssumptionArchaeologistPromptTests(unittest.TestCase):
 
     def test_assumption_archaeologist_key_matches_filename_convention(self) -> None:
         self.assertEqual(self.prompt.key, "assumption_archaeologist")
+
+
+SEVERAL_STAGE_REASONING_MARKDOWN = (
+    Path(__file__).resolve().parents[1]
+    / "harnessiq"
+    / "master_prompts"
+    / "prompts"
+    / "several_stage_reasoning.md"
+)
+
+
+class SeveralStageReasoningPromptTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.prompt = MasterPromptRegistry().get("several_stage_reasoning")
+
+    def test_several_stage_reasoning_contains_expected_sections(self) -> None:
+        for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS:
+            with self.subTest(section=section_name):
+                _section_position(self.prompt.prompt, section_name)
+
+    def test_several_stage_reasoning_sections_appear_in_order(self) -> None:
+        positions = [_section_position(self.prompt.prompt, section_name) for section_name in PERSONA_PROMPT_REQUIRED_SECTIONS]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_several_stage_reasoning_contains_requested_persona_language(self) -> None:
+        self.assertIn("You are a structured reasoning agent", self.prompt.prompt)
+        self.assertIn("premature convergence as a category of failure", self.prompt.prompt)
+        self.assertIn("The stages are load-bearing.", self.prompt.prompt)
+        self.assertIn("[Reasoning — Stage N: Stage Name]", self.prompt.prompt)
+
+    def test_several_stage_reasoning_matches_markdown_payload_exactly(self) -> None:
+        self.assertEqual(self.prompt.prompt, SEVERAL_STAGE_REASONING_MARKDOWN.read_text(encoding="utf-8"))
+
+    def test_several_stage_reasoning_key_matches_filename_convention(self) -> None:
+        self.assertEqual(self.prompt.key, "several_stage_reasoning")
 
 
 class ModuleLevelAPITests(unittest.TestCase):

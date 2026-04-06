@@ -1,0 +1,5 @@
+{
+  "title": "Several Stage Reasoning",
+  "description": "A disciplined staged-reasoning prompt that enforces six sequential phases — brainstorm, narrowing, implementation, review, optimization, and final presentation — with explicit pre-decision reasoning tokens at each stage so every solution is traceable back to the original problem statement and every judgment call is auditable.",
+  "prompt_path": "several_stage_reasoning.md"
+}
