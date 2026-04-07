@@ -155,6 +155,14 @@ def _register_manifest_subcommands(
             add_manifest_parameter_options(parser, manifest=manifest, scope="custom")
             parser.set_defaults(command_handler=_handle_prepare, manifest_id=manifest.manifest_id)
         elif command == "show":
+            parser.add_argument(
+                "--prompt",
+                action="store_true",
+                help="Render the assembled harness prompt instead of the persisted state payload.",
+            )
+            from harnessiq.cli.master_prompts.commands import add_prompt_render_arguments
+
+            add_prompt_render_arguments(parser)
             parser.set_defaults(command_handler=_handle_show, manifest_id=manifest.manifest_id)
         elif command == "run":
             parser.add_argument(
@@ -263,6 +271,17 @@ def _handle_show(args: argparse.Namespace) -> int:
         incoming_custom={},
         persist_profile=False,
     )
+    if getattr(args, "prompt", False):
+        from harnessiq.cli.master_prompts.commands import (
+            render_prompt_bundle_for_manifest,
+        )
+
+        print(render_prompt_bundle_for_manifest(
+            manifest=manifest,
+            memory_path=str(context.memory_path),
+            args=args,
+        ))
+        return 0
     emit_json(_base_payload(context).with_state(adapter.show(context)).to_dict())
     return 0
 

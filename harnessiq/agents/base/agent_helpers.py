@@ -52,6 +52,8 @@ from harnessiq.shared.agents import (
     DEFAULT_AGENT_CONTEXT_MEMORY_FIELD_RULES,
     json_parameter_section,
 )
+from harnessiq.agents.prompt_masking import mask_parameter_sections
+from harnessiq.shared.dtos.agents import ParameterSectionBlockDTO
 from harnessiq.shared.hooks import HookContext, HookPhase, RegisteredHook
 from harnessiq.shared.tools import CONTEXT_SELECT_CHECKPOINT, RegisteredTool, ToolCall, ToolDefinition, ToolResult
 from harnessiq.tools.context import BoundContextToolExecutor, create_context_tools
@@ -193,12 +195,38 @@ class BaseAgentHelpersMixin:
             layer.on_agent_prepare(agent_name=self.name, memory_path=str(self.memory_path))
         self._formalization_prepared = True
 
-    def _formalization_parameter_sections(self) -> tuple[AgentParameterSection, ...]:
-        """Return the live parameter sections contributed by all formalization layers."""
+    def _formalization_parameter_sections(
+        self,
+        *,
+        template: bool = False,
+    ) -> tuple[AgentParameterSection, ...]:
+        """Return parameter sections contributed by all formalization layers."""
         sections: list[AgentParameterSection] = []
         for layer in self._formalization_layers:
-            sections.extend(layer.get_parameter_sections())
+            if template:
+                sections.extend(layer.get_template_sections())
+            else:
+                sections.extend(layer.get_parameter_sections())
         return tuple(sections)
+
+    def _build_parameter_sections(
+        self,
+        *,
+        template: bool = False,
+    ) -> ParameterSectionBlockDTO:
+        """Assemble the effective parameter section block for the current runtime state."""
+        self._ensure_formalization_prepared()
+        base_sections = tuple(self.load_parameter_sections())
+        if template:
+            base_sections = mask_parameter_sections(base_sections)
+        sections = tuple(
+            self._compose_parameter_sections(
+                (*base_sections, *self._formalization_parameter_sections(template=template))
+            )
+        )
+        if template:
+            return ParameterSectionBlockDTO(sections=mask_parameter_sections(sections))
+        return ParameterSectionBlockDTO(sections=sections)
 
     def _filter_formalization_tool_keys(
         self,

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 import json
 
-from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
+from harnessiq.shared.agents import AgentParameterSection, DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.shared.dtos.base import SerializableDTO, coerce_serializable_mapping
 from harnessiq.shared.tools import RegisteredTool
 
@@ -433,6 +433,26 @@ class OutreachAgentRequest:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class ParameterSectionBlockDTO(SerializableDTO):
+    """DTO wrapping an assembled block of agent parameter sections.
+
+    Returned by `BaseAgentHelpersMixin._build_parameter_sections` so that
+    all method outputs cross the layer boundary as an explicit, named type
+    rather than a bare tuple.
+    """
+
+    sections: tuple[AgentParameterSection, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "sections": [
+                {"title": s.title, "content": s.content}
+                for s in self.sections
+            ]
+        }
+
+
 def _normalize_payload(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     if payload is None:
         return {}
@@ -491,6 +511,7 @@ __all__ = [
     "LeadsAgentInstancePayload",
     "LinkedInAgentInstancePayload",
     "OutreachAgentRequest",
+    "ParameterSectionBlockDTO",
     "ProspectingAgentInstancePayload",
     "ProviderToolAgentRequest",
     "ResearchSweepAgentInstancePayload",

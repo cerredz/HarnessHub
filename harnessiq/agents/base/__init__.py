@@ -51,6 +51,7 @@ from harnessiq.agents.base.agent import (
     json_parameter_section,
     render_json_parameter_content,
 )
+from harnessiq.agents.prompt_bundle import MasterPromptBundle
 
 __all__ = [
     "AgentModel",
@@ -73,6 +74,7 @@ __all__ = [
     "HookPhase",
     "HookResponse",
     "RegisteredHook",
+    "MasterPromptBundle",
     "estimate_text_tokens",
     "json_parameter_section",
     "render_json_parameter_content",

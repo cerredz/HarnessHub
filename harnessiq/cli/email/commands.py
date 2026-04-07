@@ -12,6 +12,7 @@ from harnessiq.cli.common import (
     add_text_or_file_options,
     emit_json,
     format_manifest_parameter_keys,
+    resolve_memory_path,
 )
 from harnessiq.cli.runners import EmailCliRunner
 from harnessiq.shared.email_campaign import EMAIL_HARNESS_MANIFEST
@@ -103,6 +104,14 @@ def register_email_commands(
         memory_root_default="memory/email",
         memory_root_help="Root directory that holds per-agent email memory folders.",
     )
+    show_parser.add_argument(
+        "--prompt",
+        action="store_true",
+        help="Render the assembled harness prompt instead of the JSON state payload.",
+    )
+    from harnessiq.cli.master_prompts.commands import add_prompt_render_arguments
+
+    add_prompt_render_arguments(show_parser)
     show_parser.set_defaults(command_handler=_handle_show)
 
     run_parser = email_subparsers.add_parser(
@@ -190,6 +199,17 @@ def _handle_configure(args: argparse.Namespace) -> int:
 
 
 def _handle_show(args: argparse.Namespace) -> int:
+    if getattr(args, "prompt", False):
+        from harnessiq.cli.master_prompts.commands import render_prompt_bundle_for_manifest
+
+        print(
+            render_prompt_bundle_for_manifest(
+                manifest=EMAIL_HARNESS_MANIFEST,
+                memory_path=str(resolve_memory_path(args.agent, args.memory_root)),
+                args=args,
+            )
+        )
+        return 0
     emit_json(
         EmailCliBuilder().show(
             agent_name=args.agent,

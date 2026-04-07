@@ -82,6 +82,7 @@ from harnessiq.utils import (
 )
 
 from .base import BaseAgent
+from .prompt_bundle import MasterPromptBundle
 from .sdk_helpers import build_agent_runtime_config, inspect_harness
 from .provider_base import BaseProviderToolAgent
 from .apollo import BaseApolloAgent
@@ -170,6 +171,7 @@ __all__ = [
     "KnowtMemoryStore",
     "LeadsAgent",
     "MissionDrivenAgent",
+    "MasterPromptBundle",
     "ResearchSweepAgent",
     "EmailAgentConfig",
     "EmailAgentRequest",

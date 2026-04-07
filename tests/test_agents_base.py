@@ -42,6 +42,7 @@ from harnessiq.shared.tools import (
     ToolDefinition,
     ToolResult,
 )
+from harnessiq.shared.agents import AgentInjectedSection
 from harnessiq.tools import create_context_compaction_tools, create_general_purpose_tools
 from harnessiq.tools.control import create_control_tools
 from harnessiq.tools.registry import ToolRegistry
@@ -335,6 +336,29 @@ class _InvalidResultEventLayer(BaseBehaviorLayer):
         return {"invalid": True}
 
 
+class _TemplateMaskLayer(BaseFormalizationLayer):
+    def _describe_contract(self) -> str:
+        return "Expose dynamic runtime-looking values for template masking tests."
+
+    def _describe_rules(self) -> tuple[LayerRuleRecord, ...]:
+        return ()
+
+    def _describe_configuration(self) -> dict[str, object]:
+        return {}
+
+    def get_parameter_sections(self) -> tuple[AgentParameterSection, ...]:
+        return (
+            AgentParameterSection(
+                title="Mask Me",
+                content=(
+                    "current=7\n"
+                    "artifact_status=[written]\n"
+                    "Progress: Elapsed: 1h 23m / 2 hours required (69.2%)"
+                ),
+            ),
+        )
+
+
 class BaseAgentTests(unittest.TestCase):
     def test_runtime_config_defaults_align_with_shared_constants(self) -> None:
         runtime_config = AgentRuntimeConfig()
@@ -421,6 +445,53 @@ class BaseAgentTests(unittest.TestCase):
         self.assertEqual(snapshot.memory_path, agent.memory_path)
         self.assertEqual(snapshot.instance_id, agent.instance_id)
         self.assertEqual(snapshot.instance_name, agent.instance_name)
+
+    def test_build_master_prompt_includes_effective_system_prompt_and_composed_sections(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = _InspectableAgent(
+                model=_FakeModel([]),
+                tool_executor=ToolRegistry([]),
+                formalization_layers=(_TrackingFormalizationLayer(),),
+                repo_root=temp_dir,
+            )
+            agent._context_runtime_state.injected_sections.append(
+                AgentInjectedSection(
+                    label="Runtime Note",
+                    content="Injected section",
+                    position="last",
+                )
+            )
+
+            bundle = agent.build_master_prompt()
+
+        self.assertIn("[TRACKING LAYER]", bundle.system_prompt)
+        self.assertEqual(
+            [section.title for section in bundle.parameter_sections],
+            ["State", "Formalization Layer", "Runtime Note"],
+        )
+        self.assertIn("## State", bundle.render())
+        self.assertEqual(bundle.render_system_prompt_only(), bundle.system_prompt)
+        self.assertIn("## Formalization Layer", bundle.as_additional_prompt())
+        self.assertIn("Agent: inspectable_agent", bundle.summary())
+
+    def test_build_master_prompt_template_masks_runtime_values(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent = _InspectableAgent(
+                model=_FakeModel([]),
+                tool_executor=ToolRegistry([]),
+                parameter_versions=['{"count": 9, "status": "[written]"}'],
+                formalization_layers=(_TemplateMaskLayer(),),
+                repo_root=temp_dir,
+            )
+
+            bundle = agent.build_master_prompt(template=True)
+
+        rendered = bundle.render()
+        self.assertTrue(bundle.is_template)
+        self.assertIn('"count": ---', rendered)
+        self.assertIn("[status]", rendered)
+        self.assertIn("current=---", rendered)
+        self.assertIn("Elapsed: [elapsed] / [target]", rendered)
 
     def test_formalization_layers_augment_prompt_filter_tools_transform_results_and_run_reset_hooks(self) -> None:
         registry = ToolRegistry(

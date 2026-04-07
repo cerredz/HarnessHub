@@ -212,6 +212,28 @@ class BaseFormalizationLayer(ABC):
             ),
         )
 
+    def get_template_sections(self) -> tuple[AgentParameterSection, ...]:
+        """Return parameter sections with live runtime values masked for templates."""
+        from harnessiq.agents.prompt_bundle import _mask_section_values
+
+        return tuple(
+            AgentParameterSection(
+                title=section.title,
+                content=_mask_section_values(section.content),
+            )
+            for section in self.get_parameter_sections()
+        )
+
+    def describe_for_prompt(self) -> str:
+        """Return a human-readable prose block describing this layer's behavior."""
+        doc = self.describe()
+        lines = [f"[{self.__class__.__name__}: {doc.layer_id}]", "", doc.contract]
+        if doc.rules:
+            lines.extend(["", "Enforced rules:"])
+            for rule in doc.rules:
+                lines.append(f"  [{rule.rule_id}] {rule.description}")
+        return "\n".join(lines)
+
     def augment_system_prompt(self, system_prompt: str) -> str:
         """Return the model system prompt after this layer's augmentation."""
         return system_prompt
