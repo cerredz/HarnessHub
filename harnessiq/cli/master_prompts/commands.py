@@ -9,6 +9,7 @@ from typing import Any
 
 from harnessiq.agents import AgentRuntimeConfig
 from harnessiq.cli.common import emit_json, load_factory, resolve_repo_root
+from harnessiq.lib.memory import MemoryPathInput
 from harnessiq.master_prompts import get_prompt, get_prompt_text, list_prompt_keys, list_prompts
 from harnessiq.master_prompts.session_injection import (
     activate_prompt_session,
@@ -180,9 +181,10 @@ def _handle_clear(args: argparse.Namespace) -> int:
 def _handle_build_prompt(args: argparse.Namespace) -> int:
     manifest = get_harness_manifest(args.agent)
     out_path = getattr(args, "out", None)
+    memory_path = MemoryPathInput.from_str(getattr(args, "memory_path", None))
     output = render_prompt_bundle_for_manifest(
         manifest=manifest,
-        memory_path=getattr(args, "memory_path", None),
+        memory_path=memory_path,
         args=args,
     )
     if out_path:
@@ -209,7 +211,7 @@ def _prompt_payload(prompt) -> dict[str, str]:
 def build_prompt_bundle_for_manifest(
     *,
     manifest,
-    memory_path: str | None = None,
+    memory_path: MemoryPathInput | None = None,
     template: bool = False,
 ):
     """Instantiate one harness in prompt-inspection mode and build its bundle."""
@@ -220,7 +222,7 @@ def build_prompt_bundle_for_manifest(
 def render_prompt_bundle_for_manifest(
     *,
     manifest,
-    memory_path: str | None,
+    memory_path: MemoryPathInput | None,
     args: argparse.Namespace,
 ) -> str:
     """Build and render one prompt bundle for a configured harness."""
@@ -292,7 +294,7 @@ def format_prompt_bundle_output(*, bundle, args: argparse.Namespace) -> str:
     return bundle.render(labeled=not no_labels)
 
 
-def _build_prompt_agent(*, manifest, memory_path: str | None = None):
+def _build_prompt_agent(*, manifest, memory_path: MemoryPathInput | None = None):
     agent_factory = load_factory(manifest.import_path)
     runtime_config = AgentRuntimeConfig(include_default_output_sink=False)
     kwargs: dict[str, Any] = {
@@ -300,7 +302,7 @@ def _build_prompt_agent(*, manifest, memory_path: str | None = None):
         "runtime_config": runtime_config,
     }
     if memory_path is not None:
-        kwargs["memory_path"] = memory_path
+        kwargs["memory_path"] = memory_path.path
     kwargs.update(_prompt_dependency_overrides(manifest.manifest_id))
     from_memory = getattr(agent_factory, "from_memory", None)
     try:

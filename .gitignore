@@ -11,8 +11,8 @@ dist/
 # Virtual environments
 .venv/
 venv/
-Lib/
-Scripts/
+/Lib/
+/Scripts/
 !scripts/
 !scripts/sync_repo_docs.py
 

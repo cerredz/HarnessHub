@@ -2,43 +2,10 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 from harnessiq.shared.agents import AgentParameterSection
-
-_JSON_NUMERIC_VALUE_PATTERN = re.compile(r'(?<=: )-?\d+(?:\.\d+)?')
-_STATUS_PATTERN = re.compile(
-    r'(\[(?:written|not yet written|satisfied|not yet met)\]|[✓✗] (?:written|not yet written|satisfied|not yet met))'
-)
-_ELAPSED_PROGRESS_PATTERN = re.compile(
-    r'Elapsed: [^\n]+? / [^\n]+?(?: \([\d.]+%\))?(?: [^\n]*)?'
-)
-_CURRENT_VALUE_PATTERN = re.compile(r'current=-?\d+(?:\.\d+)?')
-_PERCENT_PATTERN = re.compile(r'\((?:-?\d+(?:\.\d+)?)%\)')
-
-
-def _mask_section_values(content: str) -> str:
-    """Replace live runtime values with structural placeholders."""
-    masked = _JSON_NUMERIC_VALUE_PATTERN.sub("---", content)
-    masked = _STATUS_PATTERN.sub("[status]", masked)
-    masked = _ELAPSED_PROGRESS_PATTERN.sub("Elapsed: [elapsed] / [target]", masked)
-    masked = _CURRENT_VALUE_PATTERN.sub("current=---", masked)
-    masked = _PERCENT_PATTERN.sub("(--%)", masked)
-    return masked
-
-
-def mask_parameter_sections(
-    sections: tuple[AgentParameterSection, ...] | list[AgentParameterSection],
-) -> tuple[AgentParameterSection, ...]:
-    """Return a copy of parameter sections with content masked for template mode."""
-    return tuple(
-        AgentParameterSection(
-            title=section.title,
-            content=_mask_section_values(section.content),
-        )
-        for section in sections
-    )
+from harnessiq.agents.prompt_masking import _mask_section_values, mask_parameter_sections
 
 
 @dataclass(frozen=True)

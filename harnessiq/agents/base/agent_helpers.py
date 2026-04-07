@@ -52,6 +52,8 @@ from harnessiq.shared.agents import (
     DEFAULT_AGENT_CONTEXT_MEMORY_FIELD_RULES,
     json_parameter_section,
 )
+from harnessiq.agents.prompt_masking import mask_parameter_sections
+from harnessiq.shared.dtos.agents import ParameterSectionBlockDTO
 from harnessiq.shared.hooks import HookContext, HookPhase, RegisteredHook
 from harnessiq.shared.tools import CONTEXT_SELECT_CHECKPOINT, RegisteredTool, ToolCall, ToolDefinition, ToolResult
 from harnessiq.tools.context import BoundContextToolExecutor, create_context_tools
@@ -211,10 +213,8 @@ class BaseAgentHelpersMixin:
         self,
         *,
         template: bool = False,
-    ) -> tuple[AgentParameterSection, ...]:
+    ) -> ParameterSectionBlockDTO:
         """Assemble the effective parameter section block for the current runtime state."""
-        from harnessiq.agents.prompt_bundle import mask_parameter_sections
-
         self._ensure_formalization_prepared()
         base_sections = tuple(self.load_parameter_sections())
         if template:
@@ -225,8 +225,8 @@ class BaseAgentHelpersMixin:
             )
         )
         if template:
-            return mask_parameter_sections(sections)
-        return sections
+            return ParameterSectionBlockDTO(sections=mask_parameter_sections(sections))
+        return ParameterSectionBlockDTO(sections=sections)
 
     def _filter_formalization_tool_keys(
         self,

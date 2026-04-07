@@ -298,17 +298,18 @@ class BaseAgent(BaseAgentHelpersMixin, ABC):
 
     def refresh_parameters(self) -> tuple[AgentParameterSection, ...]:
         """Reload and cache the current durable parameter sections."""
-        sections = self._build_parameter_sections()
-        self._parameter_sections = sections
-        return sections
+        dto = self._build_parameter_sections()
+        self._parameter_sections = dto.sections
+        return dto.sections
 
     def build_master_prompt(self, template: bool = False) -> "MasterPromptBundle":
         """Assemble and return the complete effective prompt for this agent."""
         from harnessiq.agents.prompt_bundle import MasterPromptBundle
 
+        dto = self._build_parameter_sections(template=template)
         return MasterPromptBundle(
             system_prompt=self._effective_system_prompt(),
-            parameter_sections=self._build_parameter_sections(template=template),
+            parameter_sections=dto.sections,
             agent_name=self._name,
             layer_count=len(self._formalization_layers),
             built_at_reset=self._reset_count,
