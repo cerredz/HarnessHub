@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TypedDict
 
-from harnessiq.config.models import ProviderCredentialConfig
 from harnessiq.shared.providers import (
     APOLLO_DEFAULT_BASE_URL,
     ARCADS_DEFAULT_BASE_URL,
@@ -26,6 +26,12 @@ from harnessiq.shared.providers import (
     ZEROBOUNCE_DEFAULT_BULK_BASE_URL,
 )
 from harnessiq.shared.validated import HttpUrl, NonEmptyString, parse_positive_number
+
+
+class ProviderCredentialConfig(TypedDict, total=False):
+    """Base type for per-provider credential configuration."""
+
+    provider: str
 
 
 def _validate_text_fields(instance: object, *field_names: str) -> None:
@@ -628,6 +634,7 @@ __all__ = [
     "PeopleDataLabsCredentials",
     "PhantomBusterCredentials",
     "ProxycurlCredentials",
+    "ProviderCredentialConfig",
     "SerperCredentials",
     "SalesforgeCredentials",
     "SmartleadCredentials",

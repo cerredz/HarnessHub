@@ -1,9 +1,4 @@
-"""Shared data models and memory helpers for ``ExaOutreachAgent``.
-
-This module re-exports the generic run-storage backend types used by the
-outreach harness so older import paths remain stable while run persistence
-continues to live in ``harnessiq.utils.run_storage``.
-"""
+"""Shared data models, normalization, and run-storage helpers for Exa outreach."""
 
 from __future__ import annotations
 
@@ -15,7 +10,7 @@ from typing import Any
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.shared.harness_manifest import HarnessManifest, HarnessMemoryFileSpec, HarnessParameterSpec
-from harnessiq.utils.run_storage import (
+from harnessiq.shared.run_storage import (
     RUNS_DIRNAME,
     FileSystemStorageBackend,
     RunRecord,
@@ -45,6 +40,10 @@ LEGACY_DEFAULT_AGENT_IDENTITIES = frozenset(
 )
 
 DEFAULT_SEARCH_QUERY = "(search query not configured)"
+SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS = (
+    "max_tokens",
+    "reset_threshold",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +65,24 @@ class ExaOutreachAgentConfig:
             raise ValueError(
                 "ExaOutreachAgentConfig.email_data must not be empty when search_only is False."
             )
+
+
+def normalize_exa_outreach_runtime_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Validate and type-coerce outreach runtime parameters."""
+
+    normalized: dict[str, Any] = {}
+    coercers = {
+        "max_tokens": _coerce_int,
+        "reset_threshold": _coerce_float,
+    }
+    for key, value in parameters.items():
+        if key not in coercers:
+            raise ValueError(
+                f"Unsupported outreach runtime parameter '{key}'. "
+                f"Supported: {', '.join(sorted(coercers))}."
+            )
+        normalized[key] = coercers[key](value)
+    return normalized
 
 # ---------------------------------------------------------------------------
 # EmailTemplate
@@ -303,8 +320,8 @@ class ExaOutreachMemoryStore:
         """Read and return a run log by run ID.
 
         Reconstructs an :class:`OutreachRunLog` from the generic
-        :class:`~harnessiq.utils.run_storage.RunRecord` event log written by
-        :class:`~harnessiq.utils.run_storage.FileSystemStorageBackend`.
+        :class:`~harnessiq.shared.run_storage.RunRecord` event log written by
+        :class:`~harnessiq.shared.run_storage.FileSystemStorageBackend`.
         """
         path = self.runs_dir / f"{run_id}.json"
         if not path.exists():
@@ -398,6 +415,26 @@ def _run_file_sort_key(path: Path) -> int:
     return int(match.group(1)) if match else 0
 
 
+def _coerce_int(value: Any) -> int:
+    if isinstance(value, bool):
+        raise ValueError("Boolean values are not valid integer runtime parameters.")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip():
+        return int(value)
+    raise ValueError("Runtime parameter must be an integer.")
+
+
+def _coerce_float(value: Any) -> float:
+    if isinstance(value, bool):
+        raise ValueError("Boolean values are not valid float runtime parameters.")
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str) and value.strip():
+        return float(value)
+    raise ValueError("Runtime parameter must be a float.")
+
+
 EXA_OUTREACH_HARNESS_MANIFEST = HarnessManifest(
     manifest_id="exa_outreach",
     agent_name="exa_outreach",
@@ -448,4 +485,6 @@ __all__ = [
     "QUERY_CONFIG_FILENAME",
     "RUNS_DIRNAME",
     "StorageBackend",
+    "SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS",
+    "normalize_exa_outreach_runtime_parameters",
 ]

@@ -8,9 +8,13 @@ from typing import Any
 
 from harnessiq.agents.exa_outreach import ExaOutreachAgent
 from harnessiq.cli._langsmith import seed_cli_environment
-from harnessiq.cli.common import load_factory, parse_manifest_parameter_assignments, resolve_agent_model, resolve_memory_path
+from harnessiq.cli.common import load_factory, parse_generic_assignments, resolve_agent_model, resolve_memory_path
 from harnessiq.cli.runners.lifecycle import HarnessCliLifecycleRunner
-from harnessiq.shared.exa_outreach import EXA_OUTREACH_HARNESS_MANIFEST, EmailTemplate, ExaOutreachMemoryStore
+from harnessiq.shared.exa_outreach import (
+    EmailTemplate,
+    ExaOutreachMemoryStore,
+    normalize_exa_outreach_runtime_parameters,
+)
 
 
 class ExaOutreachCliRunner:
@@ -102,11 +106,7 @@ class ExaOutreachCliRunner:
         }
 
     def parse_runtime_assignments(self, assignments: Sequence[str]) -> dict[str, Any]:
-        return parse_manifest_parameter_assignments(
-            assignments,
-            manifest=EXA_OUTREACH_HARNESS_MANIFEST,
-            scope="runtime",
-        )
+        return normalize_exa_outreach_runtime_parameters(parse_generic_assignments(assignments))
 
     def _load_store(
         self,

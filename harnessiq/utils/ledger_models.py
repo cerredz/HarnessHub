@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Literal, Mapping, Protocol
+from typing import Any, Literal, Mapping
 from uuid import uuid4
+
+from harnessiq.shared.output_sinks import OutputSink
 
 DEFAULT_HARNESSIQ_DIRNAME = ".harnessiq"
 DEFAULT_LEDGER_FILENAME = "runs.jsonl"
@@ -54,14 +56,6 @@ class LedgerEntry:
             tags=[str(tag) for tag in payload.get("tags", [])],
             metadata=dict(payload.get("metadata", {})),
         )
-
-
-class OutputSink(Protocol):
-    """Write-only post-run sink contract."""
-
-    def on_run_complete(self, entry: LedgerEntry) -> None:
-        """Persist or export a completed ledger entry."""
-
 
 def new_run_id() -> str:
     return str(uuid4())

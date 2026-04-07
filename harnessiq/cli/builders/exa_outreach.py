@@ -6,11 +6,14 @@ from collections.abc import Sequence
 from typing import Any
 
 from harnessiq.cli.common import (
-    parse_manifest_parameter_assignments,
+    parse_generic_assignments,
     resolve_memory_path,
     resolve_text_argument,
 )
-from harnessiq.shared.exa_outreach import EXA_OUTREACH_HARNESS_MANIFEST, ExaOutreachMemoryStore
+from harnessiq.shared.exa_outreach import (
+    ExaOutreachMemoryStore,
+    normalize_exa_outreach_runtime_parameters,
+)
 
 
 class ExaOutreachCliBuilder:
@@ -107,11 +110,7 @@ class ExaOutreachCliBuilder:
         return ExaOutreachMemoryStore(memory_path=resolve_memory_path(agent_name, memory_root))
 
     def _parse_runtime_assignments(self, assignments: Sequence[str]) -> dict[str, Any]:
-        return parse_manifest_parameter_assignments(
-            assignments,
-            manifest=EXA_OUTREACH_HARNESS_MANIFEST,
-            scope="runtime",
-        )
+        return normalize_exa_outreach_runtime_parameters(parse_generic_assignments(assignments))
 
     def _write_optional_text(
         self,

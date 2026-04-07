@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+from typing import Any, Protocol
+
 GOOGLE_SHEETS_DEFAULT_BASE_URL = "https://sheets.googleapis.com/v4"
 GOOGLE_SHEETS_DEFAULT_SCOPE = "https://www.googleapis.com/auth/spreadsheets"
 GOOGLE_SHEETS_DEFAULT_TOKEN_URL = "https://oauth2.googleapis.com/token"
 DEFAULT_NOTION_VERSION = "2022-06-28"
 NOTION_DEFAULT_BASE_URL = "https://api.notion.com/v1"
 LINEAR_DEFAULT_BASE_URL = "https://api.linear.app/graphql"
+
+
+class OutputSink(Protocol):
+    """Write-only post-run sink contract."""
+
+    def on_run_complete(self, entry: Any) -> None:
+        """Persist or export a completed ledger entry."""
 
 __all__ = [
     "DEFAULT_NOTION_VERSION",
@@ -16,4 +25,5 @@ __all__ = [
     "GOOGLE_SHEETS_DEFAULT_TOKEN_URL",
     "LINEAR_DEFAULT_BASE_URL",
     "NOTION_DEFAULT_BASE_URL",
+    "OutputSink",
 ]

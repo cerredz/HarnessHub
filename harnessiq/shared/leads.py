@@ -6,13 +6,13 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Protocol, Sequence, runtime_checkable
+from typing import Any, Iterable, Mapping, Protocol, Sequence, runtime_checkable
 from urllib.parse import urlsplit, urlunsplit
 
 from harnessiq.shared.agents import DEFAULT_AGENT_MAX_TOKENS, DEFAULT_AGENT_RESET_THRESHOLD
 from harnessiq.shared.harness_manifest import HarnessManifest, HarnessMemoryFileSpec, HarnessParameterSpec
+from harnessiq.shared.run_storage import FileSystemStorageBackend
 from harnessiq.toolset.catalog import PROVIDER_FACTORY_MAP
-from harnessiq.utils.run_storage import FileSystemStorageBackend
 
 ICPS_DIRNAME = "icps"
 LEADS_STORAGE_DIRNAME = "lead_storage"
@@ -22,6 +22,15 @@ RUNTIME_PARAMETERS_FILENAME = "runtime_parameters.json"
 SAVED_LEADS_FILENAME = "saved_leads.json"
 DEFAULT_LEADS_SEARCH_SUMMARY_EVERY = 500
 DEFAULT_LEADS_SEARCH_TAIL_SIZE = 20
+SUPPORTED_LEADS_RUNTIME_PARAMETERS = (
+    "max_tokens",
+    "reset_threshold",
+    "prune_search_interval",
+    "prune_token_limit",
+    "search_summary_every",
+    "search_tail_size",
+    "max_leads_per_icp",
+)
 
 _ICP_STATUS_VALUES = frozenset({"pending", "active", "completed"})
 _RUN_STATUS_VALUES = frozenset({"pending", "running", "completed"})
@@ -754,6 +763,29 @@ def normalize_leads_platform_name(value: str) -> str:
     return value.strip().lower()
 
 
+def normalize_leads_runtime_parameters(parameters: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate and type-coerce leads runtime parameters."""
+
+    normalized: dict[str, Any] = {}
+    coercers = {
+        "max_tokens": _coerce_int,
+        "reset_threshold": _coerce_float,
+        "prune_search_interval": _coerce_optional_int,
+        "prune_token_limit": _coerce_optional_int,
+        "search_summary_every": _coerce_int,
+        "search_tail_size": _coerce_int,
+        "max_leads_per_icp": _coerce_optional_int,
+    }
+    for key, value in parameters.items():
+        if key not in coercers:
+            raise ValueError(
+                f"Unsupported leads runtime parameter '{key}'. "
+                f"Supported: {', '.join(sorted(coercers))}."
+            )
+        normalized[key] = coercers[key](value)
+    return normalized
+
+
 LEADS_HARNESS_MANIFEST = HarnessManifest(
     manifest_id="leads",
     agent_name="leads_agent",
@@ -814,6 +846,32 @@ def _normalize_url(value: str) -> str:
     return normalized.lower()
 
 
+def _coerce_int(value: Any) -> int:
+    if isinstance(value, bool):
+        raise ValueError("Boolean values are not valid integer runtime parameters.")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip():
+        return int(value)
+    raise ValueError("Runtime parameter must be an integer.")
+
+
+def _coerce_optional_int(value: Any) -> int | None:
+    if value is None or value == "":
+        return None
+    return _coerce_int(value)
+
+
+def _coerce_float(value: Any) -> float:
+    if isinstance(value, bool):
+        raise ValueError("Boolean values are not valid float runtime parameters.")
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str) and value.strip():
+        return float(value)
+    raise ValueError("Runtime parameter must be a float.")
+
+
 def _utcnow() -> str:
     from datetime import datetime, timezone
 
@@ -859,6 +917,8 @@ __all__ = [
     "RUN_CONFIG_FILENAME",
     "RUN_STATE_FILENAME",
     "SAVED_LEADS_FILENAME",
+    "SUPPORTED_LEADS_RUNTIME_PARAMETERS",
     "coerce_lead_icps",
+    "normalize_leads_runtime_parameters",
     "normalize_leads_platform_name",
 ]

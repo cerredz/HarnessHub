@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from typing import Any
 
 from harnessiq.cli.builders import ExaOutreachCliBuilder
 from harnessiq.cli.common import (
@@ -11,12 +12,12 @@ from harnessiq.cli.common import (
     add_model_selection_options,
     add_text_or_file_options,
     emit_json,
-    format_manifest_parameter_keys,
 )
 from harnessiq.cli.runners import ExaOutreachCliRunner
-from harnessiq.shared.exa_outreach import EXA_OUTREACH_HARNESS_MANIFEST
-
-SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS = EXA_OUTREACH_HARNESS_MANIFEST.runtime_parameter_names
+from harnessiq.shared.exa_outreach import (
+    SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS,
+    normalize_exa_outreach_runtime_parameters as _normalize_exa_outreach_runtime_parameters,
+)
 
 
 def register_exa_outreach_commands(
@@ -57,7 +58,7 @@ def register_exa_outreach_commands(
         metavar="KEY=VALUE",
         help=(
             f"Persist a runtime parameter. Supported keys: "
-            f"{format_manifest_parameter_keys(EXA_OUTREACH_HARNESS_MANIFEST, scope='runtime')}."
+            f"{', '.join(SUPPORTED_EXA_OUTREACH_RUNTIME_PARAMETERS)}."
         ),
     )
     configure_parser.set_defaults(command_handler=_handle_configure)
@@ -200,7 +201,7 @@ def _print_help(parser: argparse.ArgumentParser) -> int:
 
 def normalize_exa_outreach_runtime_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
     """Validate and type-coerce outreach runtime parameters."""
-    return EXA_OUTREACH_HARNESS_MANIFEST.coerce_runtime_parameters(parameters)
+    return _normalize_exa_outreach_runtime_parameters(parameters)
 
 
 __all__ = [
