@@ -1,8 +1,8 @@
 # Harnessiq
 
-Harnessiq is a Python SDK for building durable, tool-using agents with manifest-backed harnesses, provider-backed tool factories, and a scriptable CLI.
+Harnessiq is a Python SDK for building durable, tool-using agents with manifest-backed harnesses, catalog-driven tool composition, provider-backed service surfaces, post-run output sinks, and a scriptable CLI.
 
-The agent, provider, and CLI tables below are generated from live repository code by `python scripts/sync_repo_docs.py`.
+The inventory tables and SDK examples below are generated from live repository code by `python scripts/sync_repo_docs.py`.
 
 ## Install
 
@@ -24,6 +24,117 @@ from harnessiq.tools import ECHO_TEXT, create_builtin_registry
 registry = create_builtin_registry()
 result = registry.execute(ECHO_TEXT, {"text": "hello"})
 print(result.output)
+```
+
+## SDK Surface
+
+Harnessiq is usable as a library even when you are not driving it through the CLI. The primary SDK layers are:
+
+| Module | Purpose |
+| --- | --- |
+| `harnessiq.agents` | Provider-agnostic runtime bases, concrete harnesses, manifests, and durable memory helpers. |
+| `harnessiq/toolset/` | Static tool-catalog and dynamic-tool-selection infrastructure layered beneath the executable tool registries. |
+| `harnessiq.tools` | Executable tool registries plus built-in tool families and provider-backed tool factories. |
+| `harnessiq.providers` | Model adapters, external service clients, output-sink transports, and Playwright/browser runtimes. |
+| `harnessiq.utils` | Agent instance ids, run storage, ledger export/report helpers, stats projection, and built-in sinks. |
+| `harnessiq.master_prompts` | Bundled prompt assets and the prompt registry used to load them programmatically. |
+
+The current repository snapshot includes 10 concrete harness manifests, 27 service provider packages, 1 tool-only external service surface, and 10 built-in output sink types.
+
+- Manifest-backed harnesses with durable memory roots and persisted runtime/custom parameter surfaces.
+- Static tool registries plus optional dynamic per-turn narrowing through the tool-selection layer.
+- Provider-backed request tools for model providers, research/search APIs, CRM/outbound platforms, browser automation, creative generation, and delivery systems.
+- Post-run audit ledger exports, sink connections, and stats snapshots that stay outside the model loop.
+- Google Cloud deployment support for running manifest-backed harnesses as Cloud Run jobs while preserving harness-native durable state.
+
+## Registry Composition Example
+
+Compose built-ins with provider-backed request tools by constructing a `ToolRegistry` directly.
+
+```python
+from harnessiq.tools import ToolRegistry, create_general_purpose_tools
+from harnessiq.tools.exa import create_exa_tools
+from harnessiq.providers.exa.client import ExaCredentials
+
+registry = ToolRegistry([
+    *create_general_purpose_tools(),
+    *create_exa_tools(
+        credentials=ExaCredentials(api_key="exa_..."),
+        allowed_operations=("search", "get_contents"),
+    ),
+])
+
+print(registry.keys())
+result = registry.execute("text.normalize_whitespace", {"text": "  too   much   space  "})
+print(result.output)
+```
+
+## Custom Tool Example
+
+You can define strict-schema custom tools and compose them into a fixed runtime registry.
+
+```python
+from harnessiq.shared.tools import RegisteredTool, ToolDefinition
+from harnessiq.tools import ToolRegistry, create_builtin_registry
+
+slugify_tool = RegisteredTool(
+    definition=ToolDefinition(
+        key="custom.slugify",
+        name="slugify",
+        description="Normalize text into a URL slug.",
+        input_schema={
+            "type": "object",
+            "properties": {"text": {"type": "string", "description": "Input text to normalize."}},
+            "required": ["text"],
+            "additionalProperties": False,
+        },
+    ),
+    handler=lambda args: {"slug": str(args["text"]).strip().lower().replace(" ", "-")},
+)
+
+builtins = create_builtin_registry()
+registry = ToolRegistry([*builtins.select(builtins.keys()), slugify_tool])
+result = registry.execute("custom.slugify", {"text": "HarnessIQ SDK"})
+print(result.output["slug"])  # "harnessiq-sdk"
+```
+
+The static toolset layer can still describe or retrieve tool families, but `ToolRegistry` is the direct execution surface used by harnesses and custom SDK code.
+
+## Runtime, Hooks, and Output Sink Example
+
+`AgentRuntimeConfig` is where SDK consumers tune token limits, allowed tool patterns, dynamic selection, hooks, output sinks, tracing, and session identity.
+
+```python
+from harnessiq.agents import AgentRuntimeConfig
+from harnessiq.utils import JSONLLedgerSink, ObsidianSink, list_output_sink_types
+
+runtime = AgentRuntimeConfig(
+    max_tokens=80_000,
+    reset_threshold=0.9,
+    allowed_tools=("filesystem.*", "reason.*", "exa.request"),
+    output_sinks=(
+        JSONLLedgerSink(path="./artifacts/runs.jsonl"),
+        ObsidianSink(vault_path="~/Documents/Vault", note_folder="HarnessIQ Runs"),
+    ),
+    include_default_output_sink=False,
+)
+
+print(runtime.allowed_tools)
+print(list_output_sink_types())
+```
+
+## Bundled Prompt Example
+
+Bundled prompts are also addressable through a registry API, so you can inspect or reuse prompt assets directly from Python.
+
+```python
+from harnessiq.master_prompts.registry import MasterPromptRegistry
+
+registry = MasterPromptRegistry()
+print(registry.keys())
+prompt = registry.get("create_master_prompts")
+print(prompt.title)
+print(prompt.description)
 ```
 
 ## Dynamic Tool Selection
@@ -55,7 +166,7 @@ Harnessiq ships a dedicated Google Cloud deployment surface for running manifest
 | Service provider packages | 27 |
 | Tool-only external service surfaces | 1 |
 | Built-in sink types | 10 |
-| Test modules | 135 |
+| Test modules | 138 |
 
 ## Agent Matrix
 
