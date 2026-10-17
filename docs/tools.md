@@ -79,6 +79,10 @@ browser_use_tools = create_browser_use_tools(
 
 This returns a `RegisteredTool` keyed as `browser_use.request`. Inject it through an agent's additive `tools=` surface when you want coarse-grained Browser Use Cloud automation. It is not a drop-in replacement for the selector-driven `browser_tools` factories used by the current Playwright-backed LinkedIn and prospecting harnesses.
 
+## Remote MCP with OpenAI Responses
+
+For web search and page fetching through the OpenAI provider's remote MCP helpers, see [Parallel web search with OpenAI Responses](./parallel-search.md). The guide covers anonymous Parallel access, OpenAI credentials, and inspecting tool results.
+
 ## Dynamic Selection
 
 Harnessiq now supports an optional dynamic tool-selection layer on top of the existing static tool surface. The feature narrows what the model sees per turn; it does not replace the tool catalog or expand execution authority.
